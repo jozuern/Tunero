@@ -235,6 +235,25 @@ public class BenchmarkHealthTests
         }
     }
 
+    /// <summary>
+    /// Stop ends the tool and returns only once it has exited, so a cleanup after a stopped DISM does not race the tool
+    /// (still holding a mounted image or files). Only ping to the loopback address runs.
+    /// </summary>
+    [Fact]
+    public async Task StopReturnsOnlyAfterTheToolHasExited()
+    {
+        using var ping = new Process
+        {
+            StartInfo = new ProcessStartInfo("ping.exe", "-n 30 127.0.0.1") { CreateNoWindow = true, UseShellExecute = false },
+            EnableRaisingEvents = true,
+        };
+        var exited = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        ping.Exited += (_, _) => exited.TrySetResult();
+        ping.Start();
+        await Optimizer.Core.Platform.StreamingProcess.KillAndWaitAsync(ping, exited.Task);
+        Assert.True(ping.HasExited);
+    }
+
     [Theory]
     [InlineData("Fan", 0f, 0f, true)]            // an empty fan header
     [InlineData("Fan", 0f, null, true)]

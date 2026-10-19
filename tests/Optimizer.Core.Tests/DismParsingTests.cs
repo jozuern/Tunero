@@ -100,13 +100,47 @@ public class DismParsingTests
         Assert.False(DismOutput.Healthy(""));
     }
 
+    /// <summary>
+    /// The 26H2 ESD's setup image (index 1) has no edition; the boot images (2 and 3) are WindowsPE for x64. Captured in
+    /// PCO-Test 2026-10-20; the build's Check stage relies on exactly this, not on the localized image names.
+    /// </summary>
     [Fact]
-    public void BootableOnlyWhenDismSaysYes()
+    public void EsdSetupAndBootImagesAreRecognizable()
     {
-        Assert.False(DismOutput.Bootable(Fixture("dism-detail.txt")));
-        Assert.True(DismOutput.Bootable("Index : 2\nName : Microsoft Windows Setup (amd64)\nWIM Bootable : Yes\nArchitecture : x64"));
-        Assert.False(DismOutput.Bootable("Index : 2\nName : Microsoft Windows Setup (amd64)\nArchitecture : x64"));
-        Assert.False(DismOutput.Bootable(Fixture("dism-err.txt")));
+        var setup = Assert.Single(DismOutput.ParseWimInfo(Fixture("dism-esd-index1.txt")));
+        Assert.Equal("<undefined>", setup.Edition);
+        Assert.Equal("<undefined>", setup.Architecture);
+        var boot = Assert.Single(DismOutput.ParseWimInfo(Fixture("dism-esd-index3.txt")));
+        Assert.Equal("WindowsPE", boot.Edition);
+        Assert.Equal("x64", boot.Architecture);
+        Assert.Equal("10.0.26100.9711", boot.Version);
+    }
+
+    private static byte[] Bytes(string name) => File.ReadAllBytes(Path.Combine(RepoPaths.Root, "tests", "Optimizer.Core.Tests", "Fixtures", "media", name));
+
+    /// <summary>
+    /// Real headers (first 208 bytes) of the 26H2 media's boot.wim and install.wim. DISM's "WIM Bootable" line says No
+    /// for both boot images even after /Export-Image /Bootable (checked in PCO-Test 2026-10-20); the header's boot index
+    /// is what marks Setup as the image that boots.
+    /// </summary>
+    [Fact]
+    public void WimHeaderGivesImageCountAndBootIndex()
+    {
+        Assert.Equal(new WimHeader.Info(2, 2), WimHeader.Read(new MemoryStream(Bytes("wim-header-boot.bin"))));
+        Assert.Equal(new WimHeader.Info(1, 0), WimHeader.Read(new MemoryStream(Bytes("wim-header-install.bin"))));
+    }
+
+    [Fact]
+    public void WimHeaderRejectsOtherFiles()
+    {
+        Assert.Null(WimHeader.Read(new MemoryStream(Bytes("wim-header-boot.bin")[..100])));
+        var wrongMagic = Bytes("wim-header-boot.bin");
+        wrongMagic[0] = (byte)'X';
+        Assert.Null(WimHeader.Read(new MemoryStream(wrongMagic)));
+        var wrongSize = Bytes("wim-header-boot.bin");
+        wrongSize[8] = 0;
+        Assert.Null(WimHeader.Read(new MemoryStream(wrongSize)));
+        Assert.Null(WimHeader.Read(new MemoryStream([])));
     }
 
     [Fact]

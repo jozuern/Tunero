@@ -1,0 +1,28 @@
+
+Deployment Image Servicing and Management tool
+Version: 10.0.26100.9549
+
+Details for image : C:\spike\win.esd
+
+Index : 1
+Name : Windows Setup Media
+Description : Windows Setup Media
+Size : 274.985.933 bytes
+WIM Bootable : No
+Architecture : <undefined>
+Hal : <undefined>
+Version : <undefined>
+ServicePack Build : <undefined>
+ServicePack Level : <undefined>
+Edition : <undefined>
+Installation : <undefined>
+ProductType : <undefined>
+ProductSuite : <undefined>
+System Root : <undefined>
+Directories : 96
+Files : 979
+Created : 11/10/2026 - 20:17:21
+Modified : 11/10/2026 - 20:17:21
+Languages : <undefined>
+
+The operation completed successfully.

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Security.AccessControl;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using System.Xml;
@@ -55,9 +56,9 @@ public sealed class MediaBuildException(MediaStage stage, string message, int? c
     /// <summary>Every <see cref="Key"/> the build uses; the page needs a text for each.</summary>
     public static IReadOnlyList<string> Keys { get; } =
     [
-        "Media_OutputInvalid", "Media_OutputNotLocal", "Media_SourceMissing", "Media_WorkFolderFailed", "Media_NotEnoughSpace",
-        "Media_NotWindows11", "Media_NotX64", "Media_NoUefiBoot", "Media_EditionMissing", "Media_ImageCheckFailed",
-        "Media_Unhealthy", "Media_FilesCheckFailed", "Media_IsoInUse", "Media_VerifyFailed",
+        "Media_OutputInvalid", "Media_OutputNotLocal", "Media_OutputMoveFailed", "Media_SourceMissing", "Media_WorkFolderFailed",
+        "Media_NotEnoughSpace", "Media_NotWindows11", "Media_NotX64", "Media_NoUefiBoot", "Media_EditionMissing",
+        "Media_ImageCheckFailed", "Media_Unhealthy", "Media_FilesCheckFailed", "Media_IsoInUse", "Media_VerifyFailed",
     ];
 }
 
@@ -74,7 +75,10 @@ public interface IMediaSteps
     /// <summary>Creates a new, locked work folder on the drive of <paramref name="outputIso"/> and returns its absolute path.</summary>
     string NewWorkFolder(string outputIso);
 
-    /// <summary>Deletes a work folder without following links; refuses any folder not named like one.</summary>
+    /// <summary>
+    /// Deletes a work folder without following links: a folder that is itself a link is only unlinked, a folder that is not
+    /// locked to Administrators and SYSTEM is refused (IOException), any path not named like a work folder too (ArgumentException).
+    /// </summary>
     void DeleteWorkFolder(string folder);
 
     long FreeBytes(string path);
@@ -93,19 +97,27 @@ public interface IMediaSteps
 
 /// <summary>
 /// Builds the changed install media: download or own ISO, unpack with DISM, remove apps, add the answer file and Tunero,
-/// write the ISO and read it back. Every safety check fails the build with a <see cref="MediaBuildException"/>; on any
-/// failure or Stop a mounted image is discarded, the partial ISO and the work folder are deleted, so nothing that is not a
-/// verified ISO is left behind. A folder whose image cannot be unmounted is kept (deleting it would reach into the mounted
-/// image) and removed by <see cref="CleanLeftoversAsync"/> at the next start.
+/// write the ISO and read it back. The ISO is written and verified inside the locked work folder and only then moved to
+/// the output path, so that path only ever holds a verified ISO and an older file there survives every failure. Every
+/// safety check fails the build with a <see cref="MediaBuildException"/>; on any failure or Stop a mounted image is
+/// discarded and the work folder deleted. A folder whose image cannot be unmounted is kept (deleting it would reach into
+/// the mounted image) and removed by <see cref="CleanLeftoversAsync"/> at the next start.
 /// </summary>
 public sealed class MediaBuild(IMediaSteps steps)
 {
     public const string WorkFolderPrefix = "TuneroMedia.";
 
+    /// <summary>Held open without sharing for the whole build: a work folder whose lock file cannot be opened belongs to a running build.</summary>
+    internal const string LockFileName = "build.lock";
+
+    private const int Attempts = 3;
     private const long Gigabyte = 1L << 30;
     private const string TuneroOnMedia = @"sources\$OEM$\$$\Setup\Tunero";
     private static readonly Version MinimumVersion = new(10, 0, 22000);
     private static readonly Regex WorkFolderName = new(@"^TuneroMedia\.[0-9a-fA-F]{8}$", RegexOptions.Compiled);
+
+    /// <summary>The pause before a cleanup step is tried again (a stopped DISM may still hold its files for a moment).</summary>
+    internal TimeSpan RetryDelay { get; init; } = TimeSpan.FromSeconds(2);
 
     /// <summary>
     /// Free space the build needs on the output drive. Download: the ESD, 2.2 times its size for the media and the ISO, and
@@ -128,7 +140,7 @@ public sealed class MediaBuild(IMediaSteps steps)
     public Task<string> RunAsync(MediaRequest r, IProgress<MediaProgress> p, CancellationToken ct)
     {
         Validate(r);
-        return new Run(steps, r, p, ct).ExecuteAsync();
+        return new Run(steps, r, p, RetryDelay, ct).ExecuteAsync();
     }
 
     private static void Validate(MediaRequest r)
@@ -140,43 +152,69 @@ public sealed class MediaBuild(IMediaSteps steps)
         var s = r.Source;
         if ((s.Download is null) == (s.IsoPath is null)) throw new ArgumentException("Give exactly one source: a download or an ISO file.", nameof(r));
         // x64 only in this version: ARM64 media cannot be tested here.
-        if (s.Download is { } d && !string.Equals(d.Architecture, "x64", StringComparison.OrdinalIgnoreCase))
-            throw new ArgumentException("Only x64 media can be built.", nameof(r));
+        if (s.Download is { } d && !Same(d.Architecture, "x64")) throw new ArgumentException("Only x64 media can be built.", nameof(r));
         if (r.Answers.Architecture != "amd64") throw new ArgumentException("Only x64 media can be built: the answer file needs amd64.", nameof(r));
         if (s.IsoPath is { } iso && !Path.IsPathFullyQualified(iso)) throw new ArgumentException("The ISO path must be absolute.", nameof(r));
         if (s.Download is not null && r.IsoIndex is not null) throw new ArgumentException("An image index belongs to an own ISO only.", nameof(r));
         if (r.IsoIndex is < 1) throw new ArgumentException("Image indexes start at 1.", nameof(r));
         if (string.IsNullOrWhiteSpace(r.Edition)) throw new ArgumentException("No edition.", nameof(r));
+        var apps = CatalogData.Current.Appx.Apps;
+        foreach (var name in r.RemoveApps)
+            if (!apps.Any(a => Same(a.Name, name))) throw new ArgumentException($"{name} is not in the app list.", nameof(r));
         AnswerFile.Build(r.Answers);   // throws ArgumentException for an invalid account name
         var tunero = r.TuneroExe is not null;
         if (tunero != (r.FirstSignIn is not null) || tunero != r.Answers.FirstSignInTunero)
             throw new ArgumentException("The Tunero copy, its first sign-in file and the answer file entry go together.", nameof(r));
         if (r.TuneroExe is { } exe && (!Path.IsPathFullyQualified(exe) || !File.Exists(exe)))
             throw new ArgumentException("The Tunero exe must be an existing file with an absolute path.", nameof(r));
-        if (r.FirstSignIn is { } first && !Media.FirstSignIn.IsValid(first))
+        if (r.FirstSignIn is { } first && !FirstSignIn.IsValid(first))
             throw new ArgumentException("The first sign-in file names an unknown profile, language or theme.", nameof(r));
     }
 
     /// <summary>
     /// Removes what killed or crashed builds left: images still mounted in a work folder are discarded, then the work
-    /// folders at the root of every local fixed drive are deleted. A folder whose image stays mounted is kept. Without
-    /// leftovers this only lists the mounted images and changes nothing.
+    /// folders at the root of every local fixed drive are deleted. A folder whose lock file is held (a build that still
+    /// runs, in this or another Tunero) is left alone with its mount, and so is a folder whose image stays mounted.
+    /// Without leftovers this only lists the mounted images and changes nothing. Never throws: DISM failures are logged
+    /// (without the list of mounted images nothing is deleted) and a stop ends it quietly.
     /// </summary>
     public async Task CleanLeftoversAsync(CancellationToken ct)
     {
+        try
+        {
+            await CleanLeftoversCoreAsync(ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            AppLog.Info("media", "cleanup after an earlier build stopped");
+        }
+        catch (Exception ex) when (ex is DismException or IOException or UnauthorizedAccessException)
+        {
+            Warn(steps, "Cleanup after an earlier build failed: " + ex.Message);
+        }
+    }
+
+    private async Task CleanLeftoversCoreAsync(CancellationToken ct)
+    {
         var mounted = await steps.Dism.MountedDirsAsync(ct);
-        var ours = mounted.Where(d => WorkFolderOf(d) is not null).ToList();
         var folders = new List<string>();
         void Add(string? folder)
         {
             if (folder is not null && !folders.Contains(folder, StringComparer.OrdinalIgnoreCase)) folders.Add(folder);
         }
-        foreach (var dir in ours) Add(WorkFolderOf(dir));
+        foreach (var dir in mounted) Add(WorkFolderOf(dir));
         foreach (var drive in steps.LocalDrives())
-            foreach (var folder in steps.LeftoverWorkFolders(drive)) Add(WorkFolderOf(folder));
+            foreach (var folder in steps.LeftoverWorkFolders(drive))
+                if (IsWorkFolderName(Path.GetFileName(folder.TrimEnd('\\')))) Add(folder.TrimEnd('\\'));
         if (folders.Count == 0) return;
 
         steps.Log("Cleaning up after an earlier build: " + string.Join(", ", folders));
+        foreach (var running in folders.Where(IsHeldByABuild).ToList())
+        {
+            steps.Log($"{running} belongs to a build that is still running; left alone");
+            folders.Remove(running);
+        }
+        var ours = mounted.Where(d => folders.Any(f => IsInside(d, f))).ToList();
         var still = mounted;
         if (ours.Count > 0)
         {
@@ -215,14 +253,35 @@ public sealed class MediaBuild(IMediaSteps steps)
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
             {
-                Warn(steps, $"{folder} could not be deleted: {ex.Message}");
+                Warn(steps, $"{folder} left in place: {ex.Message}");
             }
+        }
+    }
+
+    /// <summary>True when the folder's lock file exists and cannot be opened: a running build holds it.</summary>
+    private static bool IsHeldByABuild(string folder)
+    {
+        try
+        {
+            using var _ = new FileStream(Path.Combine(folder, LockFileName), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            return false;
+        }
+        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
+        {
+            return false;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Held open, or not readable: leave it rather than risk a build's files.
+            return true;
         }
     }
 
     private static bool IsInside(string path, string folder) =>
         string.Equals(path.TrimEnd('\\'), folder, StringComparison.OrdinalIgnoreCase) ||
         path.StartsWith(folder + "\\", StringComparison.OrdinalIgnoreCase);
+
+    private static bool Same(string? a, string? b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
 
     private static void Warn(IMediaSteps steps, string message)
     {
@@ -262,13 +321,13 @@ public sealed class MediaBuild(IMediaSteps steps)
         });
 
     /// <summary>The state of one build, so a failure knows what to undo.</summary>
-    private sealed class Run(IMediaSteps steps, MediaRequest r, IProgress<MediaProgress>? progress, CancellationToken ct)
+    private sealed class Run(IMediaSteps steps, MediaRequest r, IProgress<MediaProgress>? progress, TimeSpan retryDelay, CancellationToken ct)
     {
         private readonly Stopwatch _clock = new();
         private MediaStage _stage;
-        private string? _work, _media, _mount;
-        private bool _mounted, _answerFileWritten, _isoStarted, _isoOurs;
-        private (bool Exists, long Length, DateTime Written) _isoBefore;
+        private string? _work, _media, _mount, _workIso;
+        private FileStream? _lock;
+        private bool _mounted, _answerFileWritten;
 
         private string Sources => Path.Combine(_media!, "sources");
         private string InstallWim => Path.Combine(Sources, "install.wim");
@@ -285,6 +344,7 @@ public sealed class MediaBuild(IMediaSteps steps)
                 CheckOutputAndSpace();
                 _work = steps.NewWorkFolder(r.OutputIso);
                 if (!Path.IsPathFullyQualified(_work)) throw Fail($"The work folder {_work} is not an absolute path.", "Media_WorkFolderFailed");
+                _lock = new FileStream(Path.Combine(_work, LockFileName), FileMode.CreateNew, FileAccess.Write, FileShare.None);
                 steps.Log("Work folder " + _work);
                 _media = Path.Combine(_work, "media");
                 _mount = Path.Combine(_work, "mount");
@@ -295,7 +355,7 @@ public sealed class MediaBuild(IMediaSteps steps)
                     var esd = Path.Combine(_work, "image.esd");
                     var stage = _stage;
                     await steps.DownloadAsync(download, esd,
-                        new Relay<(long Done, long Total)>(v => progress?.Report(new MediaProgress(stage, v.Total > 0 ? v.Done * 100.0 / v.Total : null, null))), ct);
+                        new Relay<(long Done, long Total)>(v => Report(stage, v.Total > 0 ? v.Done * 100.0 / v.Total : null, null)), ct);
                     Begin(MediaStage.Check);
                     var images = await CheckEsdAsync(esd);
                     Begin(MediaStage.Unpack);
@@ -318,20 +378,7 @@ public sealed class MediaBuild(IMediaSteps steps)
                 await WriteIsoAsync(build);
                 Begin(MediaStage.Verify);
                 await VerifyAsync();
-
-                Begin(MediaStage.Cleanup);
-                try
-                {
-                    steps.DeleteWorkFolder(_work);
-                }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
-                {
-                    // The ISO is complete and verified; the next start deletes the folder.
-                    Warn(steps, $"work folder {_work} could not be deleted: {ex.Message}");
-                }
-                steps.Log($"Cleanup done in {_clock.Elapsed:hh\\:mm\\:ss}");
-                steps.Log("Build finished: " + r.OutputIso);
-                return r.OutputIso;
+                Publish();
             }
             catch (Exception ex)
             {
@@ -341,6 +388,14 @@ public sealed class MediaBuild(IMediaSteps steps)
                 if (ex is OperationCanceledException && ct.IsCancellationRequested) throw;
                 throw Wrap(failed, ex);
             }
+
+            // The verified ISO is at the output path: nothing from here on may fail the build or touch it.
+            Begin(MediaStage.Cleanup);
+            ReleaseLock();
+            if (!await DeleteWorkFolderAsync()) Warn(steps, $"work folder {_work} stays until the next start of Tunero removes it");
+            steps.Log($"Cleanup done in {_clock.Elapsed:hh\\:mm\\:ss}");
+            steps.Log("Build finished: " + r.OutputIso);
+            return r.OutputIso;
         }
 
         private void Begin(MediaStage stage)
@@ -349,7 +404,20 @@ public sealed class MediaBuild(IMediaSteps steps)
             _stage = stage;
             _clock.Restart();
             steps.Log($"{stage} started");
-            progress?.Report(new MediaProgress(stage, null, null));
+            Report(stage, null, null);
+        }
+
+        /// <summary>A failing progress sink is logged, never allowed to break the build or its cleanup.</summary>
+        private void Report(MediaStage stage, double? percent, string? detail)
+        {
+            try
+            {
+                progress?.Report(new MediaProgress(stage, percent, detail));
+            }
+            catch (Exception ex)
+            {
+                steps.Log($"Progress report failed: {ex.GetType().Name}: {ex.Message}");
+            }
         }
 
         private MediaBuildException Fail(string reason, string? key, int? code = null) =>
@@ -379,13 +447,13 @@ public sealed class MediaBuild(IMediaSteps steps)
         private IProgress<double> Percent(string? detail)
         {
             var stage = _stage;
-            return new Relay<double>(v => progress?.Report(new MediaProgress(stage, v, detail)));
+            return new Relay<double>(v => Report(stage, v, detail));
         }
 
         private IProgress<double> Fraction(string? detail)
         {
             var stage = _stage;
-            return new Relay<double>(v => progress?.Report(new MediaProgress(stage, v * 100, detail)));
+            return new Relay<double>(v => Report(stage, v * 100, detail));
         }
 
         private Task<T> Dism<T>(string arguments, Func<Task<T>> call) => LoggedAsync(steps, arguments, call);
@@ -395,8 +463,9 @@ public sealed class MediaBuild(IMediaSteps steps)
         private void CheckOutputAndSpace()
         {
             var output = r.OutputIso;
-            if (!Path.IsPathFullyQualified(output) || Directory.Exists(output) || Path.GetDirectoryName(output) is not { } folder || !Directory.Exists(folder))
-                throw Fail($"{output} is not a usable file path in an existing folder.", "Media_OutputInvalid");
+            if (!Path.IsPathFullyQualified(output) || !Same(Path.GetExtension(output), ".iso") || Directory.Exists(output) ||
+                Path.GetDirectoryName(output) is not { } folder || !Directory.Exists(folder))
+                throw Fail($"{output} is not a usable .iso file path in an existing folder.", "Media_OutputInvalid");
             long size;
             if (r.Source.Download is { } download)
             {
@@ -405,9 +474,7 @@ public sealed class MediaBuild(IMediaSteps steps)
             else
             {
                 var iso = Path.GetFullPath(r.Source.IsoPath!);
-                // A failed check deletes the written ISO: it must never be the source.
-                if (string.Equals(iso, Path.GetFullPath(output), StringComparison.OrdinalIgnoreCase))
-                    throw Fail("The output file is the source ISO.", "Media_OutputInvalid");
+                if (Same(iso, Path.GetFullPath(output))) throw Fail("The output file is the source ISO.", "Media_OutputInvalid");
                 var info = new FileInfo(iso);
                 if (!info.Exists) throw Fail($"{iso} does not exist.", "Media_SourceMissing");
                 size = info.Length;
@@ -418,14 +485,25 @@ public sealed class MediaBuild(IMediaSteps steps)
             if (free < needed) throw Fail($"The output drive has {free} bytes free; the build needs {needed}.", "Media_NotEnoughSpace");
         }
 
-        /// <summary>The ESD's hash was checked by the download; this checks that it is Windows setup media at all.</summary>
+        /// <summary>
+        /// The ESD's hash was checked by the download; this checks its layout, which does not depend on the language (the
+        /// image names do): index 1 is the setup files without an edition, 2 and 3 are x64 WindowsPE images, editions follow.
+        /// </summary>
         private async Task<IReadOnlyList<WimImage>> CheckEsdAsync(string esd)
         {
             var images = DismOutput.ParseWimInfo(await Dism(DismArgs.WimInfo(esd, null), () => steps.Dism.GetWimInfoAsync(esd, null, ct)));
             steps.Log($"{images.Count} images: " + string.Join("; ", images.Select(i => $"{i.Index} {i.Name}")));
-            if (images.Count < 4 || !images.Any(i => i.Index == 1 && i.Name.Contains("Setup Media", StringComparison.OrdinalIgnoreCase)) ||
-                !images.Any(i => i.Index == 2) || !images.Any(i => i.Index == 3))
+            if (images.Count < 4 || !new[] { 1, 2, 3 }.All(n => images.Any(i => i.Index == n)))
                 throw Fail($"The downloaded file is not Windows setup media ({images.Count} images).", "Media_NotWindows11");
+            var (setup, _) = await DetailAsync(esd, 1);
+            if (setup.Edition is not (null or "<undefined>"))
+                throw Fail($"Image 1 of the download is {setup.Name} (edition {setup.Edition}), not the setup files.", "Media_NotWindows11");
+            foreach (var index in new[] { 2, 3 })
+            {
+                var (boot, _) = await DetailAsync(esd, index);
+                if (!Same(boot.Edition, "WindowsPE") || !Same(boot.Architecture, "x64"))
+                    throw Fail($"Image {index} of the download is {boot.Name} ({boot.Edition}, {boot.Architecture}), not an x64 boot image.", "Media_NotWindows11");
+            }
             return images;
         }
 
@@ -451,6 +529,7 @@ public sealed class MediaBuild(IMediaSteps steps)
         private async Task<string> UnpackIsoAsync()
         {
             await steps.IsoReader.CopyMediaAsync(r.Source.IsoPath!, _media!, Fraction(null), ct);
+            RemoveOldSetupFiles();
             RequireUefiBoot();
             var wim = InstallWim;
             var esd = Path.Combine(Sources, "install.esd");
@@ -483,6 +562,27 @@ public sealed class MediaBuild(IMediaSteps steps)
             File.Delete(source);
             File.Move(exported, wim);
             return chosen.Edition!;
+        }
+
+        /// <summary>
+        /// An own ISO may carry an answer file or a Tunero copy from an earlier build (or from elsewhere): they would run on
+        /// the new PC although this build did not choose them. Removed right after the copy, checked gone, fail closed.
+        /// </summary>
+        private void RemoveOldSetupFiles()
+        {
+            string[] answerFiles = [Path.Combine(_media!, "autounattend.xml"), Path.Combine(Sources, "autounattend.xml")];
+            foreach (var file in answerFiles.Where(File.Exists))
+            {
+                steps.Log($"Removing {Path.GetRelativePath(_media!, file)} of the ISO");
+                SafeDelete.DeleteFile(file);
+            }
+            if (Path.Exists(TuneroFolder))
+            {
+                steps.Log($"Removing {TuneroOnMedia} of the ISO");
+                SecureFolder.DeleteTree(TuneroFolder);
+            }
+            if (answerFiles.Any(Path.Exists) || Path.Exists(TuneroFolder))
+                throw Fail("An answer file or Tunero copy on the ISO could not be removed.", "Media_FilesCheckFailed");
         }
 
         private void RequireUefiBoot()
@@ -529,8 +629,8 @@ public sealed class MediaBuild(IMediaSteps steps)
         }
 
         /// <summary>
-        /// The safety checks after unpacking: install.wim holds exactly the chosen edition as x64 Windows 11, boot.wim holds
-        /// the two boot images and the second (Setup) is marked bootable. Returns the build number for the volume name.
+        /// The safety checks after unpacking: install.wim holds exactly the chosen edition as x64 Windows 11; boot.wim holds
+        /// the two x64 boot images and its header names image 2 (Setup) as the one that boots. Returns the build number.
         /// </summary>
         private async Task<string> CheckImagesAsync(string edition)
         {
@@ -542,18 +642,21 @@ public sealed class MediaBuild(IMediaSteps steps)
 
             var boot = DismOutput.ParseWimInfo(await Dism(DismArgs.WimInfo(BootWim, null), () => steps.Dism.GetWimInfoAsync(BootWim, null, ct)));
             if (boot.Count != 2) throw Fail($"boot.wim holds {boot.Count} images, not 2.", "Media_ImageCheckFailed");
-            var (setup, text) = await DetailAsync(BootWim, 2);
-            if (!DismOutput.Bootable(text)) throw Fail("Image 2 of boot.wim is not marked bootable.", "Media_ImageCheckFailed");
+            // DISM's "WIM Bootable" line does not show this (see WimHeader); the header does.
+            var header = WimHeader.Read(BootWim);
+            if (header is not { ImageCount: 2, BootIndex: 2 })
+                throw Fail($"boot.wim does not name image 2 as the one that boots (header: {header?.ImageCount} images, boot index {header?.BootIndex}).", "Media_ImageCheckFailed");
+            var (setup, _) = await DetailAsync(BootWim, 2);
             if (!Same(setup.Architecture, "x64")) throw Fail($"boot.wim is for {setup.Architecture}; only x64 media can be built.", "Media_NotX64");
-            steps.Log($"Images checked: {image.Name} ({image.Edition}, {image.Architecture}, {image.Version}), boot.wim bootable");
+            steps.Log($"Images checked: {image.Name} ({image.Edition}, {image.Architecture}, {image.Version}), boot.wim boots image 2");
             return Version.Parse(image.Version!).Build.ToString(System.Globalization.CultureInfo.InvariantCulture);
         }
 
         private async Task RemoveAppsAsync()
         {
             var catalog = CatalogData.Current.Appx;
-            var entries = r.RemoveApps.Select(name => catalog.Apps.FirstOrDefault(a => Same(a.Name, name))
-                ?? throw Fail($"{name} is not in the app list.", null)).ToList();
+            // Validate checked that every name is an allowlist entry.
+            var entries = catalog.Apps.Where(a => r.RemoveApps.Contains(a.Name, StringComparer.OrdinalIgnoreCase)).ToList();
             Directory.CreateDirectory(_mount!);
             // Counted as mounted from the start: a mount that fails or stops halfway is discarded too.
             _mounted = true;
@@ -565,7 +668,7 @@ public sealed class MediaBuild(IMediaSteps steps)
             for (var i = 0; i < remove.Count; i++)
             {
                 var package = remove[i];
-                progress?.Report(new MediaProgress(_stage, i * 100.0 / remove.Count, PackageName(package)));
+                Report(_stage, i * 100.0 / remove.Count, PackageName(package));
                 await Dism(DismArgs.RemoveProvisioned(_mount!, package), () => steps.Dism.RemoveProvisionedAsync(_mount!, package, ct));
             }
             var health = await Dism(DismArgs.CheckHealth(_mount!), () => steps.Dism.CheckHealthAsync(_mount!, ct));
@@ -597,10 +700,10 @@ public sealed class MediaBuild(IMediaSteps steps)
                 var copy = Path.Combine(TuneroFolder, "Tunero.exe");
                 File.Copy(exe, copy, overwrite: true);
                 if (!SameContent(exe, copy)) throw Fail("The copied Tunero.exe differs from the running one.", "Media_FilesCheckFailed");
-                File.WriteAllText(Path.Combine(TuneroFolder, Media.FirstSignIn.FileName), Media.FirstSignIn.Serialize(r.FirstSignIn!));
+                File.WriteAllText(Path.Combine(TuneroFolder, FirstSignIn.FileName), FirstSignIn.Serialize(r.FirstSignIn!));
                 // Read with the rules the new PC uses, so a file it would ignore never reaches the ISO.
-                if (Media.FirstSignIn.Read(copy, _ => true, TuneroFolder) != r.FirstSignIn)
-                    throw Fail($"{Media.FirstSignIn.FileName} does not read back as written.", "Media_FilesCheckFailed");
+                if (FirstSignIn.Read(copy, _ => true, TuneroFolder) != r.FirstSignIn)
+                    throw Fail($"{FirstSignIn.FileName} does not read back as written.", "Media_FilesCheckFailed");
                 steps.Log($"Copied Tunero from {exe}");
             }
         }
@@ -631,14 +734,13 @@ public sealed class MediaBuild(IMediaSteps steps)
             return first.Length == second.Length && SHA256.HashData(first).AsSpan().SequenceEqual(SHA256.HashData(second));
         }
 
+        /// <summary>The ISO is written inside the locked work folder; the output path gets it only after Verify (<see cref="Publish"/>).</summary>
         private async Task WriteIsoAsync(string build)
         {
-            _isoBefore = Fingerprint(r.OutputIso);
-            _isoStarted = true;
+            _workIso = Path.Combine(_work!, "output.iso");
             var volume = IsoBoot.VolumeName($"WIN11_{build}_X64");
-            steps.Log($"Writing {r.OutputIso} (volume {volume})");
-            await steps.IsoWriter.WriteAsync(_media!, r.OutputIso, volume, Fraction(null), ct);
-            _isoOurs = true;
+            steps.Log($"Writing {_workIso} (volume {volume})");
+            await steps.IsoWriter.WriteAsync(_media!, _workIso, volume, Fraction(null), ct);
         }
 
         /// <summary>Reads the ISO back: its boot catalog and the files that decide whether Windows installs as chosen.</summary>
@@ -653,9 +755,9 @@ public sealed class MediaBuild(IMediaSteps steps)
             if (r.TuneroExe is not null)
             {
                 files.Add(TuneroOnMedia + @"\Tunero.exe");
-                files.Add(TuneroOnMedia + @"\" + Media.FirstSignIn.FileName);
+                files.Add(TuneroOnMedia + @"\" + FirstSignIn.FileName);
             }
-            var check = await steps.IsoReader.VerifyAsync(r.OutputIso, _media!, files, Fraction(null), ct);
+            var check = await steps.IsoReader.VerifyAsync(_workIso!, _media!, files, Fraction(null), ct);
             if (!check.BootCatalogOk || check.Mismatched.Count > 0)
             {
                 var what = (check.BootCatalogOk ? Array.Empty<string>() : ["boot catalog"]).Concat(check.Mismatched);
@@ -664,76 +766,115 @@ public sealed class MediaBuild(IMediaSteps steps)
             steps.Log($"ISO verified: boot catalog and {files.Count} files");
         }
 
-        private static (bool Exists, long Length, DateTime Written) Fingerprint(string path)
+        /// <summary>
+        /// Moves the verified ISO to the output path (a rename: the work folder is on the same drive). The output folder may
+        /// be writable by others, so it is held (no folder above it can be renamed or replaced meanwhile) and must contain
+        /// no link; the move replaces whatever entry has the name, a link included, without following it. Then the ISO
+        /// takes the output folder's permissions instead of the work folder's administrators-only ones.
+        /// </summary>
+        private void Publish()
         {
-            var info = new FileInfo(path);
-            return info.Exists ? (true, info.Length, info.LastWriteTimeUtc) : (false, 0, default);
+            var folder = Path.GetDirectoryName(r.OutputIso)!;
+            var atRoot = Same(Path.GetPathRoot(folder)?.TrimEnd('\\'), folder.TrimEnd('\\'));
+            using var pin = atRoot ? null : SafeDelete.Pin(folder);
+            if ((!atRoot && pin is null) || !SafeDelete.HasNoLinks(folder))
+                throw Fail($"The output folder {folder} is or lies in a link; the ISO was not moved there.", "Media_OutputInvalid");
+            try
+            {
+                File.Move(_workIso!, r.OutputIso, overwrite: true);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                throw Fail($"The verified ISO could not be moved to {r.OutputIso}: {ex.Message}", "Media_OutputMoveFailed");
+            }
+            steps.Log("Verified ISO moved to " + r.OutputIso);
+            try
+            {
+                var security = new FileSecurity();
+                security.SetAccessRuleProtection(isProtected: false, preserveInheritance: false);
+                new FileInfo(r.OutputIso).SetAccessControl(security);
+            }
+            catch (Exception ex)
+            {
+                Warn(steps, $"{r.OutputIso} keeps the work folder's permissions: {ex.Message}");
+            }
         }
 
-        /// <summary>Never throws: discards a mounted image, deletes what this build wrote, and logs what it could not.</summary>
+        /// <summary>Never throws: discards a mounted image and deletes the work folder (each retried), logging what it could not do.</summary>
         private async Task CleanUpAfterFailureAsync()
         {
-            progress?.Report(new MediaProgress(MediaStage.Cleanup, null, null));
-            var none = CancellationToken.None;
-            if (_mounted && _mount is not null)
+            Report(MediaStage.Cleanup, null, null);
+            if (_mounted && _mount is { } mount)
             {
-                try
+                var none = CancellationToken.None;
+                if (await RetryAsync("Discarding the mounted image",
+                        () => Dism(DismArgs.Unmount(mount, commit: false), () => steps.Dism.UnmountAsync(mount, false, null, none)),
+                        ex => ex is DismException or IOException))
                 {
-                    await Dism(DismArgs.Unmount(_mount, commit: false), () => steps.Dism.UnmountAsync(_mount, false, null, none));
                     _mounted = false;
                 }
-                catch (Exception ex)
+                else
                 {
-                    steps.Log("Discarding the mounted image failed: " + ex.Message);
                     try
                     {
                         await Dism(DismArgs.CleanupMountpoints(), () => steps.Dism.CleanupMountpointsAsync(none));
                         var still = await Dism(DismArgs.MountedImageInfo(), () => steps.Dism.MountedDirsAsync(none));
-                        _mounted = still.Any(d => IsInside(d, _mount));
+                        _mounted = still.Any(d => IsInside(d, mount));
                     }
-                    catch (Exception again)
+                    catch (Exception ex)
                     {
-                        steps.Log("DISM cleanup failed: " + again.Message);
+                        steps.Log("DISM cleanup failed: " + ex.Message);
                     }
                 }
             }
-            if (_isoStarted)
-            {
-                TryDelete(r.OutputIso + ".part");
-                // The writer keeps an older file until the new one is complete; only a file this build wrote is deleted.
-                if (!_isoOurs && File.Exists(r.OutputIso) && Fingerprint(r.OutputIso) != _isoBefore) _isoOurs = true;
-                if (_isoOurs) TryDelete(r.OutputIso);
-            }
+            ReleaseLock();
             if (_work is null) return;
             if (_mounted)
             {
                 Warn(steps, $"The image is still mounted at {_mount}; {_work} stays until the next start of Tunero removes it.");
                 return;
             }
-            try
-            {
-                steps.DeleteWorkFolder(_work);
-            }
-            catch (Exception ex)
-            {
-                Warn(steps, $"work folder {_work} could not be deleted: {ex.Message}");
-            }
+            if (!await DeleteWorkFolderAsync()) Warn(steps, $"work folder {_work} stays until the next start of Tunero removes it");
         }
 
-        private void TryDelete(string path)
+        private void ReleaseLock()
         {
             try
             {
-                // The output folder may be writable by others: the delete must hit this very file, not a link's target.
-                if (File.Exists(path)) SafeDelete.DeleteFile(path);
+                _lock?.Dispose();
             }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            catch (Exception ex)
             {
-                Warn(steps, $"{path} could not be deleted: {ex.Message}");
+                steps.Log("Releasing the lock file failed: " + ex.Message);
             }
+            _lock = null;
         }
 
-        private static bool Same(string? a, string? b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
+        private Task<bool> DeleteWorkFolderAsync() =>
+            RetryAsync("Deleting the work folder", () =>
+            {
+                steps.DeleteWorkFolder(_work!);
+                return Task.CompletedTask;
+            }, ex => ex is IOException or UnauthorizedAccessException);
+
+        /// <summary>Up to three attempts, a short pause between them, while <paramref name="retry"/> says the failure can pass. Never throws.</summary>
+        private async Task<bool> RetryAsync(string what, Func<Task> action, Func<Exception, bool> retry)
+        {
+            for (var attempt = 1; ; attempt++)
+            {
+                try
+                {
+                    await action();
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    steps.Log($"{what} failed (attempt {attempt} of {Attempts}): {ex.Message}");
+                    if (attempt >= Attempts || !retry(ex)) return false;
+                }
+                await Task.Delay(retryDelay, CancellationToken.None);
+            }
+        }
     }
 
     private sealed class Relay<T>(Action<T> report) : IProgress<T>
@@ -750,6 +891,15 @@ public sealed class MediaBuild(IMediaSteps steps)
 public sealed class MediaSteps : IMediaSteps
 {
     private readonly Lock _gate = new();
+    private readonly Func<DirectoryInfo, bool> _trusted;
+
+    public MediaSteps() : this(null)
+    {
+    }
+
+    /// <param name="trusted">Tests only: replaces the check that a folder is owned by Administrators and locked.</param>
+    internal MediaSteps(Func<DirectoryInfo, bool>? trusted) =>
+        _trusted = trusted ?? (d => SecureFolder.IsOwnedByAdmins(d) && SecureFolder.IsLocked(d));
 
     public IDism Dism { get; } = new DismTool();
     public IIsoWriter IsoWriter { get; } = new IsoWriter();
@@ -795,12 +945,33 @@ public sealed class MediaSteps : IMediaSteps
         return folder;
     }
 
+    /// <summary>
+    /// Any user can create a folder at a drive root with a work folder's name and change what is inside it while a delete
+    /// recurses (a subfolder swapped for a junction). So only a folder that is owned by Administrators and locked to them
+    /// and SYSTEM, where no one else can change anything, is deleted with its content; a link is only unlinked.
+    /// </summary>
     public void DeleteWorkFolder(string folder)
     {
         var full = Path.GetFullPath(folder).TrimEnd('\\');
         if (!MediaBuild.IsWorkFolderName(Path.GetFileName(full))) throw new ArgumentException($"{folder} is not a Tunero work folder.", nameof(folder));
-        if (!Path.Exists(full)) return;
-        // Links are removed first without touching their targets; a work folder that is itself a link is only unlinked.
+        FileAttributes attributes;
+        try
+        {
+            attributes = File.GetAttributes(full);
+        }
+        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
+        {
+            return;
+        }
+        if ((attributes & FileAttributes.ReparsePoint) != 0)
+        {
+            // Removes the link itself, never its target.
+            if ((attributes & FileAttributes.Directory) != 0) Directory.Delete(full);
+            else File.Delete(full);
+            return;
+        }
+        if ((attributes & FileAttributes.Directory) == 0 || !_trusted(new DirectoryInfo(full)))
+            throw new IOException($"{full} is not a folder locked to Administrators and SYSTEM; left in place.");
         SecureFolder.DeleteTree(full);
     }
 

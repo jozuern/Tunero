@@ -104,9 +104,6 @@ public static class DismOutput
     /// <summary>The "PackageName :" values of Get-ProvisionedAppxPackages.</summary>
     public static IReadOnlyList<string> ParseProvisioned(string output) => Values(output, "PackageName");
 
-    /// <summary>True only when a Get-WimInfo /Index answer says "WIM Bootable : Yes"; anything else counts as not bootable.</summary>
-    public static bool Bootable(string output) => Values(output, "WIM Bootable").Any(v => v == "Yes");
-
     /// <summary>The "Mount Dir :" values of Get-MountedImageInfo.</summary>
     public static IReadOnlyList<string> ParseMountedDirs(string output) => Values(output, "Mount Dir");
 
@@ -254,5 +251,45 @@ public sealed class DismTool : IDism
     private sealed class LineProgress(Action<string> report) : IProgress<string>
     {
         public void Report(string value) => report(value);
+    }
+}
+
+/// <summary>
+/// The fixed header at the start of a .wim file: "MSWIM\0\0\0", the header size 208 at offset 8, the image count at 44 and
+/// the boot index at 120 (the image Windows Boot Manager starts from a boot.wim; 0 for none). DISM does not show the
+/// boot index: its "WIM Bootable" line said No for both images of the 26H2 media's boot.wim, whose header names image 2,
+/// and stayed No after /Export-Image /Bootable (checked in PCO-Test 2026-10-20). The test fixtures are those real headers.
+/// </summary>
+public static class WimHeader
+{
+    private const int Size = 208;
+
+    public sealed record Info(int ImageCount, int BootIndex);
+
+    /// <summary>The header at the start of <paramref name="stream"/>, or null when it is not a WIM header.</summary>
+    public static Info? Read(Stream stream)
+    {
+        var header = new byte[Size];
+        var read = 0;
+        int n;
+        while (read < Size && (n = stream.Read(header, read, Size - read)) > 0) read += n;
+        if (read < Size || !header.AsSpan(0, 8).SequenceEqual("MSWIM\0\0\0"u8) || BitConverter.ToUInt32(header, 8) != Size) return null;
+        var count = BitConverter.ToUInt32(header, 44);
+        var boot = BitConverter.ToUInt32(header, 120);
+        return count > int.MaxValue || boot > count ? null : new Info((int)count, (int)boot);
+    }
+
+    /// <summary>The header of the file at <paramref name="path"/>, or null when it is missing or not a WIM file.</summary>
+    public static Info? Read(string path)
+    {
+        try
+        {
+            using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+            return Read(file);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
     }
 }

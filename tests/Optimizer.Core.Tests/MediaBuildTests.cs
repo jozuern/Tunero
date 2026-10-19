@@ -1,3 +1,5 @@
+using System.Security.AccessControl;
+using System.Security.Principal;
 using System.Text;
 using Optimizer.Core.Catalog;
 using Optimizer.Core.Media;
@@ -25,6 +27,8 @@ public sealed class MediaBuildTests : IDisposable
 
     private static AnswerChoices Plain => new("amd64", "en-US", "0409:00000409", "en-US", "en-US", null, false, false, false);
 
+    private static FirstSignInFile First => new(CatalogData.Current.Profiles.Default.Id, "en", "System");
+
     private MediaRequest Download(string edition = "Professional", IReadOnlyList<string>? apps = null, AnswerChoices? answers = null) =>
         new(new MediaSource(Esd, null, null), edition, null, apps ?? [], answers ?? Plain, null, null, OutputIso);
 
@@ -35,19 +39,39 @@ public sealed class MediaBuildTests : IDisposable
         return new(new MediaSource(null, iso, null), edition, index, [], Plain, null, null, OutputIso);
     }
 
-    private Task<string> Run(MediaRequest r, CancellationToken ct = default) =>
-        new MediaBuild(_steps).RunAsync(r, new Collect(_steps.Progress), ct);
+    private MediaRequest WithTunero(MediaRequest r)
+    {
+        var exe = Path.Combine(_root, "Tunero-running.exe");
+        File.WriteAllBytes(exe, Encoding.ASCII.GetBytes("MZ fake Tunero"));
+        return r with { Answers = r.Answers with { FirstSignInTunero = true }, TuneroExe = exe, FirstSignIn = First };
+    }
+
+    private MediaBuild Build() => new(_steps) { RetryDelay = TimeSpan.Zero };
+
+    private Task<string> Run(MediaRequest r, CancellationToken ct = default, IProgress<MediaProgress>? progress = null) =>
+        Build().RunAsync(r, progress ?? new Collect(_steps.Progress), ct);
 
     private async Task<MediaBuildException> Fails(MediaRequest r) => await Assert.ThrowsAsync<MediaBuildException>(() => Run(r));
+
+    private async Task<MediaBuildException> FailsAt(MediaRequest r, MediaStage stage, string? key)
+    {
+        var ex = await Fails(r);
+        Assert.Equal(stage, ex.Stage);
+        Assert.Equal(key, ex.Key);
+        return ex;
+    }
+
+    private int Count(string call) => _steps.Calls.Count(c => c == call);
 
     private void AssertCleanedUp()
     {
         Assert.Contains("DeleteWorkFolder", _steps.Calls);
         Assert.False(Directory.Exists(_steps.WorkFolder), "work folder left behind");
-        Assert.False(File.Exists(OutputIso), "ISO left behind");
-        Assert.False(File.Exists(OutputIso + ".part"), "partial ISO left behind");
+        Assert.False(File.Exists(OutputIso), "ISO at the output path");
         Assert.Empty(_steps.Dism.Mounted);
     }
+
+    // ---- stage order and the download path ----
 
     [Fact]
     public async Task DownloadSourceRunsTheStagesInOrder()
@@ -56,14 +80,14 @@ public sealed class MediaBuildTests : IDisposable
         Assert.Equal(
         [
             "NewWorkFolder", "Download",
-            "WimInfo image.esd",
+            "WimInfo image.esd", "WimInfo image.esd 1", "WimInfo image.esd 2", "WimInfo image.esd 3",
             "Apply image.esd 1", "Export image.esd 2 boot.wim", "Export image.esd 3 boot.wim bootable",
             "WimInfo image.esd 4", "WimInfo image.esd 5", "WimInfo image.esd 6", "WimInfo image.esd 7",
             "Export image.esd 6 install.wim",
             "WimInfo install.wim", "WimInfo install.wim 1", "WimInfo boot.wim", "WimInfo boot.wim 2",
             "WriteIso", "VerifyIso", "DeleteWorkFolder",
         ], _steps.Calls);
-        Assert.True(File.Exists(OutputIso));
+        Assert.Equal("ISO WIN11_26300_X64", File.ReadAllText(OutputIso));
         Assert.False(Directory.Exists(_steps.WorkFolder));
         var stages = _steps.Progress.Where(p => p.Percent is null).Select(p => p.Stage).Distinct();
         Assert.Equal([MediaStage.Download, MediaStage.Check, MediaStage.Unpack, MediaStage.Files, MediaStage.Iso, MediaStage.Verify, MediaStage.Cleanup], stages);
@@ -87,10 +111,8 @@ public sealed class MediaBuildTests : IDisposable
     [Fact]
     public async Task MissingEditionFailsAtUnpack()
     {
-        var ex = await Fails(Download("Education"));
-        Assert.Equal(MediaStage.Unpack, ex.Stage);
-        Assert.Equal("Media_EditionMissing", ex.Key);
-        Assert.DoesNotContain(_steps.Calls, c => c.EndsWith("install.wim", StringComparison.Ordinal) && c.StartsWith("Export", StringComparison.Ordinal));
+        await FailsAt(Download("Education"), MediaStage.Unpack, "Media_EditionMissing");
+        Assert.DoesNotContain(_steps.Calls, c => c.StartsWith("Export", StringComparison.Ordinal) && c.EndsWith("install.wim", StringComparison.Ordinal));
         AssertCleanedUp();
     }
 
@@ -98,11 +120,111 @@ public sealed class MediaBuildTests : IDisposable
     public async Task TwoImagesWithTheEditionFailAtUnpack()
     {
         _steps.EsdImages.Add(new Img("Windows 11 Pro copy", "Professional"));
-        var ex = await Fails(Download());
-        Assert.Equal(MediaStage.Unpack, ex.Stage);
-        Assert.Equal("Media_ImageCheckFailed", ex.Key);
+        await FailsAt(Download(), MediaStage.Unpack, "Media_ImageCheckFailed");
         AssertCleanedUp();
     }
+
+    [Fact]
+    public async Task LocalizedEsdIsAccepted()
+    {
+        _steps.EsdImages[0] = _steps.EsdImages[0] with { Name = "Windows-Setupmedien" };
+        _steps.EsdImages[5] = _steps.EsdImages[5] with { Name = "Windows 11 Pro (deutsch)" };
+        Assert.Equal(OutputIso, await Run(Download()));
+    }
+
+    [Fact]
+    public async Task EsdWithoutItsBootImagesFailsAtCheck()
+    {
+        _steps.EsdImages[2] = new Img("Windows 11 Home", "Core");
+        await FailsAt(Download(), MediaStage.Check, "Media_NotWindows11");
+        Assert.DoesNotContain(_steps.Calls, c => c.StartsWith("Apply", StringComparison.Ordinal));
+        AssertCleanedUp();
+    }
+
+    [Fact]
+    public async Task EsdWhoseFirstImageHasAnEditionFailsAtCheck()
+    {
+        _steps.EsdImages[0] = new Img("Windows 11 Home", "Core");
+        await FailsAt(Download(), MediaStage.Check, "Media_NotWindows11");
+        AssertCleanedUp();
+    }
+
+    [Fact]
+    public async Task EsdWithTooFewImagesFailsAtCheck()
+    {
+        _steps.EsdImages.RemoveRange(3, _steps.EsdImages.Count - 3);
+        await FailsAt(Download(), MediaStage.Check, "Media_NotWindows11");
+        AssertCleanedUp();
+    }
+
+    [Fact]
+    public async Task SetupFilesThatAlreadyHoldAnImageFail()
+    {
+        _steps.ApplyPlantsImage = true;
+        await FailsAt(Download(), MediaStage.Unpack, "Media_ImageCheckFailed");
+        Assert.DoesNotContain(_steps.Calls, c => c.StartsWith("Export", StringComparison.Ordinal));
+        AssertCleanedUp();
+    }
+
+    // ---- request and output checks before anything runs ----
+
+    [Fact]
+    public async Task UnknownProfileForTheFirstSignInIsRefusedBeforeAnything()
+    {
+        var request = WithTunero(Download()) with { FirstSignIn = new FirstSignInFile("turbo", "en", "System") };
+        await Assert.ThrowsAsync<ArgumentException>(() => Run(request));
+        Assert.Empty(_steps.Calls);
+    }
+
+    [Fact]
+    public async Task TuneroWithoutItsAnswerFileEntryIsRefused()
+    {
+        var request = WithTunero(Download());
+        await Assert.ThrowsAsync<ArgumentException>(() => Run(request with { Answers = Plain }));
+        Assert.Empty(_steps.Calls);
+    }
+
+    [Fact]
+    public async Task OnlyX64IsBuilt()
+    {
+        await Assert.ThrowsAsync<ArgumentException>(() => Run(Download(answers: Plain with { Architecture = "arm64" })));
+        await Assert.ThrowsAsync<ArgumentException>(() => Run(Download() with { Source = new MediaSource(Esd with { Architecture = "ARM64" }, null, null) }));
+        Assert.Empty(_steps.Calls);
+    }
+
+    [Fact]
+    public async Task AppOutsideTheAllowlistIsRefusedBeforeAnything()
+    {
+        await Assert.ThrowsAsync<ArgumentException>(() => Run(Download(apps: ["Microsoft.BingNews", "Microsoft.WindowsStore"])));
+        Assert.Empty(_steps.Calls);
+    }
+
+    [Fact]
+    public async Task NotEnoughSpaceFailsBeforeAnything()
+    {
+        _steps.Free = MediaBuild.NeededBytes(new MediaSource(Esd, null, null), Esd.Size) - 1;
+        await FailsAt(Download(), MediaStage.Download, "Media_NotEnoughSpace");
+        Assert.Empty(_steps.Calls);
+    }
+
+    [Fact]
+    public async Task OutputMustBeAnIsoFile()
+    {
+        await FailsAt(Download() with { OutputIso = Path.Combine(_root, "Win11.img") }, MediaStage.Download, "Media_OutputInvalid");
+        Assert.Empty(_steps.Calls);
+        var upper = Path.Combine(_root, "Win11.ISO");
+        Assert.Equal(upper, await Run(Download() with { OutputIso = upper }));
+    }
+
+    [Fact]
+    public async Task OutputOverTheSourceIsoIsRefused()
+    {
+        var request = OwnIso();
+        await FailsAt(request with { OutputIso = request.Source.IsoPath! }, MediaStage.Unpack, "Media_OutputInvalid");
+        Assert.Empty(_steps.Calls);
+    }
+
+    // ---- apps ----
 
     [Fact]
     public async Task AppsAreRemovedOnlyWhenProvisioned()
@@ -127,17 +249,8 @@ public sealed class MediaBuildTests : IDisposable
         _steps.Dism.Provisioned = ["Microsoft.WindowsStore_22510.1401.5.0_neutral_~_8wekyb3d8bbwe"];
         await Run(Download(apps: ["Microsoft.BingNews"]));
         Assert.DoesNotContain(_steps.Calls, c => c.StartsWith("Remove", StringComparison.Ordinal));
-        // Nothing removed: the image is left as it was.
         Assert.Contains("Unmount discard", _steps.Calls);
         Assert.DoesNotContain("Unmount commit", _steps.Calls);
-    }
-
-    [Fact]
-    public async Task AppOutsideTheAllowlistIsRefused()
-    {
-        var ex = await Fails(Download(apps: ["Microsoft.WindowsStore"]));
-        Assert.Equal(MediaStage.Apps, ex.Stage);
-        AssertCleanedUp();
     }
 
     [Fact]
@@ -149,18 +262,30 @@ public sealed class MediaBuildTests : IDisposable
     }
 
     [Fact]
+    public async Task UnhealthyImageIsNotCommitted()
+    {
+        _steps.Dism.Provisioned = ["Microsoft.BingNews_4.55.62231.0_neutral_~_8wekyb3d8bbwe"];
+        _steps.Dism.Healthy = false;
+        await FailsAt(Download(apps: ["Microsoft.BingNews"]), MediaStage.Apps, "Media_Unhealthy");
+        Assert.Contains("Unmount discard", _steps.Calls);
+        Assert.DoesNotContain("Unmount commit", _steps.Calls);
+        Assert.DoesNotContain("WriteIso", _steps.Calls);
+        AssertCleanedUp();
+    }
+
+    // ---- files ----
+
+    [Fact]
     public async Task FilesStageWritesAnswerFileAndTunero()
     {
-        var exe = Path.Combine(_root, "Tunero-running.exe");
-        File.WriteAllBytes(exe, Encoding.ASCII.GetBytes("MZ fake Tunero"));
-        var answers = Plain with { SkipSetup = true, AccountName = "Anna", FirstSignInTunero = true };
-        var first = new FirstSignInFile(CatalogData.Current.Profiles.Default.Id, "de", "Dark");
-        await Run(Download(answers: answers) with { TuneroExe = exe, FirstSignIn = first });
+        var answers = Plain with { SkipSetup = true, AccountName = "Anna" };
+        var request = WithTunero(Download(answers: answers)) with { FirstSignIn = new FirstSignInFile(CatalogData.Current.Profiles.Default.Id, "de", "Dark") };
+        await Run(request);
 
-        Assert.Equal(AnswerFile.Build(answers), Encoding.UTF8.GetString(_steps.IsoContents["autounattend.xml"]));
+        Assert.Equal(AnswerFile.Build(request.Answers), Encoding.UTF8.GetString(_steps.IsoContents["autounattend.xml"]));
         Assert.False(_steps.IsoContents["autounattend.xml"].AsSpan().StartsWith(Encoding.UTF8.Preamble), "no byte order mark");
         Assert.Equal("MZ fake Tunero", Encoding.ASCII.GetString(_steps.IsoContents[@"sources\$OEM$\$$\Setup\Tunero\Tunero.exe"]));
-        Assert.Equal(FirstSignIn.Serialize(first), Encoding.UTF8.GetString(_steps.IsoContents[@"sources\$OEM$\$$\Setup\Tunero\first-sign-in.json"]));
+        Assert.Equal(FirstSignIn.Serialize(request.FirstSignIn!), Encoding.UTF8.GetString(_steps.IsoContents[@"sources\$OEM$\$$\Setup\Tunero\first-sign-in.json"]));
     }
 
     [Fact]
@@ -171,40 +296,13 @@ public sealed class MediaBuildTests : IDisposable
         Assert.DoesNotContain(_steps.IsoContents.Keys, k => k.Contains("$OEM$", StringComparison.Ordinal));
     }
 
-    [Fact]
-    public async Task UnknownProfileForTheFirstSignInIsRefusedBeforeAnything()
-    {
-        var exe = Path.Combine(_root, "Tunero.exe");
-        File.WriteAllBytes(exe, [0x4D, 0x5A]);
-        var request = Download(answers: Plain with { FirstSignInTunero = true }) with { TuneroExe = exe, FirstSignIn = new FirstSignInFile("turbo", "en", "System") };
-        await Assert.ThrowsAsync<ArgumentException>(() => Run(request));
-        Assert.Empty(_steps.Calls);
-    }
-
-    [Fact]
-    public async Task TuneroWithoutItsAnswerFileEntryIsRefused()
-    {
-        var exe = Path.Combine(_root, "Tunero.exe");
-        File.WriteAllBytes(exe, [0x4D, 0x5A]);
-        var request = Download() with { TuneroExe = exe, FirstSignIn = new FirstSignInFile(CatalogData.Current.Profiles.Default.Id, "en", "System") };
-        await Assert.ThrowsAsync<ArgumentException>(() => Run(request));
-        Assert.Empty(_steps.Calls);
-    }
-
-    [Fact]
-    public async Task OnlyX64IsBuilt()
-    {
-        await Assert.ThrowsAsync<ArgumentException>(() => Run(Download(answers: Plain with { Architecture = "arm64" })));
-        await Assert.ThrowsAsync<ArgumentException>(() => Run(Download() with { Source = new MediaSource(Esd with { Architecture = "ARM64" }, null, null) }));
-        Assert.Empty(_steps.Calls);
-    }
+    // ---- failure, Stop and cleanup ----
 
     [Fact]
     public async Task FailureWhileMountedDiscardsAndCleansUp()
     {
         _steps.Dism.ProvisionedThrows = true;
-        var ex = await Fails(Download(apps: ["Microsoft.BingNews"]));
-        Assert.Equal(MediaStage.Apps, ex.Stage);
+        var ex = await FailsAt(Download(apps: ["Microsoft.BingNews"]), MediaStage.Apps, null);
         Assert.Equal(87, ex.Code);
         Assert.Contains("Unmount discard", _steps.Calls);
         Assert.DoesNotContain("Unmount commit", _steps.Calls);
@@ -214,16 +312,69 @@ public sealed class MediaBuildTests : IDisposable
     }
 
     [Fact]
+    public async Task FailingMountIsDiscarded()
+    {
+        _steps.Dism.MountThrows = true;
+        await FailsAt(Download(apps: ["Microsoft.BingNews"]), MediaStage.Apps, null);
+        Assert.Contains("Unmount discard", _steps.Calls);
+        AssertCleanedUp();
+    }
+
+    [Fact]
+    public async Task StopWhileRemovingAppsDiscardsTheImage()
+    {
+        using var stop = new CancellationTokenSource();
+        _steps.Dism.Provisioned = ["Microsoft.BingNews_4.55.62231.0_neutral_~_8wekyb3d8bbwe"];
+        _steps.Dism.StopOnRemove = stop;
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Run(Download(apps: ["Microsoft.BingNews"]), stop.Token));
+        // The fake honors the token: the discard and the delete ran because the cleanup does not use the stopped one.
+        Assert.Contains("Unmount discard", _steps.Calls);
+        AssertCleanedUp();
+    }
+
+    [Fact]
+    public async Task DiscardIsRetried()
+    {
+        _steps.Dism.ProvisionedThrows = true;
+        _steps.Dism.UnmountFailures = 2;
+        await FailsAt(Download(apps: ["Microsoft.BingNews"]), MediaStage.Apps, null);
+        Assert.Equal(3, Count("Unmount discard"));
+        AssertCleanedUp();
+    }
+
+    [Fact]
     public async Task FolderWithAnImageThatStaysMountedIsKept()
     {
         _steps.Dism.ProvisionedThrows = true;
-        _steps.Dism.UnmountThrows = true;
-        var ex = await Fails(Download(apps: ["Microsoft.BingNews"]));
-        Assert.Equal(MediaStage.Apps, ex.Stage);
+        _steps.Dism.UnmountFailures = int.MaxValue;
+        await FailsAt(Download(apps: ["Microsoft.BingNews"]), MediaStage.Apps, null);
+        Assert.Equal(3, Count("Unmount discard"));
         Assert.Contains("CleanupMountpoints", _steps.Calls);
         // Deleting the folder would delete files inside the mounted image; the next start cleans it up.
         Assert.DoesNotContain("DeleteWorkFolder", _steps.Calls);
         Assert.Contains(_steps.LogLines, l => l.Contains("still mounted", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task FolderDeleteIsRetried()
+    {
+        _steps.Dism.ProvisionedThrows = true;
+        _steps.DeleteFailures = 2;
+        await FailsAt(Download(apps: ["Microsoft.BingNews"]), MediaStage.Apps, null);
+        Assert.Equal(3, Count("DeleteWorkFolder"));
+        AssertCleanedUp();
+    }
+
+    [Fact]
+    public async Task ProgressSinkThatThrowsDoesNotStopTheCleanup()
+    {
+        _steps.Dism.ProvisionedThrows = true;
+        var sink = new Throwing(MediaStage.Cleanup);
+        var ex = await Assert.ThrowsAsync<MediaBuildException>(() => Run(Download(apps: ["Microsoft.BingNews"]), progress: sink));
+        Assert.Equal(MediaStage.Apps, ex.Stage);
+        Assert.True(sink.Thrown);
+        Assert.Contains("Unmount discard", _steps.Calls);
+        AssertCleanedUp();
     }
 
     [Fact]
@@ -234,11 +385,13 @@ public sealed class MediaBuildTests : IDisposable
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Run(Download(), stop.Token));
         Assert.Contains("WriteIso", _steps.Calls);
         Assert.DoesNotContain("VerifyIso", _steps.Calls);
+        // The partial ISO was written inside the work folder, which is gone.
+        Assert.StartsWith(_steps.WorkFolder!, _steps.IsoWriter.Target!, StringComparison.OrdinalIgnoreCase);
         AssertCleanedUp();
     }
 
     [Fact]
-    public async Task StopKeepsAnOlderIsoThatWasNotReplaced()
+    public async Task StopKeepsAnOlderIso()
     {
         File.WriteAllText(OutputIso, "older ISO");
         using var stop = new CancellationTokenSource();
@@ -258,24 +411,13 @@ public sealed class MediaBuildTests : IDisposable
     }
 
     [Fact]
-    public async Task NotEnoughSpaceFailsBeforeAnything()
+    public async Task WorkFolderIsLockedWhileTheBuildRuns()
     {
-        _steps.Free = MediaBuild.NeededBytes(new MediaSource(Esd, null, null), Esd.Size) - 1;
-        var ex = await Fails(Download());
-        Assert.Equal(MediaStage.Download, ex.Stage);
-        Assert.Equal("Media_NotEnoughSpace", ex.Key);
-        Assert.Empty(_steps.Calls);
+        await Run(Download());
+        Assert.True(_steps.LockHeldDuringDownload, "the lock file was not held open");
     }
 
-    [Fact]
-    public async Task OutputOverTheSourceIsoIsRefused()
-    {
-        var request = OwnIso();
-        var ex = await Fails(request with { OutputIso = request.Source.IsoPath! });
-        Assert.Equal(MediaStage.Unpack, ex.Stage);
-        Assert.Equal("Media_OutputInvalid", ex.Key);
-        Assert.Empty(_steps.Calls);
-    }
+    // ---- own ISO ----
 
     [Fact]
     public async Task OwnIsoCopiesAndExportsTheIndex()
@@ -297,16 +439,13 @@ public sealed class MediaBuildTests : IDisposable
     [Fact]
     public async Task OwnIsoInstallWimIsReplacedByTheExport()
     {
-        _steps.OwnImageFile = "install.wim";
         await Run(OwnIso(index: 1, edition: "Core"));
-        var images = _steps.ImagesOf(_steps.IsoContents[@"sources\install.wim"]);
-        Assert.Equal("Core", Assert.Single(images).Edition);
+        Assert.Equal("Core", Assert.Single(_steps.ImagesOf(_steps.IsoContents[@"sources\install.wim"])).Edition);
     }
 
     [Fact]
     public async Task OwnIsoEditionIsFoundWithoutAnIndex()
     {
-        _steps.OwnImageFile = "install.wim";
         await Run(OwnIso(index: null, edition: "Windows 11 Pro"));
         Assert.Contains("Export install.wim 2 install.wim", _steps.Calls);
     }
@@ -314,10 +453,7 @@ public sealed class MediaBuildTests : IDisposable
     [Fact]
     public async Task OwnIsoIndexWithAnotherEditionIsRefused()
     {
-        _steps.OwnImageFile = "install.wim";
-        var ex = await Fails(OwnIso(index: 1, edition: "Professional"));
-        Assert.Equal(MediaStage.Unpack, ex.Stage);
-        Assert.Equal("Media_EditionMissing", ex.Key);
+        await FailsAt(OwnIso(index: 1, edition: "Professional"), MediaStage.Unpack, "Media_EditionMissing");
         AssertCleanedUp();
     }
 
@@ -325,20 +461,33 @@ public sealed class MediaBuildTests : IDisposable
     public async Task OwnIsoWithoutInstallImageIsRefused()
     {
         _steps.OwnImageFile = null;
-        var ex = await Fails(OwnIso());
-        Assert.Equal(MediaStage.Unpack, ex.Stage);
-        Assert.Equal("Media_NotWindows11", ex.Key);
+        await FailsAt(OwnIso(), MediaStage.Unpack, "Media_NotWindows11");
+        AssertCleanedUp();
+    }
+
+    [Fact]
+    public async Task OwnIsoWithBothInstallImagesIsRefused()
+    {
+        _steps.OwnBothImages = true;
+        await FailsAt(OwnIso(), MediaStage.Unpack, "Media_NotWindows11");
+        Assert.DoesNotContain(_steps.Calls, c => c.StartsWith("Export", StringComparison.Ordinal));
+        AssertCleanedUp();
+    }
+
+    [Fact]
+    public async Task OwnIsoWithoutBootWimIsRefused()
+    {
+        _steps.OwnBootImages = null;
+        await FailsAt(OwnIso(), MediaStage.Unpack, "Media_NotWindows11");
+        Assert.DoesNotContain(_steps.Calls, c => c.StartsWith("Export", StringComparison.Ordinal));
         AssertCleanedUp();
     }
 
     [Fact]
     public async Task OwnIsoBelowBuild22000IsRefused()
     {
-        _steps.OwnImageFile = "install.wim";
         _steps.OwnVersion = "10.0.19045";
-        var ex = await Fails(OwnIso());
-        Assert.Equal(MediaStage.Unpack, ex.Stage);
-        Assert.Equal("Media_NotWindows11", ex.Key);
+        await FailsAt(OwnIso(), MediaStage.Unpack, "Media_NotWindows11");
         Assert.DoesNotContain(_steps.Calls, c => c.StartsWith("Export", StringComparison.Ordinal));
         AssertCleanedUp();
     }
@@ -346,22 +495,16 @@ public sealed class MediaBuildTests : IDisposable
     [Fact]
     public async Task OwnIsoForArmIsRefused()
     {
-        _steps.OwnImageFile = "install.wim";
         _steps.OwnArchitecture = "ARM64";
-        var ex = await Fails(OwnIso());
-        Assert.Equal(MediaStage.Unpack, ex.Stage);
-        Assert.Equal("Media_NotX64", ex.Key);
+        await FailsAt(OwnIso(), MediaStage.Unpack, "Media_NotX64");
         AssertCleanedUp();
     }
 
     [Fact]
     public async Task MediaWithoutUefiBootIsRefused()
     {
-        _steps.OwnImageFile = "install.wim";
         _steps.WithoutUefi = true;
-        var ex = await Fails(OwnIso());
-        Assert.Equal(MediaStage.Unpack, ex.Stage);
-        Assert.Equal("Media_NoUefiBoot", ex.Key);
+        await FailsAt(OwnIso(), MediaStage.Unpack, "Media_NoUefiBoot");
         Assert.DoesNotContain(_steps.Calls, c => c.StartsWith("Export", StringComparison.Ordinal));
         AssertCleanedUp();
     }
@@ -370,79 +513,143 @@ public sealed class MediaBuildTests : IDisposable
     public async Task OwnIsoInUseKeepsTheReason()
     {
         _steps.IsoReader.AttachError = 32;
-        var ex = await Fails(OwnIso());
-        Assert.Equal(MediaStage.Unpack, ex.Stage);
+        var ex = await FailsAt(OwnIso(), MediaStage.Unpack, "Media_IsoInUse");
         Assert.Equal(32, ex.Code);
         Assert.True(ex.InUse);
-        Assert.Equal("Media_IsoInUse", ex.Key);
         AssertCleanedUp();
     }
+
+    [Fact]
+    public async Task OwnIsoLosesAnOldAnswerFileAndTuneroCopy()
+    {
+        _steps.PlantOldFiles = true;
+        await Run(OwnIso());
+        Assert.DoesNotContain("autounattend.xml", _steps.IsoContents.Keys);
+        Assert.DoesNotContain(@"sources\autounattend.xml", _steps.IsoContents.Keys);
+        Assert.DoesNotContain(_steps.IsoContents.Keys, k => k.StartsWith(@"sources\$OEM$\$$\Setup\Tunero", StringComparison.OrdinalIgnoreCase));
+        // Only Tunero's own folder goes; the ISO's other $OEM$ content stays.
+        Assert.Contains(@"sources\$OEM$\$$\Setup\Scripts\keep.cmd", _steps.IsoContents.Keys);
+    }
+
+    [Fact]
+    public async Task OwnIsoOldAnswerFileIsReplacedByTheNewOne()
+    {
+        _steps.PlantOldFiles = true;
+        var request = WithTunero(OwnIso());
+        await Run(request);
+        Assert.Equal(AnswerFile.Build(request.Answers), Encoding.UTF8.GetString(_steps.IsoContents["autounattend.xml"]));
+        Assert.DoesNotContain(@"sources\autounattend.xml", _steps.IsoContents.Keys);
+        Assert.Equal("MZ fake Tunero", Encoding.ASCII.GetString(_steps.IsoContents[@"sources\$OEM$\$$\Setup\Tunero\Tunero.exe"]));
+        Assert.DoesNotContain(@"sources\$OEM$\$$\Setup\Tunero\old.txt", _steps.IsoContents.Keys);
+    }
+
+    // ---- safety checks after unpacking ----
 
     [Fact]
     public async Task WrongEditionAfterExportFails()
     {
         _steps.Dism.ExportTamper = (target, img) => target.EndsWith("install.wim", StringComparison.OrdinalIgnoreCase) ? img with { Edition = "Core" } : img;
-        var ex = await Fails(Download("Professional"));
-        Assert.Equal(MediaStage.Unpack, ex.Stage);
-        Assert.Equal("Media_ImageCheckFailed", ex.Key);
+        await FailsAt(Download("Professional"), MediaStage.Unpack, "Media_ImageCheckFailed");
         Assert.DoesNotContain("WriteIso", _steps.Calls);
         AssertCleanedUp();
     }
 
     [Fact]
-    public async Task BootImageThatIsNotBootableFails()
+    public async Task ArmImageAfterExportFails()
+    {
+        _steps.Dism.ExportTamper = (target, img) => target.EndsWith("install.wim", StringComparison.OrdinalIgnoreCase) ? img with { Architecture = "ARM64" } : img;
+        await FailsAt(Download(), MediaStage.Unpack, "Media_NotX64");
+        AssertCleanedUp();
+    }
+
+    [Fact]
+    public async Task OldVersionAfterExportFails()
+    {
+        _steps.Dism.ExportTamper = (target, img) => target.EndsWith("install.wim", StringComparison.OrdinalIgnoreCase) ? img with { Version = "10.0.19045.1" } : img;
+        await FailsAt(Download(), MediaStage.Unpack, "Media_NotWindows11");
+        AssertCleanedUp();
+    }
+
+    [Fact]
+    public async Task InstallWimWithTwoImagesFails()
+    {
+        _steps.Dism.DoubleExportInto = "install.wim";
+        await FailsAt(Download(), MediaStage.Unpack, "Media_ImageCheckFailed");
+        AssertCleanedUp();
+    }
+
+    [Fact]
+    public async Task BootWimWithoutABootIndexFails()
     {
         _steps.Dism.ExportTamper = (target, img) => target.EndsWith("boot.wim", StringComparison.OrdinalIgnoreCase) ? img with { Bootable = false } : img;
-        var ex = await Fails(Download());
-        Assert.Equal(MediaStage.Unpack, ex.Stage);
-        Assert.Equal("Media_ImageCheckFailed", ex.Key);
+        await FailsAt(Download(), MediaStage.Unpack, "Media_ImageCheckFailed");
         AssertCleanedUp();
     }
 
     [Fact]
-    public async Task UnhealthyImageIsNotCommitted()
+    public async Task BootWimWithThreeImagesFails()
     {
-        _steps.Dism.Provisioned = ["Microsoft.BingNews_4.55.62231.0_neutral_~_8wekyb3d8bbwe"];
-        _steps.Dism.Healthy = false;
-        var ex = await Fails(Download(apps: ["Microsoft.BingNews"]));
-        Assert.Equal(MediaStage.Apps, ex.Stage);
-        Assert.Equal("Media_Unhealthy", ex.Key);
-        Assert.Contains("Unmount discard", _steps.Calls);
-        Assert.DoesNotContain("Unmount commit", _steps.Calls);
-        Assert.DoesNotContain("WriteIso", _steps.Calls);
+        _steps.OwnBootImages!.Add(new Img("Extra", "WindowsPE"));
+        await FailsAt(OwnIso(), MediaStage.Unpack, "Media_ImageCheckFailed");
         AssertCleanedUp();
     }
 
     [Fact]
-    public async Task VerifyMismatchDeletesTheIso()
+    public async Task BootWimForArmFails()
+    {
+        _steps.OwnBootImages = [new Img("PE", "WindowsPE", "ARM64"), new Img("Setup", "WindowsPE", "ARM64", Bootable: true)];
+        await FailsAt(OwnIso(), MediaStage.Unpack, "Media_NotX64");
+        AssertCleanedUp();
+    }
+
+    // ---- ISO, Verify and the output path ----
+
+    [Fact]
+    public async Task VerifyMismatchNeverReachesTheOutput()
+    {
+        File.WriteAllText(OutputIso, "older ISO");
+        _steps.IsoReader.Mismatch = [@"sources\install.wim"];
+        await FailsAt(Download(), MediaStage.Verify, "Media_VerifyFailed");
+        Assert.Equal("older ISO", File.ReadAllText(OutputIso));
+        Assert.False(Directory.Exists(_steps.WorkFolder));
+    }
+
+    [Fact]
+    public async Task VerifyMismatchLeavesNoIso()
     {
         _steps.IsoReader.Mismatch = [@"sources\install.wim"];
-        var ex = await Fails(Download());
-        Assert.Equal(MediaStage.Verify, ex.Stage);
-        Assert.Equal("Media_VerifyFailed", ex.Key);
+        await FailsAt(Download(), MediaStage.Verify, "Media_VerifyFailed");
         AssertCleanedUp();
     }
 
     [Fact]
-    public async Task BadBootCatalogDeletesTheIso()
+    public async Task BadBootCatalogLeavesNoIso()
     {
         _steps.IsoReader.BootCatalogOk = false;
-        var ex = await Fails(Download());
-        Assert.Equal(MediaStage.Verify, ex.Stage);
-        Assert.Equal("Media_VerifyFailed", ex.Key);
+        await FailsAt(Download(), MediaStage.Verify, "Media_VerifyFailed");
+        AssertCleanedUp();
+    }
+
+    [Fact]
+    public async Task VerifyFailureAfterACommitDoesNotDiscardAgain()
+    {
+        _steps.Dism.Provisioned = ["Microsoft.BingNews_4.55.62231.0_neutral_~_8wekyb3d8bbwe"];
+        _steps.IsoReader.Mismatch = [@"sources\boot.wim"];
+        await FailsAt(Download(apps: ["Microsoft.BingNews"]), MediaStage.Verify, "Media_VerifyFailed");
+        Assert.Equal(1, Count("Unmount commit"));
+        Assert.Equal(0, Count("Unmount discard"));
         AssertCleanedUp();
     }
 
     [Fact]
     public async Task VerifyRunsAfterIso()
     {
-        var exe = Path.Combine(_root, "Tunero.exe");
-        File.WriteAllBytes(exe, [0x4D, 0x5A]);
-        var answers = Plain with { FirstSignInTunero = true };
-        await Run(Download(answers: answers) with { TuneroExe = exe, FirstSignIn = new FirstSignInFile(CatalogData.Current.Profiles.Default.Id, "en", "System") });
+        await Run(WithTunero(Download()));
         var write = _steps.Calls.IndexOf("WriteIso");
         var verify = _steps.Calls.IndexOf("VerifyIso");
         Assert.True(write >= 0 && verify == write + 1 && _steps.Calls.IndexOf("DeleteWorkFolder") == verify + 1);
+        // The ISO is written and verified inside the work folder; only a verified ISO reaches the output path.
+        Assert.StartsWith(_steps.WorkFolder!, _steps.IsoReader.VerifiedIso!, StringComparison.OrdinalIgnoreCase);
         Assert.Equal(
         [
             @"sources\install.wim", @"sources\boot.wim", "autounattend.xml",
@@ -450,6 +657,52 @@ public sealed class MediaBuildTests : IDisposable
             @"sources\$OEM$\$$\Setup\Tunero\Tunero.exe", @"sources\$OEM$\$$\Setup\Tunero\first-sign-in.json",
         ], _steps.IsoReader.Verified);
     }
+
+    [Fact]
+    public async Task VerifiedIsoReplacesAnOlderOneAndTakesTheFolderPermissions()
+    {
+        File.WriteAllText(OutputIso, "older ISO");
+        await Run(Download());
+        Assert.Equal("ISO WIN11_26300_X64", File.ReadAllText(OutputIso));
+        // Written in the work folder (which only lets this user in here), the ISO must take the output folder's permissions.
+        var fresh = Path.Combine(_root, "fresh.txt");
+        File.WriteAllText(fresh, "x");
+        Assert.Equal(Identities(fresh), Identities(OutputIso));
+        Assert.All(new FileInfo(OutputIso).GetAccessControl().GetAccessRules(true, true, typeof(SecurityIdentifier)).Cast<FileSystemAccessRule>(), r => Assert.True(r.IsInherited));
+    }
+
+    private static string[] Identities(string file) =>
+        new FileInfo(file).GetAccessControl().GetAccessRules(true, true, typeof(SecurityIdentifier)).Cast<FileSystemAccessRule>()
+            .Select(r => r.IdentityReference.Value).Distinct().Order().ToArray();
+
+    [Fact]
+    public async Task OutputFolderThatIsALinkIsRefused()
+    {
+        var elsewhere = Path.Combine(_root, "elsewhere");
+        Directory.CreateDirectory(elsewhere);
+        File.WriteAllText(Path.Combine(elsewhere, "Win11.iso"), "older ISO");
+        var link = Path.Combine(_root, "outlink");
+        TestFolders.Junction(link, elsewhere);
+        await FailsAt(Download() with { OutputIso = Path.Combine(link, "Win11.iso") }, MediaStage.Verify, "Media_OutputInvalid");
+        Assert.Equal("older ISO", File.ReadAllText(Path.Combine(elsewhere, "Win11.iso")));
+        Assert.False(Directory.Exists(_steps.WorkFolder));
+    }
+
+    [Fact]
+    public async Task WorkFolderThatCannotBeDeletedKeepsTheVerifiedIso()
+    {
+        _steps.DeleteFailures = int.MaxValue;
+        Assert.Equal(OutputIso, await Run(Download()));
+        Assert.True(File.Exists(OutputIso));
+        Assert.Equal(3, Count("DeleteWorkFolder"));
+
+        _steps.Reset();
+        _steps.DeleteThrowsArgument = true;
+        Assert.Equal(OutputIso, await Run(Download()));
+        Assert.True(File.Exists(OutputIso));
+    }
+
+    // ---- log ----
 
     [Fact]
     public async Task EveryCommandIsLogged()
@@ -472,11 +725,13 @@ public sealed class MediaBuildTests : IDisposable
         Assert.Contains(_steps.LogLines, l => l.StartsWith("dism exit code 87", StringComparison.Ordinal));
     }
 
+    // ---- leftovers ----
+
     [Fact]
     public async Task LeftoversAreDiscardedThenDeleted()
     {
         _steps.Dism.Mounted.AddRange([@"X:\TuneroMedia.ab12cd34\mount", @"C:\Other"]);
-        await new MediaBuild(_steps).CleanLeftoversAsync(CancellationToken.None);
+        await Build().CleanLeftoversAsync(CancellationToken.None);
         Assert.Equal(["MountedDirs", "Unmount discard", "CleanupMountpoints", "MountedDirs", "DeleteWorkFolder"], _steps.Calls);
         Assert.Equal([@"X:\TuneroMedia.ab12cd34\mount"], _steps.Dism.Unmounted);
         Assert.Equal([@"X:\TuneroMedia.ab12cd34"], _steps.DeletedFolders);
@@ -488,7 +743,7 @@ public sealed class MediaBuildTests : IDisposable
     {
         _steps.Drives.Add(@"D:\");
         _steps.Leftovers[@"D:\"] = [@"D:\TuneroMedia.0000ffff", @"D:\TuneroMediaOther"];
-        await new MediaBuild(_steps).CleanLeftoversAsync(CancellationToken.None);
+        await Build().CleanLeftoversAsync(CancellationToken.None);
         Assert.Equal([@"D:\TuneroMedia.0000ffff"], _steps.DeletedFolders);
         Assert.DoesNotContain(_steps.Calls, c => c.StartsWith("Unmount", StringComparison.Ordinal));
     }
@@ -497,19 +752,67 @@ public sealed class MediaBuildTests : IDisposable
     public async Task LeftoverStillMountedIsKept()
     {
         _steps.Dism.Mounted.Add(@"X:\TuneroMedia.ab12cd34\mount");
-        _steps.Dism.UnmountThrows = true;
-        await new MediaBuild(_steps).CleanLeftoversAsync(CancellationToken.None);
+        _steps.Dism.UnmountFailures = int.MaxValue;
+        await Build().CleanLeftoversAsync(CancellationToken.None);
         Assert.Empty(_steps.DeletedFolders);
+    }
+
+    [Fact]
+    public async Task FolderOfARunningBuildIsLeftAlone()
+    {
+        var drive = Path.Combine(_root, "drive");
+        var live = Path.Combine(drive, "TuneroMedia.11112222");
+        Directory.CreateDirectory(live);
+        using var held = new FileStream(Path.Combine(live, MediaBuild.LockFileName), FileMode.CreateNew, FileAccess.Write, FileShare.None);
+        _steps.Drives.Add(drive);
+        _steps.Leftovers[drive] = [live];
+        _steps.Dism.Mounted.Add(Path.Combine(live, "mount"));
+        await Build().CleanLeftoversAsync(CancellationToken.None);
+        Assert.Empty(_steps.DeletedFolders);
+        Assert.Empty(_steps.Dism.Unmounted);
+        Assert.True(Directory.Exists(live));
+    }
+
+    [Fact]
+    public async Task LeftoverWithAReleasedLockIsDeleted()
+    {
+        var drive = Path.Combine(_root, "drive");
+        var dead = Path.Combine(drive, "TuneroMedia.33334444");
+        Directory.CreateDirectory(dead);
+        File.WriteAllText(Path.Combine(dead, MediaBuild.LockFileName), "");
+        _steps.Drives.Add(drive);
+        _steps.Leftovers[drive] = [dead];
+        await Build().CleanLeftoversAsync(CancellationToken.None);
+        Assert.Equal([dead], _steps.DeletedFolders);
     }
 
     [Fact]
     public async Task NothingLeftOverMeansNoDismChange()
     {
         _steps.Dism.Mounted.Add(@"C:\Other");
-        await new MediaBuild(_steps).CleanLeftoversAsync(CancellationToken.None);
+        await Build().CleanLeftoversAsync(CancellationToken.None);
         Assert.Equal(["MountedDirs"], _steps.Calls);
         Assert.Empty(_steps.LogLines);
     }
+
+    [Fact]
+    public async Task LeftoverCleanupNeverThrows()
+    {
+        _steps.Dism.MountedDirsThrows = true;
+        _steps.Drives.Add(@"D:\");
+        _steps.Leftovers[@"D:\"] = [@"D:\TuneroMedia.0000ffff"];
+        await Build().CleanLeftoversAsync(CancellationToken.None);
+        // Without the list of mounted images no folder may be deleted: one could hold a mounted image.
+        Assert.Empty(_steps.DeletedFolders);
+
+        _steps.Dism.MountedDirsThrows = false;
+        using var stop = new CancellationTokenSource();
+        stop.Cancel();
+        await Build().CleanLeftoversAsync(stop.Token);
+        Assert.Empty(_steps.DeletedFolders);
+    }
+
+    // ---- pure helpers ----
 
     [Fact]
     public void NeededBytesForAFiveGigabyteEsd()
@@ -531,41 +834,66 @@ public sealed class MediaBuildTests : IDisposable
         Assert.Null(MediaBuild.WorkFolderOf(@"C:\Other"));
     }
 
+    // ---- the real steps, in a temp folder only ----
+
     [Fact]
     public void RealStepsRefuseAShare()
     {
-        var steps = new MediaSteps();
-        var ex = Assert.Throws<MediaBuildException>(() => steps.NewWorkFolder(@"\\server\share\Win11.iso"));
+        var ex = Assert.Throws<MediaBuildException>(() => new MediaSteps().NewWorkFolder(@"\\server\share\Win11.iso"));
         Assert.Equal("Media_OutputNotLocal", ex.Key);
     }
 
     [Fact]
-    public void RealStepsListAndDeleteOnlyWorkFolders()
+    public void RealStepsDeleteOnlyLockedWorkFoldersAndUnlinkLinks()
     {
         var drive = Path.Combine(_root, "drive");
         var work = Path.Combine(drive, "TuneroMedia.0a1b2c3d");
+        var link = Path.Combine(drive, "TuneroMedia.ffff0000");
         var other = Path.Combine(drive, "TuneroMedia.notours");
         var outside = Path.Combine(_root, "outside");
         Directory.CreateDirectory(Path.Combine(work, "media", "sources"));
-        File.WriteAllText(Path.Combine(work, "media", "sources", "install.wim"), "x");
-        File.SetAttributes(Path.Combine(work, "media", "sources", "install.wim"), FileAttributes.ReadOnly);
+        var wim = Path.Combine(work, "media", "sources", "install.wim");
+        File.WriteAllText(wim, "x");
+        File.SetAttributes(wim, FileAttributes.ReadOnly);
         Directory.CreateDirectory(other);
         Directory.CreateDirectory(outside);
         File.WriteAllText(Path.Combine(outside, "keep.txt"), "keep");
         TestFolders.Junction(Path.Combine(work, "link"), outside);
+        TestFolders.Junction(link, outside);
 
         var steps = new MediaSteps();
-        Assert.Equal([work], steps.LeftoverWorkFolders(drive));
-        steps.DeleteWorkFolder(work);
-        Assert.False(Directory.Exists(work));
-        Assert.True(File.Exists(Path.Combine(outside, "keep.txt")), "the link target was touched");
+        Assert.Equal([work, link], steps.LeftoverWorkFolders(drive).Order(StringComparer.OrdinalIgnoreCase));
+        // Made by this user, not locked to Administrators and SYSTEM: someone else's folder, never deleted elevated.
+        Assert.Throws<IOException>(() => steps.DeleteWorkFolder(work));
+        Assert.True(File.Exists(wim));
+        // A folder that is itself a link is only unlinked.
+        steps.DeleteWorkFolder(link);
+        Assert.False(Path.Exists(link));
+        Assert.True(File.Exists(Path.Combine(outside, "keep.txt")));
         Assert.Throws<ArgumentException>(() => steps.DeleteWorkFolder(other));
         Assert.True(Directory.Exists(other));
+
+        // A trusted (locked) folder goes with everything in it; a link inside is removed without touching its target.
+        new MediaSteps(_ => true).DeleteWorkFolder(work);
+        Assert.False(Directory.Exists(work));
+        Assert.True(File.Exists(Path.Combine(outside, "keep.txt")), "the link target was touched");
     }
 
     private sealed class Collect(List<MediaProgress> list) : IProgress<MediaProgress>
     {
         public void Report(MediaProgress value) => list.Add(value);
+    }
+
+    private sealed class Throwing(MediaStage stage) : IProgress<MediaProgress>
+    {
+        public bool Thrown { get; private set; }
+
+        public void Report(MediaProgress value)
+        {
+            if (value.Stage != stage) return;
+            Thrown = true;
+            throw new InvalidOperationException("progress sink failed");
+        }
     }
 }
 
@@ -573,11 +901,12 @@ public sealed class MediaBuildTests : IDisposable
 internal sealed record Img(string Name, string? Edition, string Architecture = "x64", string Version = "10.0.26300", bool Bootable = false);
 
 /// <summary>
-/// Records every step. Fake image files hold a token that names their images, so exports, moves and deletes of the
-/// files behave as on disk; GetWimInfo answers in DISM's text form.
+/// Records every step. A fake image file is a 208-byte WIM header (image count, boot index) followed by a token that names
+/// its images, so exports, moves and deletes behave as on disk; GetWimInfo answers in DISM's text form.
 /// </summary>
 internal sealed class FakeMediaSteps : IMediaSteps
 {
+    private const int HeaderSize = 208;
     private readonly Dictionary<string, List<Img>> _images = [];
     private readonly string _root;
 
@@ -609,12 +938,20 @@ internal sealed class FakeMediaSteps : IMediaSteps
     public long Free { get; set; }
     public string? WorkFolder { get; private set; }
     public CancellationTokenSource? StopDownloadWith { get; set; }
+    public bool LockHeldDuringDownload { get; private set; }
+    public int DeleteFailures { get; set; }
+    public bool DeleteThrowsArgument { get; set; }
+    public bool ApplyPlantsImage { get; set; }
 
     /// <summary>The image file on the own ISO: "install.wim", "install.esd" or null for none.</summary>
-    public string? OwnImageFile { get; set; } = "install.wim";
-    public string OwnVersion { get; set; } = "10.0.26300";
-    public string OwnArchitecture { get; set; } = "x64";
+    public string? OwnImageFile { get; set; }
+    public bool OwnBothImages { get; set; }
+    public string OwnVersion { get; set; } = "";
+    public string OwnArchitecture { get; set; } = "";
+    /// <summary>The boot.wim images of the own ISO, or null for no boot.wim.</summary>
+    public List<Img>? OwnBootImages { get; set; }
     public bool WithoutUefi { get; set; }
+    public bool PlantOldFiles { get; set; }
 
     public string LogPath => Path.Combine(_root, "media-test.log");
 
@@ -629,11 +966,17 @@ internal sealed class FakeMediaSteps : IMediaSteps
         IsoWriter = new FakeIsoWriter(this);
         IsoReader = new FakeIsoReader(this);
         Free = long.MaxValue;
+        DeleteFailures = 0;
+        DeleteThrowsArgument = false;
+        OwnImageFile = "install.wim";
+        OwnVersion = "10.0.26300";
+        OwnArchitecture = "x64";
+        OwnBootImages = [new("Microsoft Windows PE (amd64)", "WindowsPE"), new("Microsoft Windows Setup (amd64)", "WindowsPE", Bootable: true)];
         EsdImages =
         [
-            new("Windows Setup Media", null),
-            new("Microsoft Windows PE (amd64)", "WindowsPE"),
-            new("Microsoft Windows Setup (amd64)", "WindowsPE"),
+            new("Windows Setup Media", null, "<undefined>", "<undefined>"),
+            new("Microsoft Windows PE (amd64)", "WindowsPE", Version: "10.0.26100.9711"),
+            new("Microsoft Windows Setup (amd64)", "WindowsPE", Version: "10.0.26100.9711"),
             new("Windows 11 Home", "Core"),
             new("Windows 11 Home N", "CoreN"),
             new("Windows 11 Pro", "Professional"),
@@ -648,19 +991,49 @@ internal sealed class FakeMediaSteps : IMediaSteps
         var token = Guid.NewGuid().ToString("N");
         _images[token] = images.ToList();
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        File.WriteAllText(path, token);
+        WriteImageFile(path, token);
     }
 
+    /// <summary>Header as in a real WIM: "MSWIM", header size 208, image count at 44, boot index at 120.</summary>
+    private void WriteImageFile(string path, string token)
+    {
+        var images = _images[token];
+        var header = new byte[HeaderSize];
+        "MSWIM\0\0\0"u8.CopyTo(header);
+        BitConverter.TryWriteBytes(header.AsSpan(8), (uint)HeaderSize);
+        BitConverter.TryWriteBytes(header.AsSpan(44), (uint)images.Count);
+        BitConverter.TryWriteBytes(header.AsSpan(120), (uint)(images.FindLastIndex(i => i.Bootable) + 1));
+        File.WriteAllBytes(path, [.. header, .. Encoding.UTF8.GetBytes(token)]);
+    }
+
+    private static string TokenOf(byte[] content) => Encoding.UTF8.GetString(content.AsSpan(HeaderSize));
+
     public List<Img> ImagesAt(string path) =>
-        File.Exists(path) && _images.TryGetValue(File.ReadAllText(path), out var list) ? list : throw new DismException(2, "Error: 2\n\nThe system cannot find the file specified.");
+        File.Exists(path) && _images.TryGetValue(TokenOf(File.ReadAllBytes(path)), out var list)
+            ? list
+            : throw new DismException(2, "Error: 2\n\nThe system cannot find the file specified.");
 
-    public List<Img> ImagesOf(byte[] content) => _images[Encoding.UTF8.GetString(content)];
+    /// <summary>DISM adds to an existing destination file.</summary>
+    public void AddImage(string path, Img image)
+    {
+        if (!File.Exists(path))
+        {
+            PutImages(path, [image]);
+            return;
+        }
+        var token = TokenOf(File.ReadAllBytes(path));
+        _images[token].Add(image);
+        WriteImageFile(path, token);
+    }
 
-    public static void Put(string folder, string relative, string content)
+    public List<Img> ImagesOf(byte[] content) => _images[TokenOf(content)];
+
+    public static void Put(string folder, string relative, string content, bool readOnly = false)
     {
         var path = Path.Combine(folder, relative);
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllText(path, content);
+        if (readOnly) File.SetAttributes(path, FileAttributes.ReadOnly);
     }
 
     /// <summary>What index 1 of a Windows ESD unpacks to (and what an ISO holds besides its images).</summary>
@@ -676,11 +1049,25 @@ internal sealed class FakeMediaSteps : IMediaSteps
         Put(folder, "setup.exe", "setup");
     }
 
+    private static bool IsHeldOpen(string path)
+    {
+        try
+        {
+            using var _ = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            return false;
+        }
+        catch (IOException)
+        {
+            return true;
+        }
+    }
+
     // ---- IMediaSteps ----
 
     public Task DownloadAsync(EsdFile file, string target, IProgress<(long Done, long Total)>? p, CancellationToken ct)
     {
         Calls.Add("Download");
+        LockHeldDuringDownload = IsHeldOpen(Path.Combine(WorkFolder!, MediaBuild.LockFileName));
         if (StopDownloadWith is { } stop)
         {
             File.WriteAllText(target + ".part", "half");
@@ -692,17 +1079,29 @@ internal sealed class FakeMediaSteps : IMediaSteps
         return Task.CompletedTask;
     }
 
+    /// <summary>Like the real one, the folder lets only one account in (here this user, protected from inheritance).</summary>
     public string NewWorkFolder(string outputIso)
     {
         Calls.Add("NewWorkFolder");
-        WorkFolder = Path.Combine(_root, "TuneroMedia.0123abcd");
-        Directory.CreateDirectory(WorkFolder);
+        WorkFolder = Path.Combine(_root, "TuneroMedia." + System.Security.Cryptography.RandomNumberGenerator.GetHexString(8, lowercase: true));
+        var folder = Directory.CreateDirectory(WorkFolder);
+        var security = new DirectorySecurity();
+        security.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
+        security.AddAccessRule(new FileSystemAccessRule(WindowsIdentity.GetCurrent().User!, FileSystemRights.FullControl,
+            InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit, PropagationFlags.None, AccessControlType.Allow));
+        folder.SetAccessControl(security);
         return WorkFolder;
     }
 
     public void DeleteWorkFolder(string folder)
     {
         Calls.Add("DeleteWorkFolder");
+        if (DeleteThrowsArgument) throw new ArgumentException("refused");
+        if (DeleteFailures > 0)
+        {
+            DeleteFailures--;
+            throw new IOException("in use");
+        }
         DeletedFolders.Add(folder);
         if (folder.StartsWith(_root, StringComparison.OrdinalIgnoreCase)) TestFolders.Delete(folder);
     }
@@ -720,11 +1119,15 @@ internal sealed class FakeDism(FakeMediaSteps steps) : IDism
 {
     public List<string> Provisioned { get; set; } = [];
     public bool ProvisionedThrows { get; set; }
+    public bool MountThrows { get; set; }
+    public bool MountedDirsThrows { get; set; }
     public bool Healthy { get; set; } = true;
-    public bool UnmountThrows { get; set; }
+    public int UnmountFailures { get; set; }
+    public CancellationTokenSource? StopOnRemove { get; set; }
     public List<string> Mounted { get; } = [];
     public List<string> Unmounted { get; } = [];
     public Func<string, Img, Img>? ExportTamper { get; set; }
+    public string? DoubleExportInto { get; set; }
 
     private static string Name(string path) => Path.GetFileName(path);
 
@@ -732,6 +1135,7 @@ internal sealed class FakeDism(FakeMediaSteps steps) : IDism
 
     public Task<string> GetWimInfoAsync(string image, int? index, CancellationToken ct)
     {
+        ct.ThrowIfCancellationRequested();
         Absolute(image);
         steps.Calls.Add($"WimInfo {Name(image)}" + (index is { } i ? $" {i}" : ""));
         var images = steps.ImagesAt(image);
@@ -746,10 +1150,13 @@ internal sealed class FakeDism(FakeMediaSteps steps) : IDism
             if (index < 1 || index > images.Count) throw new DismException(87, "Error: 87\n\nThe specified image does not exist in the WIM.");
             var img = images[index.Value - 1];
             var version = img.Version.Split('.');
-            text.Append($"Index : {index}\nName : {img.Name}\nDescription : {img.Name}\nSize : 1.000 bytes\nWIM Bootable : {(img.Bootable ? "Yes" : "No")}\n");
-            text.Append($"Architecture : {img.Architecture}\nHal : <undefined>\nVersion : {string.Join('.', version.Take(3))}\n");
-            text.Append($"ServicePack Build : {(version.Length > 3 ? version[3] : "1")}\nServicePack Level : 0\n");
-            if (img.Edition is not null) text.Append($"Edition : {img.Edition}\n");
+            // DISM's "WIM Bootable" line says No even for boot images (real 26H2 output); the header holds the boot index.
+            text.Append($"Index : {index}\nName : {img.Name}\nDescription : {img.Name}\nSize : 1.000 bytes\nWIM Bootable : No\n");
+            text.Append($"Architecture : {img.Architecture}\nHal : <undefined>\n");
+            text.Append(version.Length >= 3
+                ? $"Version : {string.Join('.', version.Take(3))}\nServicePack Build : {(version.Length > 3 ? version[3] : "1")}\n"
+                : "Version : <undefined>\nServicePack Build : <undefined>\n");
+            text.Append($"ServicePack Level : 0\nEdition : {img.Edition ?? "<undefined>"}\n");
             text.Append("Installation : Client\nLanguages :\n\ten-US (Default)\n");
         }
         text.Append("\nThe operation completed successfully.\n");
@@ -758,39 +1165,44 @@ internal sealed class FakeDism(FakeMediaSteps steps) : IDism
 
     public Task ApplyAsync(string image, int index, string target, IProgress<double>? p, CancellationToken ct)
     {
+        ct.ThrowIfCancellationRequested();
         Absolute(image);
         Absolute(target);
         steps.Calls.Add($"Apply {Name(image)} {index}");
         steps.WriteSetupFiles(target);
+        if (steps.ApplyPlantsImage) steps.PutImages(Path.Combine(target, "sources", "install.wim"), [new Img("Windows 11 Pro", "Professional")]);
         p?.Report(50);
         return Task.CompletedTask;
     }
 
     public Task ExportAsync(string source, int index, string target, bool bootable, IProgress<double>? p, CancellationToken ct)
     {
+        ct.ThrowIfCancellationRequested();
         Absolute(source);
         Absolute(target);
         steps.Calls.Add($"Export {Name(source)} {index} {Name(target)}" + (bootable ? " bootable" : ""));
         var img = steps.ImagesAt(source)[index - 1] with { Bootable = bootable };
         if (ExportTamper is not null) img = ExportTamper(target, img);
-        // DISM appends to an existing destination file.
-        if (File.Exists(target)) steps.ImagesAt(target).Add(img);
-        else steps.PutImages(target, [img]);
+        steps.AddImage(target, img);
+        if (string.Equals(Name(target), DoubleExportInto, StringComparison.OrdinalIgnoreCase)) steps.AddImage(target, img);
         p?.Report(50);
         return Task.CompletedTask;
     }
 
     public Task MountAsync(string image, int index, string mountDir, IProgress<double>? p, CancellationToken ct)
     {
+        ct.ThrowIfCancellationRequested();
         Absolute(image);
         Assert.True(Directory.Exists(mountDir), "the mount folder must exist");
         steps.Calls.Add($"Mount {Name(image)} {index}");
+        if (MountThrows) throw new DismException(5, "Error: 5\n\nAccess is denied.");
         Mounted.Add(mountDir);
         return Task.CompletedTask;
     }
 
     public Task<IReadOnlyList<string>> ProvisionedAsync(string mountDir, CancellationToken ct)
     {
+        ct.ThrowIfCancellationRequested();
         steps.Calls.Add("Provisioned");
         if (ProvisionedThrows) throw new DismException(87, "Error: 87\n\nThe parameter is incorrect.");
         return Task.FromResult<IReadOnlyList<string>>(Provisioned);
@@ -798,12 +1210,19 @@ internal sealed class FakeDism(FakeMediaSteps steps) : IDism
 
     public Task RemoveProvisionedAsync(string mountDir, string packageName, CancellationToken ct)
     {
+        ct.ThrowIfCancellationRequested();
         steps.Calls.Add($"Remove {packageName}");
+        if (StopOnRemove is { } stop)
+        {
+            stop.Cancel();
+            ct.ThrowIfCancellationRequested();
+        }
         return Task.CompletedTask;
     }
 
     public Task<string> CheckHealthAsync(string mountDir, CancellationToken ct)
     {
+        ct.ThrowIfCancellationRequested();
         steps.Calls.Add("CheckHealth");
         return Task.FromResult(Healthy
             ? "Image Version: 10.0.26300.9711\n\nNo component store corruption detected.\nThe operation completed successfully.\n"
@@ -812,8 +1231,13 @@ internal sealed class FakeDism(FakeMediaSteps steps) : IDism
 
     public Task UnmountAsync(string mountDir, bool commit, IProgress<double>? p, CancellationToken ct)
     {
+        ct.ThrowIfCancellationRequested();
         steps.Calls.Add($"Unmount {(commit ? "commit" : "discard")}");
-        if (UnmountThrows) throw new DismException(5, "Error: 5\n\nAccess is denied.");
+        if (UnmountFailures > 0)
+        {
+            UnmountFailures--;
+            throw new DismException(5, "Error: 5\n\nAccess is denied.");
+        }
         Unmounted.Add(mountDir);
         Mounted.RemoveAll(m => string.Equals(m, mountDir, StringComparison.OrdinalIgnoreCase));
         return Task.CompletedTask;
@@ -821,12 +1245,15 @@ internal sealed class FakeDism(FakeMediaSteps steps) : IDism
 
     public Task<IReadOnlyList<string>> MountedDirsAsync(CancellationToken ct)
     {
+        ct.ThrowIfCancellationRequested();
         steps.Calls.Add("MountedDirs");
+        if (MountedDirsThrows) throw new DismException(5, "Error: 5\n\nAccess is denied.");
         return Task.FromResult<IReadOnlyList<string>>(Mounted.ToList());
     }
 
     public Task CleanupMountpointsAsync(CancellationToken ct)
     {
+        ct.ThrowIfCancellationRequested();
         steps.Calls.Add("CleanupMountpoints");
         return Task.CompletedTask;
     }
@@ -835,10 +1262,12 @@ internal sealed class FakeDism(FakeMediaSteps steps) : IDism
 internal sealed class FakeIsoWriter(FakeMediaSteps steps) : IIsoWriter
 {
     public CancellationTokenSource? StopWith { get; set; }
+    public string? Target { get; private set; }
 
     public Task WriteAsync(string mediaFolder, string isoPath, string volumeName, IProgress<double>? p, CancellationToken ct)
     {
         steps.Calls.Add("WriteIso");
+        Target = isoPath;
         if (StopWith is { } stop)
         {
             File.WriteAllText(isoPath + ".part", "half an ISO");
@@ -861,24 +1290,33 @@ internal sealed class FakeIsoReader(FakeMediaSteps steps) : IIsoReader
     public bool BootCatalogOk { get; set; } = true;
     public List<string> Mismatch { get; set; } = [];
     public List<string> Verified { get; } = [];
+    public string? VerifiedIso { get; private set; }
 
     public Task<string> CopyMediaAsync(string isoPath, string targetFolder, IProgress<double>? p, CancellationToken ct)
     {
+        ct.ThrowIfCancellationRequested();
         steps.Calls.Add("CopyMedia");
         if (AttachError is { } error) throw new IsoAttachException(error, $"The ISO could not be opened: error {error}.");
         steps.WriteSetupFiles(targetFolder);
-        steps.PutImages(Path.Combine(targetFolder, "sources", "boot.wim"),
+        if (steps.OwnBootImages is { } boot) steps.PutImages(Path.Combine(targetFolder, "sources", "boot.wim"), boot);
+        Img[] editions =
         [
-            new("Microsoft Windows PE (amd64)", "WindowsPE"),
-            new("Microsoft Windows Setup (amd64)", "WindowsPE", Bootable: true),
-        ]);
-        if (steps.OwnImageFile is { } name)
+            new("Windows 11 Home", "Core", steps.OwnArchitecture, steps.OwnVersion),
+            new("Windows 11 Pro", "Professional", steps.OwnArchitecture, steps.OwnVersion),
+        ];
+        if (steps.OwnImageFile is { } name) steps.PutImages(Path.Combine(targetFolder, "sources", name), editions);
+        if (steps.OwnBothImages)
         {
-            steps.PutImages(Path.Combine(targetFolder, "sources", name),
-            [
-                new("Windows 11 Home", "Core", steps.OwnArchitecture, steps.OwnVersion),
-                new("Windows 11 Pro", "Professional", steps.OwnArchitecture, steps.OwnVersion),
-            ]);
+            steps.PutImages(Path.Combine(targetFolder, "sources", "install.wim"), editions);
+            steps.PutImages(Path.Combine(targetFolder, "sources", "install.esd"), editions);
+        }
+        if (steps.PlantOldFiles)
+        {
+            FakeMediaSteps.Put(targetFolder, "autounattend.xml", "<old/>", readOnly: true);
+            FakeMediaSteps.Put(targetFolder, @"sources\autounattend.xml", "<old/>", readOnly: true);
+            FakeMediaSteps.Put(targetFolder, @"sources\$OEM$\$$\Setup\Tunero\Tunero.exe", "old Tunero", readOnly: true);
+            FakeMediaSteps.Put(targetFolder, @"sources\$OEM$\$$\Setup\Tunero\old.txt", "old");
+            FakeMediaSteps.Put(targetFolder, @"sources\$OEM$\$$\Setup\Scripts\keep.cmd", "rem keep");
         }
         p?.Report(1.0);
         return Task.FromResult(targetFolder);
@@ -886,8 +1324,10 @@ internal sealed class FakeIsoReader(FakeMediaSteps steps) : IIsoReader
 
     public Task<IsoCheck> VerifyAsync(string isoPath, string mediaFolder, IReadOnlyList<string> relativeFiles, IProgress<double>? p, CancellationToken ct)
     {
+        ct.ThrowIfCancellationRequested();
         steps.Calls.Add("VerifyIso");
         Assert.True(File.Exists(isoPath));
+        VerifiedIso = isoPath;
         Verified.AddRange(relativeFiles);
         var mismatched = relativeFiles.Where(f => !File.Exists(Path.Combine(mediaFolder, f))).Concat(Mismatch).ToList();
         return Task.FromResult(new IsoCheck(BootCatalogOk, mismatched));

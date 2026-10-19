@@ -7,7 +7,7 @@ namespace Optimizer.Core.Platform;
 
 /// <summary>
 /// Runs a long tool (winget, sfc, dism) without a window and reports every output line while it runs.
-/// Cancellation kills the process tree. Output is logged once at the end (truncated).
+/// Cancellation kills the process tree and returns once the tool has exited. Output is logged once at the end (truncated).
 /// </summary>
 public static class StreamingProcess
 {
@@ -52,7 +52,7 @@ public static class StreamingProcess
         }
         catch (OperationCanceledException)
         {
-            ProcessHardening.KillTree(p);
+            await KillAndWaitAsync(p, exited.Task);
             throw;
         }
         try
@@ -69,6 +69,27 @@ public static class StreamingProcess
         lock (all) output = string.Join(Environment.NewLine, all);
         Log.Info("command", $"{Path.GetFileName(file)} {arguments}", new { exitCode = p.ExitCode, output = output.Length > 4000 ? output[^4000..] : output });
         return p.ExitCode;
+    }
+
+    /// <summary>How long a stopped tool may take to end before the stop returns anyway.</summary>
+    internal static readonly TimeSpan KillWait = TimeSpan.FromSeconds(30);
+
+    /// <summary>
+    /// Ends the process tree and waits until the tool itself has exited (at most <see cref="KillWait"/>): killing only
+    /// starts the termination, and a caller cleaning up right after a Stop (discarding a DISM mount, deleting its files)
+    /// must not race a tool that still runs.
+    /// </summary>
+    internal static async Task KillAndWaitAsync(Process process, Task exited)
+    {
+        ProcessHardening.KillTree(process);
+        try
+        {
+            await exited.WaitAsync(KillWait, CancellationToken.None);
+        }
+        catch (TimeoutException)
+        {
+            Log.Warn("command", $"{process.StartInfo.FileName} had not ended {KillWait.TotalSeconds:0} s after it was stopped");
+        }
     }
 
     /// <summary>How long the rest of the output is awaited after the tool ended.</summary>
