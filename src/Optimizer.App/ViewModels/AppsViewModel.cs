@@ -422,7 +422,9 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
                 if (now == last) break;
                 last = now;
             }
-            var referenced = Programs.ReferencedPaths(services.Context.Registry);
+            // Everything that still points into program folders, as the unused-folder search reads it: also the files of
+            // Windows Installer products still installed (which often record no install location), App Paths and COM servers.
+            var referenced = ProgramOrphans.ReadEvidence(services.Context.Registry, []).Paths;
             return ProgramLeftovers.FindAll(removed, roots, referenced);
         });
         foreach (var (program, l) in found)

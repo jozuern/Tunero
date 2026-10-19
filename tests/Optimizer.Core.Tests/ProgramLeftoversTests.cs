@@ -45,6 +45,24 @@ public class ProgramLeftoversTests : IDisposable
         Assert.Null(ProgramLeftovers.CommonFolder([]));
     }
 
+    /// <summary>
+    /// After A is uninstalled, its folder may hold B, a Windows Installer product still installed that records no
+    /// location: B's files keep the folder from being offered.
+    /// </summary>
+    [Fact]
+    public void AFolderWithFilesOfAnInstalledWindowsInstallerProductIsNotOffered()
+    {
+        using var registry = new SandboxRegistry();
+        RegistryValue.Write(registry, Hive.Machine, $@"{Uninstall}\{Code}", "DisplayName", "string", "B");
+        RegistryValue.Write(registry, Hive.Machine, $@"{Uninstall}\{Code}", "UninstallString", "string", $"MsiExec.exe /X{Code}");
+        RegistryValue.Write(registry, Hive.Machine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\Installer\UserData\S-1-5-18\Components\B1",
+            ProgramLeftovers.PackedGuid(Code)!, "string", @"C:\Program Files\Vendor\Tools\b.exe");
+        var roots = new LeftoverRoots([@"C:\Program Files"], [], []);
+
+        Assert.True(ProgramLeftovers.MayOffer(@"C:\Program Files\Vendor", roots, Programs.ReferencedPaths(registry)));
+        Assert.False(ProgramLeftovers.MayOffer(@"C:\Program Files\Vendor", roots, ProgramOrphans.ReadEvidence(registry, []).Paths));
+    }
+
     [Fact]
     public void FootprintCountsTheFilesThatAreStillThere()
     {

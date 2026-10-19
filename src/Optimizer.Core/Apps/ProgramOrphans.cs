@@ -86,7 +86,7 @@ public static class ProgramOrphans
     /// Reads every subkey on its own: one that cannot be read (only the system may) leaves out that entry, not the rest
     /// of the key, which would lose evidence and offer a folder still in use.
     /// </summary>
-    private static void ReadEach(IRegistryRoots registry, Hive hive, string path, Action<Microsoft.Win32.RegistryKey, string> read)
+    internal static void ReadEach(IRegistryRoots registry, Hive hive, string path, Action<Microsoft.Win32.RegistryKey, string> read)
     {
         Microsoft.Win32.RegistryKey? key;
         string[] subs;

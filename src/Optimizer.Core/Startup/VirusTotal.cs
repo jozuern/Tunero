@@ -92,12 +92,28 @@ public sealed class VirusTotalClient(string apiKey, HttpMessageHandler? handler 
         }
     }
 
-    /// <summary>data.attributes.last_analysis_stats: malicious, suspicious, undetected, harmless (+ others).</summary>
+    /// <summary>
+    /// data.attributes.last_analysis_stats: malicious, suspicious, undetected, harmless (+ others). Anything else (a proxy's
+    /// or captive portal's HTML page, another JSON shape) is an error result, not an exception.
+    /// </summary>
     public static VirusTotalResult Parse(string sha256, string json)
     {
+        try
+        {
+            return ParseStats(sha256, json);
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException)
+        {
+            return new VirusTotalResult(sha256, VirusTotalVerdict.Error, 0, 0, 0);
+        }
+    }
+
+    private static VirusTotalResult ParseStats(string sha256, string json)
+    {
         using var doc = JsonDocument.Parse(json);
-        if (!doc.RootElement.TryGetProperty("data", out var data) || !data.TryGetProperty("attributes", out var attr) ||
-            !attr.TryGetProperty("last_analysis_stats", out var stats))
+        if (doc.RootElement.ValueKind != JsonValueKind.Object || !doc.RootElement.TryGetProperty("data", out var data) ||
+            data.ValueKind != JsonValueKind.Object || !data.TryGetProperty("attributes", out var attr) ||
+            attr.ValueKind != JsonValueKind.Object || !attr.TryGetProperty("last_analysis_stats", out var stats) || stats.ValueKind != JsonValueKind.Object)
             return new VirusTotalResult(sha256, VirusTotalVerdict.Error, 0, 0, 0);
         int Get(string name) => stats.TryGetProperty(name, out var v) && v.TryGetInt32(out var n) ? n : 0;
         var malicious = Get("malicious");

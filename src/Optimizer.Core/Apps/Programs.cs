@@ -130,38 +130,24 @@ public static class Programs
             var path = command ? CommandLine.ImagePath(value) : ProgramLeftovers.CleanPath(value);
             if (path is { Length: > 0 }) paths.Add(path);
         }
+        // Each entry on its own: one only the system can read leaves out that entry, not the rest of the key.
         foreach (var (hive, path) in new[] { (Hive.Machine, Uninstall), (Hive.Machine, Uninstall32), (Hive.User, Uninstall) })
         {
-            try
+            ProgramOrphans.ReadEach(registry, hive, path, (key, sub) =>
             {
-                using var key = registry.Open(hive, path, writable: false);
-                foreach (var sub in key?.GetSubKeyNames() ?? [])
-                {
-                    using var app = key!.OpenSubKey(sub);
-                    if (app is null) continue;
-                    Add(app.GetValue("InstallLocation") as string, command: false);
-                    Add(app.GetValue("UninstallString") as string, command: true);
-                    Add(app.GetValue("QuietUninstallString") as string, command: true);
-                    Add(app.GetValue("DisplayIcon") as string, command: false);
-                }
-            }
-            catch (Exception ex) when (ex is InvalidOperationException or UnauthorizedAccessException or System.Security.SecurityException or IOException)
-            {
-                // no user hive
-            }
+                using var app = key.OpenSubKey(sub);
+                if (app is null) return;
+                Add(app.GetValue("InstallLocation") as string, command: false);
+                Add(app.GetValue("UninstallString") as string, command: true);
+                Add(app.GetValue("QuietUninstallString") as string, command: true);
+                Add(app.GetValue("DisplayIcon") as string, command: false);
+            });
         }
-        try
+        ProgramOrphans.ReadEach(registry, Hive.Machine, @"SYSTEM\CurrentControlSet\Services", (key, sub) =>
         {
-            using var services = registry.Open(Hive.Machine, @"SYSTEM\CurrentControlSet\Services", writable: false);
-            foreach (var sub in services?.GetSubKeyNames() ?? [])
-            {
-                using var service = services!.OpenSubKey(sub);
-                Add(service?.GetValue("ImagePath") as string, command: true);
-            }
-        }
-        catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException or IOException)
-        {
-        }
+            using var service = key.OpenSubKey(sub);
+            Add(service?.GetValue("ImagePath") as string, command: true);
+        });
         return paths;
     }
 

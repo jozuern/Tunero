@@ -215,6 +215,13 @@ public class DebloatServicesAppsTests
     [InlineData(@"""C:\Windows\system32\rundll32.exe"" C:\Windows\system32\AppxDeploymentClient.dll,AppxPreStageCleanupRunTask", false)]
     // The host without ".exe", and an alternate data stream on a folder users can write to.
     [InlineData(@"powershell -w hidden -enc SQBFAFgA", true)]
+    // PowerShell without -File runs its arguments as a command: code after a System32 path still runs. A line break
+    // starts another command in any host.
+    [InlineData(@"powershell.exe -w hidden C:\Windows\System32\whoami.exe $(iex $env:P)", true)]
+    [InlineData(@"powershell.exe -w hidden C:\Windows\System32\whoami.exe (iwr x)", true)]
+    [InlineData("powershell.exe C:\\Windows\\System32\\whoami.exe\nStart-Process x", true)]
+    [InlineData("cmd.exe /c C:\\Windows\\System32\\a.cmd\r\ncalc.exe", true)]
+    [InlineData(@"powershell.exe -NoProfile -File C:\Windows\System32\WindowsPowerShell\v1.0\x.ps1 -Name $x", false)]
     [InlineData(@"wscript.exe C:\Windows\System32\Tasks:x.vbs", true)]
     // Signed launchers: flagged only when they start a file outside System32 or a URL.
     [InlineData(@"C:\Windows\explorer.exe C:\Users\Public\x.exe", true)]

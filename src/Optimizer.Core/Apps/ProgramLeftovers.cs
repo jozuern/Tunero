@@ -234,7 +234,7 @@ public static class ProgramLeftovers
 
     /// <summary>
     /// Leftovers of a program whose uninstall entry is gone. <paramref name="referenced"/> comes from
-    /// <see cref="Programs.ReferencedPaths"/>, read after the uninstall.
+    /// <see cref="ProgramOrphans.ReadEvidence"/>, read after the uninstall.
     /// </summary>
     public static IReadOnlyList<Leftover> Find(DesktopProgram removed, LeftoverRoots roots, IReadOnlyCollection<string> referenced,
         Func<string, string?>? shortcutTarget = null)

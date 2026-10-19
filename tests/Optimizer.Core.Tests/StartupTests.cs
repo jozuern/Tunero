@@ -75,6 +75,38 @@ public class StartupTests
         Assert.False(RegistryValue.Read(fx.Registry, Hive.Machine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\Shell Extensions\Blocked", clsid).Existed);
     }
 
+    /// <summary>Blocked in the machine's list and in the user's own: one switch clears both, or Explorer keeps it off.</summary>
+    [Fact]
+    public async Task ShellExtensionBlockedInBothListsIsClearedFromBoth()
+    {
+        using var fx = new EngineFixture();
+        const string clsid = "{23170F69-40C1-278A-1000-000100020000}";
+        const string blocked = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Shell Extensions\Blocked";
+        RegistryValue.Write(fx.Registry, Hive.Machine, @"SOFTWARE\Classes\*\shellex\ContextMenuHandlers\7-Zip", "", "string", clsid);
+        RegistryValue.Write(fx.Registry, Hive.Machine, blocked, clsid, "string", "");
+        RegistryValue.Write(fx.Registry, Hive.User, blocked, clsid, "string", "");
+        var entry = Assert.Single(new StartupScanner(fx.Registry, fx.Tasks, null).ShellExtensions());
+        Assert.False(entry.Enabled);
+
+        await fx.Engine.ApplyAsync(StartupTweaks.Set(entry, enabled: true)!, Facts, new HashSet<string>(), Options);
+        Assert.False(RegistryValue.Read(fx.Registry, Hive.Machine, blocked, clsid).Existed);
+        Assert.False(RegistryValue.Read(fx.Registry, Hive.User, blocked, clsid).Existed);
+        Assert.True(Assert.Single(new StartupScanner(fx.Registry, fx.Tasks, null).ShellExtensions()).Enabled);
+    }
+
+    /// <summary>A codec for 32-bit players: the filter and its class are both registered under WOW6432Node.</summary>
+    [Fact]
+    public void ThirtyTwoBitDirectShowFiltersAreListedWithTheirFile()
+    {
+        using var fx = new EngineFixture();
+        const string clsid = "{11111111-2222-3333-4444-666666666666}";
+        RegistryValue.Write(fx.Registry, Hive.Machine, $@"SOFTWARE\Classes\WOW6432Node\CLSID\{{083863F1-70DE-11D0-BD40-00A0C911CE86}}\Instance\{clsid}", "FriendlyName", "string", "Old Splitter");
+        RegistryValue.Write(fx.Registry, Hive.Machine, $@"SOFTWARE\Classes\WOW6432Node\CLSID\{clsid}\InprocServer32", "", "string", @"C:\Codecs\splitter32.ax");
+        var filter = Assert.Single(new StartupScanner(fx.Registry, fx.Tasks, null).DirectShowFilters());
+        Assert.Equal("Old Splitter", filter.Name);
+        Assert.Equal(@"C:\Codecs\splitter32.ax", filter.ImagePath);
+    }
+
     [Fact]
     public void WinlogonDefaultsAndIfeoDebuggers()
     {
@@ -393,6 +425,10 @@ public class StartupTests
         Assert.Equal(VirusTotalVerdict.Suspicious, VirusTotalClient.Parse("x", Json(1, 0)).Verdict); // one engine: often a false positive
         var bad = VirusTotalClient.Parse("x", Json(12, 1));
         Assert.Equal((VirusTotalVerdict.Malicious, 73), (bad.Verdict, bad.Total));
+        // A proxy's or captive portal's page, and JSON of another shape, are errors, not exceptions.
+        Assert.Equal(VirusTotalVerdict.Error, VirusTotalClient.Parse("x", "<html>Sign in to the Wi-Fi</html>").Verdict);
+        Assert.Equal(VirusTotalVerdict.Error, VirusTotalClient.Parse("x", "{\"data\":[1,2]}").Verdict);
+        Assert.Equal(VirusTotalVerdict.Error, VirusTotalClient.Parse("x", "[]").Verdict);
     }
 
     [Fact]

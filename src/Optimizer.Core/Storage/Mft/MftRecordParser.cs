@@ -120,6 +120,24 @@ public static class MftRecordParser
     // code for the whole first scan (in the test VM 1.75 s instead of 0.6 s).
     /// <summary>The checks and the attribute walk <see cref="Parse"/> and <see cref="ParseInto"/> share; false when the record is not usable.</summary>
     [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+    /// <summary>
+    /// A name NTFS itself would write: not empty, no NUL, \, / or :, and not "." or ".." (only the root's own record, 5,
+    /// is named ".").
+    /// </summary>
+    private static bool IsOneSegment(ReadOnlySpan<byte> name, uint number)
+    {
+        var chars = name.Length / 2;
+        if (chars == 0) return false;
+        var dots = 0;
+        for (var i = 0; i < chars; i++)
+        {
+            var c = (char)(name[2 * i] | name[2 * i + 1] << 8);
+            if (c is '\0' or '\\' or '/' or ':') return false;
+            if (c == '.') dots++;
+        }
+        return dots != chars || chars > 2 || (chars == 1 && number == 5);
+    }
+
     private static bool Walk(Span<byte> record, int bytesPerSector, uint number, ref Fields f)
     {
         // Header fields up to the base reference (0x20) and the next attribute id (0x28).
@@ -172,6 +190,9 @@ public static class MftRecordParser
                         if (value.Length < 0x42) return false;
                         var chars = value[0x40];
                         if (0x42 + chars * 2 > value.Length) return false;
+                        // A name is one path segment: a separator, a drive colon or ".." would make the joined path point
+                        // elsewhere (Recycle would then move that file). Such a record counts as damaged.
+                        if (!IsOneSegment(value.Slice(0x42, chars * 2), number)) return false;
                         var nameSpace = value[0x41];
                         if (f.Collect)
                             (f.Names ??= new List<MftName>(2)).Add(new MftName(U64(value, 0),

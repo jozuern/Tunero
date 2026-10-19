@@ -149,6 +149,19 @@ public class MftParserTests
             .Resident(0xC0, new byte[3]).Build()));
     }
 
+    /// <summary>A name with a separator, a drive or ".." would lead the joined path off the scanned drive: the record is damaged.</summary>
+    [Theory]
+    [InlineData(@"C:\Users\x\Documents\a.docx", 40u, false)]
+    [InlineData(@"..\x", 40u, false)]
+    [InlineData("a/b", 40u, false)]
+    [InlineData("..", 40u, false)]
+    [InlineData(".", 40u, false)]
+    [InlineData(".", 5u, true)]
+    [InlineData("...", 40u, true)]
+    [InlineData(".gitignore", 40u, true)]
+    public void NamesMustBeOneSegment(string name, uint number, bool valid) =>
+        Assert.Equal(valid, Parse(new RecordBuilder().StandardInformation(T, 0x20).FileName(RootRef, name, 1).Build(), number) is not null);
+
     [Fact]
     public void RejectsBrokenFixups()
     {

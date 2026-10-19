@@ -89,14 +89,20 @@ public static class CommandLine
         if (IsLauncher(host)) return LauncherStartsSomethingElse(args, Trusted);
         if (!IsScriptHost(host) && !(interpreters && FileName(host) is { } name && Interpreters.Contains(name))) return false;
         if (IsRundll(host)) return RundllStartsSomethingElse(args, Trusted);
-        if (args.IndexOfAny(['&', '|', '^', '`', ';']) >= 0 || args.Contains("://", StringComparison.Ordinal)) return true;
+        // A line break ends one command and starts the next in every host.
+        if (args.IndexOfAny(['&', '|', '^', '`', ';', '\r', '\n']) >= 0 || args.Contains("://", StringComparison.Ordinal)) return true;
         var tokens = Tokens(args).ToList();
         // Another script host, or a launcher (cmd /c msiexec /i x.msi), as an argument runs whatever it is given.
         if (tokens.Any(t => IsScriptHost(t) || IsLauncher(t))) return true;
         // PowerShell inline code: -Command / -EncodedCommand / -ec and their accepted prefixes ("-c", "-enc", "/e").
-        if (Path.GetFileName(host).StartsWith("p", StringComparison.OrdinalIgnoreCase)
-            && tokens.Any(t => t.Length >= 2 && t[0] is '-' or '/' && IsPrefixOf(t[1..], "command", "encodedcommand", "ec")))
-            return true;
+        if (Path.GetFileName(host).StartsWith("p", StringComparison.OrdinalIgnoreCase))
+        {
+            if (tokens.Any(t => t.Length >= 2 && t[0] is '-' or '/' && IsPrefixOf(t[1..], "command", "encodedcommand", "ec"))) return true;
+            // Without -File the arguments are a command (-Command is the default): a subexpression, script block, splat or
+            // call after a System32 path still runs code. With -File they are passed to the script as text.
+            if (!tokens.Any(t => t.Length >= 2 && t[0] is '-' or '/' && IsPrefixOf(t[1..], "file")) && args.IndexOfAny(['$', '(', '{', '@']) >= 0)
+                return true;
+        }
         var files = tokens.Select(t => t.Split(',')[0]).Where(IsPathToken).ToList();
         if (files.Count == 0) return true; // inline code or a bare name looked up on PATH
         return !files.All(Trusted);

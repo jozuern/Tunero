@@ -33,6 +33,9 @@ public sealed record StartupEntry(
     /// <summary>Registry or file details the toggle needs (approved subkey, task path, CLSID, service name).</summary>
     public string? Target { get; init; }
 
+    /// <summary>A shell extension blocked in the machine's list and in the user's own: switching it on clears both.</summary>
+    public bool BlockedForUserToo { get; init; }
+
     /// <summary>Non-default Winlogon values and IFEO debuggers deserve attention (often malware or leftovers).</summary>
     public bool Suspicious { get; init; }
 
@@ -233,12 +236,21 @@ public sealed partial class StartupScanner(IRegistryRoots registry, ITaskSchedul
         }
     }
 
-    /// <summary>The DLL registered for a COM class (InprocServer32), expanded with the machine's variables; null when unknown.</summary>
-    private string? ComServer(string? clsid)
+    /// <summary>
+    /// The DLL registered for a COM class (InprocServer32), expanded with the machine's variables; null when unknown. A
+    /// class a 32-bit program loads (<paramref name="wow64"/>, registered under WOW6432Node) is looked up there first.
+    /// </summary>
+    private string? ComServer(string? clsid, bool wow64 = false)
     {
         if (clsid is null || !Guid.TryParse(clsid, out var g)) return null;
-        using var server = Open(Hive.Machine, $@"SOFTWARE\Classes\CLSID\{g.ToString("B").ToUpperInvariant()}\InprocServer32");
-        var dll = server?.GetValue("", null, Microsoft.Win32.RegistryValueOptions.DoNotExpandEnvironmentNames)?.ToString();
+        var id = g.ToString("B").ToUpperInvariant();
+        string? dll = null;
+        foreach (var classes in wow64 ? new[] { @"SOFTWARE\Classes\WOW6432Node\CLSID", @"SOFTWARE\Classes\CLSID" } : [@"SOFTWARE\Classes\CLSID"])
+        {
+            using var server = Open(Hive.Machine, $@"{classes}\{id}\InprocServer32");
+            dll = server?.GetValue("", null, Microsoft.Win32.RegistryValueOptions.DoNotExpandEnvironmentNames)?.ToString();
+            if (!string.IsNullOrWhiteSpace(dll)) break;
+        }
         // A file path, not a command line: spaces in "C:\Program Files\..." are part of it.
         return string.IsNullOrWhiteSpace(dll) ? null : Platform.MachineEnvironment.Expand(dll.Trim().Trim('"'));
     }
@@ -326,6 +338,7 @@ public sealed partial class StartupScanner(IRegistryRoots registry, ITaskSchedul
                     blockedForUserOnly ? Hive.User : Hive.Machine, !blockedSet.Contains(id) && !blockedForUserOnly, $"shellext:{id}")
                 {
                     Target = id,
+                    BlockedForUserToo = blockedSet.Contains(id) && userBlockedSet.Contains(id),
                 };
             }
         }
@@ -535,7 +548,10 @@ public static class StartupTweaks
             Risk = expert ? Risk.Expert : Risk.Safe,
             Hidden = true,
             SignOut = e.Kind is StartupKind.ShellExtension,
-            Actions = [action],
+            // Explorer honors both lists: an extension blocked in both stays off until it is gone from both.
+            Actions = enabled && e.BlockedForUserToo && action is RegistryAction blocked
+                ? [action, new RegistryAction { Hive = Hive.User, Path = blocked.Path, Name = blocked.Name, Kind = blocked.Kind, Value = blocked.Value, Delete = true }]
+                : [action],
             Sources = ["https://learn.microsoft.com/en-us/sysinternals/downloads/autoruns"],
         };
     }

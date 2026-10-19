@@ -318,7 +318,7 @@ public sealed partial class StartupScanner
             if (clsid is null || !Guid.TryParse(clsid, out var g)) return null;
             var id = g.ToString("B").ToUpperInvariant();
             if (!seen.Add($"{what}:{id}")) return null;
-            var dll = ComServer(id);
+            var dll = ComServer(id, path.Contains("WOW6432Node", StringComparison.OrdinalIgnoreCase));
             return new StartupEntry(StartupKind.ExplorerAddOn, $"{what}: {name}", dll ?? id, dll, $@"HKLM\{path}", Hive.Machine, null, $"exploreraddon:{what}:{id}");
         }
         string? NameOf(string clsid)
@@ -460,7 +460,8 @@ public sealed partial class StartupScanner
                 if (!Guid.TryParse(id, out var g)) continue;
                 using var sub = key!.OpenSubKey(id);
                 var name = sub?.GetValue("FriendlyName")?.ToString() is { Length: > 0 } n ? n : id;
-                var dll = ComServer(g.ToString("B").ToUpperInvariant());
+                // Filters for 32-bit players are registered under WOW6432Node, their classes too.
+                var dll = ComServer(g.ToString("B").ToUpperInvariant(), wow64: path != instance);
                 if (dll is null) continue;
                 yield return new StartupEntry(StartupKind.Codec, name, dll, dll, $@"HKLM\{path}\{id}", Hive.Machine, null, $"directshow:{path}:{id}");
             }
