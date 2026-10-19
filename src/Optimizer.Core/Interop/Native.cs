@@ -343,4 +343,73 @@ internal static partial class Native
     internal static partial int CreateDXGIFactory1(in Guid riid, out IntPtr factory);
 
     internal static readonly Guid IidDxgiFactory1 = new("770aae78-f26f-4dba-a829-253c83d1b387");
+
+    // ---------- shlwapi: a file as an IStream (IMAPI2 boot images) ----------
+    internal const uint StgmReadShareDenyWrite = 0x00000020;   // STGM_READ | STGM_SHARE_DENY_WRITE
+
+    [DllImport("shlwapi.dll", CharSet = CharSet.Unicode, PreserveSig = false)]
+    internal static extern void SHCreateStreamOnFileEx(string file, uint mode, uint attributes, [MarshalAs(UnmanagedType.Bool)] bool create,
+        IntPtr template, out System.Runtime.InteropServices.ComTypes.IStream stream);
+
+    // ---------- virtdisk: an ISO attached read-only, without a drive letter, for as long as its handle is open ----------
+    // Attaching is the one temporary change here: the media page reads an ISO through it and detaches in a finally.
+    internal const uint VirtualStorageTypeDeviceIso = 1;
+    internal static readonly Guid VirtualStorageTypeVendorMicrosoft = new("ec984aec-a0f9-47e9-901f-71415a66345b");
+    internal const uint VirtualDiskAccessRead = 0x000d0000;    // ATTACH_RO | DETACH | GET_INFO
+    internal const uint AttachVirtualDiskFlagReadOnly = 0x1, AttachVirtualDiskFlagNoDriveLetter = 0x2;
+    internal const int AttachVirtualDiskVersion1 = 1;
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct VIRTUAL_STORAGE_TYPE { public uint DeviceId; public Guid VendorId; }
+
+    /// <summary>The union after Version holds ULONGLONGs (Version2), so it starts at 8 and the structure is 24 bytes.</summary>
+    [StructLayout(LayoutKind.Explicit, Size = 24)]
+    internal struct ATTACH_VIRTUAL_DISK_PARAMETERS
+    {
+        [FieldOffset(0)] public int Version;
+        [FieldOffset(8)] public uint Version1Reserved;
+    }
+
+    [LibraryImport("virtdisk.dll", StringMarshalling = StringMarshalling.Utf16)]
+    internal static partial uint OpenVirtualDisk(in VIRTUAL_STORAGE_TYPE storageType, string path, uint accessMask, uint flags, IntPtr parameters,
+        out Microsoft.Win32.SafeHandles.SafeFileHandle handle);
+
+    [LibraryImport("virtdisk.dll")]
+    internal static partial uint AttachVirtualDisk(Microsoft.Win32.SafeHandles.SafeFileHandle handle, IntPtr securityDescriptor, uint flags,
+        uint providerSpecificFlags, in ATTACH_VIRTUAL_DISK_PARAMETERS parameters, IntPtr overlapped);
+
+    [LibraryImport("virtdisk.dll")]
+    internal static partial uint DetachVirtualDisk(Microsoft.Win32.SafeHandles.SafeFileHandle handle, uint flags, uint providerSpecificFlags);
+
+    /// <summary>The attached disk's device path, such as \\.\CDROM1. <paramref name="sizeInBytes"/> is the buffer size in bytes.</summary>
+    [LibraryImport("virtdisk.dll")]
+    internal static unsafe partial uint GetVirtualDiskPhysicalPath(Microsoft.Win32.SafeHandles.SafeFileHandle handle, ref uint sizeInBytes, char* path);
+
+    // ---------- kernel32: volumes and their device numbers ----------
+    internal const uint FileShareReadWrite = 0x3, OpenExisting = 3;
+    internal const uint IoctlStorageGetDeviceNumber = 0x002D1080;
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct STORAGE_DEVICE_NUMBER { public uint DeviceType; public uint DeviceNumber; public uint PartitionNumber; }
+
+    [LibraryImport("kernel32.dll", EntryPoint = "FindFirstVolumeW", SetLastError = true)]
+    internal static unsafe partial IntPtr FindFirstVolume(char* volumeName, uint length);
+
+    [LibraryImport("kernel32.dll", EntryPoint = "FindNextVolumeW", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static unsafe partial bool FindNextVolume(IntPtr find, char* volumeName, uint length);
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool FindVolumeClose(IntPtr find);
+
+    /// <summary>CreateFileW; with access 0 it opens a device only to ask it questions (no read or write access).</summary>
+    [LibraryImport("kernel32.dll", EntryPoint = "CreateFileW", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
+    internal static partial Microsoft.Win32.SafeHandles.SafeFileHandle CreateFile(string name, uint access, uint share, IntPtr security,
+        uint disposition, uint flags, IntPtr template);
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool DeviceIoControl(Microsoft.Win32.SafeHandles.SafeFileHandle device, uint code, IntPtr inBuffer, uint inSize,
+        out STORAGE_DEVICE_NUMBER outBuffer, uint outSize, out uint returned, IntPtr overlapped);
 }
