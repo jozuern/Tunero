@@ -42,7 +42,7 @@ public static class SafeMove
     {
         if (name.Length == 0 || name is "." or ".." || name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || name.Contains(':'))
             throw new ArgumentException($"\"{name}\" is not a plain file name.", nameof(name));
-        using var pin = SafeDelete.Pin(folder, allowRoot: true) ?? throw new FolderNotHeldException($"{folder} is or lies in a link, or cannot be held.");
+        using var pin = SafeDelete.Pin(folder, allowRoot: true, readPermissions: true) ?? throw new FolderNotHeldException($"{folder} is or lies in a link, or cannot be held.");
         using var file = Native.CreateFile(@"\\?\" + Path.GetFullPath(source), Delete | ReadControl | WriteDac | FileReadAttributes, FileShareRead,
             IntPtr.Zero, OpenExisting, FileFlagOpenReparsePoint, IntPtr.Zero);
         if (file.IsInvalid) throw new IOException($"cannot open {source}", new Win32Exception(Marshal.GetLastWin32Error()));
@@ -134,7 +134,8 @@ public static class SafeMove
             Marshal.WriteInt32(buffer, lengthOffset, 2 * name.Length);
             Marshal.Copy(name.ToCharArray(), 0, buffer + nameOffset, name.Length);
             var status = NativeWrite.NtSetInformationFile(file, out _, buffer, (uint)size, FileRenameInformationEx);
-            if (status != 0)
+            // NT_SUCCESS: success and informational codes are 0 or positive; warnings and errors set the sign bit.
+            if (status < 0)
             {
                 var error = (int)NativeWrite.RtlNtStatusToDosError(status);
                 throw new IOException($"The file could not be moved to {name}: {new Win32Exception(error).Message}", new Win32Exception(error));

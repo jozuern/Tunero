@@ -66,7 +66,8 @@ public static class SafeDelete
     /// A drive root (C:\) itself is held too when <paramref name="folder"/> is one; it cannot be renamed or replaced, but its
     /// handle (<see cref="FolderPin.Leaf"/>) is what a caller works through.
     /// </param>
-    internal static FolderPin? Pin(string folder, bool allowRoot)
+    /// <param name="readPermissions">The pinned folder's own handle may also read its permissions (READ_CONTROL); only that one.</param>
+    internal static FolderPin? Pin(string folder, bool allowRoot, bool readPermissions = false)
     {
         var handles = new List<SafeFileHandle>();
         try
@@ -79,7 +80,7 @@ public static class SafeDelete
             chain.Reverse();
             if (chain.Count == 0 && allowRoot && root is { Length: 2 } && root[1] == ':')
             {
-                var rootHandle = CreateFileW(@"\\?\" + root + @"\", FileListDirectory | FileReadAttributes | ReadControl, FileShareRead | FileShareWrite, IntPtr.Zero,
+                var rootHandle = CreateFileW(@"\\?\" + root + @"\", FileListDirectory | FileReadAttributes | (readPermissions ? ReadControl : 0), FileShareRead | FileShareWrite, IntPtr.Zero,
                     OpenExisting, FileFlagOpenReparsePoint | FileFlagBackupSemantics, IntPtr.Zero);
                 handles.Add(rootHandle);
                 if (rootHandle.IsInvalid || !IsRealFolder(rootHandle) || !string.Equals(FinalPath(rootHandle), root + @"\", StringComparison.OrdinalIgnoreCase))
@@ -91,7 +92,10 @@ public static class SafeDelete
                 // Top down: each parent is held before its child is opened, so the child's path cannot change in between. The
                 // handle needs a data access (list): one with attribute access only takes no part in sharing checks, and the
                 // folder could still be renamed.
-                var handle = CreateFileW(@"\\?\" + p, FileListDirectory | FileReadAttributes | ReadControl, FileShareRead | FileShareWrite, IntPtr.Zero, OpenExisting,
+                // READ_CONTROL only on the pinned folder itself and only when asked: the folders above, and every folder of
+                // a plain pin, keep the list access they always had.
+                var access = FileListDirectory | FileReadAttributes | (readPermissions && ReferenceEquals(p, chain[^1]) ? ReadControl : 0);
+                var handle = CreateFileW(@"\\?\" + p, access, FileShareRead | FileShareWrite, IntPtr.Zero, OpenExisting,
                     FileFlagOpenReparsePoint | FileFlagBackupSemantics, IntPtr.Zero);
                 if (handle.IsInvalid)
                 {
@@ -125,7 +129,7 @@ public static class SafeDelete
         /// <summary>False when one of the held folders has become a link (an emptied folder turned into a mount point).</summary>
         public bool StillReal() => _handles.All(IsRealFolder);
 
-        /// <summary>The handle of the pinned folder itself (list, read attributes, read permissions), valid until disposed.</summary>
+        /// <summary>The handle of the pinned folder itself (list, read attributes; read permissions when asked), valid until disposed.</summary>
         internal SafeFileHandle Leaf => _handles[^1];
 
         public void Dispose()

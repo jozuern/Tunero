@@ -98,6 +98,47 @@ public sealed class SafeMoveTests : IDisposable
         Assert.Equal("keep", File.ReadAllText(Path.Combine(elsewhere, "keep.txt")));
     }
 
+    /// <summary>
+    /// SafeMove reads the target folder's permissions, so its pin asks for READ_CONTROL, but only on that folder: the
+    /// folders above it, and every folder of a default pin (updater, storage cleanup), keep the old access. A parent that
+    /// lets its owner list it but not read its permissions (an OWNER RIGHTS entry replaces the owner's implicit rights)
+    /// must not stop either.
+    /// </summary>
+    [Fact]
+    public void PinAsksToReadPermissionsOnlyOfTheTargetFolder()
+    {
+        var parent = Directory.CreateDirectory(Path.Combine(_root, "listonly"));
+        var child = Directory.CreateDirectory(Path.Combine(parent.FullName, "out"));
+        var security = new DirectorySecurity();
+        security.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
+        security.AddAccessRule(new FileSystemAccessRule(new SecurityIdentifier("S-1-3-4"),
+            FileSystemRights.ListDirectory | FileSystemRights.ReadAttributes | FileSystemRights.WriteAttributes | FileSystemRights.Traverse |
+            FileSystemRights.Delete | FileSystemRights.Synchronize, InheritanceFlags.None, PropagationFlags.None, AccessControlType.Allow));
+        security.AddAccessRule(new FileSystemAccessRule(WindowsIdentity.GetCurrent().User!, FileSystemRights.FullControl,
+            InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit, PropagationFlags.InheritOnly, AccessControlType.Allow));
+        // The child gets its own protected full control first, so the parent's new list only changes the parent.
+        var childSecurity = new DirectorySecurity();
+        childSecurity.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
+        childSecurity.AddAccessRule(new FileSystemAccessRule(WindowsIdentity.GetCurrent().User!, FileSystemRights.FullControl,
+            InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit, PropagationFlags.None, AccessControlType.Allow));
+        child.SetAccessControl(childSecurity);
+        parent.SetAccessControl(security);
+        try
+        {
+            using (var plain = SafeDelete.Pin(child.FullName)) Assert.NotNull(plain);
+            using (var reading = SafeDelete.Pin(child.FullName, allowRoot: true, readPermissions: true)) Assert.NotNull(reading);
+
+            var source = LockedSource("new ISO");
+            Assert.True(SafeMove.IntoFolder(source, child.FullName, "Win11.iso"));
+            Assert.Equal("new ISO", File.ReadAllText(Path.Combine(child.FullName, "Win11.iso")));
+        }
+        finally
+        {
+            // Listing, the child's full control and Delete on the parent are enough to remove it (no permissions read).
+            Directory.Delete(parent.FullName, recursive: true);
+        }
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData(@"sub\Win11.iso")]
