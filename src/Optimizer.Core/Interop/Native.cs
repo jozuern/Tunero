@@ -281,4 +281,66 @@ internal static partial class Native
     internal static extern uint CM_Free_Log_Conf_Handle(nuint logConf);
 
     internal const uint AllocLogConf = 2, ResTypeAll = 0, ResTypeMem = 1, ResTypeMemLarge = 7;
+
+    // ---------- processes (Live readings: programs per device) ----------
+    internal const int SystemProcessInformation = 5;
+    internal const int StatusInfoLengthMismatch = unchecked((int)0xC0000004);
+
+    [LibraryImport("ntdll.dll")]
+    internal static partial int NtQuerySystemInformation(int infoClass, IntPtr buffer, int length, out int returnLength);
+
+    internal const uint ProcessQueryLimitedInformation = 0x1000;
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    internal static partial IntPtr OpenProcess(uint access, [MarshalAs(UnmanagedType.Bool)] bool inherit, int processId);
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool CloseHandle(IntPtr handle);
+
+    [LibraryImport("kernel32.dll", EntryPoint = "QueryFullProcessImageNameW", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static unsafe partial bool QueryFullProcessImageName(IntPtr process, int flags, char* name, ref int size);
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool IsProcessCritical(IntPtr process, [MarshalAs(UnmanagedType.Bool)] out bool critical);
+
+    [LibraryImport("kernel32.dll")]
+    internal static partial int GetCurrentThreadId();
+
+    // ---------- pdh (GPU engine counters) ----------
+    internal const uint PdhFmtDouble = 0x00000200, PdhFmtNoCap100 = 0x00008000;
+    internal const uint PdhMoreData = 0x800007D2, PdhCstatusValidData = 0, PdhCstatusNewData = 1;
+
+    [LibraryImport("pdh.dll", EntryPoint = "PdhOpenQueryW", StringMarshalling = StringMarshalling.Utf16)]
+    internal static partial uint PdhOpenQuery(string? dataSource, IntPtr userData, out IntPtr query);
+
+    [LibraryImport("pdh.dll", EntryPoint = "PdhAddEnglishCounterW", StringMarshalling = StringMarshalling.Utf16)]
+    internal static partial uint PdhAddEnglishCounter(IntPtr query, string counterPath, IntPtr userData, out IntPtr counter);
+
+    [LibraryImport("pdh.dll")]
+    internal static partial uint PdhCollectQueryData(IntPtr query);
+
+    /// <summary>Items are PDH_FMT_COUNTERVALUE_ITEM_W (64 bit: name pointer 0, CStatus 8, double 16; 24 bytes).</summary>
+    [LibraryImport("pdh.dll", EntryPoint = "PdhGetFormattedCounterArrayW")]
+    internal static partial uint PdhGetFormattedCounterArray(IntPtr counter, uint format, ref uint bufferSize, out uint itemCount, IntPtr buffer);
+
+    [LibraryImport("pdh.dll")]
+    internal static partial uint PdhCloseQuery(IntPtr query);
+
+    // ---------- dxgi (graphics adapters and their LUIDs) ----------
+    // ---------- advapi32: which services run in which process ----------
+    internal const uint ScManagerEnumerateService = 0x0004, ScEnumProcessInfo = 0, ServiceWin32 = 0x30, ServiceActive = 1;
+
+    /// <summary>Items are ENUM_SERVICE_STATUS_PROCESSW (64 bit: ServiceName 0, DisplayName 8, ProcessId 44; 56 bytes).</summary>
+    [LibraryImport("advapi32.dll", EntryPoint = "EnumServicesStatusExW", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool EnumServicesStatusEx(IntPtr scManager, uint infoLevel, uint serviceType, uint serviceState,
+        IntPtr services, int bufSize, out int bytesNeeded, out int servicesReturned, ref int resumeHandle, IntPtr groupName);
+
+    [LibraryImport("dxgi.dll")]
+    internal static partial int CreateDXGIFactory1(in Guid riid, out IntPtr factory);
+
+    internal static readonly Guid IidDxgiFactory1 = new("770aae78-f26f-4dba-a829-253c83d1b387");
 }
