@@ -389,4 +389,201 @@ public class MediaDownloadTests
         var error = await Assert.ThrowsAsync<MediaDownloadException>(() => download.SearchAsync("amd64", CancellationToken.None));
         Assert.Equal("search", error.Step);
     }
+
+    private static HttpResponseMessage Redirect(string to, HttpStatusCode status = HttpStatusCode.Found)
+    {
+        var response = new HttpResponseMessage(status);
+        response.Headers.Location = new Uri(to, UriKind.RelativeOrAbsolute);
+        return response;
+    }
+
+    [Fact]
+    public async Task RedirectToAForeignHostIsNeverRequested()
+    {
+        var data = Body(1024);
+        var handler = new FakeHandler((_, _) => Redirect("https://evil.example/x"));
+        var (folder, target, error) = await RunFailing(handler, data);
+        try
+        {
+            Assert.IsType<MediaDownloadException>(error);
+            Assert.Single(handler.Requests);
+            Assert.DoesNotContain(handler.Requests, r => r.RequestUri!.Host == "evil.example");
+            Assert.False(File.Exists(target));
+        }
+        finally { TestFolders.Delete(folder); }
+    }
+
+    [Fact]
+    public async Task RedirectBetweenDeliveryHostsIsFollowed()
+    {
+        var data = Body(1024);
+        var handler = new FakeHandler((request, n) =>
+            n == 1 ? Redirect("http://tlu.dl.delivery.mp.microsoft.com/y.esd") : n == 2 ? Redirect("/z.esd") : Ok(data));
+        var (folder, target) = await Run(handler, data);
+        try
+        {
+            Assert.Equal(3, handler.Requests.Count);
+            Assert.Equal("http://tlu.dl.delivery.mp.microsoft.com/z.esd", handler.Requests[2].RequestUri!.ToString());
+            Assert.Equal(data, File.ReadAllBytes(target));
+        }
+        finally { TestFolders.Delete(folder); }
+    }
+
+    [Fact]
+    public async Task SixRedirectsFail()
+    {
+        var data = Body(1024);
+        var handler = new FakeHandler((_, n) => Redirect($"http://dl.delivery.mp.microsoft.com/{n}.esd"));
+        var (folder, _, error) = await RunFailing(handler, data);
+        try
+        {
+            Assert.IsType<MediaDownloadException>(error);
+            Assert.Equal(6, handler.Requests.Count);
+        }
+        finally { TestFolders.Delete(folder); }
+    }
+
+    [Fact]
+    public async Task SearchDoesNotFollowARedirectToAForeignHost()
+    {
+        var handler = new FakeHandler((_, _) => Redirect("https://evil.example/x"));
+        using var download = new MediaDownload(handler);
+        var error = await Assert.ThrowsAsync<MediaDownloadException>(() => download.SearchAsync("amd64", CancellationToken.None));
+        Assert.Equal("search", error.Step);
+        Assert.Single(handler.Requests);
+    }
+
+    /// <summary>Writes through, but the second call fails or flips a bit, like a bad disk.</summary>
+    private sealed class FaultyFile(string path, bool fail) : FileStream(path, FileMode.Create, FileAccess.ReadWrite, FileShare.None, 4096, FileOptions.Asynchronous)
+    {
+        private int _writes;
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken ct = default)
+        {
+            if (++_writes == 2)
+            {
+                if (fail) throw new IOException("disk full");
+                var copy = buffer.ToArray();
+                copy[0] ^= 0xFF;
+                return base.WriteAsync(copy, ct);
+            }
+            return base.WriteAsync(buffer, ct);
+        }
+    }
+
+    [Fact]
+    public async Task DiskWriteFailureIsNotRetried()
+    {
+        var data = Body(1 << 20);
+        var handler = new FakeHandler((_, _) => Ok(data));
+        var folder = TestFolders.Create("mediadl");
+        try
+        {
+            var target = Path.Combine(folder, "test.esd");
+            using var download = new MediaDownload(handler) { OpenPart = p => new FaultyFile(p, fail: true) };
+            var error = await Assert.ThrowsAsync<MediaDownloadException>(() =>
+                download.DownloadAsync("esd", new Uri(EsdUrl), target, data.Length, SHA256.HashData(data), null, CancellationToken.None));
+            Assert.Equal("esd", error.Step);
+            Assert.Single(handler.Requests);
+            Assert.False(File.Exists(target));
+            Assert.False(File.Exists(target + ".part"));
+        }
+        finally { TestFolders.Delete(folder); }
+    }
+
+    [Fact]
+    public async Task TheFileOnDiskDecides()
+    {
+        // The bytes counted and hashed in memory are right; the ones that reached the disk are not.
+        var data = Body(1 << 20);
+        var folder = TestFolders.Create("mediadl");
+        try
+        {
+            var target = Path.Combine(folder, "test.esd");
+            using var download = new MediaDownload(new FakeHandler((_, _) => Ok(data))) { OpenPart = p => new FaultyFile(p, fail: false) };
+            var error = await Assert.ThrowsAsync<MediaDownloadException>(() =>
+                download.DownloadAsync("esd", new Uri(EsdUrl), target, data.Length, SHA256.HashData(data), null, CancellationToken.None));
+            Assert.Equal("esd", error.Step);
+            Assert.False(File.Exists(target));
+            Assert.False(File.Exists(target + ".part"));
+        }
+        finally { TestFolders.Delete(folder); }
+    }
+
+    [Fact]
+    public async Task VerifyFileChecksSizeAndHash()
+    {
+        var data = Body(5000);
+        var folder = TestFolders.Create("mediadl");
+        try
+        {
+            var path = Path.Combine(folder, "f.part");
+            File.WriteAllBytes(path, data);
+            await MediaDownload.VerifyFileAsync("esd", path, data.Length, SHA256.HashData(data), CancellationToken.None);
+            var good = SHA256.HashData(data);
+            data[10] ^= 1;
+            File.WriteAllBytes(path, data);
+            await Assert.ThrowsAsync<MediaDownloadException>(() => MediaDownload.VerifyFileAsync("esd", path, data.Length, good, CancellationToken.None));
+            await Assert.ThrowsAsync<MediaDownloadException>(() => MediaDownload.VerifyFileAsync("esd", path, data.Length + 1, SHA256.HashData(data), CancellationToken.None));
+        }
+        finally { TestFolders.Delete(folder); }
+    }
+
+    [Fact]
+    public async Task MissingFolderFailsWithTheStep()
+    {
+        var data = Body(1024);
+        var target = Path.Combine(Path.GetTempPath(), "pco-nonexistent-" + Guid.NewGuid().ToString("N"), "x.esd");
+        using var download = new MediaDownload(new FakeHandler((_, _) => Ok(data)));
+        var error = await Assert.ThrowsAsync<MediaDownloadException>(() =>
+            download.DownloadAsync("cab", new Uri(EsdUrl), target, data.Length, SHA256.HashData(data), null, CancellationToken.None));
+        Assert.Equal("cab", error.Step);
+    }
+
+    [Fact]
+    public async Task RangeNotSatisfiableFailsAtOnce()
+    {
+        var data = Body(1 << 20);
+        var handler = new FakeHandler((_, n) => n == 1 ? Dropping(data, 300 * 1024) : new HttpResponseMessage(HttpStatusCode.RequestedRangeNotSatisfiable));
+        var (folder, target, error) = await RunFailing(handler, data);
+        try
+        {
+            Assert.IsType<MediaDownloadException>(error);
+            Assert.Equal(2, handler.Requests.Count);
+            Assert.False(File.Exists(target));
+        }
+        finally { TestFolders.Delete(folder); }
+    }
+
+    [Fact]
+    public async Task ProgressEndsOnlyAfterTheMove()
+    {
+        var data = Body(1 << 20);
+        var folder = TestFolders.Create("mediadl");
+        try
+        {
+            var target = Path.Combine(folder, "a.esd");
+            var existedAtFinal = false;
+            using var download = new MediaDownload(new FakeHandler((_, _) => Ok(data)));
+            await download.DownloadAsync("esd", new Uri(EsdUrl), target, data.Length, SHA256.HashData(data),
+                new SynchronousProgress(p => { if (p.Done == p.Total) existedAtFinal = File.Exists(target); }), CancellationToken.None);
+            Assert.True(existedAtFinal);
+        }
+        finally { TestFolders.Delete(folder); }
+    }
+
+    [Fact]
+    public async Task ShortCleanEndOfAFullAnswerFailsAtOnce()
+    {
+        var data = Body(1 << 20);
+        var folder = TestFolders.Create("mediadl");
+        try
+        {
+            var handler = new FakeHandler((_, _) => Ok(data));
+            using var download = new MediaDownload(handler);
+            await Assert.ThrowsAsync<MediaDownloadException>(() =>
+                download.DownloadAsync("esd", new Uri(EsdUrl), Path.Combine(folder, "a.esd"), data.Length + 5, SHA256.HashData(data), null, CancellationToken.None));
+            Assert.Single(handler.Requests);
+        }
+        finally { TestFolders.Delete(folder); }
+    }
 }
