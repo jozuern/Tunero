@@ -202,10 +202,10 @@ public sealed partial class StartupScanner(IRegistryRoots registry, ITaskSchedul
     /// </summary>
     public IEnumerable<StartupEntry> ScheduledTasks() => TaskEntries(t => t.AtLogon || t.AtBoot || !IsWindowsTask(t.Path));
 
-    /// <summary>Windows' own tasks (\Microsoft\Windows\...): listed, but switched only on Services &amp; tasks, where a catalog explains them.</summary>
     /// <summary>Tunero's own task (the re-apply task): turned on and off in Settings, so the Startup page does not switch or delete it.</summary>
     public static bool IsOwnTask(string? path) => path?.StartsWith(Actions.OwnTaskAction.Folder, StringComparison.OrdinalIgnoreCase) == true;
 
+    /// <summary>Windows' own tasks (\Microsoft\Windows\...): listed, but switched only on Services &amp; tasks, where a catalog explains them.</summary>
     public static bool IsWindowsTask(string? path) => path?.StartsWith(@"\Microsoft\Windows\", StringComparison.OrdinalIgnoreCase) == true;
 
     /// <summary>

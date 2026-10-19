@@ -796,7 +796,8 @@ public sealed class TweakEngine(ActionContext ctx, BackupStore store, IRestorePo
         var list = new List<DriftItem>();
         foreach (var backup in store.All())
         {
-            if (Resolve(backup.TweakId) is not { } t) continue;
+            // From the backup just read: by id, a runtime tweak's backup would be read from its file once more.
+            if (Resolve(backup) is not { } t) continue;
             // A deleted startup entry that is back was put back by its program, not reset by Windows (StartupTweaks.IsDelete).
             if (Startup.StartupTweaks.IsDelete(t) || WritesDefaultProfile(t)) continue;
             var state = known is not null && known.TryGetValue(t.Id, out var read) ? read : DetectState(t, facts);

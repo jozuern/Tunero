@@ -68,8 +68,8 @@
       },
       "Markdig": {
         "type": "Transitive",
-        "resolved": "1.4.0",
-        "contentHash": "lLhaiI/mNDTNzgLqnmknhf4LjgTqOAyjx5+GNz0X3AxYMxUhmFppF2WVMdER+SDqwhE5wUF1pzs/cuLwFxs7xA=="
+        "resolved": "1.4.1",
+        "contentHash": "laiWlBRnwVqQlY9eWR56+uteUVtR+LpGw0doMSpirFuxdplSi3V59UOGRTepJaE8hJvfKGcCoguIZ8jmUHcEnA=="
       },
       "Microsoft.CodeCoverage": {
         "type": "Transitive",
@@ -227,8 +227,8 @@
       },
       "System.Management": {
         "type": "Transitive",
-        "resolved": "10.0.12",
-        "contentHash": "ApUsYmsNG8aPiMxsO6ROGZnqJwSZY8zeMlAQcuQg+ilPFUcIyBUC0BL8qA6wmPLNVsvL4nyhUrhhxh6qn0cx0Q=="
+        "resolved": "10.0.13",
+        "contentHash": "cL8qiJmJtlSIcAoZH4s07VTxTdddvEP12MFeM+KBZagn4CuD/0SFQsmKn5g9MLfiSrYjdAxIwOTO0kATY9A0UA=="
       },
       "WPF-UI": {
         "type": "Transitive",
@@ -287,14 +287,14 @@
         "type": "Project",
         "dependencies": {
           "LibreHardwareMonitorLib": "[0.9.6, )",
-          "System.Management": "[10.0.12, )"
+          "System.Management": "[10.0.13, )"
         }
       },
       "Tunero": {
         "type": "Project",
         "dependencies": {
           "CommunityToolkit.Mvvm": "[8.4.2, )",
-          "Markdig": "[1.4.0, )",
+          "Markdig": "[1.4.1, )",
           "Optimizer.Core": "[1.0.0, )",
           "WPF-UI": "[4.3.0, )"
         }

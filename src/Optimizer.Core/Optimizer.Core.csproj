@@ -10,7 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.Management" Version="10.0.12" />
+    <PackageReference Include="System.Management" Version="10.0.13" />
     <!-- Opt-in sensor readings on the Health page (MPL-2.0). Uses the PawnIO driver for CPU sensors when installed. -->
     <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.6" />
   </ItemGroup>
