@@ -648,7 +648,8 @@ public static class SecureFolder
         }
     }
 
-    private static void DeleteTree(string folder)
+    /// <summary>Deletes the folder and everything in it: links are removed first (never their targets), read-only flags cleared.</summary>
+    internal static void DeleteTree(string folder)
     {
         RemoveLinks(folder);
         if (!Directory.Exists(folder)) return;

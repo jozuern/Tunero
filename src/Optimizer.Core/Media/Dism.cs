@@ -104,6 +104,9 @@ public static class DismOutput
     /// <summary>The "PackageName :" values of Get-ProvisionedAppxPackages.</summary>
     public static IReadOnlyList<string> ParseProvisioned(string output) => Values(output, "PackageName");
 
+    /// <summary>True only when a Get-WimInfo /Index answer says "WIM Bootable : Yes"; anything else counts as not bootable.</summary>
+    public static bool Bootable(string output) => Values(output, "WIM Bootable").Any(v => v == "Yes");
+
     /// <summary>The "Mount Dir :" values of Get-MountedImageInfo.</summary>
     public static IReadOnlyList<string> ParseMountedDirs(string output) => Values(output, "Mount Dir");
 

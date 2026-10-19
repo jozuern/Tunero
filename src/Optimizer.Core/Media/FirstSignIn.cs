@@ -24,6 +24,13 @@ public static class FirstSignIn
 
     public static string Serialize(FirstSignInFile f) => JsonSerializer.Serialize(f, Json);
 
+    /// <summary>A known profile id, language en or de, theme System, Dark or Light: what <see cref="Read"/> accepts.</summary>
+    public static bool IsValid(FirstSignInFile file) =>
+        file.Profile is not null && file.Language is not null && file.Theme is not null
+        && CatalogData.Current.Profiles.Profiles.Any(p => p.Id == file.Profile)
+        && (file.Language is "en" or "de")
+        && (file.Theme is "System" or "Dark" or "Light");
+
     /// <summary>The file, or null when it must not be trusted or is not valid. Never throws.</summary>
     public static FirstSignInFile? Read(string exePath, Func<string, bool> adminOnlyFolder) => Read(exePath, adminOnlyFolder, Folder);
 
@@ -41,11 +48,7 @@ public static class FirstSignIn
             var bytes = SafeDelete.ReadFile(path, MaxBytes);
             if (bytes is null) return null;
             var file = JsonSerializer.Deserialize<FirstSignInFile>(bytes, Json);
-            if (file is null || file.Profile is null || file.Language is null || file.Theme is null) return null;
-            if (!CatalogData.Current.Profiles.Profiles.Any(p => p.Id == file.Profile)) return null;
-            if (file.Language is not ("en" or "de")) return null;
-            if (file.Theme is not ("System" or "Dark" or "Light")) return null;
-            return file;
+            return file is not null && IsValid(file) ? file : null;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or JsonException or NotSupportedException)
         {

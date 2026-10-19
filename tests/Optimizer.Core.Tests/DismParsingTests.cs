@@ -101,6 +101,15 @@ public class DismParsingTests
     }
 
     [Fact]
+    public void BootableOnlyWhenDismSaysYes()
+    {
+        Assert.False(DismOutput.Bootable(Fixture("dism-detail.txt")));
+        Assert.True(DismOutput.Bootable("Index : 2\nName : Microsoft Windows Setup (amd64)\nWIM Bootable : Yes\nArchitecture : x64"));
+        Assert.False(DismOutput.Bootable("Index : 2\nName : Microsoft Windows Setup (amd64)\nArchitecture : x64"));
+        Assert.False(DismOutput.Bootable(Fixture("dism-err.txt")));
+    }
+
+    [Fact]
     public void MountedDirsFromMountedImageInfo()
     {
         const string text = """
