@@ -50,7 +50,7 @@ const en: Copy = {
     list: (n) => `The ${n} checks`,
   },
   tweak: {
-    title: 'Every change is explained before it happens, and can be undone',
+    title: 'Every change is explained before it happens, and every setting can be undone',
     intro:
       'Each check and each tweak has a page in English and German: what it does, what it writes, why it can help, how solid the evidence is, and the sources. The app shows it next to the switch. This is the page for turning off mouse acceleration:',
     docLabel: 'Explanation page in the app',
@@ -158,7 +158,7 @@ const en: Copy = {
   privacy: {
     title: 'It goes online only when you ask it to',
     body: [
-      'No telemetry, no account, no ads, and nothing running in the background: it runs only when you start it, as one exe without installation.',
+      'No telemetry, no account, no ads, no service and no tray icon: it runs when you start it, or once after you sign in if you turn on applying your changes again in Settings. Installing it in Program Files is optional.',
       'The update check is off until you turn it on. A VirusTotal lookup needs your own key and sends file hashes, never files. The DNS benchmark and app installs run when you start them.',
     ],
     link: 'Everything the app sends, and to whom',
@@ -208,7 +208,7 @@ const en: Copy = {
       {
         id: 'home',
         q: 'Does it work on Windows 11 Home?',
-        a: 'Yes. Tweaks that rely on Group Policy are offered only on Pro, Enterprise and Education. Home has been tested less than Pro so far.',
+        a: 'Yes. Some tweaks that rely on Group Policy are offered only on Pro, Enterprise and Education. Home has been tested less than Pro so far.',
       },
       {
         id: 'remove',

@@ -30,7 +30,7 @@ const de: Copy = {
     title: 'Eine 5 gibt es nur für Probleme, die der Scan findet. Für keinen Tweak.',
     body: (n, matter) => [
       'Prüfungen und Tweaks teilen sich eine Skala für Spiele, von 0 bis 5. Den größten Unterschied machen Probleme, die der Scan findet, etwa ein Monitor unter seiner Bildwiederholrate oder eine CPU, die beim Basistakt festhängt.',
-      `Von den ${n} Tweaks können ${matter} für Spiele zählen, manche nur auf manchen PCs: „CPU-Turbo wiederherstellen“ hat eine 4, wo der Energiesparplan die CPU beim Basistakt hält, und überall sonst eine 0. Die App bewertet jeden Tweak für den PC, auf dem sie läuft, und zeigt die Wertung neben jeder Prüfung und jedem Tweak als Zahl und fünf Balken.`,
+      `Von den ${n} Tweaks können ${matter} bei Spielen eine Rolle spielen, manche nur auf manchen PCs: „CPU-Turbo wiederherstellen“ hat eine 4, wo der Energiesparplan die CPU beim Basistakt hält, und überall sonst eine 0. Die App bewertet jeden Tweak für den PC, auf dem sie läuft, und zeigt die Wertung neben jeder Prüfung und jedem Tweak als Zahl und fünf Balken.`,
     ],
     top: 'Probleme, die der Scan findet. Er behebt sie oder sagt dir, wie.',
     topRow: (n) => `Wirkung 5: ${n} Probleme, die der Scan findet`,
@@ -50,7 +50,7 @@ const de: Copy = {
     list: (n) => `Die ${n} Prüfungen`,
   },
   tweak: {
-    title: 'Jede Änderung wird vorher erklärt und lässt sich rückgängig machen',
+    title: 'Jede Änderung wird vorher erklärt, und jede Einstellung lässt sich rückgängig machen',
     intro:
       'Jede Prüfung und jeder Tweak hat eine Seite auf Deutsch und Englisch: was er tut, was er schreibt, warum er helfen kann, wie belastbar die Belege sind, und die Quellen. Die App zeigt sie neben dem Schalter. Das ist die Seite zum Ausschalten der Mausbeschleunigung:',
     docLabel: 'Erklärseite in der App',
@@ -158,7 +158,7 @@ const de: Copy = {
   privacy: {
     title: 'Ins Internet geht es nur, wenn du es willst',
     body: [
-      'Keine Telemetrie, kein Konto, keine Werbung und nichts, was im Hintergrund läuft: Es läuft nur, wenn du es startest, als eine exe ohne Installation.',
+      'Keine Telemetrie, kein Konto, keine Werbung, kein Dienst und kein Symbol im Infobereich: Es läuft, wenn du es startest, oder einmal nach der Anmeldung, wenn du in den Einstellungen das erneute Anwenden deiner Änderungen einschaltest. Die Installation im Ordner Programme ist freiwillig.',
       'Die Update-Prüfung ist aus, bis du sie einschaltest. Eine VirusTotal-Abfrage braucht deinen eigenen Schlüssel und sendet Hashes von Dateien, nie die Dateien. Der DNS-Benchmark und App-Installationen laufen, wenn du sie startest.',
     ],
     link: 'Alles, was die App sendet, und an wen',
@@ -177,7 +177,7 @@ const de: Copy = {
     steps: [
       { name: 'Herunterladen', text: 'Die exe der neuesten Version.' },
       { name: 'Prüfen', text: 'Rechtsklick, Eigenschaften > Digitale Signaturen: Dort steht Open Source Developer Joshua Zürn. Oder vergleiche ihren SHA-256 mit der .sha256-Datei auf der Release-Seite.' },
-      { name: 'Starten', text: 'Beim ersten Start bietet sie an, sich im Ordner Programme mit einem Eintrag im Startmenü zu installieren, oder von ihrem Ort aus zu laufen.' },
+      { name: 'Starten', text: 'Beim ersten Start bietet sie an, sich im Ordner Programme mit einem Eintrag im Startmenü zu installieren, oder dort zu bleiben, wo sie liegt (Von hier ausführen).' },
     ],
     managers: 'Mit einem Paketmanager',
     releases: 'Alle Versionen',
@@ -208,7 +208,7 @@ const de: Copy = {
       {
         id: 'home',
         q: 'Läuft es unter Windows 11 Home?',
-        a: 'Ja. Tweaks, die Gruppenrichtlinien brauchen, gibt es nur unter Pro, Enterprise und Education. Home ist bisher weniger getestet als Pro.',
+        a: 'Ja. Manche Tweaks, die Gruppenrichtlinien brauchen, gibt es nur unter Pro, Enterprise und Education. Home ist bisher weniger getestet als Pro.',
       },
       {
         id: 'entfernen',

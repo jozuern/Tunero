@@ -17,7 +17,7 @@ Or with a package manager:
 | | Install | Start |
 |---|---|---|
 | winget (once the first version has passed review) | `winget install jozuern.Tunero` | `tunero` |
-| Chocolatey (once the first version has passed moderation) | `choco install tunero` | `tunero` |
+| Chocolatey (only 0.8.0 has passed moderation so far: use the download until a current version has) | `choco install tunero` | `tunero` |
 | Scoop | `scoop bucket add tunero https://github.com/jozuern/scoop-bucket`, then `scoop install tunero/tunero` | Start menu, Scoop Apps |
 
 A copy installed this way is updated by its package manager: "Update now" in the app runs `winget upgrade`, `choco upgrade` or `scoop update` for you. winget and Chocolatey review every new version before they offer it, which can take a few days; the Scoop bucket picks up a release within a few hours.
@@ -36,7 +36,7 @@ A copy installed this way is updated by its package manager: "Update now" in the
 
 **For power users**
 
-- **235 catalog tweaks** with gaming impact from 0 to 5, how solid the evidence is (situational or disputed), risk and sources, grouped by area with "Turn on N" per group and a Show filter (for this profile, recommended for this PC, changed by this app, all that apply, or all), plus tweaks built for this PC: per-game NVIDIA profiles, MSI mode per device and interrupt affinity for the graphics card (Expert), startup entries, services, Windows features.
+- **235 catalog tweaks** with gaming impact from 0 to 5, how solid the evidence is (measured, situational or disputed), risk and sources, grouped by area with "Turn on N" per group and a Show filter (for this profile, recommended for this PC, changed by this app, all that apply, or all), plus tweaks built for this PC: per-game NVIDIA profiles, MSI mode per device and interrupt affinity for the graphics card (Expert), startup entries, services, Windows features.
 - **Exact changes:** the confirmation lists every registry value, service, task or setting with its current and new value; blocked changes say why.
 - **Privacy, browsers and Windows:** documented policies for Microsoft Edge, Google Chrome and Brave (data collection, AI features, promotions), Windows AI features (Recall, Paint, Notepad), app permissions, notifications, the taskbar and Start, and security options such as LSA protection and Defender network protection.
 - **Graphics & DNS:** NVIDIA driver settings through the documented driver settings interface (NVAPI), "Prefer maximum performance" per game, a DNS server choice and an opt-in DNS benchmark. Network adapter power saving is in the tweaks, the VRR state in the scan.
@@ -64,7 +64,7 @@ The app uses settings that Microsoft or the hardware vendor documents. A few har
 - **Every setting it changes can be undone.** Each change is backed up first and can be undone on the Changes page, also after a restart or an update of the app; Uninstall offers to undo everything before it removes the app. Removed apps and deleted files are the exception, and the app says so before.
 - **No placebo.** Popular tweaks without evidence are left out, and the search says why when you look for one. The full list with sources is in [docs/not-included.md](docs/not-included.md).
 - **It looks at your PC first.** It recommends only what fits this PC and your profile, and keeps risky changes behind Expert mode.
-- **Nothing runs in the background.** No service, no tray icon, no telemetry. Windows applies the settings itself; the app runs only when you start it.
+- **Nothing runs in the background.** No service, no tray icon, no telemetry. Windows applies the settings itself; the app runs only when you start it, or once after you sign in if you turn on "Apply my changes again when Windows resets them" in Settings (a scheduled task).
 
 ## How it is tested
 
@@ -111,7 +111,7 @@ No telemetry, no accounts. The app goes online only for features you start or tu
 
 ## Uninstall
 
-Settings > Uninstall removes Tunero from this PC. When changes of the app are still active, it offers to undo them first; if one cannot be undone, it removes nothing. Then the app closes, and a moment later its exe, its data folder `%ProgramData%\Tunero` (backups, logs, settings) and its Start menu entry are gone, and for a copy installed in Program Files also that folder and its entry under Installed apps (Windows' Uninstall button there does the same). A copy installed with winget, Chocolatey or Scoop is removed by that package manager (`winget uninstall jozuern.Tunero`, `choco uninstall tunero`, `scoop uninstall tunero`), so its list stays right; uninstalling with the package manager alone keeps the data folder and its backups.
+Settings > Uninstall removes Tunero from this PC. When changes of the app are still active, it offers to undo them first; if one cannot be undone, it removes nothing. Then the app closes, and a moment later its exe, its data folder `%ProgramData%\Tunero` (backups, logs, settings) and its Start menu entry are gone, and for a copy installed in Program Files also that folder and its entry under Installed apps (Windows' Uninstall button there does the same). A copy installed with winget, Chocolatey or Scoop is removed by that package manager (`winget uninstall jozuern.Tunero`, `choco uninstall tunero`, `scoop uninstall tunero`), so its list stays right; uninstalling with the package manager alone keeps the data folder and its backups, and the task of "Apply my changes again" in Settings (turn it off before).
 
 What stays: restore points, apps you installed through Tunero and the PawnIO sensor driver. Remove them in Windows under Settings > Apps > Installed apps if you no longer need them. To remove Tunero by hand: undo your changes on the Changes page, then delete the exe, the folder `%ProgramData%\Tunero` and `Tunero PC Optimizer` in the Start menu folder (`%AppData%\Microsoft\Windows\Start Menu\Programs`); for an installed copy also `C:\Program Files\Tunero` and the registry key `HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Tunero`.
 

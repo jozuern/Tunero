@@ -1,6 +1,6 @@
 # Open items
 
-What is still open after the audit of 2026-10-13 ([audit-2026-10-13.md](audit-2026-10-13.md)) and its fixes. Every high finding and every medium marked as a 1.0 blocker there is fixed in code; what follows needs a person, a VM image or hardware we do not have, or is planned work.
+Open items besides the findings of the audit of 2026-10-19 ([audit-2026-10-19.md](audit-2026-10-19.md)): what follows needs a person, a VM image or hardware we do not have, or is planned work.
 
 ## Left from the 1.0 list
 
