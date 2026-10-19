@@ -665,7 +665,10 @@ public class ExtendedActionTests
         AddAdapter(fx, "0001", "{11111111-1111-1111-1111-111111111111}", @"PCI\VEN_8086&DEV_15BC\3", 0x84, ("*JumboPacket", ["1514"]));
         var t = Tweak("test.nic", new NicPropertyAction { Properties = new(StringComparer.OrdinalIgnoreCase) { ["*EEE"] = "0" } });
         Assert.Equal(TweakState.Unsupported, fx.Engine.DetectState(t, Facts));
-        Assert.Equal(ApplyOutcome.NothingToDo, (await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options)).Outcome);
+        // Not "already in place": the adapter has nothing this tweak changes.
+        var r = await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options);
+        Assert.Equal(ApplyOutcome.Blocked, r.Outcome);
+        Assert.Contains(r.Blocks!, b => b.ReasonKey == "block.unsupported");
     }
 
     [Fact]

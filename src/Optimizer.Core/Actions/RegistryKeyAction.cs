@@ -33,6 +33,9 @@ public sealed class RegistryKeyAction : TweakAction
 
     public override void Apply(ActionContext c) => DeleteTree(c);
 
+    /// <summary>Still applied only while the key is gone: a key Windows or a program made again is left alone by undo.</summary>
+    public override bool IsStillApplied(ActionContext c, StoredValue applied) => !KeyExists(c);
+
     public override void Restore(ActionContext c, StoredValue original)
     {
         // Undo runs only while the key is still gone (a key Windows made again is left alone, see IsStillApplied); a

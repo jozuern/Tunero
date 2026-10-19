@@ -162,6 +162,30 @@ public partial class CatalogIntegrityTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public void TweaksWritingTheSameTargetDeclareTheConflict()
+    {
+        // Undoing one of two active tweaks on one target makes the other read as "reset by Windows": a declared conflict
+        // keeps only one of them active.
+        // A power setting restores only the side it writes, and a network adapter action only its own keywords.
+        static IEnumerable<string> Targets(TweakAction a) => a switch
+        {
+            PowerSettingAction p => new[] { p.Ac is null ? null : "ac", p.Dc is null ? null : "dc" }.OfType<string>().Select(side => $"{a.TargetKey}:{side}"),
+            NicPropertyAction n => n.Properties.Keys.Select(k => $"nic:{n.Media}:{k}".ToLowerInvariant()),
+            _ => [a.TargetKey],
+        };
+        var problems = new List<string>();
+        foreach (var g in Tweaks.SelectMany(t => t.Actions.SelectMany(Targets).Select(key => (Tweak: t, TargetKey: key))).GroupBy(x => x.TargetKey))
+        {
+            var sharing = g.Select(x => x.Tweak).DistinctBy(t => t.Id).ToList();
+            for (var i = 0; i < sharing.Count; i++)
+                for (var j = i + 1; j < sharing.Count; j++)
+                    if (!sharing[i].ConflictsWith.Contains(sharing[j].Id) && !sharing[j].ConflictsWith.Contains(sharing[i].Id))
+                        problems.Add($"{sharing[i].Id} and {sharing[j].Id} both write {g.Key}: add conflictsWith");
+        }
+        AssertNone(problems);
+    }
+
+    [Fact]
     public void ReferencedTweaksAndFindingsExist()
     {
         // Catalog tweaks and the fixes built at run time (fix.powerMode and the like).

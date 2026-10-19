@@ -347,6 +347,38 @@ public class TransactionTests
     }
 
     [Fact]
+    public async Task UndoRestoresTheOriginalWhenWindowsRemovedAValueWhoseAbsenceMeansTheSame()
+    {
+        using var fx = new EngineFixture();
+        const string path = @"SOFTWARE\TuneroTest\GameMode";
+        RegistryValue.Write(fx.Registry, Hive.Machine, path, "Auto", "dword", "0");
+        var t = Tweak("test.gameMode", new RegistryAction
+        {
+            Hive = Hive.Machine, Path = path, Name = "Auto", Value = System.Text.Json.JsonSerializer.SerializeToElement(1),
+            MissingMeans = System.Text.Json.JsonSerializer.SerializeToElement(1),
+        });
+        await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options);
+        RegistryValue.Delete(fx.Registry, Hive.Machine, path, "Auto"); // a feature update removes the value; Windows assumes 1
+
+        Assert.True(fx.Engine.Revert(t).Success);
+        Assert.Equal("0", RegistryValue.Read(fx.Registry, Hive.Machine, path, "Auto")!.Data);
+    }
+
+    [Fact]
+    public async Task UndoOfTheRefreshRateKeepsAResolutionChosenSince()
+    {
+        using var fx = new EngineFixture();
+        fx.Displays.Refresh[@"\\.\DISPLAY1"] = 60;
+        var t = Tweak("test.display", new DisplayModeAction { GdiName = @"\\.\DISPLAY1", Width = 2560, Height = 1440, RefreshHz = 144 });
+        await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options);
+        fx.Displays.Size[@"\\.\DISPLAY1"] = (1920, 1080); // the user picks another resolution in Settings
+
+        Assert.True(fx.Engine.Revert(t).Success);
+        Assert.Equal(60, fx.Displays.Refresh[@"\\.\DISPLAY1"]);
+        Assert.Equal((1920, 1080), fx.Displays.Size[@"\\.\DISPLAY1"]);
+    }
+
+    [Fact]
     public async Task TheRestorePointLimitGoesBackWhenNoRestorePointWasMade()
     {
         using var fx = new EngineFixture();

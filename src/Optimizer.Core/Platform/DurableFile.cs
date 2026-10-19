@@ -6,7 +6,11 @@ namespace Optimizer.Core.Platform;
 /// </summary>
 public static class DurableFile
 {
-    public static void WriteAllText(string file, string text)
+    /// <param name="prepare">
+    /// Runs on the temporary file before it replaces the old one (to set its owner: a rename keeps it). When it throws,
+    /// the old file stays as it was.
+    /// </param>
+    public static void WriteAllText(string file, string text, Action<string>? prepare = null)
     {
         var tmp = file + ".tmp";
         using (var stream = new FileStream(tmp, FileMode.Create, FileAccess.Write, FileShare.None, 4096, FileOptions.WriteThrough))
@@ -15,6 +19,15 @@ public static class DurableFile
             writer.Write(text);
             writer.Flush();
             stream.Flush(flushToDisk: true);
+        }
+        try
+        {
+            prepare?.Invoke(tmp);
+        }
+        catch
+        {
+            File.Delete(tmp);
+            throw;
         }
         File.Move(tmp, file, overwrite: true);
     }

@@ -137,8 +137,16 @@ internal sealed class FakeTasks : ITaskScheduler
 internal sealed class FakeDisplays : IDisplayManager
 {
     public Dictionary<string, int> Refresh { get; } = [];
+    public Dictionary<string, (int Width, int Height)> Size { get; } = [];
     public int? CurrentRefresh(string gdi) => Refresh.TryGetValue(gdi, out var r) ? r : null;
-    public void SetMode(string gdi, int w, int h, int hz) => Refresh[gdi] = hz;
+
+    public void SetMode(string gdi, int w, int h, int hz)
+    {
+        Size[gdi] = (w, h);
+        Refresh[gdi] = hz;
+    }
+
+    public void SetRefresh(string gdi, int hz) => Refresh[gdi] = hz;
 }
 
 internal sealed class FakeProcesses : IProcessRunner

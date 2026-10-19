@@ -438,11 +438,14 @@ public sealed class DisplayModeAction : TweakAction
 
     public override void Apply(ActionContext c) => c.Displays.SetMode(GdiName, Width, Height, RefreshHz);
 
-    /// <summary>A display that is no longer connected has nothing to restore (it keeps its own mode for the next time).</summary>
+    /// <summary>
+    /// Only the refresh rate goes back, at the resolution the display has now: the user may have changed it since. A
+    /// display that is no longer connected has nothing to restore (it keeps its own mode for the next time).
+    /// </summary>
     public override void Restore(ActionContext c, StoredValue original)
     {
         if (c.Displays.CurrentRefresh(GdiName) is null) return;
-        if (int.TryParse(original.Data, out var hz)) c.Displays.SetMode(GdiName, Width, Height, hz);
+        if (int.TryParse(original.Data, out var hz)) c.Displays.SetRefresh(GdiName, hz);
     }
 }
 

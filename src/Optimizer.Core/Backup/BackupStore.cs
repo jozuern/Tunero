@@ -295,12 +295,15 @@ public sealed class BackupStore
     /// </summary>
     private void WriteDurably(string file, string json)
     {
-        Platform.DurableFile.WriteAllText(file, json);
         // The data folder trusts only files owned by Administrators or SYSTEM. The default owner is set at start, but where
         // that failed (UAC off, Administrator protection) a file owned by the account would be ignored on the next read
-        // and removed on the next start, with the originals in it: set the owner here, or fail before the first change.
-        if (_secure && !SecureFolder.IsOwnedByAdmins(file) && !SecureFolder.MakeOwnedByAdmins(file))
-            throw new IOException($"{file} could not be given to the Administrators group; the change is not made.");
+        // and removed on the next start, with the originals in it: the owner is set on the new file before it replaces
+        // the old one, or the write fails and the old backup stays.
+        Platform.DurableFile.WriteAllText(file, json, tmp =>
+        {
+            if (_secure && !SecureFolder.IsOwnedByAdmins(tmp) && !SecureFolder.MakeOwnedByAdmins(tmp))
+                throw new IOException($"{file} could not be given to the Administrators group; the change is not made.");
+        });
     }
 
     /// <summary>Moves a damaged backup aside (it still holds the originals). False when it could not be moved.</summary>

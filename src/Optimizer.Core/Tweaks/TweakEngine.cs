@@ -350,7 +350,15 @@ public sealed class TweakEngine(ActionContext ctx, BackupStore store, IRestorePo
             changes = Preview(t);
             // After an undo that waits for a restart the running value still matches, but the setting is already reverted.
             pendingUndo = ActivePendingUndo(t, actions);
-            if (pendingUndo is null && actions.All(a => SafeState(a) != ActionState.NotApplied)) return new ApplyResult(ApplyOutcome.NothingToDo, changes);
+            if (pendingUndo is null)
+            {
+                var states = actions.Select(SafeState).ToList();
+                // Nothing to change only when something reads as applied: a tweak whose targets are all missing or unreadable
+                // here (no network adapter, a tool that failed) is not "already in place".
+                if (!states.Contains(ActionState.NotApplied))
+                    return states.Contains(ActionState.Applied) ? new ApplyResult(ApplyOutcome.NothingToDo, changes)
+                        : new ApplyResult(ApplyOutcome.Blocked, changes, Blocks: [new Block("block.unsupported")]);
+            }
         }
 
         // Safety net: one restore point per session before the first change (secondary to the JSON backup).
@@ -520,6 +528,10 @@ public sealed class TweakEngine(ActionContext ctx, BackupStore store, IRestorePo
                 // Everything was rolled back: the entries this run added go (with an earlier backup still applied they would
                 // read as "reset by Windows"), and the backup goes to history when nothing of this tweak remains applied.
                 backup.Entries.RemoveAll(e => added.Contains(e.TargetKey));
+                // Nothing of this run is left, so neither are its exports (each failed attempt would leave a .pow file).
+                var runExports = backup.Exports.Skip(exportsBefore).ToList();
+                DeleteExports(runExports);
+                backup.Exports.RemoveRange(exportsBefore, runExports.Count);
                 if (backup.Entries.All(e => before.TryGetValue(e.TargetKey, out var b) && b.SameAs(e.Original)))
                     SaveAfterChange(() => store.Archive(t.Id), t.Id);
                 else
@@ -656,8 +668,16 @@ public sealed class TweakEngine(ActionContext ctx, BackupStore store, IRestorePo
         {
             try
             {
-                if (Path.GetDirectoryName(Path.GetFullPath(file)) is { } dir && dir.Equals(Path.GetFullPath(ctx.ExportFolder).TrimEnd('\\'), StringComparison.OrdinalIgnoreCase))
-                    File.Delete(file);
+                var folder = Path.GetFullPath(ctx.ExportFolder).TrimEnd('\\');
+                // Only in the exports folder. A backup from before the rename to Tunero names the old data folder, whose
+                // files moved here with it: the same file name in the exports folder is that export.
+                var path = Path.GetFullPath(file);
+                if (!string.Equals(Path.GetDirectoryName(path), folder, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!string.Equals(Path.GetFileName(Path.GetDirectoryName(path)), Path.GetFileName(folder), StringComparison.OrdinalIgnoreCase)) continue;
+                    path = Path.Combine(folder, Path.GetFileName(path));
+                }
+                File.Delete(path);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
             {
@@ -881,7 +901,9 @@ public sealed class TweakEngine(ActionContext ctx, BackupStore store, IRestorePo
     private PendingUndo? ActivePendingUndo(TweakDefinition t, IReadOnlyList<TweakAction> actions)
     {
         if (store.GetPendingUndo(t.Id) is not { } p) return null;
-        if (LastBoot() < p.Since && actions.Any(a => a.TakesEffectAfterRestart && p.Entries.Any(e => e.TargetKey == a.TargetKey) && SafeState(a) == ActionState.Applied))
+        // A value that cannot be read now (a WMI error) is no proof that the restart happened: the record stays.
+        if (LastBoot() < p.Since && actions.Where(a => a.TakesEffectAfterRestart && p.Entries.Any(e => e.TargetKey == a.TargetKey))
+                .Any(a => SafeState(a) is ActionState.Applied or ActionState.Unsupported))
             return p;
         try
         {

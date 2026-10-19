@@ -620,7 +620,7 @@ public class EngineTests
         var t = T("power.hibernateOff");
 
         Assert.Equal(TweakState.Unsupported, fx.Engine.DetectState(t, Facts()));
-        Assert.Equal(ApplyOutcome.NothingToDo, (await fx.Engine.ApplyAsync(t, Facts(), new HashSet<string>(), Expert)).Outcome);
+        Assert.Equal(ApplyOutcome.Blocked, (await fx.Engine.ApplyAsync(t, Facts(), new HashSet<string>(), Expert)).Outcome);
         Assert.DoesNotContain(fx.Processes.Calls, c => c.Contains("/hibernate"));
     }
 

@@ -69,6 +69,17 @@ public sealed class RegistryAction : TweakAction
 
     public override TargetText TargetLabel(ActionContext c) => TargetText.Verbatim($"{c.Registry.DisplayRoot(Hive)}\\{Path}\\{(Name.Length == 0 ? "(Default)" : Name)}");
 
+    /// <summary>
+    /// Also still applied when Windows removed the value and its absence means what was written (Game Mode is on by
+    /// default): the setting did not change, so undo still brings back the original.
+    /// </summary>
+    public override bool IsStillApplied(ActionContext c, StoredValue applied)
+    {
+        using var hold = c.Registry.Hold(Hive);
+        if (Read(c) is not { } current || current.SameAs(applied)) return true;
+        return !current.Existed && !Delete && MissingMeans is { } m && Serialize(Kind, m) == Serialize(Kind, Value) && applied.SameAs(Desired(c));
+    }
+
     public override StoredValue Desired(ActionContext c) => Delete ? StoredValue.Missing : new StoredValue(true, Kind, Serialize(Kind, Value));
 
     public override StoredValue? Read(ActionContext c)

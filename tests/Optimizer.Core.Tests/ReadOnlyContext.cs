@@ -91,6 +91,7 @@ internal static class ReadOnlyContext
     {
         public int? CurrentRefresh(string gdiName) => real.CurrentRefresh(gdiName);
         public void SetMode(string gdiName, int width, int height, int refreshHz) => throw Refused($"display mode {gdiName}");
+        public void SetRefresh(string gdiName, int refreshHz) => throw Refused($"display mode {gdiName}");
     }
 
     private sealed class PowerMode(IPowerModeManager real) : IPowerModeManager

@@ -161,6 +161,9 @@
     {
       "id": "privacy.locationOff",
       "category": "Privacy",
+      "conflictsWith": [
+        "privacy.locationServiceOff"
+      ],
       "impact": {
         "gaming": 0,
         "basis": "situational",

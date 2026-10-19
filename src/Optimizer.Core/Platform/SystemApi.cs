@@ -248,17 +248,24 @@ public sealed class SystemBcdStore(IProcessRunner processes) : IBcdStore
 /// <summary>Task Scheduler 2.0 via its COM API (<see cref="TaskSchedulerCom"/>).</summary>
 public sealed class SystemTaskScheduler : ITaskScheduler
 {
+    /// <summary>
+    /// Null only for a task (or folder) that does not exist. Any other error throws: a change that took a Task Scheduler
+    /// error for a missing task would skip the task and still report the change as applied.
+    /// </summary>
     public bool? IsEnabled(string path)
     {
         try
         {
             return GetTask(path).Enabled;
         }
-        catch (Exception)
+        catch (Exception ex) when (IsNotFound(ex))
         {
             return null;
         }
     }
+
+    private static bool IsNotFound(Exception ex) =>
+        ex is FileNotFoundException or DirectoryNotFoundException || ex.HResult is unchecked((int)0x80070002) or unchecked((int)0x80070003);
 
     public void SetEnabled(string path, bool enabled)
     {
@@ -478,12 +485,17 @@ public sealed class SystemDisplayManager : IDisplayManager
         return Native.EnumDisplaySettingsEx(gdiName, -1 /* ENUM_CURRENT_SETTINGS */, ref dm, 0) ? (int)dm.dmDisplayFrequency : null;
     }
 
-    public void SetMode(string gdiName, int width, int height, int refreshHz)
+    public void SetMode(string gdiName, int width, int height, int refreshHz) => Change(gdiName, width, height, refreshHz);
+
+    public void SetRefresh(string gdiName, int refreshHz) => Change(gdiName, null, null, refreshHz);
+
+    private static void Change(string gdiName, int? width, int? height, int refreshHz)
     {
         var dm = new Native.DEVMODE { dmDeviceName = "", dmFormName = "", dmSize = (ushort)Marshal.SizeOf<Native.DEVMODE>() };
         if (!Native.EnumDisplaySettingsEx(gdiName, -1, ref dm, 0)) throw new InvalidOperationException($"Display {gdiName} not found");
-        dm.dmPelsWidth = (uint)width;
-        dm.dmPelsHeight = (uint)height;
+        // Without a width and height the current ones stay (EnumDisplaySettingsEx filled them in).
+        if (width is { } w) dm.dmPelsWidth = (uint)w;
+        if (height is { } h) dm.dmPelsHeight = (uint)h;
         dm.dmDisplayFrequency = (uint)refreshHz;
         dm.dmFields = NativeWrite.DmPelsWidth | NativeWrite.DmPelsHeight | NativeWrite.DmDisplayFrequency;
         var result = NativeWrite.ChangeDisplaySettingsEx(gdiName, ref dm, IntPtr.Zero, NativeWrite.CdsUpdateRegistry, IntPtr.Zero);

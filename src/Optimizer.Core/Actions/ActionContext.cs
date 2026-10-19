@@ -98,6 +98,8 @@ public interface IDisplayManager
     /// <summary>Current whole-Hz refresh of a display; null if the display is gone.</summary>
     int? CurrentRefresh(string gdiName);
     void SetMode(string gdiName, int width, int height, int refreshHz);
+    /// <summary>Only the refresh rate, at the resolution the display has now.</summary>
+    void SetRefresh(string gdiName, int refreshHz);
 }
 
 /// <summary>Keyboard accessibility features with a keyboard shortcut (SystemParametersInfo STICKYKEYS, FILTERKEYS, TOGGLEKEYS).</summary>

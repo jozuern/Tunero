@@ -8,6 +8,11 @@
 - **Icons:** the app icon, the website icons and the brand files no longer carry embedded content credentials (C2PA metadata); they look the same.
 - **Changelog:** the preview releases are summed up in a few lines; their full notes stay in the changelog as of 1.3.0.
 
+### Fixed
+
+- **Honest results:** a tweak this PC has nothing for (a network adapter tweak on Wi-Fi only) said "already in place"; it now says it is not available here. A Task Scheduler error no longer lets a change skip its tasks and still report Applied.
+- **Undo:** the refresh rate fix goes back at the resolution you use now, not the one it was made at; a value Windows removed whose absence means the same (Game Mode) no longer stops the original from coming back; a key a program made again is left alone.
+
 ## 1.3.0
 
 Tunero can now install itself into Program Files on the first start, and it opens only one window.
