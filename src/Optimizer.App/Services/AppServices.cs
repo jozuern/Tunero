@@ -93,6 +93,26 @@ public sealed class AppServices
     public string? ProfilePath => UserSid is { } sid
         ? Reg.HklmString($@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList\{sid}", "ProfileImagePath")
         : null;
+
+    /// <summary>
+    /// The signed-in user's Documents folder (also when moved, to OneDrive for example), for the file dialogs: under a
+    /// separate admin account this process's own Documents would be that account's. Null when it cannot be found.
+    /// </summary>
+    public string? SessionDocumentsFolder()
+    {
+        if (ProfilePath is not { } profile) return null;
+        try
+        {
+            using var key = Context.Registry.Open(Hive.User, @"Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders", writable: false);
+            var raw = key?.GetValue("Personal", null, Microsoft.Win32.RegistryValueOptions.DoNotExpandEnvironmentNames) as string;
+            var folder = raw is { Length: > 0 } ? MachineEnvironment.ForUser(profile)(raw) : Path.Combine(profile, "Documents");
+            return Directory.Exists(folder) ? folder : null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException or ArgumentException)
+        {
+            return null;
+        }
+    }
 }
 
 /// <summary>Dialogs the view model needs; implemented by the views.</summary>

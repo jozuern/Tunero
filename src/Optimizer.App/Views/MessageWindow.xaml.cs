@@ -99,9 +99,12 @@ public partial class MessageWindow : FluentWindow
 }
 
 /// <summary>IDialogs implementation for the view model.</summary>
-public sealed class Dialogs : IDialogs
+/// <param name="documentsFolder">Where the file dialogs open: the signed-in user's Documents (null: this process's own).</param>
+public sealed class Dialogs(Func<string?>? documentsFolder = null) : IDialogs
 {
     private static Window? Owner => Application.Current.MainWindow;
+
+    private string StartFolder => documentsFolder?.Invoke() ?? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
 
     public ConfirmResult? ConfirmApply(ConfirmRequest request)
     {
@@ -137,7 +140,7 @@ public sealed class Dialogs : IDialogs
             DefaultExt = extension,
             AddExtension = true,
             OverwritePrompt = true,
-            InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+            InitialDirectory = StartFolder,
         };
         return dialog.ShowDialog(Owner) == true ? dialog.FileName : null;
     }
@@ -148,7 +151,7 @@ public sealed class Dialogs : IDialogs
         {
             Filter = $"{filterName} (*{extension})|*{extension}",
             CheckFileExists = true,
-            InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+            InitialDirectory = StartFolder,
         };
         return dialog.ShowDialog(Owner) == true ? dialog.FileName : null;
     }

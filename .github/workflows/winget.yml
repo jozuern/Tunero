@@ -88,12 +88,16 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
-        gh api repos/microsoft/winget-pkgs/contents/manifests/j/jozuern/Tunero --silent 2>$null
-        if ($LASTEXITCODE -ne 0) {
+        $out = gh api repos/microsoft/winget-pkgs/contents/manifests/j/jozuern/Tunero --silent 2>&1
+        if ($LASTEXITCODE -eq 0) {
+          "PUBLISHED=true" >> $env:GITHUB_ENV
+        } elseif (($out -join "`n") -match 'HTTP 404') {
           "jozuern.Tunero is not in winget-pkgs yet: submit its first version with scripts/winget-manifest.ps1 (CONTRIBUTING, winget)." | Out-File -Encoding utf8 -Append $env:GITHUB_STEP_SUMMARY
           "PUBLISHED=false" >> $env:GITHUB_ENV
         } else {
-          "PUBLISHED=true" >> $env:GITHUB_ENV
+          # Rate limit, outage or a token problem: not proof that the package is missing, so the run fails visibly.
+          Write-Error "Could not check winget-pkgs: $($out -join ' ')"
+          exit 1
         }
         # The pwsh shell of Actions ends the step with the last exit code: the expected 404 is no failure.
         $global:LASTEXITCODE = 0

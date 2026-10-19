@@ -19,7 +19,7 @@
                             <TextBlock Text="{l:Tr Tag_Restart}" FontSize="12" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
                         </Border>
                         <!-- The tool's report (chkdsk, reagentc) under the card that ran it -->
-                        <TextBox Style="{StaticResource OutputBox}" Text="{Binding Output, Mode=OneWay}" Visibility="{Binding Output, Converter={StaticResource NullToVisibility}}" />
+                        <TextBox Style="{StaticResource OutputBox}" AutomationProperties.Name="{Binding Title}" Text="{Binding Output, Mode=OneWay}" Visibility="{Binding Output, Converter={StaticResource NullToVisibility}}" />
                     </StackPanel>
                 </ui:CardControl.Header>
                 <!-- Named after its card: every row's button says "Run" or "Restart", which tells a screen reader nothing -->
@@ -101,7 +101,7 @@
                                     <ui:Button Content="{l:Tr Health_DismRestore}" Command="{Binding Health.DismRestoreCommand}" IsEnabled="{Binding Health.IsToolRunning, Converter={StaticResource InverseBool}}" Margin="0,0,8,0" />
                                     <ui:Button Content="{l:Tr Common_Stop}" Command="{Binding Health.StopToolCommand}" Visibility="{Binding Health.IsToolRunning, Converter={StaticResource BoolToVisibility}}" />
                                 </WrapPanel>
-                                <TextBox Style="{StaticResource OutputBox}" Text="{Binding Health.ToolOutput, Mode=OneWay}" Visibility="{Binding Health.ToolOutput, Converter={StaticResource NullToVisibility}}" />
+                                <TextBox Style="{StaticResource OutputBox}" AutomationProperties.Name="{l:Tr Health_SystemFiles}" Text="{Binding Health.ToolOutput, Mode=OneWay}" Visibility="{Binding Health.ToolOutput, Converter={StaticResource NullToVisibility}}" />
                             </StackPanel>
                         </ui:Card>
                         <ui:CardControl Padding="{StaticResource CardPadding}" Margin="{StaticResource CardRowMargin}">

@@ -75,7 +75,7 @@
                                         </DataTemplate>
                                     </v:ItemList.ItemTemplate>
                                 </v:ItemList>
-                                <TextBox Style="{StaticResource OutputBox}" Text="{Binding Apps.SearchOutput, Mode=OneWay}" Visibility="{Binding Apps.SearchOutput, Converter={StaticResource NullToVisibility}}" />
+                                <TextBox Style="{StaticResource OutputBox}" AutomationProperties.Name="{l:Tr Apps_SearchTitle}" Text="{Binding Apps.SearchOutput, Mode=OneWay}" Visibility="{Binding Apps.SearchOutput, Converter={StaticResource NullToVisibility}}" />
                             </StackPanel>
                         </ui:Card>
 
@@ -121,7 +121,7 @@
                                 </DataTemplate>
                             </v:ItemList.ItemTemplate>
                         </v:ItemList>
-                        <TextBox Style="{StaticResource OutputBox}" Text="{Binding Apps.Output, Mode=OneWay}" Visibility="{Binding Apps.Output, Converter={StaticResource NullToVisibility}}" />
+                        <TextBox Style="{StaticResource OutputBox}" AutomationProperties.Name="{l:Tr Apps_Title}" Text="{Binding Apps.Output, Mode=OneWay}" Visibility="{Binding Apps.Output, Converter={StaticResource NullToVisibility}}" />
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>

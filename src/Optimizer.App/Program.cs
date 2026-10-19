@@ -24,9 +24,8 @@ public static class Program
 #pragma warning restore IL3000
         // Command line runs (--apply, --apply-recommended, --export, --reapply, --undo-all) have no window: a refusal is an exit code,
         // never a dialog a script waits on.
-        var commandLineRun = args.Any(a => a.Equals("--apply", StringComparison.OrdinalIgnoreCase) || a.Equals("--undo-all", StringComparison.OrdinalIgnoreCase)
-                                           || a.Equals("--apply-recommended", StringComparison.OrdinalIgnoreCase) || a.Equals("--export", StringComparison.OrdinalIgnoreCase)
-                                           || a.Equals(Optimizer.Core.Tweaks.ReapplyTask.Argument, StringComparison.OrdinalIgnoreCase));
+        // The same rule as the start that follows (App.CliArgs): "--apply" without a file opens the window in both.
+        var commandLineRun = new App.CliArgs(args).IsCommandLineRun;
         int Refuse(string text)
         {
             if (!commandLineRun) ShowError(text);

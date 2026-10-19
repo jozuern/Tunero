@@ -39,7 +39,7 @@ public class SystemApiReadTests(ITestOutputHelper output)
 
     [Fact]
     [Trait("Category", "Hardware")]
-    public void EveryCatalogTweakHasADetectableState()
+    public void DetectingEveryCatalogTweakReadsWithoutAnError()
     {
         var folder = TestFolders.Create("read");
         try
@@ -61,6 +61,7 @@ public class SystemApiReadTests(ITestOutputHelper output)
         {
             TestFolders.Delete(folder);
         }
-        // No exception and no tweak without a state is the assertion; states depend on this PC.
+        // The assertion is that no read throws; which state each tweak has depends on this PC (one it lacks reads
+        // Unsupported), so the states are only written to the output.
     }
 }

@@ -44,7 +44,8 @@ public static class Reg
     public static int? HklmInt(string path, string name) => HklmValue(path, name) switch
     {
         int i => i,
-        long l => (int)l,
+        // A QWORD that does not fit is not cut to its low 32 bits (a different number): it reads as unknown.
+        long l when l is >= int.MinValue and <= int.MaxValue => (int)l,
         string s when int.TryParse(s, out var p) => p,
         _ => null,
     };

@@ -9,6 +9,7 @@ namespace Optimizer.Core.Tests;
 /// Installing the downloaded exe into Program Files: when it is offered, the Installed apps entry, the install steps and
 /// their undo. Registry in the sandbox, files in a temp folder, the signature check faked.
 /// </summary>
+[Collection(GlobalStateCollection.Name)] // sets %ProgramW6432% for a moment
 public sealed class AppInstallTests : IDisposable
 {
     private const string Subject = "CN=Open Source Developer Joshua Zürn, O=Open Source Developer, L=Neudenau, S=Baden-Württemberg, C=DE";
@@ -206,7 +207,7 @@ public sealed class AppInstallTests : IDisposable
 
     /// <summary>The downloaded copy's own process may still hold its exe for a moment: the delete is tried again.</summary>
     [Fact]
-    public void TheOldCopyIsDeletedOnceItIsNoLongerInUse()
+    public async Task TheOldCopyIsDeletedOnceItIsNoLongerInUse()
     {
         var running = Running();
         var installed = AppInstall.Install(Request(running), _registry).InstalledExe!;
@@ -217,7 +218,7 @@ public sealed class AppInstallTests : IDisposable
             held.Dispose();
         });
         Assert.True(AppInstall.DeleteOldCopy(running, installed));
-        release.Wait();
+        await release;
         Assert.False(File.Exists(running));
     }
 

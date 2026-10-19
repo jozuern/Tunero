@@ -46,7 +46,7 @@
                         <TextBlock x:Name="ComponentSource" Style="{StaticResource Mono}" />
                     </StackPanel>
                 </DockPanel>
-                <TextBox x:Name="LicenseText" FontFamily="{StaticResource MonoFont}" FontSize="12" IsReadOnly="True"
+                <TextBox x:Name="LicenseText" AutomationProperties.LabeledBy="{Binding ElementName=ComponentName}" FontFamily="{StaticResource MonoFont}" FontSize="12" IsReadOnly="True"
                          TextWrapping="Wrap" TextAlignment="Left" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                          VerticalContentAlignment="Top" />
             </DockPanel>

@@ -48,8 +48,7 @@
         }
       ],
       "sources": [
-        "https://learn.microsoft.com/en-us/windows/client-management/mdm/policy-csp-experience",
-        "https://learn.microsoft.com/en-us/windows/privacy/manage-connections-from-windows-operating-system-components-to-microsoft-services"
+        "https://learn.microsoft.com/en-us/windows/client-management/mdm/policy-csp-experience"
       ],
       "scope": "user"
     },
@@ -75,8 +74,7 @@
         }
       ],
       "sources": [
-        "https://learn.microsoft.com/en-us/windows/client-management/mdm/policy-csp-experience",
-        "https://learn.microsoft.com/en-us/windows/privacy/manage-connections-from-windows-operating-system-components-to-microsoft-services"
+        "https://learn.microsoft.com/en-us/windows/client-management/mdm/policy-csp-experience"
       ]
     },
     {
@@ -227,8 +225,7 @@
         }
       ],
       "sources": [
-        "https://learn.microsoft.com/en-us/windows/client-management/mdm/policy-csp-privacy",
-        "https://learn.microsoft.com/en-us/windows/privacy/manage-connections-from-windows-operating-system-components-to-microsoft-services"
+        "https://learn.microsoft.com/en-us/windows/client-management/mdm/policy-csp-privacy"
       ]
     },
     {
@@ -545,8 +542,7 @@
         }
       ],
       "sources": [
-        "https://learn.microsoft.com/en-us/windows/client-management/mdm/policy-csp-errorreporting",
-        "https://learn.microsoft.com/en-us/windows/privacy/manage-connections-from-windows-operating-system-components-to-microsoft-services"
+        "https://learn.microsoft.com/en-us/windows/client-management/mdm/policy-csp-errorreporting"
       ]
     },
     {
@@ -747,8 +743,7 @@
         }
       ],
       "sources": [
-        "https://learn.microsoft.com/en-us/windows/client-management/mdm/policy-csp-messaging",
-        "https://learn.microsoft.com/en-us/windows/privacy/manage-connections-from-windows-operating-system-components-to-microsoft-services"
+        "https://learn.microsoft.com/en-us/windows/client-management/mdm/policy-csp-messaging"
       ]
     },
     {

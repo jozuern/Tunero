@@ -32,7 +32,16 @@ public static class StreamingProcess
         var exited = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         p.Exited += (_, _) => exited.TrySetResult();
         if (!p.Start()) throw new InvalidOperationException($"Cannot start {file}");
-        started?.Invoke();
+        try
+        {
+            started?.Invoke();
+        }
+        catch
+        {
+            // Nobody would read its output or wait for it: the tool does not keep running unobserved.
+            ProcessHardening.KillTree(p);
+            throw;
+        }
         p.BeginOutputReadLine();
         p.BeginErrorReadLine();
         try

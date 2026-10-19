@@ -17,6 +17,24 @@ public partial class DocLintTests(ITestOutputHelper output)
         Assert.Empty(issues);
     }
 
+    /// <summary>
+    /// Every source a tweak lists in the catalog is cited on its EN and DE page (the DE page may link the de-de version):
+    /// a source nobody can see on the page proves nothing there.
+    /// </summary>
+    [Fact]
+    public void CatalogSourcesAreCitedOnTheirPages()
+    {
+        static string Norm(string url) => Regex.Replace(url.ToLowerInvariant(), "/(en-us|de-de)/", "/").TrimEnd('/');
+        var problems = new List<string>();
+        foreach (var t in Tweaks.TweakCatalog.Current.Tweaks)
+            foreach (var lang in DocStore.Languages)
+                if (DocStore.Get(t.DocId, lang) is { } page)
+                    problems.AddRange(t.Sources.Where(s => !Norm(page.Raw).Contains(Norm(s), StringComparison.Ordinal))
+                        .Select(s => $"{t.Id} ({lang}): {s} is not cited on {t.DocId}.md"));
+        foreach (var p in problems) output.WriteLine(p);
+        Assert.Empty(problems);
+    }
+
     [Fact]
     public void LabelsExistInBothLanguages() =>
         Assert.DoesNotContain(DocLint.Run(), i => i.DocId == "labels.json");

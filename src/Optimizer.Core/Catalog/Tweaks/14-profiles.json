@@ -54,7 +54,6 @@
       ],
       "sources": [
         "https://learn.microsoft.com/en-us/archive/blogs/richardsmith/powercfg-useful-if-you-know-the-guids",
-        "https://learn.microsoft.com/en-us/windows-hardware/design/device-experiences/powercfg-command-line-options",
         "https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-7/dd744398(v=ws.10)"
       ]
     },

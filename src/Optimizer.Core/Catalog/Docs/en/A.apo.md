@@ -11,7 +11,7 @@ Checks whether the processor supports Intel Application Optimization.
 ## Why it matters
 Intel APO directs how a supported game's threads are spread over performance and efficient cores. Intel publishes a list of supported games and says APO may improve their performance; it works only for the titles on that list [1]. Intel names verified processors, for example Core i5-14600K, i7-14700K, i9-14900K, Core Ultra 200S K models and some mobile HX and H models; other 12th gen and newer processors get only limited support [1]. APO runs as part of the Intel Dynamic Tuning Technology (DTT) driver, which comes from the PC or mainboard maker [1].
 ::: variant dttFound
-The Dynamic Tuning driver is installed on this PC.
+We found services that look like the Intel Dynamic Tuning Technology driver's. Their names come from our own list, which is not confirmed on real hardware yet, so the driver is probably installed, but not certainly.
 :::
 ::: variant dttNotFound
 We did not find the Intel Dynamic Tuning Technology services we look for. That does not prove the driver is missing: it may use a name we do not know.

@@ -195,7 +195,7 @@ public partial class App : Application
         }
 
         // Developer aid for screenshots: start with this profile for the session (never saved).
-        var vm = new MainViewModel(_settings, services, new Dialogs()) { ProfileOverride = args.Value("--profile") };
+        var vm = new MainViewModel(_settings, services, new Dialogs(services.SessionDocumentsFolder)) { ProfileOverride = args.Value("--profile") };
         // Without the confirmation: only for runs without admin rights (Debug), not for whoever starts the elevated exe.
         if (args.Value("--expert") is "on" && !DataPaths.ProcessIsElevated) vm.EnableExpertForSession();
         Mark("view model ready");
@@ -832,7 +832,8 @@ public partial class App : Application
             (MainWindow?.DataContext as MainViewModel)?.ShowResult(Loc.Instance["Crash_OpenFailed"], Wpf.Ui.Controls.InfoBarSeverity.Warning);
     }
 
-    private sealed class CliArgs(string[] args)
+    /// <summary>The switches, read the same way here and in <see cref="Program.Main"/> (which decides how a refusal is shown).</summary>
+    internal sealed class CliArgs(string[] args)
     {
         public string? Value(string name)
         {

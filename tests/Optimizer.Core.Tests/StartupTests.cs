@@ -16,6 +16,7 @@ using Optimizer.Core.Tweaks;
 
 namespace Optimizer.Core.Tests;
 
+[Collection(GlobalStateCollection.Name)] // sets an environment variable for a moment
 public class StartupTests
 {
     private static readonly Facts Facts = new Facts().Set("os.build", 26300).Set("elevated", true);
