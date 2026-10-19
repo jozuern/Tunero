@@ -75,12 +75,13 @@ public static class ProgramRules
         "Memory Compression", "Secure System",
     };
 
-    // Each note says what the process is, as Microsoft describes it:
-    // MsMpEng.exe: https://learn.microsoft.com/defender-endpoint/troubleshoot-performance-issues
-    // SearchIndexer.exe: https://learn.microsoft.com/windows/win32/search/-search-indexing-process-overview
-    // TiWorker.exe / TrustedInstaller.exe: https://learn.microsoft.com/windows/deployment/update/how-windows-update-works
-    // Memory Compression: https://learn.microsoft.com/windows/whats-new/ (memory manager compression store, Windows 10)
-    // System: https://learn.microsoft.com/windows-hardware/drivers/kernel/ (kernel and drivers run in the System process)
+    // Each note says only what these pages say (all opened 2026-10-19):
+    // MsMpEng.exe: https://learn.microsoft.com/defender-endpoint/troubleshoot-performance-issues (real-time protection and scans)
+    // SearchIndexer.exe: https://learn.microsoft.com/windows/win32/search/-search-3x-wds-overview (the indexer service)
+    // TiWorker.exe / TrustedInstaller.exe: https://learn.microsoft.com/troubleshoot/windows-client/installing-updates-features-roles/windows-update-hangs-updates-uninstalled
+    // Memory Compression: https://blogs.windows.com/windows-insider/2015/08/18/announcing-windows-10-insider-preview-build-10525/ (compression store)
+    // System: https://learn.microsoft.com/windows/win32/fileio/file-caching (lazy writer) and
+    // https://learn.microsoft.com/windows-hardware/drivers/ddi/wdm/nf-wdm-pscreatesystemthread (driver threads run in the system process)
     private static readonly Dictionary<string, string> Notes = new(StringComparer.OrdinalIgnoreCase)
     {
         ["MsMpEng.exe"] = "Activity_Note_MsMpEng",

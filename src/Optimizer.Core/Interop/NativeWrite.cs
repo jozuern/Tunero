@@ -8,6 +8,17 @@ namespace Optimizer.Core.Interop;
 /// </summary>
 internal static partial class NativeWrite
 {
+    // ---------- kernel32: End task (Live readings) ----------
+    internal const uint ProcessTerminate = 0x0001;
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool TerminateProcess(IntPtr process, uint exitCode);
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool GetProcessTimes(IntPtr process, out long creation, out long exit, out long kernel, out long user);
+
     // ---------- advapi32: services ----------
     internal const uint ScManagerConnect = 0x0001;
     internal const uint ServiceQueryConfig = 0x0001, ServiceChangeConfig = 0x0002, ServiceQueryStatus = 0x0004;

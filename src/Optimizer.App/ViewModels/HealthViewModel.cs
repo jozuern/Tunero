@@ -54,7 +54,10 @@ public sealed partial class SensorTile(string type, string title) : ObservableOb
     public override string ToString() => $"{Title}: {Value} {Unit}, {Source}";
 }
 
-/// <summary>One component (processor, graphics card, drive, ...): headline tiles and, folded, every reading.</summary>
+/// <summary>
+/// One component (processor, graphics card, drive, ...): headline tiles, the programs using it and, folded, every
+/// reading and every program.
+/// </summary>
 public sealed partial class SensorGroup(string id, string name, string kind, Wpf.Ui.Controls.SymbolRegular icon,
     IReadOnlyList<SensorTile> tiles, IReadOnlyList<SensorSection> sections, string allTitle) : ObservableObject
 {
@@ -65,8 +68,17 @@ public sealed partial class SensorGroup(string id, string name, string kind, Wpf
     public Wpf.Ui.Controls.SymbolRegular Icon { get; } = icon;
     public IReadOnlyList<SensorTile> Tiles { get; } = tiles;
     public IReadOnlyList<SensorSection> Sections { get; } = sections;
-    public string AllTitle { get; } = allTitle;
+    [ObservableProperty] private string _allTitle = allTitle;
     [ObservableProperty] private bool _isExpanded;
+
+    /// <summary>The library's hardware type (Cpu, GpuNvidia, Storage, ...).</summary>
+    public string HardwareType { get; init; } = "";
+
+    /// <summary>The programs using this component; null for components without such a list (mainboard, battery).</summary>
+    public ActivityList? Activity { get; init; }
+
+    /// <summary>False while the program list cannot be read for this component (no GPU engine counters).</summary>
+    [ObservableProperty] private bool _showsActivity = true;
 
     // What screen readers announce for this item in a list or combo box.
     public override string ToString() => Name;
@@ -78,7 +90,8 @@ public sealed record RunRow(string Label, string AvgFps, string Low, string Fram
     public override string ToString() => Label;
 }
 
-public sealed partial class HealthViewModel(IPageHost owner, IDialogs dialogs) : PageViewModel(owner)
+/// <param name="addPriorityRule">Opens the start priority rules with this exe name (Live readings' program details).</param>
+public sealed partial class HealthViewModel(IPageHost owner, IDialogs dialogs, Action<string>? addPriorityRule = null) : PageViewModel(owner)
 {
     /// <summary>The disk rows come from the scan result: built again after every scan.</summary>
     protected override bool UsesProfile => true;
@@ -402,11 +415,122 @@ public sealed partial class HealthViewModel(IPageHost owner, IDialogs dialogs) :
             // A read still running keeps the library open; it is closed when that read ends.
             if (!_readingSensors) _sensors?.Dispose();
             _sensors = null;
+            CloseActivity();
+            _activityModel = null;
+            _activityLists.Clear();
             SensorGroups.Clear();
             _sensorLayout = "";
             SensorsStatus = "";
         }
     }
+
+    // Programs per device (opened with the sensors; the disk trace runs only while the Health page shows)
+
+    private Optimizer.Core.Activity.ActivityModel? _activityModel;
+    private Optimizer.Core.Activity.ActivityMonitor? _activity;
+    private readonly Lock _activityLock = new();
+    private bool _exitHooked;
+
+    /// <summary>Developer aid (--activity-demo): fixed programs and one demo drive card instead of this PC's.</summary>
+    private bool _activityDemo;
+
+    public void UseActivityDemo() => _activityDemo = true;
+
+    /// <summary>Developer aid (--select-program): selects a row of that name as a click would, on a drive card first.</summary>
+    public void SelectProgram(string name)
+    {
+        foreach (var group in SensorGroups.OrderBy(g => g.Activity?.Kind == Optimizer.Core.Activity.DeviceKind.Drive ? 0 : 1))
+            if (group.Activity?.Rows.FirstOrDefault(r => string.Equals(r.Name, name, StringComparison.OrdinalIgnoreCase)) is { } row)
+            {
+                group.IsExpanded = true;
+                group.Activity.Selected = row;
+                return;
+            }
+    }
+
+    private static readonly SensorReading[] DemoDrive =
+    [
+        new("/nvme/1", "Samsung SSD 990 PRO 2TB", "Storage", "Temperature", "Temperature", 52, 55),
+        new("/nvme/1", "Samsung SSD 990 PRO 2TB", "Storage", "Total Activity", "Load", 80, 92),
+        new("/nvme/1", "Samsung SSD 990 PRO 2TB", "Storage", "Read Activity", "Load", 78, 90),
+        new("/nvme/1", "Samsung SSD 990 PRO 2TB", "Storage", "Write Activity", "Load", 6, 21),
+    ];
+
+    /// <summary>The page shows or hides: the disk trace and the GPU counters close when it hides, Since on carries over.</summary>
+    public void PageShown(bool shown)
+    {
+        if (!shown) CloseActivity();
+        else if (SensorsOn && _sensors is not null) OpenActivityAsync().Forget("program activity");
+    }
+
+    private async Task OpenActivityAsync()
+    {
+        if (_activity is not null) return;
+        _activityModel ??= new Optimizer.Core.Activity.ActivityModel(_activityDemo ? DemoActivitySources.Names() : ActivityNames(),
+            Environment.ProcessorCount, TimeSpan.FromSeconds(30));
+        var model = _activityModel;
+        var demo = _activityDemo;
+        var sources = await Task.Run(() => demo
+            ? new DemoActivitySources()
+            : (Optimizer.Core.Activity.IActivitySources)Optimizer.Core.Activity.NativeActivitySources.Open(DataPaths.ProcessIsElevated));
+        // Switched off, left the page or opened twice meanwhile: the copy that is not needed is closed.
+        if (!SensorsOn || Owner.CurrentPage != Page.Health || _activity is not null || !ReferenceEquals(model, _activityModel))
+        {
+            sources.Dispose();
+            return;
+        }
+        _activity = new Optimizer.Core.Activity.ActivityMonitor(sources, model);
+        if (!_exitHooked)
+        {
+            // Last resort: the disk trace session must never outlive the app (CloseSensors at exit closes it first).
+            AppDomain.CurrentDomain.ProcessExit += (_, _) => CloseActivity();
+            _exitHooked = true;
+        }
+    }
+
+    private void CloseActivity()
+    {
+        Optimizer.Core.Activity.ActivityMonitor? monitor;
+        lock (_activityLock)
+        {
+            monitor = _activity;
+            _activity = null;
+        }
+        monitor?.Dispose();
+    }
+
+    private Optimizer.Core.Activity.ActivityResult? ReadActivity()
+    {
+        lock (_activityLock) return _activity?.Read();
+    }
+
+    /// <summary>What a program's details do on this PC: read its signature, end it, show it in Explorer, add a rule.</summary>
+    private ActivityActions ActivityActions() => new(dialogs, Owner, Optimizer.Core.Activity.ProcessControl.End,
+        p => ProgramDetails.Build(p, Optimizer.Core.Activity.ProcessSnapshotReader.IsCritical, Optimizer.Core.Startup.SignatureVerifier.Verify, Environment.ProcessId),
+        path =>
+        {
+            var explorer = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "explorer.exe");
+            if (File.Exists(path)) DeElevatedLauncher.Open(explorer, $"/select,\"{path}\"", Owner.Services.Elevation);
+        },
+        exe => addPriorityRule?.Invoke(exe));
+
+    private static Optimizer.Core.Activity.ProgramNames ActivityNames() => new(
+        Optimizer.Core.Activity.ProcessSnapshotReader.ImagePath,
+        path =>
+        {
+            try
+            {
+                return FileVersionInfo.GetVersionInfo(path).FileDescription;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        },
+        Optimizer.Core.Activity.ServiceHosts.Read,
+        services => Loc.Instance.Format("Activity_ServiceHost", services.Count <= 3
+            ? string.Join(", ", services)
+            : Loc.Instance.Format("Activity_AndMore", string.Join(", ", services.Take(3)), services.Count - 3)));
 
     /// <summary>
     /// Opening the sensor library enumerates processor, board, drives, memory and battery and can take seconds: done off
@@ -436,6 +560,7 @@ public sealed partial class HealthViewModel(IPageHost owner, IDialogs dialogs) :
         _timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
         _timer.Tick += (_, _) => ReadSensorsAsync().Forget("sensor reading");
         _timer.Start();
+        if (Owner.CurrentPage == Page.Health) await OpenActivityAsync();
         ReadSensorsAsync().Forget("sensor reading");
     }
 
@@ -450,9 +575,10 @@ public sealed partial class HealthViewModel(IPageHost owner, IDialogs dialogs) :
         if (_sensors is not { } s || _readingSensors || Owner.CurrentPage != Page.Health) return;
         _readingSensors = true;
         IReadOnlyList<SensorReading>? readings;
+        Optimizer.Core.Activity.ActivityResult? activity = null;
         try
         {
-            readings = await Task.Run(s.Read);
+            (readings, activity) = await Task.Run(() => (s.Read(), ReadActivity()));
         }
         catch (Exception ex)
         {
@@ -466,8 +592,48 @@ public sealed partial class HealthViewModel(IPageHost owner, IDialogs dialogs) :
             if (!ReferenceEquals(s, _sensors)) s.Dispose();
         }
         if (readings is null || !ReferenceEquals(s, _sensors)) return;
-        ShowSensorReadings(readings);
+        ShowSensorReadings(_activityDemo ? [.. readings, .. DemoDrive] : readings);
+        if (activity is not null) ShowActivity(activity);
     }
+
+    /// <summary>Each card's program list from one activity reading; the GPU cards find their adapter by name.</summary>
+    private void ShowActivity(Optimizer.Core.Activity.ActivityResult result)
+    {
+        IReadOnlyList<Optimizer.Core.Activity.GpuAdapter> adapters;
+        lock (_activityLock) adapters = _activity?.Adapters ?? [];
+        foreach (var group in SensorGroups)
+        {
+            if (group.Activity is not { } list) continue;
+            var key = DeviceOf(group, adapters);
+            var unavailable = list.Kind == Optimizer.Core.Activity.DeviceKind.Drive && result.DiskUnavailableKey is { } why
+                ? Loc.Instance.Format("Activity_DiskUnavailable", Loc.Instance[why])
+                : null;
+            group.ShowsActivity = key is not null && (list.Kind != Optimizer.Core.Activity.DeviceKind.Gpu || result.GpuAvailable);
+            list.Update(key is { } k ? result.Devices.GetValueOrDefault(k) : null, unavailable);
+            group.AllTitle = Loc.Instance.Format("Sensors_AllWithPrograms", group.Sections.Sum(s => s.Rows.Count), list.ProgramCount);
+        }
+    }
+
+    private static Optimizer.Core.Activity.DeviceKey? DeviceOf(SensorGroup group, IReadOnlyList<Optimizer.Core.Activity.GpuAdapter> adapters) => group.Activity?.Kind switch
+    {
+        Optimizer.Core.Activity.DeviceKind.Processor => new(Optimizer.Core.Activity.DeviceKind.Processor, 0),
+        Optimizer.Core.Activity.DeviceKind.Memory => new(Optimizer.Core.Activity.DeviceKind.Memory, 0),
+        Optimizer.Core.Activity.DeviceKind.Drive => Optimizer.Core.Activity.DeviceMapping.DiskNumber(group.Id) is { } n
+            ? new(Optimizer.Core.Activity.DeviceKind.Drive, n) : null,
+        Optimizer.Core.Activity.DeviceKind.Gpu => Optimizer.Core.Activity.DeviceMapping.GpuLuid(group.Name, adapters) is { } luid
+            ? new(Optimizer.Core.Activity.DeviceKind.Gpu, luid) : null,
+        _ => null,
+    };
+
+    /// <summary>Which components get a program list.</summary>
+    private static Optimizer.Core.Activity.DeviceKind? ActivityKind(string hardwareType) => hardwareType switch
+    {
+        "Cpu" => Optimizer.Core.Activity.DeviceKind.Processor,
+        "GpuNvidia" or "GpuAmd" or "GpuIntel" => Optimizer.Core.Activity.DeviceKind.Gpu,
+        "Memory" => Optimizer.Core.Activity.DeviceKind.Memory,
+        "Storage" => Optimizer.Core.Activity.DeviceKind.Drive,
+        _ => null,
+    };
 
     /// <summary>The kinds of reading shown, in the order of the tiles and of the sections in the full list.</summary>
     private static readonly string[] SensorTypes = ["Temperature", "Load", "Clock", "Power", "Fan"];
@@ -478,6 +644,9 @@ public sealed partial class HealthViewModel(IPageHost owner, IDialogs dialogs) :
     /// <summary>The row of every shown reading, by its place in the read; the tiles with the readings they choose from.</summary>
     private SensorRow[] _sensorRows = [];
     private readonly List<(SensorTile Tile, int[] Readings)> _sensorTiles = [];
+
+    /// <summary>Program lists by component: kept when the cards are built again, so sorting and the selection stay.</summary>
+    private readonly Dictionary<string, ActivityList> _activityLists = [];
 
     /// <summary>
     /// Fills the cards in place every two seconds: they are built only when the set of sensors changes, so an open full
@@ -530,6 +699,8 @@ public sealed partial class HealthViewModel(IPageHost owner, IDialogs dialogs) :
         {
             var first = component.First().Reading;
             var (kind, icon, _) = SensorKind(first.HardwareType);
+            if (first.HardwareType == "Storage" && Optimizer.Core.Activity.DeviceMapping.DiskNumber(first.HardwareId) is { } disk)
+                kind = l.Format("Sensors_DriveNumber", disk);
             var tiles = new List<SensorTile>();
             var sections = new List<SensorSection>();
             foreach (var type in SensorTypes)
@@ -544,10 +715,14 @@ public sealed partial class HealthViewModel(IPageHost owner, IDialogs dialogs) :
                 tiles.Add(tile);
                 _sensorTiles.Add((tile, ofType.Select(x => x.Index).ToArray()));
             }
+            var activityKind = ActivityKind(first.HardwareType);
             SensorGroups.Add(new SensorGroup(first.HardwareId, first.Hardware, kind, icon, tiles, sections, l.Format("Sensors_All", component.Count()))
             {
                 IsExpanded = open.Contains(first.HardwareId),
+                HardwareType = first.HardwareType,
+                Activity = activityKind is { } k ? _activityLists.GetValueOrDefault(first.HardwareId) ?? new ActivityList(k, _activityDemo ? DemoActivitySources.Actions(dialogs, Owner) : ActivityActions()) : null,
             });
+            if (SensorGroups[^1].Activity is { } list) _activityLists[first.HardwareId] = list;
         }
     }
 

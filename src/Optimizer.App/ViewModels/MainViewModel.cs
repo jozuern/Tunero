@@ -73,7 +73,12 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
         ServicesPage = new ServicesViewModel(this, services, Runner);
         Apps = new AppsViewModel(this, services, dialogs);
         Tools = new ToolsViewModel(this, services, Runner, dialogs);
-        Health = new HealthViewModel(this, dialogs);
+        Health = new HealthViewModel(this, dialogs, exe =>
+        {
+            Tools.PrefillPriorityRule(exe);
+            ToolsTab = 2;
+            CurrentPage = Page.Tools;
+        });
         _virusTotalConfigured = !string.IsNullOrEmpty(settings.VirusTotalKey);
         Loc.Instance.LanguageChanged += (_, _) =>
         {
@@ -353,6 +358,7 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
     {
         SelectedItem = null;
         if (value == Page.Changes) BuildChanges();
+        Health.PageShown(value == Page.Health);
         (Views.PageRegistry.Of(value).Load?.Invoke(this) ?? Task.CompletedTask).Forget($"loading page {value}");
     }
 

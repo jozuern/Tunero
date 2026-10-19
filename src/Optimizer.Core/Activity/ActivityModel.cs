@@ -61,7 +61,7 @@ public sealed class ActivityModel(IProgramNames names, int logicalProcessors, Ti
         _lastTicks = now;
         var keep = (long)(endedKeep.TotalSeconds * Stopwatch.Frequency);
 
-        foreach (var e in _entries.Values) (e.Now, e.ReadNow, e.WriteNow, e.Engine, e.Live) = (0, 0, 0, e.Engine, false);
+        foreach (var e in _entries.Values) (e.Now, e.ReadNow, e.WriteNow, e.Live) = (0, 0, 0, false);
         foreach (var k in _driveOther.Keys.ToList()) _driveOther[k] = (0, _driveOther[k].SinceOn);
 
         // Who runs now: identities, threads, live processes per program

@@ -811,7 +811,7 @@ The files are deleted permanently. Files in use are skipped.</value>
     <value>Live readings</value>
   </data>
   <data name="Sensors_Hint" xml:space="preserve">
-    <value>Live temperatures, load, clocks, power and fans (LibreHardwareMonitor), every two seconds. Off until you switch it on. Peak is the highest value since you switched the readings on. Processor and mainboard sensors need the signed PawnIO driver.</value>
+    <value>Live temperatures, load, clocks, power and fans (LibreHardwareMonitor), every two seconds, and which programs use the processor, memory, graphics card and each drive. Off until you switch it on. Peak is the highest value since you switched the readings on. Processor and mainboard sensors need the signed PawnIO driver.</value>
   </data>
   <data name="Sensors_PawnIoOn" xml:space="preserve">
     <value>PawnIO driver is installed.</value>
@@ -860,6 +860,141 @@ The files are deleted permanently. Files in use are skipped.</value>
   </data>
   <data name="Sensors_PeakColumn" xml:space="preserve">
     <value>Peak</value>
+  </data>
+  <data name="Activity_UsingNow" xml:space="preserve">
+    <value>Using it now</value>
+  </data>
+  <data name="Activity_Nothing" xml:space="preserve">
+    <value>Nothing is using it right now</value>
+  </data>
+  <data name="Activity_Programs" xml:space="preserve">
+    <value>Programs using it</value>
+  </data>
+  <data name="Activity_ColProgram" xml:space="preserve">
+    <value>Program</value>
+  </data>
+  <data name="Activity_ColNow" xml:space="preserve">
+    <value>Now</value>
+  </data>
+  <data name="Activity_ColRead" xml:space="preserve">
+    <value>Read</value>
+  </data>
+  <data name="Activity_ColWrite" xml:space="preserve">
+    <value>Write</value>
+  </data>
+  <data name="Activity_ColSinceOn" xml:space="preserve">
+    <value>Since on</value>
+  </data>
+  <data name="Activity_SinceOnHint" xml:space="preserve">
+    <value>Since you switched the readings on, while this page was open: processor time, the most memory or graphics use, or the data read and written.</value>
+  </data>
+  <data name="Activity_ColEngine" xml:space="preserve">
+    <value>Engine</value>
+  </data>
+  <data name="Activity_ShowAll" xml:space="preserve">
+    <value>Show all ({0})</value>
+  </data>
+  <data name="Activity_Ended" xml:space="preserve">
+    <value>Ended</value>
+  </data>
+  <data name="Activity_OtherLine" xml:space="preserve">
+    <value>Activity not linked to a program: {0}</value>
+  </data>
+  <data name="Activity_PerSecond" xml:space="preserve">
+    <value>{0}/s</value>
+  </data>
+  <data name="Activity_Percent" xml:space="preserve">
+    <value>{0} %</value>
+  </data>
+  <data name="Activity_Seconds" xml:space="preserve">
+    <value>{0} s</value>
+  </data>
+  <data name="Activity_Minutes" xml:space="preserve">
+    <value>{0} min</value>
+  </data>
+  <data name="Activity_DiskUnavailable" xml:space="preserve">
+    <value>Programs per drive are not available: {0}</value>
+  </data>
+  <data name="Activity_TraceNotElevated" xml:space="preserve">
+    <value>Tunero is not running as administrator.</value>
+  </data>
+  <data name="Activity_TraceDenied" xml:space="preserve">
+    <value>Windows denied the disk trace.</value>
+  </data>
+  <data name="Activity_TraceBusy" xml:space="preserve">
+    <value>Windows has no free trace session.</value>
+  </data>
+  <data name="Activity_TraceFailed" xml:space="preserve">
+    <value>The disk trace could not start.</value>
+  </data>
+  <data name="Activity_ServiceHost" xml:space="preserve">
+    <value>Service host: {0}</value>
+  </data>
+  <data name="Activity_AndMore" xml:space="preserve">
+    <value>{0} and {1} more</value>
+  </data>
+  <data name="Activity_Processes" xml:space="preserve">
+    <value>{0} processes</value>
+  </data>
+  <data name="Activity_OneProcess" xml:space="preserve">
+    <value>1 process</value>
+  </data>
+  <data name="Activity_EngineVideoDecode" xml:space="preserve">
+    <value>Video Decode</value>
+  </data>
+  <data name="Activity_EngineVideoEncode" xml:space="preserve">
+    <value>Video Encode</value>
+  </data>
+  <data name="Activity_EngineVideoProcessing" xml:space="preserve">
+    <value>Video Processing</value>
+  </data>
+  <data name="Activity_EngineOther" xml:space="preserve">
+    <value>Other</value>
+  </data>
+  <data name="Activity_EndTitle" xml:space="preserve">
+    <value>End {0}?</value>
+  </data>
+  <data name="Activity_EndText" xml:space="preserve">
+    <value>Ends {0}. Unsaved work in it is lost.</value>
+  </data>
+  <data name="Activity_EndButton" xml:space="preserve">
+    <value>End task</value>
+  </data>
+  <data name="Activity_EndDone" xml:space="preserve">
+    <value>{0} ended.</value>
+  </data>
+  <data name="Activity_EndFailed" xml:space="preserve">
+    <value>{0} could not be ended: {1}</value>
+  </data>
+  <data name="Activity_EndCritical" xml:space="preserve">
+    <value>Windows needs this process; ending it would crash Windows or sign you out.</value>
+  </data>
+  <data name="Activity_EndSelf" xml:space="preserve">
+    <value>This is Tunero itself.</value>
+  </data>
+  <data name="Activity_AddRule" xml:space="preserve">
+    <value>Add a priority rule</value>
+  </data>
+  <data name="Activity_Note_MsMpEng" xml:space="preserve">
+    <value>Microsoft Defender Antivirus checks files for malware when they are opened and during scans.</value>
+  </data>
+  <data name="Activity_Note_SearchIndexer" xml:space="preserve">
+    <value>Windows Search builds the index of your files that makes searching fast.</value>
+  </data>
+  <data name="Activity_Note_TiWorker" xml:space="preserve">
+    <value>The Windows Modules Installer installs Windows updates.</value>
+  </data>
+  <data name="Activity_Note_MemoryCompression" xml:space="preserve">
+    <value>Windows keeps memory pages here that it compressed instead of writing them to disk.</value>
+  </data>
+  <data name="Activity_Note_System" xml:space="preserve">
+    <value>The Windows kernel and drivers. Its drive activity includes file data Windows keeps in its cache and writes to disk later; when Tunero can tell which program used the file, it lists the data there.</value>
+  </data>
+  <data name="Sensors_AllWithPrograms" xml:space="preserve">
+    <value>All readings ({0}), all programs ({1})</value>
+  </data>
+  <data name="Sensors_DriveNumber" xml:space="preserve">
+    <value>Drive, Disk {0}</value>
   </data>
   <data name="Sensors_Drive" xml:space="preserve">
     <value>Drive</value>

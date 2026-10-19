@@ -811,7 +811,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
     <value>Live-Messwerte</value>
   </data>
   <data name="Sensors_Hint" xml:space="preserve">
-    <value>Live-Temperaturen, Auslastung, Takte, Leistung und Lüfter (LibreHardwareMonitor), alle zwei Sekunden. Aus, bis du es einschaltest. Höchstwert ist der höchste Wert, seit du die Messwerte eingeschaltet hast. CPU- und Mainboard-Sensoren brauchen den signierten PawnIO-Treiber.</value>
+    <value>Live-Temperaturen, Auslastung, Takte, Leistung und Lüfter (LibreHardwareMonitor), alle zwei Sekunden, dazu, welche Programme Prozessor, Arbeitsspeicher, Grafikkarte und jedes Laufwerk nutzen. Aus, bis du es einschaltest. Höchstwert ist der höchste Wert, seit du die Messwerte eingeschaltet hast. CPU- und Mainboard-Sensoren brauchen den signierten PawnIO-Treiber.</value>
   </data>
   <data name="Sensors_PawnIoOn" xml:space="preserve">
     <value>Der PawnIO-Treiber ist installiert.</value>
@@ -860,6 +860,141 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   </data>
   <data name="Sensors_PeakColumn" xml:space="preserve">
     <value>Höchstwert</value>
+  </data>
+  <data name="Activity_UsingNow" xml:space="preserve">
+    <value>Gerade genutzt von</value>
+  </data>
+  <data name="Activity_Nothing" xml:space="preserve">
+    <value>Kein Programm nutzt es gerade</value>
+  </data>
+  <data name="Activity_Programs" xml:space="preserve">
+    <value>Programme, die es nutzen</value>
+  </data>
+  <data name="Activity_ColProgram" xml:space="preserve">
+    <value>Programm</value>
+  </data>
+  <data name="Activity_ColNow" xml:space="preserve">
+    <value>Aktuell</value>
+  </data>
+  <data name="Activity_ColRead" xml:space="preserve">
+    <value>Lesen</value>
+  </data>
+  <data name="Activity_ColWrite" xml:space="preserve">
+    <value>Schreiben</value>
+  </data>
+  <data name="Activity_ColSinceOn" xml:space="preserve">
+    <value>Bisher</value>
+  </data>
+  <data name="Activity_SinceOnHint" xml:space="preserve">
+    <value>Seit du die Messwerte eingeschaltet hast, solange diese Seite offen war: Prozessorzeit, die höchste Speicher- oder Grafiknutzung oder die gelesenen und geschriebenen Daten.</value>
+  </data>
+  <data name="Activity_ColEngine" xml:space="preserve">
+    <value>GPU-Modul</value>
+  </data>
+  <data name="Activity_ShowAll" xml:space="preserve">
+    <value>Alle zeigen ({0})</value>
+  </data>
+  <data name="Activity_Ended" xml:space="preserve">
+    <value>Beendet</value>
+  </data>
+  <data name="Activity_OtherLine" xml:space="preserve">
+    <value>Aktivität ohne zugeordnetes Programm: {0}</value>
+  </data>
+  <data name="Activity_PerSecond" xml:space="preserve">
+    <value>{0}/s</value>
+  </data>
+  <data name="Activity_Percent" xml:space="preserve">
+    <value>{0} %</value>
+  </data>
+  <data name="Activity_Seconds" xml:space="preserve">
+    <value>{0} s</value>
+  </data>
+  <data name="Activity_Minutes" xml:space="preserve">
+    <value>{0} min</value>
+  </data>
+  <data name="Activity_DiskUnavailable" xml:space="preserve">
+    <value>Programme pro Laufwerk sind nicht verfügbar: {0}</value>
+  </data>
+  <data name="Activity_TraceNotElevated" xml:space="preserve">
+    <value>Tunero läuft nicht als Administrator.</value>
+  </data>
+  <data name="Activity_TraceDenied" xml:space="preserve">
+    <value>Windows hat die Laufwerksaufzeichnung abgelehnt.</value>
+  </data>
+  <data name="Activity_TraceBusy" xml:space="preserve">
+    <value>Windows hat keine freie Aufzeichnungssitzung.</value>
+  </data>
+  <data name="Activity_TraceFailed" xml:space="preserve">
+    <value>Die Laufwerksaufzeichnung konnte nicht starten.</value>
+  </data>
+  <data name="Activity_ServiceHost" xml:space="preserve">
+    <value>Diensthost: {0}</value>
+  </data>
+  <data name="Activity_AndMore" xml:space="preserve">
+    <value>{0} und {1} weitere</value>
+  </data>
+  <data name="Activity_Processes" xml:space="preserve">
+    <value>{0} Prozesse</value>
+  </data>
+  <data name="Activity_OneProcess" xml:space="preserve">
+    <value>1 Prozess</value>
+  </data>
+  <data name="Activity_EngineVideoDecode" xml:space="preserve">
+    <value>Video Decode</value>
+  </data>
+  <data name="Activity_EngineVideoEncode" xml:space="preserve">
+    <value>Video Encode</value>
+  </data>
+  <data name="Activity_EngineVideoProcessing" xml:space="preserve">
+    <value>Video Processing</value>
+  </data>
+  <data name="Activity_EngineOther" xml:space="preserve">
+    <value>Sonstige</value>
+  </data>
+  <data name="Activity_EndTitle" xml:space="preserve">
+    <value>{0} beenden?</value>
+  </data>
+  <data name="Activity_EndText" xml:space="preserve">
+    <value>Beendet {0}. Nicht gespeicherte Arbeit darin geht verloren.</value>
+  </data>
+  <data name="Activity_EndButton" xml:space="preserve">
+    <value>Task beenden</value>
+  </data>
+  <data name="Activity_EndDone" xml:space="preserve">
+    <value>{0} wurde beendet.</value>
+  </data>
+  <data name="Activity_EndFailed" xml:space="preserve">
+    <value>{0} konnte nicht beendet werden: {1}</value>
+  </data>
+  <data name="Activity_EndCritical" xml:space="preserve">
+    <value>Windows braucht diesen Prozess; ihn zu beenden würde Windows abstürzen lassen oder dich abmelden.</value>
+  </data>
+  <data name="Activity_EndSelf" xml:space="preserve">
+    <value>Das ist Tunero selbst.</value>
+  </data>
+  <data name="Activity_AddRule" xml:space="preserve">
+    <value>Prioritätsregel hinzufügen</value>
+  </data>
+  <data name="Activity_Note_MsMpEng" xml:space="preserve">
+    <value>Microsoft Defender Antivirus durchsucht Dateien beim Öffnen und bei Überprüfungen nach Schadsoftware.</value>
+  </data>
+  <data name="Activity_Note_SearchIndexer" xml:space="preserve">
+    <value>Windows Search baut den Index deiner Dateien auf, der die Suche schnell macht.</value>
+  </data>
+  <data name="Activity_Note_TiWorker" xml:space="preserve">
+    <value>Der Windows-Modulinstaller installiert Windows-Updates.</value>
+  </data>
+  <data name="Activity_Note_MemoryCompression" xml:space="preserve">
+    <value>Windows hält hier Speicherseiten, die es komprimiert hat, statt sie auf das Laufwerk zu schreiben.</value>
+  </data>
+  <data name="Activity_Note_System" xml:space="preserve">
+    <value>Der Windows-Kernel und die Treiber. Zur Laufwerksaktivität hier gehören auch Dateidaten, die Windows im Cache hält und später schreibt; erkennt Tunero, welches Programm die Datei genutzt hat, zeigt es die Daten bei diesem Programm.</value>
+  </data>
+  <data name="Sensors_AllWithPrograms" xml:space="preserve">
+    <value>Alle Messwerte ({0}), alle Programme ({1})</value>
+  </data>
+  <data name="Sensors_DriveNumber" xml:space="preserve">
+    <value>Laufwerk, Datenträger {0}</value>
   </data>
   <data name="Sensors_Drive" xml:space="preserve">
     <value>Laufwerk</value>

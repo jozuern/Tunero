@@ -328,11 +328,19 @@ public partial class App : Application
         // Developer aid: live sensor readings on the Health page (read only); "all" also opens every full list.
         if (args.Value("--sensors") is "on" or "all")
         {
+            // --activity-demo: fixed programs in the program lists and one demo drive card (reads and ends nothing).
+            if (args.Has("--activity-demo")) vm.Health.UseActivityDemo();
             vm.Health.SensorsOn = true;
             for (var waited = 0; vm.Health.SensorGroups.Count == 0 && waited < 15_000; waited += 250) await Task.Delay(250);
             await Task.Delay(2500); // the next read: some sensors report only from the second one
             if (args.Value("--sensors") is "all")
                 foreach (var group in vm.Health.SensorGroups) group.IsExpanded = true;
+            // --select-program Steam: that program's details open, as after a click on its row.
+            if (args.Value("--select-program") is { } program)
+            {
+                vm.Health.SelectProgram(program);
+                await Task.Delay(800);
+            }
         }
         if (args.Value("--select") is { } tid && vm.Tweaks.FirstOrDefault(t => t.Tweak.Id == tid) is { } tweak)
         {

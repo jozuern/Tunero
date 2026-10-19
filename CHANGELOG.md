@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+- **Live readings show which programs use each device:** every card (processor, memory, graphics card and each drive) names its three busiest programs; folded, a sortable list with totals since the readings were switched on and programs that just ended. Drives are per disk, unlike Task Manager, and data Windows writes later from its cache counts for the program that saved it. A program's details offer Open in Explorer, a start priority rule and End task.
+
 ### Changed
 
 - **Website and README:** they now say that the opt-in task "Apply my changes again" runs once after sign-in, that installing in Program Files is optional, that only Chocolatey 0.8.0 has passed moderation so far, and that every setting (not every change) can be undone.

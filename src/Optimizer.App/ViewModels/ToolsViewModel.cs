@@ -76,6 +76,9 @@ public sealed partial class ToolsViewModel(IPageHost owner, AppServices services
     }
 
     [ObservableProperty] private string _newPriorityExe = "";
+
+    /// <summary>From Live readings: the rule form with this program filled in (nothing is applied).</summary>
+    public void PrefillPriorityRule(string exe) => NewPriorityExe = exe;
     [ObservableProperty] private FilterOption? _newPriority;
     [ObservableProperty] private bool _newPriorityLowIo;
     [ObservableProperty] private bool _newPriorityLowMemory;

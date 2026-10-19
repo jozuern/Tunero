@@ -119,6 +119,7 @@ public static class GpuAdapters
         {
             var factoryVtbl = *(IntPtr**)factory;
             var enumAdapters1 = (delegate* unmanaged[Stdcall]<IntPtr, uint, IntPtr*, int>)factoryVtbl[12];
+            var desc = stackalloc byte[312];
             for (uint i = 0; ; i++)
             {
                 IntPtr adapter;
@@ -128,7 +129,6 @@ public static class GpuAdapters
                 {
                     var adapterVtbl = *(IntPtr**)adapter;
                     var getDesc1 = (delegate* unmanaged[Stdcall]<IntPtr, byte*, int>)adapterVtbl[10];
-                    var desc = stackalloc byte[312];
                     if (getDesc1(adapter, desc) < 0) continue;
                     if ((*(uint*)(desc + 304) & FlagSoftware) != 0) continue;
                     var name = new string((char*)desc).Trim();

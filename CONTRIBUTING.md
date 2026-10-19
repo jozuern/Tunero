@@ -34,6 +34,8 @@ is ignored: whoever starts the exe names the paths, and the app writes with admi
 | `--select <id>` | opens a finding or tweak in the details pane (e.g. `A.rebar`) |
 | `--category <key>` | opens that category group on the Tweaks page before the screenshot (a section such as `privacy`, or a catalog category such as `Browser`); `--select` opens the group of the selected tweak |
 | `--sensors on\|all` | switches the live sensor readings on (Health page, read only) and waits for the first values; `all` also opens every component's full list |
+| `--activity-demo` | with `--sensors`: fixed programs in the cards' program lists and one demo drive card instead of this PC's processes (reads and ends nothing; the graphics adapters are this PC's) |
+| `--select-program <name>` | with `--sensors`: opens that program's details as a click on its row would, on a drive card first |
 | `--lang en\|de`, `--theme System\|Dark\|Light` | override saved preferences |
 | `--confirm <tweak id> --confirm-shot <file.png>` | with `--screenshot`: renders the confirmation dialog of a tweak (nothing is applied) |
 | `--tab-order <file.txt>` | with `--screenshot`: writes every Tab stop of the page in order with the name and type a screen reader announces (`NO NAME` marks a stop without one); with `--confirm` also the confirmation's to `<file>-confirm.txt` |
