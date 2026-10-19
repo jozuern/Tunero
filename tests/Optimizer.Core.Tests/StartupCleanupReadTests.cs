@@ -30,6 +30,27 @@ public class StartupCleanupReadTests(ITestOutputHelper output)
         Assert.True(resolved >= services.Count * 0.9, $"only {resolved}/{services.Count} service files found");
     }
 
+    /// <summary>
+    /// The install trusts a publisher only under a root of the machine's stores. A signed program of this PC (the .NET
+    /// host) chains to one; a made-up thumbprint is in none. Set TUNERO_RELEASE_EXE to a downloaded release to check it too.
+    /// </summary>
+    [Fact]
+    [Trait("Category", "Hardware")]
+    public void SignedProgramsChainToARootOfTheMachineStores()
+    {
+        var dotnet = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "dotnet", "dotnet.exe");
+        var signature = SignatureVerifier.Verify(dotnet);
+        output.WriteLine($"dotnet {signature}");
+        Assert.Equal(SignatureStatus.Signed, signature.Status);
+        Assert.True(Platform.AppInstall.IsMachineRoot(Assert.IsType<string>(signature.RootThumbprint)));
+        Assert.False(Platform.AppInstall.IsMachineRoot(new string('0', 40)));
+        if (Environment.GetEnvironmentVariable("TUNERO_RELEASE_EXE") is { Length: > 0 } release)
+        {
+            output.WriteLine($"release {SignatureVerifier.Verify(release)}");
+            Assert.True(Platform.AppInstall.IsTrustedFile(release));
+        }
+    }
+
     [Fact]
     [Trait("Category", "Hardware")]
     public void SignaturesOfKnownFiles()

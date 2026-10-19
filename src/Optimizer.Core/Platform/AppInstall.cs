@@ -49,14 +49,42 @@ public static class AppInstall
         signature is { Status: SignatureStatus.Signed, Catalog: false } && subject is not null && TrustedPublishers.Contains(subject, StringComparer.Ordinal);
 
     /// <summary>
-    /// <see cref="IsTrusted(SignatureInfo, string?)"/> for a file. Check a file only where it cannot change between the two
-    /// reads (in the admin-only install folder); for a file in Downloads the answer only decides whether to offer.
+    /// <see cref="IsTrusted(SignatureInfo, string?)"/> for a file, whose chain must also end in a root of the machine's own
+    /// stores (<see cref="IsMachineRoot"/>): WinVerifyTrust also trusts a root in the user's store, which any program of
+    /// the user can add (after one prompt), with a made-up certificate of the same name under it. Check a file only where
+    /// it cannot change between the reads (in the admin-only install folder); for a file in Downloads the answer only
+    /// decides whether to offer.
     /// </summary>
     public static bool IsTrustedFile(string path)
     {
         var signature = SignatureVerifier.Verify(path);
         if (signature.Status != SignatureStatus.Signed) return false;
-        return IsTrusted(signature, SignerSubject(path));
+        return IsTrusted(signature, SignerSubject(path)) && signature.RootThumbprint is { } root && IsMachineRoot(root);
+    }
+
+    /// <summary>
+    /// The root is in the local machine's Trusted Root (Root) or Third-Party Root (AuthRoot) store, which only
+    /// administrators and Windows' root updates change; a root only in the user's own store does not count.
+    /// </summary>
+    public static bool IsMachineRoot(string thumbprint)
+    {
+        foreach (var name in new[] { "Root", "AuthRoot" })
+        {
+            try
+            {
+                using var store = new X509Store(name, StoreLocation.LocalMachine);
+                store.Open(OpenFlags.ReadOnly | OpenFlags.OpenExistingOnly);
+                var found = store.Certificates.Find(X509FindType.FindByThumbprint, thumbprint, validOnly: false);
+                var any = found.Count > 0;
+                foreach (var c in found) c.Dispose();
+                if (any) return true;
+            }
+            catch (System.Security.Cryptography.CryptographicException)
+            {
+                // A store that cannot be opened holds nothing to trust.
+            }
+        }
+        return false;
     }
 
     private static string? SignerSubject(string path)
@@ -145,6 +173,9 @@ public static class AppInstall
 
             step = InstallStep.Copy;
             if (File.Exists(copy)) SafeDelete.DeleteFile(copy);
+            // A .old without an installed exe beside it is left from an interrupted run: Undo would put it back as if it
+            // were the earlier install.
+            if (!File.Exists(exe) && File.Exists(previous)) SafeDelete.DeleteFile(previous);
             using (var source = new FileStream(request.RunningExe, FileMode.Open, FileAccess.Read, FileShare.Read))
             using (var target = SafeDelete.CreateNew(copy))
             {

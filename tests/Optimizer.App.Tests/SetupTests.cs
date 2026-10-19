@@ -24,6 +24,7 @@ public sealed class SetupTests : IDisposable
     private readonly List<string> _undone = [];
     private int _installs;
     private int _saves;
+    private bool _busyDuringInstall;
 
     private InstallService Service(InstallResult? result = null, bool startMenuFails = false, bool launchFails = false) =>
         new(Running, _settings, () => _saves++, _shell,
@@ -31,6 +32,7 @@ public sealed class SetupTests : IDisposable
                 () =>
                 {
                     _installs++;
+                    _busyDuringInstall = ChangeGate.Instance.Busy;
                     return result ?? new InstallResult(Installed, null, null);
                 },
                 exe => _undone.Add(exe),
@@ -130,5 +132,26 @@ public sealed class SetupTests : IDisposable
         Assert.False(await Service(launchFails: true).InstallAsync(toProgramFiles: true, startMenu: false));
         Assert.Equal([Installed], _undone);
         Assert.False(_shell.ShutDown);
+    }
+
+    /// <summary>The entry written for the installed copy would start a deleted exe: it starts this one again.</summary>
+    [Fact]
+    public async Task AFailedStartLeavesTheStartMenuEntryOnThisExe()
+    {
+        Assert.False(await Service(launchFails: true).InstallAsync(toProgramFiles: true, startMenu: true));
+        Assert.Equal([Installed, Running], _startMenu);
+        Assert.False(ChangeGate.Instance.Busy);
+    }
+
+    /// <summary>Closing the window or signing out during the copy would stop it half way: the install holds the gate.</summary>
+    [Fact]
+    public async Task TheInstallHoldsTheChangeGateWhileItRuns()
+    {
+        Assert.False(await Service(new InstallResult(null, InstallStep.Check, "not signed")).InstallAsync(toProgramFiles: true, startMenu: false));
+        Assert.True(_busyDuringInstall);
+        Assert.False(ChangeGate.Instance.Busy);
+
+        Assert.True(await Service().InstallAsync(toProgramFiles: true, startMenu: false));
+        Assert.False(ChangeGate.Instance.Busy);
     }
 }

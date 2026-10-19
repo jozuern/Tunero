@@ -120,7 +120,7 @@ public sealed class UpdateService(InstallFacts install, IDialogs dialogs, IShell
                     UpdateOutcome.ChecksumMismatch => "Update_BadChecksum",
                     UpdateOutcome.SignatureInvalid => "Update_BadSignature",
                     _ => "Update_Failed",
-                }]);
+                }], InfoBarSeverity.Warning);
                 return;
             }
             // A change may have started while the download ran: never replace the exe in the middle of it.
@@ -136,7 +136,7 @@ public sealed class UpdateService(InstallFacts install, IDialogs dialogs, IShell
             catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
             {
                 Log.Error("update", "replacing the exe failed", ex);
-                shell.ShowResult(Loc.Instance.Format("Update_CannotReplace", ex.Message));
+                shell.ShowResult(Loc.Instance.Format("Update_CannotReplace", ex.Message), InfoBarSeverity.Warning);
                 return;
             }
             Log.Info("update", "installed, restarting", new { version });
@@ -167,7 +167,7 @@ public sealed class UpdateService(InstallFacts install, IDialogs dialogs, IShell
                 // The running version stays in use: it goes back in place of the file that was swapped.
                 var rolledBack = Updater.RollBack(exe);
                 Log.Error("update", $"the installed exe changed before the restart; not started (previous exe put back: {rolledBack})");
-                shell.ShowResult(Loc.Instance["Update_BadChecksum"]);
+                shell.ShowResult(Loc.Instance["Update_BadChecksum"], InfoBarSeverity.Warning);
                 return;
             }
             shell.Shutdown();

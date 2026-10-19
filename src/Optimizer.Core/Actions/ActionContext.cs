@@ -160,6 +160,12 @@ public sealed class ActionContext
     /// <summary>Folder for BCD/power exports belonging to the backup store (admin-only; never the user's %TEMP%).</summary>
     public required string ExportFolder { get; init; }
 
+    /// <summary>
+    /// Whether a program may be started elevated without asking (a task of this app runs it at sign-in): only one in a
+    /// folder users cannot change. Tests that register tasks with made-up paths pass their own.
+    /// </summary>
+    public Func<string, bool> MayStartElevated { get; init; } = Platform.TrustedPath.IsAdminOnlyBelowSharedFolders;
+
     /// <summary>Interface GUIDs ("{...}") of active Ethernet/Wi-Fi adapters, for per-interface TCP values ("{nic}" in paths).</summary>
     public IReadOnlyList<string> NetworkInterfaceIds { get; init; } = [];
 

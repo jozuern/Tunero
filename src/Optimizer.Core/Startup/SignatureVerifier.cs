@@ -12,7 +12,8 @@ public enum SignatureStatus { Signed, Unsigned, Invalid, NotFound, Error }
 /// not be checked. WinVerifyTrust accepts any trusted root, also one a program with admin rights added: a certificate
 /// named "Microsoft Corporation" under such a root must not count as Microsoft's.
 /// </param>
-public sealed record SignatureInfo(SignatureStatus Status, string? Publisher, bool Catalog, bool? MicrosoftRoot = null)
+/// <param name="RootThumbprint">The SHA-1 thumbprint of the root the embedded signature's chain ends in; null for catalog signatures or without a chain.</param>
+public sealed record SignatureInfo(SignatureStatus Status, string? Publisher, bool Catalog, bool? MicrosoftRoot = null, string? RootThumbprint = null)
 {
     /// <summary>
     /// Signers of Microsoft's own files. Exact names: "Microsoft Windows Hardware Compatibility Publisher" (WHQL and
@@ -91,8 +92,8 @@ public static class SignatureVerifier
         try
         {
             var handle = stream.SafeFileHandle.DangerousGetHandle();
-            var embedded = VerifyEmbedded(path, handle, out var publisher, out var microsoftRoot);
-            if (embedded == 0) return new SignatureInfo(SignatureStatus.Signed, publisher, false, microsoftRoot);
+            var embedded = VerifyEmbedded(path, handle, out var publisher, out var microsoftRoot, out var root);
+            if (embedded == 0) return new SignatureInfo(SignatureStatus.Signed, publisher, false, microsoftRoot, root);
             // Not a signable file type (scripts, data): unsigned, not "invalid".
             if (embedded is TrustESubjectFormUnknown or TrustEProviderUnknown) return new SignatureInfo(SignatureStatus.Unsigned, null, false);
             if (embedded != TrustENoSignature) return new SignatureInfo(SignatureStatus.Invalid, publisher, false);
@@ -160,10 +161,11 @@ public static class SignatureVerifier
     private const uint WtdCacheOnlyUrlRetrieval = 0x1000, WtdDisableMd2Md4 = 0x2000;
 
     /// <summary>WinVerifyTrust reads the open file (<paramref name="handle"/>); the path only names it in its results.</summary>
-    private static int VerifyEmbedded(string path, IntPtr handle, out string? publisher, out bool? microsoftRoot)
+    private static int VerifyEmbedded(string path, IntPtr handle, out string? publisher, out bool? microsoftRoot, out string? rootThumbprint)
     {
         publisher = null;
         microsoftRoot = null;
+        rootThumbprint = null;
         var file = new WINTRUST_FILE_INFO { cbStruct = (uint)Marshal.SizeOf<WINTRUST_FILE_INFO>(), pcwszFilePath = path, hFile = handle };
         var filePtr = Marshal.AllocHGlobal(Marshal.SizeOf<WINTRUST_FILE_INFO>());
         try
@@ -172,7 +174,7 @@ public static class SignatureVerifier
             var data = NewData(WtdChoiceFile, filePtr);
             var action = GenericVerifyV2;
             var result = WinVerifyTrust(IntPtr.Zero, ref action, ref data);
-            publisher = Publisher(data.hWVTStateData, out microsoftRoot);
+            publisher = Publisher(data.hWVTStateData, out microsoftRoot, out rootThumbprint);
             data.dwStateAction = WtdStateClose;
             WinVerifyTrust(IntPtr.Zero, ref action, ref data);
             return result;
@@ -296,9 +298,13 @@ public static class SignatureVerifier
     /// Signer certificate subject (simple name) from the verification state, and whether the signer's chain ends in a
     /// Microsoft root (null when there is no chain to check).
     /// </summary>
-    private static string? Publisher(IntPtr state, out bool? microsoftRoot)
+    private static string? Publisher(IntPtr state, out bool? microsoftRoot) => Publisher(state, out microsoftRoot, out _);
+
+    /// <param name="rootThumbprint">The last certificate of the signer's chain (the root), as WinVerifyTrust built it.</param>
+    private static string? Publisher(IntPtr state, out bool? microsoftRoot, out string? rootThumbprint)
     {
         microsoftRoot = null;
+        rootThumbprint = null;
         if (state == IntPtr.Zero) return null;
         var provider = WTHelperProvDataFromStateData(state);
         if (provider == IntPtr.Zero) return null;
@@ -309,6 +315,13 @@ public static class SignatureVerifier
         if (sgnr.csCertChain == 0 || sgnr.pasCertChain == IntPtr.Zero) return null;
         var cert = Marshal.PtrToStructure<CRYPT_PROVIDER_CERT>(sgnr.pasCertChain);
         if (cert.pCert == IntPtr.Zero) return null;
+        // The elements are cbStruct bytes apart (the struct is longer than the part declared here); the last one is the root.
+        if (cert.cbStruct >= Marshal.SizeOf<CRYPT_PROVIDER_CERT>() &&
+            Marshal.PtrToStructure<CRYPT_PROVIDER_CERT>(sgnr.pasCertChain + (nint)((sgnr.csCertChain - 1) * cert.cbStruct)) is { pCert: not 0 } last)
+        {
+            using var root = new X509Certificate2(last.pCert);
+            rootThumbprint = root.Thumbprint;
+        }
         using var x509 = new X509Certificate2(cert.pCert);
         return x509.GetNameInfo(X509NameType.SimpleName, false);
     }

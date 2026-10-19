@@ -6,7 +6,9 @@
 # and checks the SHA-256 (Chocolatey rules CPMR0027 and CPMR0073). Chocolatey puts a shim for every exe in its package
 # folder on the PATH, so "tunero" starts the app; the empty Tunero.exe.gui makes the shim start it without waiting.
 # choco removes the package folder and the shim on uninstall; the data folder (%ProgramData%\Tunero) stays, as with
-# every other way of installing (Settings > Uninstall in the app removes it).
+# every other way of installing (Settings > Uninstall in the app removes it). chocolateyUninstall.ps1 (uninstall only, not
+# upgrade) removes the app's re-apply task when it starts this package's exe: it would otherwise start a missing file
+# with administrator rights at every sign-in.
 # Writes artifacts/chocolatey/tunero/ and, when choco is installed, packs tunero.<version>.nupkg next to it. The
 # chocolatey workflow pushes that file; to push by hand: choco push <file> --source https://push.chocolatey.org/
 param(
@@ -83,6 +85,18 @@ Get-ChocolateyWebFile @packageArgs
 "@
 [IO.File]::WriteAllText((Join-Path $dir "tools\chocolateyInstall.ps1"), $install, $utf8)
 [IO.File]::WriteAllText((Join-Path $dir "tools\Tunero.exe.gui"), "", $utf8)
+
+$uninstall = @"
+`$ErrorActionPreference = 'Stop'
+`$exe = Join-Path (Split-Path -Parent `$MyInvocation.MyCommand.Definition) 'Tunero.exe'
+
+# The opt-in task "Apply my changes again" (one per account, in Task Scheduler's \Tunero\ folder) goes with this copy.
+# A task that starts another copy (installed in Program Files) stays.
+Get-ScheduledTask -TaskPath '\Tunero\' -ErrorAction SilentlyContinue |
+  Where-Object { `$_.Actions | Where-Object { `$_.Execute -eq `$exe } } |
+  Unregister-ScheduledTask -Confirm:`$false
+"@
+[IO.File]::WriteAllText((Join-Path $dir "tools\chocolateyUninstall.ps1"), $uninstall, $utf8)
 
 Write-Host "Written: $dir"
 if (Get-Command choco -ErrorAction SilentlyContinue) {

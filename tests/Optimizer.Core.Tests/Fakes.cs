@@ -307,6 +307,9 @@ internal sealed class EngineFixture : IDisposable
     public FakeSystemParameters SystemParameters { get; } = new();
     public FakeNetwork Network { get; }
     public string BackupRoot { get; } = Path.Combine(Path.GetTempPath(), "pco-test-" + Guid.NewGuid().ToString("N"));
+    /// <summary>Programs a task of the app may not start elevated (a folder users can change, a file that is gone).</summary>
+    public HashSet<string> UntrustedPrograms { get; } = new(StringComparer.OrdinalIgnoreCase);
+
     public ActionContext Context { get; }
     public BackupStore Store { get; }
     public Tweaks.TweakEngine Engine { get; }
@@ -332,6 +335,7 @@ internal sealed class EngineFixture : IDisposable
             SystemParameters = SystemParameters,
             ExportFolder = BackupRoot,
             NetworkInterfaceIds = nics,
+            MayStartElevated = program => !UntrustedPrograms.Contains(program),
         };
         Store = new BackupStore(BackupRoot, secure: false);
         Engine = new Tweaks.TweakEngine(Context, Store, RestorePoints, "test", 26300);

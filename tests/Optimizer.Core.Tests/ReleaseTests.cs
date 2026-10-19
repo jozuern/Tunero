@@ -283,6 +283,57 @@ public class ReleaseTests
         }
     }
 
+    /// <summary>A new exe that did not start (antivirus, a changed file) makes way for the previous one again.</summary>
+    [Fact]
+    public void RollBackPutsThePreviousExeBack()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), "pco-rollback-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        try
+        {
+            var running = Path.Combine(folder, "Tunero.exe");
+            var downloaded = Path.Combine(folder, "Tunero-1.0.0.exe");
+            File.WriteAllText(running, "old");
+            File.WriteAllText(downloaded, "new");
+            Updater.Install(downloaded, running);
+
+            Assert.True(Updater.RollBack(running));
+            Assert.Equal("old", File.ReadAllText(running));
+            Assert.False(File.Exists(running + ".old"));
+
+            // Nothing to put back: the exe in place stays.
+            Assert.False(Updater.RollBack(running));
+            Assert.Equal("old", File.ReadAllText(running));
+        }
+        finally
+        {
+            TestFolders.Delete(folder);
+        }
+    }
+
+    /// <summary>A folder replaced by a link cannot be held: the rollback changes nothing there.</summary>
+    [Fact]
+    public void RollBackRefusesAFolderThatIsALink()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "pco-rollback-link-" + Guid.NewGuid().ToString("N"));
+        var real = Directory.CreateDirectory(Path.Combine(root, "real")).FullName;
+        var link = Path.Combine(root, "link");
+        try
+        {
+            File.WriteAllText(Path.Combine(real, "Tunero.exe"), "new");
+            File.WriteAllText(Path.Combine(real, "Tunero.exe.old"), "old");
+            TestFolders.Junction(link, real);
+
+            Assert.False(Updater.RollBack(Path.Combine(link, "Tunero.exe")));
+            Assert.Equal("new", File.ReadAllText(Path.Combine(real, "Tunero.exe")));
+            Assert.True(File.Exists(Path.Combine(real, "Tunero.exe.old")));
+        }
+        finally
+        {
+            TestFolders.Delete(root);
+        }
+    }
+
     [Fact]
     public void InstallSwapsTheExeAndCleanUpRemovesTheOldOne()
     {

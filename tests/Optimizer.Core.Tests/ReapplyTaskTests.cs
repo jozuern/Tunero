@@ -68,6 +68,20 @@ public class ReapplyTaskTests
         Assert.Empty(fx.Tasks.Xml);
     }
 
+    /// <summary>
+    /// "Apply again" registers the task from its backup: when the exe is gone or its folder can be changed by users since (a
+    /// package manager removed the app), nothing is registered that would start a planted file elevated.
+    /// </summary>
+    [Fact]
+    public void ATaskIsNotRegisteredForAProgramThatIsNoLongerTrusted()
+    {
+        using var fx = new EngineFixture();
+        fx.UntrustedPrograms.Add(Exe);
+        var action = Action();
+        Assert.Throws<InvalidOperationException>(() => action.Apply(fx.Context));
+        Assert.Empty(fx.Tasks.Xml);
+    }
+
     [Fact]
     public void OnlyAnExeOnlyAdministratorsCanChangeGetsTheTask()
     {

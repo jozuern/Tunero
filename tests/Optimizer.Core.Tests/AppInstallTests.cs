@@ -154,6 +154,19 @@ public sealed class AppInstallTests : IDisposable
         Assert.False(Directory.Exists(Folder));
     }
 
+    /// <summary>A Tunero.exe.old without an installed exe is not an earlier install: Undo of a fresh install removes everything.</summary>
+    [Fact]
+    public void AStaleOldFileIsNotPutBackByUndo()
+    {
+        Directory.CreateDirectory(Folder);
+        File.WriteAllBytes(Path.Combine(Folder, "Tunero.exe.old"), [3]);
+        var result = AppInstall.Install(Request(Running()), _registry);
+        Assert.False(File.Exists(Path.Combine(Folder, "Tunero.exe.old")));
+        AppInstall.Undo(result.InstalledExe!, _registry);
+        Assert.False(File.Exists(result.InstalledExe));
+        Assert.Null(AppInstall.InstalledExe(_registry));
+    }
+
     /// <summary>A leftover Tunero.exe.new (a crash during an earlier install) does not block Install.</summary>
     [Fact]
     public void InstallReplacesALeftoverNewFile()

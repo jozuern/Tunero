@@ -31,9 +31,15 @@ public sealed class OwnTaskAction : TweakAction
         : new(true, "owntask", ScheduledTaskXml.Command(xml) is { } command && string.Equals(command, ScheduledTaskXml.Command(Xml), StringComparison.OrdinalIgnoreCase)
             ? "present" : "other");
 
+    /// <summary>
+    /// The program is checked again on every registration, also when "Apply again" registers a task from an older backup:
+    /// its folder may be gone since (an uninstall by a package manager), and a file a user put there would run elevated.
+    /// </summary>
     public override void Apply(ActionContext c)
     {
         Check();
+        if (ScheduledTaskXml.Program(Xml) is not { } program || !c.MayStartElevated(program))
+            throw new InvalidOperationException($"{Path}: {ScheduledTaskXml.Program(Xml) ?? "no program"} is missing or in a folder users can change; the task is not registered");
         c.Tasks.Register(Path, Xml);
     }
 

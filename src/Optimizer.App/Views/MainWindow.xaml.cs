@@ -55,6 +55,8 @@ public partial class MainWindow : FluentWindow, IServiceProvider
         Nav.PaneClosed += (_, _) => ShowGroupHeaders();
         PreviewKeyDown += (_, e) =>
         {
+            // The setup screen covers the pages: no search and no scan under it (Install would then wait for the scan).
+            if (vm.SetupShown && e.Key is System.Windows.Input.Key.F5 or System.Windows.Input.Key.F) return;
             if (e.Key == System.Windows.Input.Key.Escape && !vm.SearchResultsOpen) vm.SelectedItem = null;
             // Ctrl+F searches the whole app; F5 reads the page or the PC again.
             else if (e.Key == System.Windows.Input.Key.F && System.Windows.Input.Keyboard.Modifiers == System.Windows.Input.ModifierKeys.Control)

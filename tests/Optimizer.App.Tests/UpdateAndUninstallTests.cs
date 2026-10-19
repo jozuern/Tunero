@@ -161,6 +161,22 @@ public sealed class UpdateAndUninstallTests : IDisposable
         Assert.Contains(@"$installFolder = 'C:\TuneroTest'", script);
     }
 
+    /// <summary>When the cleanup cannot start, the app stays, so Windows still lists it.</summary>
+    [Fact]
+    public async Task AFailedCleanupStartKeepsTheInstalledAppsEntry()
+    {
+        _dialogs.Uninstall = UninstallChoice.Keep;
+        var removed = 0;
+        var facts = Facts();
+        var failing = new Launch { Start = _ => throw new System.ComponentModel.Win32Exception(5) };
+        var service = new UninstallService(facts, _dialogs, _shell, new UpdateService(facts, _dialogs, _shell, Recorded, Newer), () => 3,
+            _ => Task.FromResult(true), () => null, DataRoot, failing, new UninstallService.InstalledCopy(@"C:\TuneroTest", () => removed++));
+        await service.UninstallAsync();
+        Assert.Equal(0, removed);
+        Assert.False(_shell.ShutDown);
+        Assert.Equal(InfoBarSeverity.Error, Assert.Single(_shell.Results).Severity);
+    }
+
     [Fact]
     public async Task AFailedUndoStopsTheUninstall()
     {

@@ -11,6 +11,9 @@
 ### Fixed
 
 - **Honest results:** a tweak this PC has nothing for (a network adapter tweak on Wi-Fi only) said "already in place"; it now says it is not available here. A Task Scheduler error no longer lets a change skip its tasks and still report Applied.
+- **Install in Program Files:** closing the window or signing out waits until the install has finished; a failed start of the installed copy leaves the Start menu entry on the copy that keeps running; a failed uninstall keeps Tunero under Installed apps; the setup screen stays when a running change makes Install wait. The installed copy must be signed under a root the PC itself trusts, not one only your account added.
+- **Apply again:** the task "Apply my changes again" is registered only for a Tunero.exe in a folder users cannot change, also when "Apply again" brings it back after an uninstall; `choco uninstall` removes it.
+- **Messages:** a failed update download or log copy shows as a warning instead of closing by itself.
 - **Undo:** the refresh rate fix goes back at the resolution you use now, not the one it was made at; a value Windows removed whose absence means the same (Game Mode) no longer stops the original from coming back; a key a program made again is left alone.
 
 ## 1.3.0

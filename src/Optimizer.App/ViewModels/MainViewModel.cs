@@ -565,7 +565,7 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
         }
         catch (System.Runtime.InteropServices.ExternalException)
         {
-            ShowResult(Loc.Instance["Log_CopyFailed"]);
+            ShowResult(Loc.Instance["Log_CopyFailed"], InfoBarSeverity.Warning);
         }
     }
 
@@ -580,7 +580,7 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
         }
         catch (System.Runtime.InteropServices.ExternalException)
         {
-            ShowResult(Loc.Instance["Log_CopyFailed"]);
+            ShowResult(Loc.Instance["Log_CopyFailed"], InfoBarSeverity.Warning);
         }
     }
 

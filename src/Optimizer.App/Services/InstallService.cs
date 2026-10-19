@@ -29,6 +29,8 @@ public sealed class InstallService(string runningExe, AppSettings settings, Acti
     /// <summary>
     /// True when the installed copy was started and this app is closing. The copy and its checks (about 70 MB, the
     /// signature) run off the UI thread; a running change, scan or update is waited for, since the app closes afterwards.
+    /// While the install runs it holds the change gate: closing the window or signing out then would stop it between
+    /// moving the earlier exe aside and putting the new one in place.
     /// </summary>
     public async Task<bool> InstallAsync(bool toProgramFiles, bool startMenu)
     {
@@ -38,11 +40,29 @@ public sealed class InstallService(string runningExe, AppSettings settings, Acti
             Remember(declined: true);
             return false;
         }
-        if (ChangeGate.Instance.Busy || ChangeGate.Instance.Scanning || ChangeGate.Instance.Updating)
+        if (!ChangeGate.Instance.CanChange)
         {
-            shell.ShowResult(Loc.Instance["Setup_Busy"]);
+            shell.ShowResult(Loc.Instance["Setup_Busy"], InfoBarSeverity.Warning);
             return false;
         }
+        bool started;
+        ChangeGate.Instance.Busy = true;
+        try
+        {
+            started = await InstallAndStartAsync(startMenu);
+        }
+        finally
+        {
+            ChangeGate.Instance.Busy = false;
+        }
+        if (!started) return false;
+        Remember(declined: false);
+        shell.Shutdown();
+        return true;
+    }
+
+    private async Task<bool> InstallAndStartAsync(bool startMenu)
+    {
         var result = await Task.Run(steps.Install);
         if (result.InstalledExe is not { } installed)
         {
@@ -76,12 +96,12 @@ public sealed class InstallService(string runningExe, AppSettings settings, Acti
         {
             Log.Error("install", "installed, but the installed copy did not start; undone", ex);
             steps.Undo(installed);
+            // The new entry started the copy that is gone now: the app keeps running from here, so the entry starts this exe.
+            if (startMenu) AddStartMenu(runningExe);
             shell.ShowResult(Loc.Instance.Format("Setup_Failed", Loc.Instance["Setup_StepStart"], ex.Message), InfoBarSeverity.Warning);
             return false;
         }
         Log.Info("install", "installed, starting the installed copy", new { installed });
-        Remember(declined: false);
-        shell.Shutdown();
         return true;
     }
 

@@ -90,8 +90,16 @@ public sealed partial class MainViewModel
             return (!here && !packaged && !downgrade && AppInstall.IsTrustedFile(exe), here);
         });
         CanInstall = installable;
-        if (AppInstall.ShouldOffer(true, true, plainStart, false, _settings.SetupDeclined, installedHere, installable)) SetupShown = true;
-        else OfferStartMenuEntry();
+        if (AppInstall.ShouldOffer(true, true, plainStart, false, _settings.SetupDeclined, installedHere, installable))
+        {
+            // A change started while the signature was checked: the screen would cover its progress and Stop. It is
+            // offered again at the next start (nothing was declined), and Settings offers it meanwhile.
+            if (ChangeGate.Instance.CanChange) SetupShown = true;
+        }
+        else
+        {
+            OfferStartMenuEntry();
+        }
     }
 
     private static void RefreshEntry(string exe)
@@ -144,6 +152,8 @@ public sealed partial class MainViewModel
         {
             SetupBusy = false;
         }
+        // Refused because a change, scan or update runs: the screen stays for a second try once it has finished.
+        if (SetupToProgramFiles && !ChangeGate.Instance.CanChange) return;
         SetupShown = false;
         OnPropertyChanged(nameof(StartMenuEntry));
     }

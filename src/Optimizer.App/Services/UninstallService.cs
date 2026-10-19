@@ -55,27 +55,6 @@ public sealed class UninstallService(InstallFacts install, IDialogs dialogs, ISh
             shell.ShowResult(Loc.Instance.Format("Uninstall_PackageManual", package.DisplayName, package.UninstallCommand), InfoBarSeverity.Warning);
             return;
         }
-        // A Start menu entry that cannot be removed (a link put in its place) does not stop the uninstall.
-        try
-        {
-            if (startMenuFolder() is { } folder) StartMenuShortcut.Remove(folder);
-        }
-        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
-        {
-            Log.Warn("uninstall", $"Start menu entry not removed: {ex.Message}");
-        }
-        // The Installed apps entry goes now: Windows would list an app whose files the cleanup removes.
-        if (installed is not null)
-        {
-            try
-            {
-                installed.RemoveEntry();
-            }
-            catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.Security.SecurityException)
-            {
-                Log.Warn("uninstall", $"Installed apps entry not removed: {ex.Message}");
-            }
-        }
         try
         {
             var script = SelfUninstall.CleanupScript(processName, dataRoot, exe, removedByPackageManager: package is not null, packageManagerProcess,
@@ -91,6 +70,28 @@ public sealed class UninstallService(InstallFacts install, IDialogs dialogs, ISh
             {
                 shell.ShowResult(Loc.Instance.Format("Uninstall_Failed", ex.Message), InfoBarSeverity.Error);
                 return;
+            }
+        }
+        // The entries go only once the removal is under way: a failed start above keeps the app listed and in Start.
+        // A Start menu entry that cannot be removed (a link put in its place) does not stop the uninstall.
+        try
+        {
+            if (startMenuFolder() is { } folder) StartMenuShortcut.Remove(folder);
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
+        {
+            Log.Warn("uninstall", $"Start menu entry not removed: {ex.Message}");
+        }
+        // The Installed apps entry goes before the app closes: Windows would list an app whose files the cleanup removes.
+        if (installed is not null)
+        {
+            try
+            {
+                installed.RemoveEntry();
+            }
+            catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.Security.SecurityException)
+            {
+                Log.Warn("uninstall", $"Installed apps entry not removed: {ex.Message}");
             }
         }
         Log.Info("uninstall", "cleanup started, closing", new { package = package?.Manager, undone = choice == UninstallChoice.UndoFirst });
