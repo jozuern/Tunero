@@ -86,6 +86,37 @@ public class ActivityModelTests
         Assert.Null(ProgramRules.EndRefusalKey("steam.exe", false, 100, 1));
     }
 
+    /// <summary>Ending a service host can stop a service Windows restarts the PC for (RpcSs): refused, the Services page is the place.</summary>
+    [Fact]
+    public void ServiceHostsAreNotEnded()
+    {
+        Assert.Equal("Activity_EndServiceHost", ProgramRules.EndRefusalKey("svchost.exe", false, 900, 1));
+        Assert.False(ProgramRules.CanAddPriorityRule("svchost.exe", false));
+    }
+
+    [Theory]
+    [InlineData(@"C:\Windows\System32\notepad.exe", @"C:\Windows\System32\notepad.exe")]
+    [InlineData("Registry", null)]
+    [InlineData("MemCompression", null)]
+    [InlineData(@"relative\tool.exe", null)]
+    [InlineData("", null)]
+    public void ImagePathMustBeFullyQualified(string raw, string? expected) => Assert.Equal(expected, ProcessSnapshotReader.FullPathOrNull(raw));
+
+    /// <summary>Leaving the Health page and coming back: the time away counts neither for Now nor for Since on.</summary>
+    [Fact]
+    public void ResumeForgetsTheTimeAway()
+    {
+        var model = Model();
+        model.Update(Tick(0, [P(10, "game.exe", cpuSeconds: 1)]));
+        model.Update(Tick(2, [P(10, "game.exe", cpuSeconds: 2)]));
+        model.Resume();
+        var devices = model.Update(Tick(600, [P(10, "game.exe", cpuSeconds: 300)]));
+        var row = Row(devices, Cpu, "game");
+        Assert.Equal(0, row.Now);
+        Assert.Equal(1.0, row.SinceOn, 6);
+        Assert.Equal(25.0, Row(model.Update(Tick(602, [P(10, "game.exe", cpuSeconds: 302)])), Cpu, "game").Now, 6);
+    }
+
     [Fact]
     public void PriorityRuleOnlyForNormalPrograms()
     {

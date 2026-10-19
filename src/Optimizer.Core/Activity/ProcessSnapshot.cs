@@ -86,13 +86,19 @@ public static class ProcessSnapshotReader
         {
             var buffer = stackalloc char[1024];
             var size = 1024;
-            return Native.QueryFullProcessImageName(handle, 0, buffer, ref size) ? new string(buffer, 0, size) : null;
+            return Native.QueryFullProcessImageName(handle, 0, buffer, ref size) ? FullPathOrNull(new string(buffer, 0, size)) : null;
         }
         finally
         {
             Native.CloseHandle(handle);
         }
     }
+
+    /// <summary>
+    /// Pseudo-processes (Registry, Memory Compression) report a bare name instead of a path: no path then, so nothing
+    /// resolves it against the current folder (an icon, Open in Explorer).
+    /// </summary>
+    public static string? FullPathOrNull(string raw) => raw.Length > 0 && Path.IsPathFullyQualified(raw) ? raw : null;
 
     /// <summary>Windows stops with a bug check when this process ends; false when it cannot be opened.</summary>
     public static bool IsCritical(int pid)

@@ -45,12 +45,16 @@ public sealed record ProgramDetails(string Name, string Publisher, string? Signa
     public string MetaText => string.Join(", ", new[] { Publisher, Signature, ProcessesText }.Where(s => !string.IsNullOrEmpty(s)));
     public bool CanEnd => EndRefusal is null && !Ended && ProcessCount > 0;
 
-    public static ProgramDetails Build(ProgramActivity p, Func<int, bool> isCritical, Func<string?, Optimizer.Core.Startup.SignatureInfo> verify, int ownPid)
+    /// <param name="canEnd">False when Windows does not let this app end the process (protected processes); null: not asked.</param>
+    public static ProgramDetails Build(ProgramActivity p, Func<int, bool> isCritical, Func<string?, Optimizer.Core.Startup.SignatureInfo> verify, int ownPid,
+        Func<int, bool>? canEnd = null)
     {
         var image = p.Program.ImageName;
         var critical = p.Processes.Any(r => isCritical(r.Pid));
         var refusal = p.Processes.Select(r => ProgramRules.EndRefusalKey(image, critical, r.Pid, ownPid)).FirstOrDefault(k => k is not null)
             ?? (p.Processes.Count == 0 ? ProgramRules.EndRefusalKey(image, critical, 0, ownPid) : null);
+        var guarded = refusal is null && canEnd is not null && p.Processes.Count > 0 && !canEnd(p.Processes[0].Pid);
+        if (guarded) refusal = ProgramRules.ProtectedKey;
         var signature = p.Program.Path is { } path ? verify(path) : null;
         var lang = Loc.Instance.Language;
         return new ProgramDetails(p.Program.Name,
@@ -59,7 +63,7 @@ public sealed record ProgramDetails(string Name, string Publisher, string? Signa
             p.Program.Path, p.Processes.Count, p.Program.Services,
             ProgramRules.WindowsNoteKey(image) is { } note ? Loc.Instance[note] : null,
             refusal is null ? null : Loc.Instance[refusal],
-            ProgramRules.CanAddPriorityRule(image, critical), p.Ended);
+            !guarded && ProgramRules.CanAddPriorityRule(image, critical), p.Ended);
     }
 }
 
@@ -112,14 +116,15 @@ public sealed partial class ActivityList(DeviceKind kind, ActivityActions? actio
     [RelayCommand]
     private async Task EndTaskAsync()
     {
-        if (actions is null || Selected?.Activity is not { } activity) return;
+        if (actions is null || Selected?.Activity is not { Ended: false } activity) return;
         var details = Details ?? await Task.Run(() => actions.Details(activity));
         if (!details.CanEnd) return;
         var name = activity.Program.Name;
         if (!actions.Dialogs.Ask(Loc.Instance.Format("Activity_EndTitle", name), Loc.Instance.Format("Activity_EndText", details.ProcessesText),
                 Loc.Instance["Activity_EndButton"])) return;
         var results = await Task.Run(() => activity.Processes.Select(p => actions.Terminate(p.Pid, p.CreateTime)).ToList());
-        if (results.Where(r => !r.Ok).Select(r => (int?)r.Error).FirstOrDefault() is { } error)
+        // A process that is already gone (ending the main process took it along) is no failure.
+        if (results.Where(r => !r.Ok && r.Error != ProcessControl.Gone).Select(r => (int?)r.Error).FirstOrDefault() is { } error)
             actions.Shell.ShowResult(Loc.Instance.Format("Activity_EndFailed", name, new System.ComponentModel.Win32Exception(error).Message),
                 Wpf.Ui.Controls.InfoBarSeverity.Warning);
         else
@@ -287,6 +292,105 @@ public sealed partial class ActivityList(DeviceKind kind, ActivityActions? actio
         "Other" => Loc.Instance["Activity_EngineOther"],
         _ => engine,
     };
+}
+
+/// <summary>
+/// The program activity sources of the Health page: opened when the page shows with the readings on, closed when it
+/// hides. One open at a time: a second open while one runs shares it, and an open after a close waits until the
+/// earlier one has finished and closed what it opened, so two disk trace sessions never meet. The model outlives a
+/// close (Since on carries over) and is told to resume, so the time away does not count.
+/// </summary>
+public sealed class ActivityConnection(Func<Task<IActivitySources>> open)
+{
+    private readonly Lock _lock = new();
+    private IActivitySources? _sources;
+    private ActivityMonitor? _monitor;
+    private Task? _opening;
+    private int _openingFor = -1;
+    private int _generation;
+
+    public bool IsOpen
+    {
+        get
+        {
+            lock (_lock) return _sources is not null;
+        }
+    }
+
+    public IReadOnlyList<GpuAdapter> Adapters
+    {
+        get
+        {
+            lock (_lock) return _sources?.Adapters() ?? [];
+        }
+    }
+
+    public Task OpenAsync()
+    {
+        lock (_lock)
+        {
+            if (_sources is not null) return Task.CompletedTask;
+            if (_opening is { IsCompleted: false } running && _openingFor == _generation) return running;
+            var previous = _opening;
+            _openingFor = _generation;
+            return _opening = OpenCoreAsync(previous, _generation);
+        }
+    }
+
+    private async Task OpenCoreAsync(Task? previous, int generation)
+    {
+        if (previous is not null)
+        {
+            try
+            {
+                await previous;
+            }
+            catch (Exception)
+            {
+                // The earlier open failed: nothing of it is left open.
+            }
+        }
+        lock (_lock)
+            if (generation != _generation) return; // closed before it began
+        var sources = await open();
+        lock (_lock)
+        {
+            if (generation == _generation && _sources is null)
+            {
+                _sources = sources;
+                return;
+            }
+        }
+        sources.Dispose(); // closed meanwhile
+    }
+
+    /// <summary>Closes what is open; an open still running closes its sources when they arrive.</summary>
+    public void Close()
+    {
+        IDisposable? open;
+        lock (_lock)
+        {
+            _generation++;
+            open = (IDisposable?)_monitor ?? _sources;
+            (_sources, _monitor) = (null, null);
+        }
+        open?.Dispose();
+    }
+
+    /// <summary>One reading into the model; null while nothing is open.</summary>
+    public ActivityResult? Read(ActivityModel model)
+    {
+        lock (_lock)
+        {
+            if (_sources is null) return null;
+            if (_monitor is null)
+            {
+                model.Resume();
+                _monitor = new ActivityMonitor(_sources, model);
+            }
+            return _monitor.Read();
+        }
+    }
 }
 
 /// <summary>The small icon of an exe, read once per path off the UI thread (ExtractIconEx needs no COM).</summary>

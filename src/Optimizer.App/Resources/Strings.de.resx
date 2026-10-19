@@ -967,10 +967,16 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
     <value>{0} konnte nicht beendet werden: {1}</value>
   </data>
   <data name="Activity_EndCritical" xml:space="preserve">
-    <value>Windows braucht diesen Prozess; ihn zu beenden würde Windows abstürzen lassen oder dich abmelden.</value>
+    <value>Windows braucht diesen Prozess, darum beendet Tunero ihn nicht.</value>
   </data>
   <data name="Activity_EndSelf" xml:space="preserve">
     <value>Das ist Tunero selbst.</value>
+  </data>
+  <data name="Activity_EndServiceHost" xml:space="preserve">
+    <value>Dieser Prozess führt Windows-Dienste aus; beende einen Dienst stattdessen auf der Seite Dienste.</value>
+  </data>
+  <data name="Activity_EndProtected" xml:space="preserve">
+    <value>Windows lässt Tunero diesen Prozess nicht beenden.</value>
   </data>
   <data name="Activity_AddRule" xml:space="preserve">
     <value>Prioritätsregel hinzufügen</value>

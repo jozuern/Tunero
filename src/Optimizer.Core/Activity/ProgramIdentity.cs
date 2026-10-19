@@ -93,13 +93,22 @@ public static class ProgramRules
     };
 
     /// <summary>A Strings key saying why End task is not offered, or null when it is.</summary>
+    /// <remarks>
+    /// A service host is refused too: it can hold a service whose failure restarts the PC (RpcSs, DcomLaunch); services
+    /// are stopped on the Services page instead.
+    /// </remarks>
     public static string? EndRefusalKey(string imageName, bool critical, int pid, int ownPid) =>
         pid == ownPid ? "Activity_EndSelf"
         : critical || WindowsCore.Contains(imageName) ? "Activity_EndCritical"
+        : string.Equals(imageName, "svchost.exe", StringComparison.OrdinalIgnoreCase) ? "Activity_EndServiceHost"
         : null;
+
+    /// <summary>The reason when Windows itself does not let programs end the process (protected processes).</summary>
+    public const string ProtectedKey = "Activity_EndProtected";
 
     public static string? WindowsNoteKey(string imageName) => Notes.GetValueOrDefault(imageName);
 
     public static bool CanAddPriorityRule(string imageName, bool critical) =>
-        !critical && !WindowsCore.Contains(imageName) && ProgramPriority.IsValidExe(imageName);
+        !critical && !WindowsCore.Contains(imageName) && !string.Equals(imageName, "svchost.exe", StringComparison.OrdinalIgnoreCase)
+        && ProgramPriority.IsValidExe(imageName);
 }

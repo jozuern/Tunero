@@ -53,6 +53,16 @@ public sealed class ActivityModel(IProgramNames names, int logicalProcessors, Ti
     private readonly Dictionary<long, (double Now, double SinceOn)> _driveOther = [];
     private long? _lastTicks;
 
+    /// <summary>
+    /// The readings start again after a pause (the Health page was hidden): the next tick is a first one, so the time away
+    /// counts neither for Now nor for Since on. Since on itself is kept.
+    /// </summary>
+    public void Resume()
+    {
+        _cpu.Clear();
+        _lastTicks = null;
+    }
+
     public IReadOnlyDictionary<DeviceKey, DeviceActivity> Update(ActivityTick tick)
     {
         names.Refresh(tick.Snapshot.Processes);

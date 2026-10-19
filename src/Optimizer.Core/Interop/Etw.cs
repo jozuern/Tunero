@@ -30,9 +30,9 @@ internal static unsafe partial class Etw
     internal static partial int StartTrace(out ulong sessionHandle, string sessionName, byte* properties);
 
     [LibraryImport("advapi32.dll", EntryPoint = "ControlTraceW", StringMarshalling = StringMarshalling.Utf16)]
-    internal static partial int ControlTrace(ulong sessionHandle, string sessionName, byte* properties, uint controlCode);
+    internal static partial int ControlTrace(ulong sessionHandle, string? sessionName, byte* properties, uint controlCode);
 
-    [LibraryImport("advapi32.dll", EntryPoint = "OpenTraceW")]
+    [LibraryImport("advapi32.dll", EntryPoint = "OpenTraceW", SetLastError = true)]
     internal static partial ulong OpenTrace(EVENT_TRACE_LOGFILEW* logfile);
 
     [LibraryImport("advapi32.dll")]

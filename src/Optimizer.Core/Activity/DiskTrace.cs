@@ -136,6 +136,9 @@ public sealed unsafe class DiskTrace : IDisposable
     private readonly DiskIoAccumulator _accumulator = new();
     private GCHandle _self;
     private ulong _traceHandle = Etw.InvalidProcessTraceHandle;
+
+    /// <summary>This copy's session: Dispose stops it by handle, so it can never stop another copy's session.</summary>
+    private ulong _sessionHandle;
     private Thread? _thread;
     private int _disposed;
 
@@ -144,11 +147,12 @@ public sealed unsafe class DiskTrace : IDisposable
     public static DiskTrace Start()
     {
         if (!Environment.Is64BitProcess) throw new DiskTraceUnavailableException("Activity_TraceFailed");
-        Stop(); // a session a crash left behind
+        Stop(0); // a session a crash left behind (by name; callers open one copy at a time)
         var buffer = Properties(withFlags: true);
+        ulong session;
         fixed (byte* p = buffer)
         {
-            var error = Etw.StartTrace(out _, SessionName, p);
+            var error = Etw.StartTrace(out session, SessionName, p);
             if (error != 0)
             {
                 Log.Warn("activity", $"disk trace not started: {error}");
@@ -160,7 +164,7 @@ public sealed unsafe class DiskTrace : IDisposable
                 });
             }
         }
-        var trace = new DiskTrace();
+        var trace = new DiskTrace { _sessionHandle = session };
         try
         {
             trace.Open();
@@ -223,13 +227,13 @@ public sealed unsafe class DiskTrace : IDisposable
 
     public IReadOnlyList<DiskIoTotal> Drain() => _accumulator.Drain();
 
-    /// <summary>Stops the session by name; no error when there is none.</summary>
-    private static void Stop()
+    /// <summary>Stops a session by its handle, or by name when the handle is 0; no error when there is none.</summary>
+    private static void Stop(ulong session)
     {
         var buffer = Properties(withFlags: false);
         fixed (byte* p = buffer)
         {
-            var error = Etw.ControlTrace(0, SessionName, p, Etw.EventTraceControlStop);
+            var error = Etw.ControlTrace(session, session == 0 ? SessionName : null, p, Etw.EventTraceControlStop);
             if (error is not (0 or Etw.ErrorWmiInstanceNotFound)) Log.Warn("activity", $"disk trace not stopped: {error}");
         }
     }
@@ -259,9 +263,9 @@ public sealed unsafe class DiskTrace : IDisposable
     public void Dispose()
     {
         if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
-        Stop();
+        if (_sessionHandle != 0) Stop(_sessionHandle);
         if (_traceHandle != Etw.InvalidProcessTraceHandle) Etw.CloseTrace(_traceHandle);
-        _thread?.Join(TimeSpan.FromSeconds(2));
-        if (_self.IsAllocated) _self.Free();
+        // The callback reads the handle until ProcessTrace returns: a thread that did not end keeps it (a small leak, no crash).
+        if ((_thread?.Join(TimeSpan.FromSeconds(2)) ?? true) && _self.IsAllocated) _self.Free();
     }
 }

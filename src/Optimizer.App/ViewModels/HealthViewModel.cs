@@ -427,9 +427,7 @@ public sealed partial class HealthViewModel(IPageHost owner, IDialogs dialogs, A
     // Programs per device (opened with the sensors; the disk trace runs only while the Health page shows)
 
     private Optimizer.Core.Activity.ActivityModel? _activityModel;
-    private Optimizer.Core.Activity.ActivityMonitor? _activity;
-    private readonly Lock _activityLock = new();
-    private bool _exitHooked;
+    private ActivityConnection? _activityConnection;
 
     /// <summary>Developer aid (--activity-demo): fixed programs and one demo drive card instead of this PC's.</summary>
     private bool _activityDemo;
@@ -463,50 +461,31 @@ public sealed partial class HealthViewModel(IPageHost owner, IDialogs dialogs, A
         else if (SensorsOn && _sensors is not null) OpenActivityAsync().Forget("program activity");
     }
 
-    private async Task OpenActivityAsync()
+    private Task OpenActivityAsync()
     {
-        if (_activity is not null) return;
         _activityModel ??= new Optimizer.Core.Activity.ActivityModel(_activityDemo ? DemoActivitySources.Names() : ActivityNames(),
             Environment.ProcessorCount, TimeSpan.FromSeconds(30));
-        var model = _activityModel;
-        var demo = _activityDemo;
-        var sources = await Task.Run(() => demo
-            ? new DemoActivitySources()
-            : (Optimizer.Core.Activity.IActivitySources)Optimizer.Core.Activity.NativeActivitySources.Open(DataPaths.ProcessIsElevated));
-        // Switched off, left the page or opened twice meanwhile: the copy that is not needed is closed.
-        if (!SensorsOn || Owner.CurrentPage != Page.Health || _activity is not null || !ReferenceEquals(model, _activityModel))
+        if (_activityConnection is null)
         {
-            sources.Dispose();
-            return;
-        }
-        _activity = new Optimizer.Core.Activity.ActivityMonitor(sources, model);
-        if (!_exitHooked)
-        {
+            var demo = _activityDemo;
+            _activityConnection = new ActivityConnection(() => Task.Run(() => demo
+                ? new DemoActivitySources()
+                : (Optimizer.Core.Activity.IActivitySources)Optimizer.Core.Activity.NativeActivitySources.Open(DataPaths.ProcessIsElevated)));
             // Last resort: the disk trace session must never outlive the app (CloseSensors at exit closes it first).
             AppDomain.CurrentDomain.ProcessExit += (_, _) => CloseActivity();
-            _exitHooked = true;
         }
+        return _activityConnection.OpenAsync();
     }
 
-    private void CloseActivity()
-    {
-        Optimizer.Core.Activity.ActivityMonitor? monitor;
-        lock (_activityLock)
-        {
-            monitor = _activity;
-            _activity = null;
-        }
-        monitor?.Dispose();
-    }
+    private void CloseActivity() => _activityConnection?.Close();
 
-    private Optimizer.Core.Activity.ActivityResult? ReadActivity()
-    {
-        lock (_activityLock) return _activity?.Read();
-    }
+    private Optimizer.Core.Activity.ActivityResult? ReadActivity() =>
+        _activityModel is { } model ? _activityConnection?.Read(model) : null;
 
     /// <summary>What a program's details do on this PC: read its signature, end it, show it in Explorer, add a rule.</summary>
     private ActivityActions ActivityActions() => new(dialogs, Owner, Optimizer.Core.Activity.ProcessControl.End,
-        p => ProgramDetails.Build(p, Optimizer.Core.Activity.ProcessSnapshotReader.IsCritical, Optimizer.Core.Startup.SignatureVerifier.Verify, Environment.ProcessId),
+        p => ProgramDetails.Build(p, Optimizer.Core.Activity.ProcessSnapshotReader.IsCritical, Optimizer.Core.Startup.SignatureVerifier.Verify, Environment.ProcessId,
+            canEnd: Optimizer.Core.Activity.ProcessControl.CanEnd),
         path =>
         {
             var explorer = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "explorer.exe");
@@ -599,8 +578,7 @@ public sealed partial class HealthViewModel(IPageHost owner, IDialogs dialogs, A
     /// <summary>Each card's program list from one activity reading; the GPU cards find their adapter by name.</summary>
     private void ShowActivity(Optimizer.Core.Activity.ActivityResult result)
     {
-        IReadOnlyList<Optimizer.Core.Activity.GpuAdapter> adapters;
-        lock (_activityLock) adapters = _activity?.Adapters ?? [];
+        var adapters = _activityConnection?.Adapters ?? [];
         foreach (var group in SensorGroups)
         {
             if (group.Activity is not { } list) continue;

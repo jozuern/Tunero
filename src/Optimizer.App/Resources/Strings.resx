@@ -967,10 +967,16 @@ The files are deleted permanently. Files in use are skipped.</value>
     <value>{0} could not be ended: {1}</value>
   </data>
   <data name="Activity_EndCritical" xml:space="preserve">
-    <value>Windows needs this process; ending it would crash Windows or sign you out.</value>
+    <value>Windows needs this process, so Tunero does not end it.</value>
   </data>
   <data name="Activity_EndSelf" xml:space="preserve">
     <value>This is Tunero itself.</value>
+  </data>
+  <data name="Activity_EndServiceHost" xml:space="preserve">
+    <value>This process runs Windows services; stop a service on the Services page instead.</value>
+  </data>
+  <data name="Activity_EndProtected" xml:space="preserve">
+    <value>Windows does not let Tunero end this process.</value>
   </data>
   <data name="Activity_AddRule" xml:space="preserve">
     <value>Add a priority rule</value>
