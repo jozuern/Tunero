@@ -60,7 +60,13 @@ public static class SafeDelete
     /// that was checked. An emptied folder can still be turned into a mount point: <see cref="FolderPin.StillReal"/>
     /// tells afterwards. Null when a folder is missing, is a link, or cannot be held.
     /// </summary>
-    public static FolderPin? Pin(string folder)
+    public static FolderPin? Pin(string folder) => Pin(folder, allowRoot: false);
+
+    /// <param name="allowRoot">
+    /// A drive root (C:\) itself is held too when <paramref name="folder"/> is one; it cannot be renamed or replaced, but its
+    /// handle (<see cref="FolderPin.Leaf"/>) is what a caller works through.
+    /// </param>
+    internal static FolderPin? Pin(string folder, bool allowRoot)
     {
         var handles = new List<SafeFileHandle>();
         try
@@ -71,12 +77,21 @@ public static class SafeDelete
             for (var p = full; !string.IsNullOrEmpty(p) && !string.Equals(p.TrimEnd('\\'), root, StringComparison.OrdinalIgnoreCase); p = Path.GetDirectoryName(p))
                 chain.Add(p);
             chain.Reverse();
+            if (chain.Count == 0 && allowRoot && root is { Length: 2 } && root[1] == ':')
+            {
+                var rootHandle = CreateFileW(@"\\?\" + root + @"\", FileListDirectory | FileReadAttributes | ReadControl, FileShareRead | FileShareWrite, IntPtr.Zero,
+                    OpenExisting, FileFlagOpenReparsePoint | FileFlagBackupSemantics, IntPtr.Zero);
+                handles.Add(rootHandle);
+                if (rootHandle.IsInvalid || !IsRealFolder(rootHandle) || !string.Equals(FinalPath(rootHandle), root + @"\", StringComparison.OrdinalIgnoreCase))
+                    return Release(handles);
+                return new FolderPin(handles);
+            }
             foreach (var p in chain)
             {
                 // Top down: each parent is held before its child is opened, so the child's path cannot change in between. The
                 // handle needs a data access (list): one with attribute access only takes no part in sharing checks, and the
                 // folder could still be renamed.
-                var handle = CreateFileW(@"\\?\" + p, FileListDirectory | FileReadAttributes, FileShareRead | FileShareWrite, IntPtr.Zero, OpenExisting,
+                var handle = CreateFileW(@"\\?\" + p, FileListDirectory | FileReadAttributes | ReadControl, FileShareRead | FileShareWrite, IntPtr.Zero, OpenExisting,
                     FileFlagOpenReparsePoint | FileFlagBackupSemantics, IntPtr.Zero);
                 if (handle.IsInvalid)
                 {
@@ -109,6 +124,9 @@ public static class SafeDelete
 
         /// <summary>False when one of the held folders has become a link (an emptied folder turned into a mount point).</summary>
         public bool StillReal() => _handles.All(IsRealFolder);
+
+        /// <summary>The handle of the pinned folder itself (list, read attributes, read permissions), valid until disposed.</summary>
+        internal SafeFileHandle Leaf => _handles[^1];
 
         public void Dispose()
         {
@@ -244,6 +262,7 @@ public static class SafeDelete
         return s.StartsWith(@"\\?\", StringComparison.Ordinal) ? s[4..] : s;
     }
 
+    private const uint ReadControl = 0x00020000;
     private const uint Delete_ = 0x00010000, FileReadAttributes = 0x80, FileListDirectory = 0x1, GenericWrite = 0x40000000, GenericRead = 0x80000000;
     private const uint FileShareRead = 1, FileShareWrite = 2, FileShareDelete = 4, OpenExisting = 3, CreateNew_ = 1;
     private const uint FileFlagOpenReparsePoint = 0x00200000, FileFlagBackupSemantics = 0x02000000;

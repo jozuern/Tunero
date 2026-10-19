@@ -11,7 +11,7 @@ public partial class ArchitectureTests
     /// <summary>Tests that start a real process themselves, each reviewed: what they run changes nothing.</summary>
     private static readonly Dictionary<string, string> AllowedToolRuns = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["BenchmarkHealthTests.cs"] = "cmd.exe starting ping to 127.0.0.1 (the output pipe test) and ping.exe to 127.0.0.1 ended by the Stop test",
+        ["BenchmarkHealthTests.cs"] = "cmd.exe starting ping to 127.0.0.1 (the output pipe test)",
         ["SelfUninstallTests.cs"] = "powershell.exe running the uninstall cleanup on temp folders only",
         ["TestFolders.cs"] = "cmd.exe mklink /J creating a junction inside a temp folder",
         ["StorageViewModelTests.cs"] = "cmd.exe mklink /J creating a junction inside the test's temp folder (removed again without touching its target)",

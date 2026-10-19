@@ -148,4 +148,30 @@ internal static partial class NativeWrite
 
     [LibraryImport("virtdisk.dll")]
     internal static partial uint DetachVirtualDisk(Microsoft.Win32.SafeHandles.SafeFileHandle handle, uint flags, uint providerSpecificFlags);
+
+    // ---------- kernel32 / advapi32: moving a finished file by its handle (install media output) ----------
+
+    /// <summary>Sets parts of an object's security descriptor exactly as given, through its handle (no inheritance computed from a path).</summary>
+    [LibraryImport("advapi32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool SetKernelObjectSecurity(Microsoft.Win32.SafeHandles.SafeFileHandle handle, uint securityInformation, byte[] descriptor);
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct IO_STATUS_BLOCK
+    {
+        public IntPtr Status;
+        public IntPtr Information;
+    }
+
+    /// <summary>
+    /// NtSetInformationFile (ZwSetInformationFile in the WDK docs) with a caller-built buffer. Used for
+    /// FileRenameInformationEx with a RootDirectory handle: kernel32's SetFileInformationByHandle answers
+    /// ERROR_INVALID_PARAMETER for a name relative to a RootDirectory (checked 2026-10-20). Returns the NTSTATUS.
+    /// </summary>
+    [LibraryImport("ntdll.dll")]
+    internal static partial int NtSetInformationFile(Microsoft.Win32.SafeHandles.SafeFileHandle file, out IO_STATUS_BLOCK ioStatus, IntPtr info,
+        uint length, int infoClass);
+
+    [LibraryImport("ntdll.dll")]
+    internal static partial uint RtlNtStatusToDosError(int status);
 }

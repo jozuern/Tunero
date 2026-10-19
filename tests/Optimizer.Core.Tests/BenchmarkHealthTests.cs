@@ -237,21 +237,19 @@ public class BenchmarkHealthTests
 
     /// <summary>
     /// Stop ends the tool and returns only once it has exited, so a cleanup after a stopped DISM does not race the tool
-    /// (still holding a mounted image or files). Only ping to the loopback address runs.
+    /// (still holding a mounted image or files). No process runs: the kill of a process that never started is logged and
+    /// passed over, and the "exited" signal is the test's own.
     /// </summary>
     [Fact]
     public async Task StopReturnsOnlyAfterTheToolHasExited()
     {
-        using var ping = new Process
-        {
-            StartInfo = new ProcessStartInfo("ping.exe", "-n 30 127.0.0.1") { CreateNoWindow = true, UseShellExecute = false },
-            EnableRaisingEvents = true,
-        };
+        using var notStarted = new Process();
         var exited = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        ping.Exited += (_, _) => exited.TrySetResult();
-        ping.Start();
-        await Optimizer.Core.Platform.StreamingProcess.KillAndWaitAsync(ping, exited.Task);
-        Assert.True(ping.HasExited);
+        var stop = Optimizer.Core.Platform.StreamingProcess.KillAndWaitAsync(notStarted, exited.Task);
+        await Task.Delay(300);
+        Assert.False(stop.IsCompleted, "the stop returned before the tool had exited");
+        exited.SetResult();
+        await stop.WaitAsync(TimeSpan.FromSeconds(10));
     }
 
     [Theory]

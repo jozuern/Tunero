@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Security.AccessControl;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using System.Xml;
@@ -56,10 +55,38 @@ public sealed class MediaBuildException(MediaStage stage, string message, int? c
     /// <summary>Every <see cref="Key"/> the build uses; the page needs a text for each.</summary>
     public static IReadOnlyList<string> Keys { get; } =
     [
-        "Media_OutputInvalid", "Media_OutputNotLocal", "Media_OutputMoveFailed", "Media_SourceMissing", "Media_WorkFolderFailed",
+        "Media_OutputInvalid", "Media_OutputLink", "Media_OutputReadOnly", "Media_OutputInUse", "Media_OutputNotLocal",
+        "Media_OutputMoveFailed", "Media_SourceMissing", "Media_WorkFolderFailed",
         "Media_NotEnoughSpace", "Media_NotWindows11", "Media_NotX64", "Media_NoUefiBoot", "Media_EditionMissing",
         "Media_ImageCheckFailed", "Media_Unhealthy", "Media_FilesCheckFailed", "Media_IsoInUse", "Media_VerifyFailed",
     ];
+}
+
+/// <summary>
+/// A build's work folder (absolute path) and its lock file <see cref="MediaBuild.LockFileName"/>, held open without
+/// sharing until disposed: <see cref="MediaBuild.CleanLeftoversAsync"/> leaves the folder alone while it is held.
+/// </summary>
+public sealed class WorkFolder : IDisposable
+{
+    private FileStream? _lock;
+
+    private WorkFolder(string path, FileStream lockFile)
+    {
+        Path = path;
+        _lock = lockFile;
+    }
+
+    public string Path { get; }
+
+    /// <summary>Creates the lock file in <paramref name="path"/> (it must not exist yet) and holds it.</summary>
+    public static WorkFolder Hold(string path) =>
+        new(path, new FileStream(System.IO.Path.Combine(path, MediaBuild.LockFileName), FileMode.CreateNew, FileAccess.Write, FileShare.None));
+
+    public void Dispose()
+    {
+        _lock?.Dispose();
+        _lock = null;
+    }
 }
 
 /// <summary>What a build uses from the system: the tools, the download, the work folder and the log. Tests pass fakes.</summary>
@@ -72,8 +99,11 @@ public interface IMediaSteps
     /// <summary>Downloads the catalog file to <paramref name="target"/>, checked against its size and SHA-256 (<see cref="MediaDownload"/>).</summary>
     Task DownloadAsync(EsdFile file, string target, IProgress<(long Done, long Total)>? p, CancellationToken ct);
 
-    /// <summary>Creates a new, locked work folder on the drive of <paramref name="outputIso"/> and returns its absolute path.</summary>
-    string NewWorkFolder(string outputIso);
+    /// <summary>
+    /// Creates a new, locked work folder on the drive of <paramref name="outputIso"/> and returns it with its lock file
+    /// already held, so no other Tunero ever sees it without one.
+    /// </summary>
+    WorkFolder NewWorkFolder(string outputIso);
 
     /// <summary>
     /// Deletes a work folder without following links: a folder that is itself a link is only unlinked, a folder that is not
@@ -258,12 +288,18 @@ public sealed class MediaBuild(IMediaSteps steps)
         }
     }
 
-    /// <summary>True when the folder's lock file exists and cannot be opened: a running build holds it.</summary>
+    /// <summary>
+    /// True when the folder's lock file exists and cannot be opened: a running build holds it. A lock file that is a link,
+    /// or lies in one, is never opened (the folder may be anyone's): such a folder is no Tunero build, and
+    /// DeleteWorkFolder then only unlinks or refuses it.
+    /// </summary>
     private static bool IsHeldByABuild(string folder)
     {
+        var lockFile = Path.Combine(folder, LockFileName);
+        if (!SafeDelete.HasNoLinks(lockFile)) return false;
         try
         {
-            using var _ = new FileStream(Path.Combine(folder, LockFileName), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            using var _ = new FileStream(lockFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
             return false;
         }
         catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
@@ -326,7 +362,7 @@ public sealed class MediaBuild(IMediaSteps steps)
         private readonly Stopwatch _clock = new();
         private MediaStage _stage;
         private string? _work, _media, _mount, _workIso;
-        private FileStream? _lock;
+        private WorkFolder? _workFolder;
         private bool _mounted, _answerFileWritten;
 
         private string Sources => Path.Combine(_media!, "sources");
@@ -342,9 +378,10 @@ public sealed class MediaBuild(IMediaSteps steps)
             try
             {
                 CheckOutputAndSpace();
-                _work = steps.NewWorkFolder(r.OutputIso);
+                // Comes with its lock file held: CleanLeftoversAsync of another Tunero leaves it alone from the start.
+                _workFolder = steps.NewWorkFolder(r.OutputIso);
+                _work = _workFolder.Path;
                 if (!Path.IsPathFullyQualified(_work)) throw Fail($"The work folder {_work} is not an absolute path.", "Media_WorkFolderFailed");
-                _lock = new FileStream(Path.Combine(_work, LockFileName), FileMode.CreateNew, FileAccess.Write, FileShare.None);
                 steps.Log("Work folder " + _work);
                 _media = Path.Combine(_work, "media");
                 _mount = Path.Combine(_work, "mount");
@@ -466,6 +503,7 @@ public sealed class MediaBuild(IMediaSteps steps)
             if (!Path.IsPathFullyQualified(output) || !Same(Path.GetExtension(output), ".iso") || Directory.Exists(output) ||
                 Path.GetDirectoryName(output) is not { } folder || !Directory.Exists(folder))
                 throw Fail($"{output} is not a usable .iso file path in an existing folder.", "Media_OutputInvalid");
+            CheckOutputCanBeReplaced(output, folder);
             long size;
             if (r.Source.Download is { } download)
             {
@@ -483,6 +521,28 @@ public sealed class MediaBuild(IMediaSteps steps)
             var free = steps.FreeBytes(output);
             steps.Log($"Space: {needed} bytes needed, {free} free");
             if (free < needed) throw Fail($"The output drive has {free} bytes free; the build needs {needed}.", "Media_NotEnoughSpace");
+        }
+
+        /// <summary>
+        /// What would only fail at the very end, after an hour of work, is refused before anything runs: an output folder
+        /// that is or lies in a link, and an existing output file that is a link, read-only, or open in a program that does
+        /// not let others delete it (an ISO mounted in Explorer). The final move checks the folder again by its handle.
+        /// </summary>
+        private void CheckOutputCanBeReplaced(string output, string folder)
+        {
+            if (!SafeDelete.HasNoLinks(folder)) throw Fail($"The output folder {folder} is or lies in a link.", "Media_OutputLink");
+            if (SafeDelete.AttributesAndTag(output) is not { } existing) return;   // no file of that name (or it cannot be read)
+            if ((existing.Attributes & (uint)FileAttributes.ReparsePoint) != 0) throw Fail($"{output} is a link.", "Media_OutputLink");
+            if ((existing.Attributes & (uint)FileAttributes.ReadOnly) != 0) throw Fail($"{output} is read-only.", "Media_OutputReadOnly");
+            // The final rename needs to delete the old file: open it for that, without following a link, and close it again.
+            using var probe = Interop.Native.CreateFile(@"\\?\" + Path.GetFullPath(output), 0x00010000 /* DELETE */, 0x7 /* share all */, IntPtr.Zero,
+                Interop.Native.OpenExisting, 0x00200000 /* FILE_FLAG_OPEN_REPARSE_POINT */, IntPtr.Zero);
+            if (probe.IsInvalid)
+            {
+                var error = System.Runtime.InteropServices.Marshal.GetLastWin32Error();
+                if (error is 32 or 33) throw Fail($"{output} is open in another program (error {error}).", "Media_OutputInUse", error);
+                throw Fail($"{output} cannot be replaced (error {error}).", "Media_OutputInvalid", error);
+            }
         }
 
         /// <summary>
@@ -570,7 +630,23 @@ public sealed class MediaBuild(IMediaSteps steps)
         /// </summary>
         private void RemoveOldSetupFiles()
         {
-            string[] answerFiles = [Path.Combine(_media!, "autounattend.xml"), Path.Combine(Sources, "autounattend.xml")];
+            var oem = Path.Combine(Sources, "$OEM$");
+            if (Directory.Exists(oem))
+            {
+                var carried = Directory.EnumerateFiles(oem, "*", new EnumerationOptions { RecurseSubdirectories = true, AttributesToSkip = 0 })
+                    .Select(f => Path.GetRelativePath(_media!, f));
+                steps.Log(@"The ISO carries under sources\$OEM$: " + string.Join(", ", carried));
+            }
+            // Setup also picks up answer files that $OEM$ copies into Panther and Sysprep. File names compare without case.
+            string[] answerFiles =
+            [
+                Path.Combine(_media!, "autounattend.xml"),
+                Path.Combine(Sources, "autounattend.xml"),
+                Path.Combine(oem, "$$", "Panther", "unattend.xml"),
+                Path.Combine(oem, "$$", "Panther", "autounattend.xml"),
+                Path.Combine(oem, "$$", "Panther", "Unattend", "unattend.xml"),
+                Path.Combine(oem, "$$", "System32", "Sysprep", "unattend.xml"),
+            ];
             foreach (var file in answerFiles.Where(File.Exists))
             {
                 steps.Log($"Removing {Path.GetRelativePath(_media!, file)} of the ISO");
@@ -767,37 +843,30 @@ public sealed class MediaBuild(IMediaSteps steps)
         }
 
         /// <summary>
-        /// Moves the verified ISO to the output path (a rename: the work folder is on the same drive). The output folder may
-        /// be writable by others, so it is held (no folder above it can be renamed or replaced meanwhile) and must contain
-        /// no link; the move replaces whatever entry has the name, a link included, without following it. Then the ISO
-        /// takes the output folder's permissions instead of the work folder's administrators-only ones.
+        /// Moves the verified ISO to the output path by handles only (<see cref="SafeMove.IntoFolder"/>): the output folder may
+        /// be writable by others, so no path in it is resolved after it was checked. The ISO takes the output folder's
+        /// permissions while it is still in the locked work folder, then that open file is renamed into the held folder
+        /// (same drive: a rename).
         /// </summary>
         private void Publish()
         {
             var folder = Path.GetDirectoryName(r.OutputIso)!;
-            var atRoot = Same(Path.GetPathRoot(folder)?.TrimEnd('\\'), folder.TrimEnd('\\'));
-            using var pin = atRoot ? null : SafeDelete.Pin(folder);
-            if ((!atRoot && pin is null) || !SafeDelete.HasNoLinks(folder))
-                throw Fail($"The output folder {folder} is or lies in a link; the ISO was not moved there.", "Media_OutputInvalid");
+            bool inherited;
             try
             {
-                File.Move(_workIso!, r.OutputIso, overwrite: true);
+                inherited = SafeMove.IntoFolder(_workIso!, folder, Path.GetFileName(r.OutputIso));
+            }
+            catch (FolderNotHeldException ex)
+            {
+                throw Fail($"The ISO was not moved: {ex.Message}", "Media_OutputInvalid");
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                throw Fail($"The verified ISO could not be moved to {r.OutputIso}: {ex.Message}", "Media_OutputMoveFailed");
+                throw Fail($"The verified ISO could not be moved to {r.OutputIso}: {ex.Message}", "Media_OutputMoveFailed",
+                    (ex.InnerException as System.ComponentModel.Win32Exception)?.NativeErrorCode);
             }
             steps.Log("Verified ISO moved to " + r.OutputIso);
-            try
-            {
-                var security = new FileSecurity();
-                security.SetAccessRuleProtection(isProtected: false, preserveInheritance: false);
-                new FileInfo(r.OutputIso).SetAccessControl(security);
-            }
-            catch (Exception ex)
-            {
-                Warn(steps, $"{r.OutputIso} keeps the work folder's permissions: {ex.Message}");
-            }
+            if (!inherited) Warn(steps, $"{r.OutputIso} keeps the work folder's permissions (administrators only)");
         }
 
         /// <summary>Never throws: discards a mounted image and deletes the work folder (each retried), logging what it could not do.</summary>
@@ -841,13 +910,12 @@ public sealed class MediaBuild(IMediaSteps steps)
         {
             try
             {
-                _lock?.Dispose();
+                _workFolder?.Dispose();
             }
             catch (Exception ex)
             {
                 steps.Log("Releasing the lock file failed: " + ex.Message);
             }
-            _lock = null;
         }
 
         private Task<bool> DeleteWorkFolderAsync() =>
@@ -892,14 +960,19 @@ public sealed class MediaSteps : IMediaSteps
 {
     private readonly Lock _gate = new();
     private readonly Func<DirectoryInfo, bool> _trusted;
+    private readonly Func<string, bool> _lockFolder;
 
     public MediaSteps() : this(null)
     {
     }
 
     /// <param name="trusted">Tests only: replaces the check that a folder is owned by Administrators and locked.</param>
-    internal MediaSteps(Func<DirectoryInfo, bool>? trusted) =>
+    /// <param name="lockFolder">Tests only: replaces <see cref="SecureFolder.Lock"/> (which needs administrator rights).</param>
+    internal MediaSteps(Func<DirectoryInfo, bool>? trusted, Func<string, bool>? lockFolder = null)
+    {
         _trusted = trusted ?? (d => SecureFolder.IsOwnedByAdmins(d) && SecureFolder.IsLocked(d));
+        _lockFolder = lockFolder ?? SecureFolder.Lock;
+    }
 
     public IDism Dism { get; } = new DismTool();
     public IIsoWriter IsoWriter { get; } = new IsoWriter();
@@ -913,7 +986,10 @@ public sealed class MediaSteps : IMediaSteps
         await download.DownloadAsync("esd", file.Url, target, file.Size, Convert.FromHexString(file.Sha256), p, ct);
     }
 
-    public string NewWorkFolder(string outputIso)
+    public WorkFolder NewWorkFolder(string outputIso) => NewWorkFolder(outputIso, null);
+
+    /// <param name="root">Tests only: the folder that stands in for the output drive's root.</param>
+    internal WorkFolder NewWorkFolder(string outputIso, string? root)
     {
         string full;
         try
@@ -926,23 +1002,41 @@ public sealed class MediaSteps : IMediaSteps
         }
         if (!TrustedPath.IsOnLocalFixedDrive(full))
             throw new MediaBuildException(MediaStage.Download, $"{full} is not on a local fixed drive.", key: "Media_OutputNotLocal");
-        var folder = Path.Combine(Path.GetPathRoot(full)!, MediaBuild.WorkFolderPrefix + RandomNumberGenerator.GetHexString(8, lowercase: true));
+        var folder = Path.Combine(root ?? Path.GetPathRoot(full)!, MediaBuild.WorkFolderPrefix + RandomNumberGenerator.GetHexString(8, lowercase: true));
         if (Path.Exists(folder)) throw new MediaBuildException(MediaStage.Download, $"{folder} already exists.", key: "Media_WorkFolderFailed");
         // Lock creates the missing folder with only Administrators and SYSTEM allowed in one step, so no other account can
         // add anything to it, and refuses a folder that someone else created at that name in the meantime.
-        if (!SecureFolder.Lock(folder) || !SafeDelete.HasNoLinks(folder) || !SecureFolder.IsLocked(new DirectoryInfo(folder)))
+        if (!_lockFolder(folder) || !SafeDelete.HasNoLinks(folder) || !_trusted(new DirectoryInfo(folder)))
         {
-            try
-            {
-                DeleteWorkFolder(folder);
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-                AppLog.Warn("media", $"{folder} could not be removed: {ex.Message}");
-            }
+            RemoveEmpty(folder);
             throw new MediaBuildException(MediaStage.Download, $"{folder} could not be created and locked.", key: "Media_WorkFolderFailed");
         }
-        return folder;
+        try
+        {
+            // The lock file exists before anyone else can see the folder as a work folder without a running build.
+            return WorkFolder.Hold(folder);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            RemoveEmpty(folder);
+            throw new MediaBuildException(MediaStage.Download, $"The lock file in {folder} could not be created: {ex.Message}", key: "Media_WorkFolderFailed", inner: ex);
+        }
+    }
+
+    /// <summary>
+    /// Removes a fresh folder that could not be made a work folder: only when it is empty or a link (a non-recursive delete
+    /// removes nothing else), since it may not be locked and so not trusted. Anything left is logged.
+    /// </summary>
+    private static void RemoveEmpty(string folder)
+    {
+        try
+        {
+            if (Path.Exists(folder)) Directory.Delete(folder);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            AppLog.Warn("media", $"{folder} could not be removed: {ex.Message}");
+        }
     }
 
     /// <summary>

@@ -374,6 +374,12 @@ internal static partial class Native
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static partial bool FindVolumeClose(IntPtr find);
 
+    /// <summary>The requested parts of an object's security descriptor (self-relative), read through its handle (needs READ_CONTROL).</summary>
+    [LibraryImport("advapi32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool GetKernelObjectSecurity(Microsoft.Win32.SafeHandles.SafeFileHandle handle, uint requestedInformation,
+        byte[]? descriptor, uint length, out uint needed);
+
     /// <summary>CreateFileW; with access 0 it opens a device only to ask it questions (no read or write access).</summary>
     [LibraryImport("kernel32.dll", EntryPoint = "CreateFileW", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
     internal static partial Microsoft.Win32.SafeHandles.SafeFileHandle CreateFile(string name, uint access, uint share, IntPtr security,

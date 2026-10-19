@@ -527,8 +527,13 @@ public sealed class MediaBuildTests : IDisposable
         Assert.DoesNotContain("autounattend.xml", _steps.IsoContents.Keys);
         Assert.DoesNotContain(@"sources\autounattend.xml", _steps.IsoContents.Keys);
         Assert.DoesNotContain(_steps.IsoContents.Keys, k => k.StartsWith(@"sources\$OEM$\$$\Setup\Tunero", StringComparison.OrdinalIgnoreCase));
-        // Only Tunero's own folder goes; the ISO's other $OEM$ content stays.
+        // Answer files Setup would pick up from $OEM$ go too (any case); the ISO's other $OEM$ content stays.
+        Assert.DoesNotContain(_steps.IsoContents.Keys, k => k.EndsWith("unattend.xml", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(@"sources\$OEM$\$$\Setup\Scripts\keep.cmd", _steps.IsoContents.Keys);
+        Assert.Contains(@"sources\$OEM$\$$\Panther\notes.txt", _steps.IsoContents.Keys);
+        // Every file the ISO carries under $OEM$ is named in the log once.
+        Assert.Single(_steps.LogLines, l => l.Contains(@"sources\$OEM$\$$\Setup\Scripts\keep.cmd", StringComparison.Ordinal));
+        Assert.Contains(_steps.LogLines, l => l.Contains(@"sources\$OEM$\$$\System32\Sysprep\unattend.xml", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -673,19 +678,62 @@ public sealed class MediaBuildTests : IDisposable
 
     private static string[] Identities(string file) =>
         new FileInfo(file).GetAccessControl().GetAccessRules(true, true, typeof(SecurityIdentifier)).Cast<FileSystemAccessRule>()
-            .Select(r => r.IdentityReference.Value).Distinct().Order().ToArray();
+            .Select(r => $"{r.IdentityReference.Value} {r.AccessControlType} {(int)r.FileSystemRights:x}").Order().ToArray();
 
     [Fact]
-    public async Task OutputFolderThatIsALinkIsRefused()
+    public async Task OutputFolderThatIsALinkIsRefusedBeforeAnything()
     {
         var elsewhere = Path.Combine(_root, "elsewhere");
         Directory.CreateDirectory(elsewhere);
         File.WriteAllText(Path.Combine(elsewhere, "Win11.iso"), "older ISO");
         var link = Path.Combine(_root, "outlink");
         TestFolders.Junction(link, elsewhere);
-        await FailsAt(Download() with { OutputIso = Path.Combine(link, "Win11.iso") }, MediaStage.Verify, "Media_OutputInvalid");
+        await FailsAt(Download() with { OutputIso = Path.Combine(link, "Win11.iso") }, MediaStage.Download, "Media_OutputLink");
+        Assert.Empty(_steps.Calls);
         Assert.Equal("older ISO", File.ReadAllText(Path.Combine(elsewhere, "Win11.iso")));
+    }
+
+    [Fact]
+    public async Task OutputFolderSwappedForALinkDuringTheBuildIsRefused()
+    {
+        var output = Path.Combine(_root, "out");
+        var elsewhere = Path.Combine(_root, "elsewhere");
+        Directory.CreateDirectory(output);
+        Directory.CreateDirectory(elsewhere);
+        _steps.IsoWriter.BeforeWrite = () =>
+        {
+            Directory.Delete(output);
+            TestFolders.Junction(output, elsewhere);
+        };
+        await FailsAt(Download() with { OutputIso = Path.Combine(output, "Win11.iso") }, MediaStage.Verify, "Media_OutputInvalid");
+        Assert.Empty(Directory.EnumerateFileSystemEntries(elsewhere));
         Assert.False(Directory.Exists(_steps.WorkFolder));
+    }
+
+    [Fact]
+    public async Task ReadOnlyOutputIsRefusedBeforeAnything()
+    {
+        File.WriteAllText(OutputIso, "older ISO");
+        File.SetAttributes(OutputIso, FileAttributes.ReadOnly);
+        await FailsAt(Download(), MediaStage.Download, "Media_OutputReadOnly");
+        Assert.Empty(_steps.Calls);
+        Assert.Equal("older ISO", File.ReadAllText(OutputIso));
+    }
+
+    [Fact]
+    public async Task OutputOpenElsewhereIsRefusedBeforeAnything()
+    {
+        File.WriteAllText(OutputIso, "older ISO");
+        using (new FileStream(OutputIso, FileMode.Open, FileAccess.Read, FileShare.Read))
+        {
+            await FailsAt(Download(), MediaStage.Download, "Media_OutputInUse");
+        }
+        Assert.Empty(_steps.Calls);
+        // Open with delete sharing (as a reader that lets others replace the file) is fine.
+        using (new FileStream(OutputIso, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+        {
+            Assert.Equal(OutputIso, await Run(Download()));
+        }
     }
 
     [Fact]
@@ -787,6 +835,24 @@ public sealed class MediaBuildTests : IDisposable
     }
 
     [Fact]
+    public async Task LockFileThatIsALinkIsNeverOpened()
+    {
+        var drive = Path.Combine(_root, "drive");
+        var planted = Path.Combine(drive, "TuneroMedia.55556666");
+        var target = Path.Combine(_root, "target");
+        Directory.CreateDirectory(planted);
+        Directory.CreateDirectory(target);
+        // A junction cannot be opened as a file: read as "held", it would keep the folder forever. A link is no Tunero
+        // build at all; the folder goes to DeleteWorkFolder, which only unlinks or refuses what it does not trust.
+        TestFolders.Junction(Path.Combine(planted, MediaBuild.LockFileName), target);
+        _steps.Drives.Add(drive);
+        _steps.Leftovers[drive] = [planted];
+        await Build().CleanLeftoversAsync(CancellationToken.None);
+        Assert.Equal([planted], _steps.DeletedFolders);
+        Assert.True(Directory.Exists(target));
+    }
+
+    [Fact]
     public async Task NothingLeftOverMeansNoDismChange()
     {
         _steps.Dism.Mounted.Add(@"C:\Other");
@@ -841,6 +907,43 @@ public sealed class MediaBuildTests : IDisposable
     {
         var ex = Assert.Throws<MediaBuildException>(() => new MediaSteps().NewWorkFolder(@"\\server\share\Win11.iso"));
         Assert.Equal("Media_OutputNotLocal", ex.Key);
+    }
+
+    [Fact]
+    public void RealStepsRemoveAWorkFolderThatCouldNotBeLocked()
+    {
+        var drive = Path.Combine(_root, "drive");
+        Directory.CreateDirectory(drive);
+        // Created but not locked (as when SecureFolder.Lock fails), and not trusted: DeleteWorkFolder would refuse it.
+        var steps = new MediaSteps(_ => false, folder =>
+        {
+            Directory.CreateDirectory(folder);
+            return false;
+        });
+        var ex = Assert.Throws<MediaBuildException>(() => steps.NewWorkFolder(Path.Combine(drive, "Win11.iso"), drive));
+        Assert.Equal("Media_WorkFolderFailed", ex.Key);
+        Assert.Empty(Directory.EnumerateFileSystemEntries(drive));
+    }
+
+    [Fact]
+    public void RealStepsLockTheNewWorkFolderBeforeReturningIt()
+    {
+        var drive = Path.Combine(_root, "drive");
+        Directory.CreateDirectory(drive);
+        var steps = new MediaSteps(_ => true, folder =>
+        {
+            Directory.CreateDirectory(folder);
+            return true;
+        });
+        var lockFile = "";
+        using (var work = steps.NewWorkFolder(Path.Combine(drive, "Win11.iso"), drive))
+        {
+            Assert.True(MediaBuild.IsWorkFolderName(Path.GetFileName(work.Path)));
+            Assert.Equal(drive, Path.GetDirectoryName(work.Path));
+            lockFile = Path.Combine(work.Path, MediaBuild.LockFileName);
+            Assert.Throws<IOException>(() => new FileStream(lockFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete).Dispose());
+        }
+        new FileStream(lockFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete).Dispose();
     }
 
     [Fact]
@@ -1080,7 +1183,7 @@ internal sealed class FakeMediaSteps : IMediaSteps
     }
 
     /// <summary>Like the real one, the folder lets only one account in (here this user, protected from inheritance).</summary>
-    public string NewWorkFolder(string outputIso)
+    public WorkFolder NewWorkFolder(string outputIso)
     {
         Calls.Add("NewWorkFolder");
         WorkFolder = Path.Combine(_root, "TuneroMedia." + System.Security.Cryptography.RandomNumberGenerator.GetHexString(8, lowercase: true));
@@ -1090,7 +1193,7 @@ internal sealed class FakeMediaSteps : IMediaSteps
         security.AddAccessRule(new FileSystemAccessRule(WindowsIdentity.GetCurrent().User!, FileSystemRights.FullControl,
             InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit, PropagationFlags.None, AccessControlType.Allow));
         folder.SetAccessControl(security);
-        return WorkFolder;
+        return Media.WorkFolder.Hold(WorkFolder);
     }
 
     public void DeleteWorkFolder(string folder)
@@ -1262,11 +1365,13 @@ internal sealed class FakeDism(FakeMediaSteps steps) : IDism
 internal sealed class FakeIsoWriter(FakeMediaSteps steps) : IIsoWriter
 {
     public CancellationTokenSource? StopWith { get; set; }
+    public Action? BeforeWrite { get; set; }
     public string? Target { get; private set; }
 
     public Task WriteAsync(string mediaFolder, string isoPath, string volumeName, IProgress<double>? p, CancellationToken ct)
     {
         steps.Calls.Add("WriteIso");
+        BeforeWrite?.Invoke();
         Target = isoPath;
         if (StopWith is { } stop)
         {
@@ -1317,6 +1422,11 @@ internal sealed class FakeIsoReader(FakeMediaSteps steps) : IIsoReader
             FakeMediaSteps.Put(targetFolder, @"sources\$OEM$\$$\Setup\Tunero\Tunero.exe", "old Tunero", readOnly: true);
             FakeMediaSteps.Put(targetFolder, @"sources\$OEM$\$$\Setup\Tunero\old.txt", "old");
             FakeMediaSteps.Put(targetFolder, @"sources\$OEM$\$$\Setup\Scripts\keep.cmd", "rem keep");
+            FakeMediaSteps.Put(targetFolder, @"sources\$OEM$\$$\Panther\unattend.xml", "<old/>", readOnly: true);
+            FakeMediaSteps.Put(targetFolder, @"sources\$OEM$\$$\Panther\AutoUnattend.XML", "<old/>");
+            FakeMediaSteps.Put(targetFolder, @"sources\$OEM$\$$\Panther\Unattend\Unattend.xml", "<old/>");
+            FakeMediaSteps.Put(targetFolder, @"sources\$OEM$\$$\System32\Sysprep\unattend.xml", "<old/>");
+            FakeMediaSteps.Put(targetFolder, @"sources\$OEM$\$$\Panther\notes.txt", "keep");
         }
         p?.Report(1.0);
         return Task.FromResult(targetFolder);
