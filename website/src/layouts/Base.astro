@@ -10,11 +10,14 @@ interface Props {
   description?: string;
   /** Path of this page in the other language, for the language link and hreflang. */
   alternate: string;
+  /** False for the 404 page: no canonical address or language versions, and search engines leave it out. */
+  indexed?: boolean;
 }
 
-const { t, title = t.meta.title, description = t.meta.description, alternate } = Astro.props;
+const { t, title = t.meta.title, description = t.meta.description, alternate, indexed = true } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const other = new URL(alternate, Astro.site);
+const english = t.lang === 'en' ? canonical : other;
 const home = t.lang === 'en' ? '/' : '/de/';
 ---
 
@@ -25,9 +28,14 @@ const home = t.lang === 'en' ? '/' : '/de/';
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
-    <link rel="canonical" href={canonical} />
-    <link rel="alternate" hreflang={t.lang} href={canonical} />
-    <link rel="alternate" hreflang={t.lang === 'en' ? 'de' : 'en'} href={other} />
+    {indexed ? (
+      <>
+        <link rel="canonical" href={canonical} />
+        <link rel="alternate" hreflang={t.lang} href={canonical} />
+        <link rel="alternate" hreflang={t.lang === 'en' ? 'de' : 'en'} href={other} />
+        <link rel="alternate" hreflang="x-default" href={english} />
+      </>
+    ) : <meta name="robots" content="noindex" />}
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <meta name="theme-color" content="#f3f3f3" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#202020" media="(prefers-color-scheme: dark)" />
@@ -47,7 +55,7 @@ const home = t.lang === 'en' ? '/' : '/de/';
           <img src={icon.src} alt="" width="28" height="28" />
           <span>Tunero</span>
         </a>
-        <nav>
+        <nav aria-label={t.nav.label}>
           <a class="wide" href={download}>{t.nav.download}</a>
           <a class="wide" href={repo}>{t.nav.source}</a>
           <a href={`${home}#faq`}>{t.nav.questions}</a>
@@ -62,7 +70,7 @@ const home = t.lang === 'en' ? '/' : '/de/';
     <footer class="site-footer">
       <div class="container">
         <p class="footer-brand"><img src={icon.src} alt="" width="20" height="20" />{t.footer.license(version)}</p>
-        <nav>
+        <nav aria-label={t.footer.label}>
           <a href={`${repo}/releases`}>{t.footer.links.releases}</a>
           <a href={`${repo}/blob/main/CHANGELOG.md`}>{t.footer.links.changelog}</a>
           <a href={repo}>{t.footer.links.source}</a>

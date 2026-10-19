@@ -6,6 +6,7 @@
 
 - **Website and README:** they now say that the opt-in task "Apply my changes again" runs once after sign-in, that installing in Program Files is optional, that only Chocolatey 0.8.0 has passed moderation so far, and that every setting (not every change) can be undone.
 - **Icons:** the app icon, the website icons and the brand files no longer carry embedded content credentials (C2PA metadata); they look the same.
+- **Website:** the link preview says every setting can be undone; a sitemap and robots.txt, the 404 page left out of search; screen readers hear why a tweak's rating depends on the PC; no sideways scrolling at 320 px; the removal answer names `scoop uninstall`.
 - **Changelog:** the preview releases are summed up in a few lines; their full notes stay in the changelog as of 1.3.0.
 
 ### Fixed

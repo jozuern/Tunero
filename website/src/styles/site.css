@@ -100,6 +100,8 @@ code, kbd, .mono { font-family: var(--font-mono); font-size: 0.875em; }
 .site-header nav a { color: var(--ink-2); text-decoration: none; }
 .site-header nav a:hover { color: var(--ink); text-decoration: underline; }
 @media (max-width: 600px) { .site-header nav .wide { display: none; } }
+/* At 320 px the brand and the three links need a little less space between them (no sideways scrolling). */
+@media (max-width: 359px) { .site-header .container { gap: 12px; } .site-header nav { gap: 12px; } }
 
 /* Hero: the claim across the page in two lines, the lead and the download under it, then the app's window. The window hangs into
    the rating board below. */

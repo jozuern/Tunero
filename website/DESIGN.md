@@ -61,14 +61,14 @@ areas, left out) under large headings, each laid out its own way; and the refere
    otherwise N" when the rating depends on the PC. Row 0 names the popular gaming tweaks rated 0 on disputed evidence,
    then one square per remaining tweak.
 3. **Scan:** the text on the left (sticky), every check as one running paragraph on the right, alternating ink.
-4. **One tweak, end to end:** Mouse acceleration off, its explanation page from the catalog set as a sheet. The
+4. **Areas:** "Built to replace a folder full of tools", heading on top, then the app's pages in the groups and order
+   of its navigation rail, in two columns, with the selection mark on Overview.
+5. **One tweak, end to end:** Mouse acceleration off, its explanation page from the catalog set as a sheet. The
    registry values sit in it where the app puts "What changes", after the summary, old value struck in red and new
    one in accent; the sources sit in its margin. Under the sheet, the Evidence section of the Ultimate Performance
    page quoted (a popular tweak whose evidence does not hold up; the build fails if it stops being rated disputed),
    then the apply steps as a numbered sequence across the page (a real order), then the Tweaks window with the same
    tweak selected.
-5. **Areas:** "Built to replace a folder full of tools", heading on top, then the app's pages in the groups and order
-   of its navigation rail, in two columns, with the selection mark on Overview.
 6. **Left out:** tweak names struck through in red, the reason and source below.
 7. **Reference area:** Privacy, Install (a numbered sequence down a line), Support (Ko-fi as the accent button, GitHub
    Sponsors as a standard one, reached from "Support" in the header) and Questions as rows of a settings page: a
@@ -94,4 +94,5 @@ the left-out list, the reference rows).
 
 ## Motion and script
 
-- No animation. No script except copying the winget command.
+- No animation. Two small scripts only: copying the winget command (shown once winget is live), and showing where
+  to read about the SmartScreen warning after a click on Download.

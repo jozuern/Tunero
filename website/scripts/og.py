@@ -21,7 +21,7 @@ img.paste(icon, (72, 72), icon)
 draw.text((152, 82), 'Tunero', font=font(40, 600, 36), fill=ink)
 draw.text((72, 200), 'PC optimizer', font=font(58, 600, 36), fill=ink)
 draw.text((72, 268), 'for Windows 11.', font=font(58, 600, 36), fill=ink)
-draw.text((72, 360), 'Every finding explained with sources. Every change undoable.', font=font(26, 400, 12), fill=ink2)
+draw.text((72, 360), 'Every finding explained with sources. Every setting can be undone.', font=font(26, 400, 12), fill=ink2)
 
 # The app window, cut off at the bottom right like a window that continues off the card.
 shot = Image.open(site / 'src/assets/screens/site-overview-dark-en.png').convert('RGB')

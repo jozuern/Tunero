@@ -8,7 +8,7 @@ const en: Copy = {
     description:
       'PC optimizer for Windows 11, built to be the only one you need. Tunero finds what costs your games frame rate, explains every change with sources and can undo every setting it changes. Free and open source.',
   },
-  nav: { download: 'Download', source: 'Source code', support: 'Support', questions: 'Questions', other: 'Deutsch', otherHref: '/de/', skip: 'Skip to content' },
+  nav: { label: 'Main', download: 'Download', source: 'Source code', support: 'Support', questions: 'Questions', other: 'Deutsch', skip: 'Skip to content' },
   hero: {
     title: 'Built to be the only PC optimizer you need.',
     lead: 'Tunero scans your PC for what costs your games frame rate and fixes what it can. It is built to replace the tweak tools, debloat scripts, startup managers and cleaners you would otherwise collect. Every change is explained with sources, and every setting it changes is backed up first and can be undone.',
@@ -118,7 +118,7 @@ const en: Copy = {
   areas: {
     title: 'Built to replace a folder full of tools',
     intro:
-      'Tunero brings together what people otherwise collect from tweak tools, debloat scripts, startup managers, cleaners and system utilities, and leaves out what does nothing. What it leaves to other tools, such as a driver cleaner, is listed in its README. These are its main pages, grouped as in the app.',
+      'Tunero brings together what people otherwise collect from tweak tools, debloat scripts, startup managers, cleaners and system utilities, and leaves out what does nothing. What it leaves to other tools, such as a driver cleaner, is listed in its README under "What it does not replace". These are its main pages, grouped as in the app.',
     groups: (c) => [
       {
         name: '',
@@ -213,11 +213,12 @@ const en: Copy = {
       {
         id: 'remove',
         q: 'Can I remove it completely?',
-        a: 'Settings > Uninstall offers to undo every change first. Then it removes the exe, its data folder and its Start menu entry, and for an installed copy also its Program Files folder and its entry under Installed apps. Uninstall under Windows Settings > Apps does the same.',
+        a: 'Settings > Uninstall offers to undo every change first. Then it removes the exe, its data folder and its Start menu entry, and for an installed copy also its Program Files folder and its entry under Installed apps. Uninstall under Windows Settings > Apps does the same. A copy from Scoop is removed with scoop uninstall tunero.',
       },
     ],
   },
   footer: {
+    label: 'Project links',
     license: (v) => `Tunero ${v}. Free software under the GPL-3.0-only.`,
     links: { releases: 'Releases', changelog: 'Changelog', source: 'Source code', privacy: 'Privacy', imprint: 'Legal notice', kofi: 'Support on Ko-fi', sponsors: 'GitHub Sponsors' },
     privacyHref: '/privacy/',

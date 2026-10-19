@@ -8,7 +8,7 @@ const de: Copy = {
     description:
       'PC-Optimierer für Windows 11, gebaut, damit du nur noch einen brauchst. Tunero findet, was deine Spiele FPS kostet, erklärt jede Änderung mit Quellen und kann jede Einstellung rückgängig machen, die es ändert. Kostenlos und quelloffen.',
   },
-  nav: { download: 'Download', source: 'Quellcode', support: 'Unterstützen', questions: 'Fragen', other: 'English', otherHref: '/', skip: 'Zum Inhalt' },
+  nav: { label: 'Hauptnavigation', download: 'Download', source: 'Quellcode', support: 'Unterstützen', questions: 'Fragen', other: 'English', skip: 'Zum Inhalt' },
   hero: {
     title: 'Gebaut, damit du nur noch einen PC-Optimierer brauchst.',
     lead: 'Tunero sucht auf deinem PC, was deine Spiele FPS kostet, und behebt, was es kann. Es ist gebaut, um die Tweak-Tools, Debloat-Skripte, Autostart-Manager und Aufräumprogramme zu ersetzen, die du sonst zusammensuchst. Jede Änderung wird mit Quellen erklärt, und jede Einstellung, die es ändert, wird vorher gesichert und lässt sich rückgängig machen.',
@@ -118,7 +118,7 @@ const de: Copy = {
   areas: {
     title: 'Gebaut, um einen Ordner voller Tools zu ersetzen',
     intro:
-      'Tunero vereint, was man sonst aus Tweak-Tools, Debloat-Skripten, Autostart-Managern, Aufräumprogrammen und Systemprogrammen zusammensucht, und lässt weg, was nichts bringt. Was es anderen Tools überlässt, etwa einem Treiber-Entferner, steht in seinem README. Das sind seine wichtigsten Seiten, gruppiert wie in der App.',
+      'Tunero vereint, was man sonst aus Tweak-Tools, Debloat-Skripten, Autostart-Managern, Aufräumprogrammen und Systemprogrammen zusammensucht, und lässt weg, was nichts bringt. Was es anderen Tools überlässt, etwa einem Treiber-Entferner, steht in seinem README unter „What it does not replace“. Das sind seine wichtigsten Seiten, gruppiert wie in der App.',
     groups: (c) => [
       {
         name: '',
@@ -197,7 +197,7 @@ const de: Copy = {
       },
       {
         id: 'smartappcontrol',
-        q: 'Was, wenn Smart App Control sie blockiert?',
+        q: 'Was, wenn Smart App Control es blockiert?',
         a: 'Smart App Control ist strenger als SmartScreen: Es blockiert unsignierte Apps, die Microsoft noch nicht kennt, und seine Meldung hat keinen Knopf „Trotzdem ausführen“. Apps mit gültiger Signatur lässt es starten, außer Microsoft stuft sie als unsicher ein, Tunero ab 1.2.3 sollte es also nicht aufhalten; hat es eine ältere Version blockiert, lade das aktuelle Release. Du kannst es auch unter Windows-Sicherheit > App- & Browsersteuerung > Einstellungen für Smart App Control ausschalten; mit aktuellen Windows-11-Updates lässt es sich dort auch wieder einschalten.',
       },
       {
@@ -213,13 +213,14 @@ const de: Copy = {
       {
         id: 'entfernen',
         q: 'Kann ich es vollständig entfernen?',
-        a: '„Deinstallieren“ in den Einstellungen bietet an, vorher jede Änderung rückgängig zu machen. Dann entfernt es die exe, seinen Datenordner und seinen Eintrag im Startmenü, bei einer installierten Kopie auch ihren Ordner unter Programme und ihren Eintrag unter Installierte Apps. „Deinstallieren“ in den Windows-Einstellungen unter Apps macht dasselbe.',
+        a: '„Deinstallieren“ in den Einstellungen bietet an, vorher jede Änderung rückgängig zu machen. Dann entfernt es die exe, seinen Datenordner und seinen Eintrag im Startmenü, bei einer installierten Kopie auch ihren Ordner unter Programme und ihren Eintrag unter Installierte Apps. „Deinstallieren“ in den Windows-Einstellungen unter Apps macht dasselbe. Eine Kopie aus Scoop entfernst du mit scoop uninstall tunero.',
       },
     ],
   },
   footer: {
+    label: 'Projektlinks',
     license: (v) => `Tunero ${v}. Freie Software unter der GPL-3.0-only.`,
-    links: { releases: 'Versionen', changelog: 'Änderungen', source: 'Quellcode', privacy: 'Datenschutz', imprint: 'Impressum', kofi: 'Unterstützen auf Ko-fi', sponsors: 'GitHub Sponsors' },
+    links: { releases: 'Versionen', changelog: 'Änderungen', source: 'Quellcode', privacy: 'Datenschutz', imprint: 'Impressum', kofi: 'Auf Ko-fi unterstützen', sponsors: 'GitHub Sponsors' },
     privacyHref: '/de/datenschutz/',
     imprintHref: '/de/impressum/',
   },

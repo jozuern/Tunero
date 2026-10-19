@@ -129,7 +129,7 @@ const managers = [
             <h3 class="sr">{t.impact.row(l.level, l.entries.length)}</h3>
             <ul class="names">
               {l.entries.map((e) => (
-                <li title={e.note}>{e.title}{e.tag && <span class="tag">{e.tag}</span>}</li>
+                <li title={e.note}>{e.title}{e.tag && <span class="tag">{e.tag}</span>}{e.note && <span class="sr">: {e.note}</span>}</li>
               ))}
             </ul>
           </div>
