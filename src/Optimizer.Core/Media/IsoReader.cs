@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using Microsoft.Win32.SafeHandles;
 using Optimizer.Core.Interop;
+using Optimizer.Core.Logging;
 
 namespace Optimizer.Core.Media;
 
@@ -12,16 +13,43 @@ namespace Optimizer.Core.Media;
 /// </summary>
 public sealed record IsoCheck(bool BootCatalogOk, IReadOnlyList<string> Mismatched);
 
+/// <summary>
+/// The ISO could not be opened or attached. <see cref="InUse"/> is true for a sharing or lock violation: another program
+/// holds the file, for example Explorer with the ISO mounted. The message is for the log; the page shows its own text.
+/// </summary>
+public sealed class IsoAttachException(int win32Error, string message) : IOException(message)
+{
+    private const int ErrorSharingViolation = 32, ErrorLockViolation = 33;
+
+    public int Win32Error { get; } = win32Error;
+
+    public bool InUse => Win32Error is ErrorSharingViolation or ErrorLockViolation;
+
+    /// <param name="step">"opened" or "attached".</param>
+    internal static IsoAttachException For(int win32Error, string step)
+    {
+        var message = $"The ISO could not be {step}: error {win32Error} ({new Win32Exception(win32Error).Message}).";
+        if (win32Error is ErrorSharingViolation or ErrorLockViolation)
+            message += " The file is in use by another program, for example mounted in Explorer; eject it there and try again.";
+        return new IsoAttachException(win32Error, message);
+    }
+}
+
 /// <summary>Reads ISOs without changing them. Attaching needs administrator rights.</summary>
 public interface IIsoReader
 {
-    /// <summary>Copies every file of the ISO into <paramref name="targetFolder"/> (created when missing) and returns it. <paramref name="p"/> gets 0 to 1.</summary>
+    /// <summary>
+    /// Copies every folder (empty ones included) and file of the ISO into <paramref name="targetFolder"/> (created when
+    /// missing) and returns it. <paramref name="p"/> gets 0 to 1. A failed or stopped copy leaves a partial target folder:
+    /// the caller deletes it. Throws <see cref="IsoAttachException"/> when the ISO cannot be opened or attached.
+    /// </summary>
     Task<string> CopyMediaAsync(string isoPath, string targetFolder, IProgress<double>? p, CancellationToken ct);
 
     /// <summary>
     /// Compares the SHA-256 of each of <paramref name="relativeFiles"/> on the ISO with the same file in
     /// <paramref name="mediaFolder"/> (a file missing on either side counts as mismatched) and checks the boot catalog
-    /// with <see cref="IsoBoot.CatalogMatches"/>.
+    /// with <see cref="IsoBoot.CatalogMatches"/>: BootCatalogOk is false unless the ISO has a UEFI entry with the media's
+    /// efisys.bin. Throws <see cref="IsoAttachException"/> when the ISO cannot be opened or attached.
     /// </summary>
     Task<IsoCheck> VerifyAsync(string isoPath, string mediaFolder, IReadOnlyList<string> relativeFiles, IProgress<double>? p, CancellationToken ct);
 }
@@ -37,7 +65,7 @@ public interface IIsoReader
 public sealed class IsoReader : IIsoReader
 {
     /// <summary>How long to wait for the attached ISO's volume to appear and mount.</summary>
-    public static TimeSpan VolumeTimeout { get; set; } = TimeSpan.FromSeconds(30);
+    internal static TimeSpan VolumeTimeout { get; set; } = TimeSpan.FromSeconds(30);
 
     private const int ChunkSize = 1 << 20;
 
@@ -45,23 +73,34 @@ public sealed class IsoReader : IIsoReader
     {
         using var iso = AttachedIso.Attach(isoPath);
         var root = await iso.WaitForVolumeAsync(ct);
-        var files = new DirectoryInfo(root)
-            .EnumerateFiles("*", new EnumerationOptions { RecurseSubdirectories = true, AttributesToSkip = FileAttributes.ReparsePoint, IgnoreInaccessible = false })
-            .ToList();
+        await CopyTreeAsync(root, targetFolder, p, ct);
+        return targetFolder;
+    }, ct);
+
+    /// <summary>
+    /// Copies every folder (empty ones too) and file below <paramref name="root"/> to <paramref name="targetFolder"/>.
+    /// Reparse points are skipped, hidden and system entries copied. Each file is written as a new file, not with
+    /// File.Copy, so the copy does not inherit the read-only attribute every file on a disc image has.
+    /// </summary>
+    internal static async Task CopyTreeAsync(string root, string targetFolder, IProgress<double>? p, CancellationToken ct)
+    {
+        var options = new EnumerationOptions { RecurseSubdirectories = true, AttributesToSkip = FileAttributes.ReparsePoint, IgnoreInaccessible = false };
+        var source = new DirectoryInfo(root);
+        var folders = source.EnumerateDirectories("*", options).ToList();
+        var files = source.EnumerateFiles("*", options).ToList();
         var total = files.Sum(f => f.Length);
         var progress = new FractionProgress(p);
         long done = 0;
         Directory.CreateDirectory(targetFolder);
+        foreach (var folder in folders) Directory.CreateDirectory(Path.Combine(targetFolder, Path.GetRelativePath(root, folder.FullName)));
         var buffer = new byte[ChunkSize];
         foreach (var file in files)
         {
             var target = Path.Combine(targetFolder, Path.GetRelativePath(root, file.FullName));
-            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-            // A new file, not File.Copy: the copy must not inherit the read-only attribute every file on a disc image has.
-            await using var source = new FileStream(file.FullName, FileMode.Open, FileAccess.Read, FileShare.Read, 1, FileOptions.Asynchronous | FileOptions.SequentialScan);
+            await using var input = new FileStream(file.FullName, FileMode.Open, FileAccess.Read, FileShare.Read, 1, FileOptions.Asynchronous | FileOptions.SequentialScan);
             await using var copy = new FileStream(target, FileMode.Create, FileAccess.Write, FileShare.None, 1, FileOptions.Asynchronous);
             int n;
-            while ((n = await source.ReadAsync(buffer, ct)) > 0)
+            while ((n = await input.ReadAsync(buffer, ct)) > 0)
             {
                 await copy.WriteAsync(buffer.AsMemory(0, n), ct);
                 done += n;
@@ -70,8 +109,7 @@ public sealed class IsoReader : IIsoReader
             copy.Flush(flushToDisk: true);
         }
         progress.Report(1.0);
-        return targetFolder;
-    }, ct);
+    }
 
     public Task<IsoCheck> VerifyAsync(string isoPath, string mediaFolder, IReadOnlyList<string> relativeFiles, IProgress<double>? p, CancellationToken ct) => Task.Run(async () =>
     {
@@ -137,19 +175,20 @@ public sealed class IsoReader : IIsoReader
 
         public static AttachedIso Attach(string isoPath)
         {
-            var type = new Native.VIRTUAL_STORAGE_TYPE { DeviceId = Native.VirtualStorageTypeDeviceIso, VendorId = Native.VirtualStorageTypeVendorMicrosoft };
-            var error = Native.OpenVirtualDisk(in type, Path.GetFullPath(isoPath), Native.VirtualDiskAccessRead, 0, IntPtr.Zero, out var handle);
+            var type = new NativeWrite.VIRTUAL_STORAGE_TYPE { DeviceId = NativeWrite.VirtualStorageTypeDeviceIso, VendorId = NativeWrite.VirtualStorageTypeVendorMicrosoft };
+            var error = NativeWrite.OpenVirtualDisk(in type, Path.GetFullPath(isoPath), NativeWrite.VirtualDiskAccessRead, 0, IntPtr.Zero, out var handle);
             if (error != 0)
             {
                 handle.Dispose();
-                throw new IOException($"The ISO could not be opened: {new Win32Exception((int)error).Message}");
+                throw IsoAttachException.For((int)error, "opened");
             }
-            var parameters = new Native.ATTACH_VIRTUAL_DISK_PARAMETERS { Version = Native.AttachVirtualDiskVersion1 };
-            error = Native.AttachVirtualDisk(handle, IntPtr.Zero, Native.AttachVirtualDiskFlagReadOnly | Native.AttachVirtualDiskFlagNoDriveLetter, 0, in parameters, IntPtr.Zero);
+            var parameters = new NativeWrite.ATTACH_VIRTUAL_DISK_PARAMETERS { Version = NativeWrite.AttachVirtualDiskVersion1 };
+            error = NativeWrite.AttachVirtualDisk(handle, IntPtr.Zero, NativeWrite.AttachVirtualDiskFlagReadOnly | NativeWrite.AttachVirtualDiskFlagNoDriveLetter,
+                0, in parameters, IntPtr.Zero);
             if (error != 0)
             {
                 handle.Dispose();
-                throw new IOException($"The ISO could not be attached: {new Win32Exception((int)error).Message}");
+                throw IsoAttachException.For((int)error, "attached");
             }
             return new AttachedIso(handle);
         }
@@ -217,8 +256,9 @@ public sealed class IsoReader : IIsoReader
 
         public void Dispose()
         {
-            // Closing the handle would detach it as well (no permanent lifetime); detaching first makes it happen now.
-            Native.DetachVirtualDisk(_handle, 0, 0);
+            // Closing the handle detaches it as well (no permanent lifetime), so a failed detach is only logged.
+            var error = NativeWrite.DetachVirtualDisk(_handle, 0, 0);
+            if (error != 0) Log.Warn("media", $"ISO detach answered {error} ({new Win32Exception((int)error).Message}); closing its handle detaches it");
             _handle.Dispose();
         }
     }

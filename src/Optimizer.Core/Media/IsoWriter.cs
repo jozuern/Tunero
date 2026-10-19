@@ -26,7 +26,7 @@ public interface IIsoWriter
 public static class IsoBoot
 {
     public const int PlatformBios = 0x00, PlatformUefi = 0xEF;
-    public const string BiosImage = @"boot\etfsboot.com", UefiImage = @"efi\microsoft\boot\efisys.bin";
+    public const string BiosImage = @"boot\etfsboot.com", UefiImage = @"efi\microsoft\boot\efisys.bin", UefiLoader = @"efi\boot\bootx64.efi";
 
     private const int Sector = 2048;
     private const int MaxVolumeName = 32;
@@ -38,6 +38,16 @@ public static class IsoBoot
         if (File.Exists(Path.Combine(mediaFolder, BiosImage))) entries.Add((BiosImage, PlatformBios));
         if (File.Exists(Path.Combine(mediaFolder, UefiImage))) entries.Add((UefiImage, PlatformUefi));
         return entries;
+    }
+
+    /// <summary>
+    /// Whether the media can boot a UEFI PC: a non-empty efi\microsoft\boot\efisys.bin (the El Torito image) and the
+    /// efi\boot\bootx64.efi loader. The build refuses media without them before writing.
+    /// </summary>
+    public static bool HasUefiBoot(string mediaFolder)
+    {
+        var image = new FileInfo(Path.Combine(mediaFolder, UefiImage));
+        return image.Exists && image.Length > 0 && File.Exists(Path.Combine(mediaFolder, UefiLoader));
     }
 
     /// <summary>Upper case, every character outside [A-Z0-9_] becomes '_', at most 32 characters.</summary>
@@ -103,11 +113,14 @@ public static class IsoBoot
 
     /// <summary>
     /// True when the catalog has exactly the entries <see cref="Entries"/> chooses for <paramref name="mediaFolder"/>, in the
-    /// same order, and every boot image on the ISO is byte for byte the media's file and fully covered by its sector count.
+    /// same order, every boot image on the ISO is byte for byte the media's file and fully covered by its sector count,
+    /// and one of them is the UEFI entry with the media's efisys.bin. An ISO that cannot boot a UEFI PC never passes,
+    /// even though the writer itself writes whatever entries the media has.
     /// </summary>
     public static bool CatalogMatches(Stream iso, string mediaFolder)
     {
         var expected = Entries(mediaFolder);
+        if (!expected.Any(e => e.Platform == PlatformUefi)) return false;
         var actual = ReadCatalog(iso);
         if (expected.Count != actual.Count) return false;
         for (var i = 0; i < expected.Count; i++)

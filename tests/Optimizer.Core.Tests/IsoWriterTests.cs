@@ -31,6 +31,7 @@ public class IsoWriterTests
         var media = Path.Combine(root, "media");
         Put(media, @"boot\etfsboot.com", Random(Sector, 1));
         Put(media, @"efi\microsoft\boot\efisys.bin", Random(Sector, 2));
+        Put(media, @"efi\boot\bootx64.efi", Random(100, 5));
         Put(media, @"sources\readme.txt", Encoding.ASCII.GetBytes("hello"));
         return media;
     }
@@ -95,6 +96,8 @@ public class IsoWriterTests
             // Without boot files there is no El Torito catalog.
             await using var stream = File.OpenRead(iso);
             Assert.Empty(IsoBoot.ReadPlatforms(stream));
+            // An ISO that cannot boot a UEFI PC never passes the check, even when the media asks for no boot entry.
+            Assert.False(IsoBoot.CatalogMatches(stream, media));
         }
         finally
         {
@@ -137,6 +140,50 @@ public class IsoWriterTests
             Put(media, @"efi\microsoft\boot\efisys.bin", Random(Sector, 2));
             await using (var stream = File.OpenRead(iso))
                 Assert.False(IsoBoot.CatalogMatches(stream, media));
+        }
+        finally
+        {
+            TestFolders.Delete(root);
+        }
+    }
+
+    [Fact]
+    public async Task ABiosOnlyIsoFailsTheCheck()
+    {
+        var root = TestFolders.Create("isobios");
+        try
+        {
+            var media = Path.Combine(root, "media");
+            Put(media, @"boot\etfsboot.com", Random(Sector, 1));
+            Put(media, @"sources\readme.txt", Encoding.ASCII.GetBytes("hello"));
+            var iso = Path.Combine(root, "out.iso");
+
+            await new IsoWriter().WriteAsync(media, iso, "TEST", null, CancellationToken.None);
+
+            await using var stream = File.OpenRead(iso);
+            Assert.Equal([0x00], IsoBoot.ReadPlatforms(stream));
+            Assert.False(IsoBoot.CatalogMatches(stream, media));
+        }
+        finally
+        {
+            TestFolders.Delete(root);
+        }
+    }
+
+    [Fact]
+    public void HasUefiBootNeedsTheBootImageAndTheLoader()
+    {
+        var root = TestFolders.Create("isouefi");
+        try
+        {
+            var media = Path.Combine(root, "media");
+            Assert.False(IsoBoot.HasUefiBoot(media));
+            Put(media, @"efi\microsoft\boot\efisys.bin", Random(Sector, 2));
+            Assert.False(IsoBoot.HasUefiBoot(media));
+            Put(media, @"efi\boot\bootx64.efi", Random(100, 5));
+            Assert.True(IsoBoot.HasUefiBoot(media));
+            Put(media, @"efi\microsoft\boot\efisys.bin", []);
+            Assert.False(IsoBoot.HasUefiBoot(media));
         }
         finally
         {
@@ -189,12 +236,26 @@ public class IsoWriterTests
         try
         {
             var media = BootableMedia(root);
+            Put(media, @"sources\big.bin", Random(8 << 20, 4));
             var iso = Path.Combine(root, "out.iso");
             await File.WriteAllTextAsync(iso, "old");
 
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => new IsoWriter().WriteAsync(media, iso, "TEST", null, new CancellationToken(true)));
+            // Stopped in the middle of writing.
+            using (var cts = new CancellationTokenSource())
+            {
+                var progress = new SyncProgress(v => { if (v > 0) cts.Cancel(); });
+                await Assert.ThrowsAnyAsync<OperationCanceledException>(() => new IsoWriter().WriteAsync(media, iso, "TEST", progress, cts.Token));
+            }
             Assert.Equal("old", await File.ReadAllTextAsync(iso));
+            Assert.False(File.Exists(iso + ".part"));
 
+            // Failed while writing: a media file nobody may read.
+            using (File.Open(Path.Combine(media, @"sources\big.bin"), FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+                await Assert.ThrowsAnyAsync<IOException>(() => new IsoWriter().WriteAsync(media, iso, "TEST", null, CancellationToken.None));
+            Assert.Equal("old", await File.ReadAllTextAsync(iso));
+            Assert.False(File.Exists(iso + ".part"));
+
+            // Complete: only now the old file is replaced.
             await new IsoWriter().WriteAsync(media, iso, "TEST", null, CancellationToken.None);
             await using var stream = File.OpenRead(iso);
             Assert.True(IsoBoot.CatalogMatches(stream, media));
@@ -203,6 +264,47 @@ public class IsoWriterTests
         {
             TestFolders.Delete(root);
         }
+    }
+
+    [Fact]
+    public async Task CopyTreeCopiesEveryFolderAndNoReadOnlyFlag()
+    {
+        var root = TestFolders.Create("isocopy");
+        try
+        {
+            var source = Path.Combine(root, "source");
+            Put(source, @"sources\install.wim", Random(3 << 20, 6));
+            Put(source, "setup.exe", Random(10, 7));
+            Directory.CreateDirectory(Path.Combine(source, @"support\empty"));
+            File.SetAttributes(Path.Combine(source, "setup.exe"), FileAttributes.ReadOnly);
+            var target = Path.Combine(root, "target");
+            var reports = new List<double>();
+
+            await IsoReader.CopyTreeAsync(source, target, new SyncProgress(reports.Add), CancellationToken.None);
+
+            Assert.True(Directory.Exists(Path.Combine(target, @"support\empty")));
+            Assert.Equal(await File.ReadAllBytesAsync(Path.Combine(source, @"sources\install.wim")),
+                await File.ReadAllBytesAsync(Path.Combine(target, @"sources\install.wim")));
+            Assert.Equal(FileAttributes.None, File.GetAttributes(Path.Combine(target, "setup.exe")) & FileAttributes.ReadOnly);
+            Assert.Equal(1.0, reports[^1]);
+        }
+        finally
+        {
+            TestFolders.Delete(root);
+        }
+    }
+
+    [Fact]
+    public void AttachErrorsSayWhenTheIsoIsInUse()
+    {
+        var sharing = IsoAttachException.For(32, "attached");
+        Assert.Equal(32, sharing.Win32Error);
+        Assert.True(sharing.InUse);
+        Assert.Contains("in use", sharing.Message);
+        var other = IsoAttachException.For(1392, "opened");
+        Assert.Equal(1392, other.Win32Error);
+        Assert.False(other.InUse);
+        Assert.DoesNotContain("in use", other.Message);
     }
 
     [Fact]

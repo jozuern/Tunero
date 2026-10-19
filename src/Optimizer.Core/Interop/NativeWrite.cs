@@ -118,4 +118,34 @@ internal static partial class NativeWrite
 
     [DllImport("cfgmgr32.dll")]
     internal static extern uint CM_Enable_DevNode(uint devInst, uint flags);
+
+    // ---------- virtdisk: an ISO attached read-only, without a drive letter, for as long as its handle is open ----------
+    // A temporary change: IsoReader attaches to read the ISO and detaches in a finally (no permanent lifetime).
+    internal const uint VirtualStorageTypeDeviceIso = 1;
+    internal static readonly Guid VirtualStorageTypeVendorMicrosoft = new("ec984aec-a0f9-47e9-901f-71415a66345b");
+    internal const uint VirtualDiskAccessRead = 0x000d0000;    // ATTACH_RO | DETACH | GET_INFO
+    internal const uint AttachVirtualDiskFlagReadOnly = 0x1, AttachVirtualDiskFlagNoDriveLetter = 0x2;
+    internal const int AttachVirtualDiskVersion1 = 1;
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct VIRTUAL_STORAGE_TYPE { public uint DeviceId; public Guid VendorId; }
+
+    /// <summary>The union after Version holds ULONGLONGs (Version2), so it starts at 8 and the structure is 24 bytes.</summary>
+    [StructLayout(LayoutKind.Explicit, Size = 24)]
+    internal struct ATTACH_VIRTUAL_DISK_PARAMETERS
+    {
+        [FieldOffset(0)] public int Version;
+        [FieldOffset(8)] public uint Version1Reserved;
+    }
+
+    [LibraryImport("virtdisk.dll", StringMarshalling = StringMarshalling.Utf16)]
+    internal static partial uint OpenVirtualDisk(in VIRTUAL_STORAGE_TYPE storageType, string path, uint accessMask, uint flags, IntPtr parameters,
+        out Microsoft.Win32.SafeHandles.SafeFileHandle handle);
+
+    [LibraryImport("virtdisk.dll")]
+    internal static partial uint AttachVirtualDisk(Microsoft.Win32.SafeHandles.SafeFileHandle handle, IntPtr securityDescriptor, uint flags,
+        uint providerSpecificFlags, in ATTACH_VIRTUAL_DISK_PARAMETERS parameters, IntPtr overlapped);
+
+    [LibraryImport("virtdisk.dll")]
+    internal static partial uint DetachVirtualDisk(Microsoft.Win32.SafeHandles.SafeFileHandle handle, uint flags, uint providerSpecificFlags);
 }
