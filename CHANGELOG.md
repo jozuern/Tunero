@@ -5,6 +5,7 @@
 ### Changed
 
 - **Website and README:** they now say that the opt-in task "Apply my changes again" runs once after sign-in, that installing in Program Files is optional, that only Chocolatey 0.8.0 has passed moderation so far, and that every setting (not every change) can be undone.
+- **Icons:** the app icon, the website icons and the brand files no longer carry embedded content credentials (C2PA metadata); they look the same.
 - **Changelog:** the preview releases are summed up in a few lines; their full notes stay in the changelog as of 1.3.0.
 
 ## 1.3.0
