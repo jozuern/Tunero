@@ -35,9 +35,13 @@ public static class AnswerFile
 
     private static readonly string[] LabConfigValues = ["BypassTPMCheck", "BypassSecureBootCheck", "BypassCPUCheck", "BypassRAMCheck"];
 
+    /// <summary>The answer file as text. The declaration says utf-8, so write the string to disk as UTF-8.</summary>
     public static string Build(AnswerChoices c)
     {
         ArgumentNullException.ThrowIfNull(c);
+        // Any other value (like "x64") makes Setup ignore every component without a message.
+        if (c.Architecture is not ("amd64" or "arm64"))
+            throw new ArgumentException("Architecture must be amd64 or arm64.", nameof(c));
         if (c.SkipSetup)
         {
             var problem = c.AccountName is null ? "Media_NameEmpty" : AccountName.Problem(c.AccountName);
@@ -81,6 +85,7 @@ public static class AnswerFile
             }
 
             var shell = Component(c, "Microsoft-Windows-Shell-Setup");
+            // FirstLogonCommands start at the same time: nothing may rely on one command finishing before the next.
             var logon = new XElement(Ns + "FirstLogonCommands");
             var order = 0;
             if (c.SkipSetup)
@@ -149,8 +154,16 @@ public static class AnswerFile
 /// <summary>Rules for the local account the answer file creates.</summary>
 public static class AccountName
 {
-    private const string InvalidChars = "\"/\\[]:;|=,+*?<>@";
-    private static readonly string[] Reserved = ["Administrator", "Guest", "DefaultAccount", "WDAGUtilityAccount", "SYSTEM"];
+    private const string InvalidChars = "\"/\\[]:;|=,+*?<>@%&^";
+    // Local user names share one namespace with local groups and built-in accounts, in English and German.
+    // NONE is restricted (Microsoft: LocalAccount Name). defaultuser0 and defaultuser100000 are OOBE's own accounts.
+    private static readonly HashSet<string> Reserved = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "NONE", "Administrator", "Guest", "DefaultAccount", "WDAGUtilityAccount", "SYSTEM",
+        "Administrators", "Users", "Guests", "Power Users", "Remote Desktop Users", "Backup Operators", "Device Owners",
+        "defaultuser0", "defaultuser100000",
+        "Gast", "Administratoren", "Benutzer", "Gäste", "Hauptbenutzer", "Remotedesktopbenutzer", "Sicherungs-Operatoren",
+    };
 
     /// <summary>The Strings key naming the problem, or null when the name is fine.</summary>
     public static string? Problem(string name)
@@ -160,7 +173,7 @@ public static class AccountName
         foreach (var ch in name)
             if (InvalidChars.Contains(ch) || char.IsControl(ch)) return "Media_NameInvalid";
         if (name.All(ch => ch is '.' or ' ') || name.EndsWith('.')) return "Media_NameInvalid";
-        if (Reserved.Any(r => string.Equals(r, name, StringComparison.OrdinalIgnoreCase))) return "Media_NameReserved";
+        if (Reserved.Contains(name)) return "Media_NameReserved";
         return null;
     }
 }

@@ -78,7 +78,7 @@ public class AnswerFileTests
     }
 
     [Fact]
-    public void FirstLogonOrderIsAutoLogonFixPasswordThenTunero()
+    public void FirstLogonCommandsHaveOrders123()
     {
         var shell = Component(Pass(Parse(Choices(skip: true, tunero: true)), "oobeSystem"), "Microsoft-Windows-Shell-Setup");
         var cmds = shell.Element(Ns + "FirstLogonCommands")!.Elements(Ns + "SynchronousCommand").ToList();
@@ -134,14 +134,34 @@ public class AnswerFileTests
         Assert.Contains("xmlns:wcm=\"http://schemas.microsoft.com/WMIConfig/2002/State\"", xml);
     }
 
-    [Theory]
-    [InlineData("Anna & Ben<")]
-    public void SpecialCharactersAreEscaped(string name)
+    [Fact]
+    public void SpecialCharactersAreEscaped()
     {
-        Assert.NotNull(AccountName.Problem(name));
-        Assert.Throws<ArgumentException>(() => AnswerFile.Build(Choices(skip: true, name: name)));
-        var d = Parse(Choices(skip: true, name: "Anna & Ben"));
-        Assert.Equal("Anna & Ben", (string?)d.Descendants(Ns + "LocalAccount").Single().Element(Ns + "Name"));
+        const string name = "Jürgen O'Neil";
+        Assert.Null(AccountName.Problem(name));
+        var d = Parse(Choices(skip: true, name: name));
+        Assert.Equal(name, (string?)d.Descendants(Ns + "LocalAccount").Single().Element(Ns + "Name"));
+        Assert.Equal("net user \"" + name + "\" /logonpasswordchg:yes",
+            d.Descendants(Ns + "CommandLine").Select(x => (string)x).Single(x => x.StartsWith("net user")));
+
+        // Other fields go through the same escaping.
+        var c = Choices(skip: true) with { UserLocale = "a&b<c" };
+        var ic = Component(Pass(Parse(c), "oobeSystem"), "Microsoft-Windows-International-Core");
+        Assert.Equal("a&b<c", (string?)ic.Element(Ns + "UserLocale"));
+    }
+
+    [Theory]
+    [InlineData("x64")]
+    [InlineData("")]
+    [InlineData("AMD64")]
+    public void UnknownArchitectureThrows(string arch) =>
+        Assert.Throws<ArgumentException>(() => AnswerFile.Build(Choices(arch: arch)));
+
+    [Fact]
+    public void BothKnownArchitecturesBuild()
+    {
+        AnswerFile.Build(Choices(arch: "amd64"));
+        AnswerFile.Build(Choices(arch: "arm64"));
     }
 
     [Fact]
@@ -159,6 +179,16 @@ public class AnswerFileTests
     [InlineData("abc.", "Media_NameInvalid")]
     [InlineData("guest", "Media_NameReserved")]
     [InlineData("SYSTEM", "Media_NameReserved")]
+    [InlineData("NONE", "Media_NameReserved")]
+    [InlineData("none", "Media_NameReserved")]
+    [InlineData("Users", "Media_NameReserved")]
+    [InlineData("Benutzer", "Media_NameReserved")]
+    [InlineData("Gäste", "Media_NameReserved")]
+    [InlineData("defaultuser0", "Media_NameReserved")]
+    [InlineData("Power Users", "Media_NameReserved")]
+    [InlineData("a%b", "Media_NameInvalid")]
+    [InlineData("a&b", "Media_NameInvalid")]
+    [InlineData("a^b", "Media_NameInvalid")]
     [InlineData("Josh", null)]
     [InlineData("abcdefghijklmnopqrst", null)]
     public void AccountNameRules(string name, string? key) => Assert.Equal(key, AccountName.Problem(name));
