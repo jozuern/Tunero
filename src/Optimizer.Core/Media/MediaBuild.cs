@@ -365,6 +365,9 @@ public sealed class MediaBuild(IMediaSteps steps)
         private WorkFolder? _workFolder;
         private bool _mounted, _answerFileWritten;
 
+        /// <summary>The page's choices with Setup's language set to one the chosen image has (<see cref="AnswersFor"/>).</summary>
+        private AnswerChoices _answers = r.Answers;
+
         private string Sources => Path.Combine(_media!, "sources");
         private string InstallWim => Path.Combine(Sources, "install.wim");
         private string BootWim => Path.Combine(Sources, "boot.wim");
@@ -715,6 +718,7 @@ public sealed class MediaBuild(IMediaSteps steps)
             var (image, _) = await DetailAsync(InstallWim, 1);
             if (!Same(image.Edition, edition)) throw Fail($"install.wim holds edition {image.Edition}, not {edition}.", "Media_ImageCheckFailed");
             CheckWindows11(image);
+            _answers = AnswersFor(image);
 
             var boot = DismOutput.ParseWimInfo(await Dism(DismArgs.WimInfo(BootWim, null), () => steps.Dism.GetWimInfoAsync(BootWim, null, ct)));
             if (boot.Count != 2) throw Fail($"boot.wim holds {boot.Count} images, not 2.", "Media_ImageCheckFailed");
@@ -726,6 +730,18 @@ public sealed class MediaBuild(IMediaSteps steps)
             if (!Same(setup.Architecture, "x64")) throw Fail($"boot.wim is for {setup.Architecture}; only x64 media can be built.", "Media_NotX64");
             steps.Log($"Images checked: {image.Name} ({image.Edition}, {image.Architecture}, {image.Version}), boot.wim boots image 2");
             return Version.Parse(image.Version!).Build.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        /// <summary>
+        /// Setup's language must be one the image has: the page knows the language of a download but not of an own ISO.
+        /// A language the image lacks becomes the first one DISM lists for it (Microsoft's consumer media hold one each).
+        /// </summary>
+        private AnswerChoices AnswersFor(WimImage image)
+        {
+            var a = r.Answers;
+            if (image.Languages.Count == 0 || image.Languages.Contains(a.UiLanguage, StringComparer.OrdinalIgnoreCase)) return a;
+            steps.Log($"Setup language {image.Languages[0]} (the image's) instead of {a.UiLanguage}");
+            return a with { UiLanguage = image.Languages[0] };
         }
 
         private async Task RemoveAppsAsync()
@@ -760,7 +776,7 @@ public sealed class MediaBuild(IMediaSteps steps)
         /// <summary>autounattend.xml when a choice needs it, and Tunero with its first sign-in file; each read back and checked.</summary>
         private void WriteFiles()
         {
-            var a = r.Answers;
+            var a = _answers;
             if (a.SkipSetup || a.AllowUnsupported || a.FirstSignInTunero)
             {
                 var xml = AnswerFile.Build(a);
@@ -793,7 +809,7 @@ public sealed class MediaBuild(IMediaSteps steps)
                 var settings = new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null, IgnoreWhitespace = true };
                 XDocument written, wanted;
                 using (var reader = XmlReader.Create(path, settings)) written = XDocument.Load(reader);
-                using (var reader = XmlReader.Create(new StringReader(AnswerFile.Build(r.Answers)), settings)) wanted = XDocument.Load(reader);
+                using (var reader = XmlReader.Create(new StringReader(AnswerFile.Build(_answers)), settings)) wanted = XDocument.Load(reader);
                 if (written.Root?.Name != XName.Get("unattend", "urn:schemas-microsoft-com:unattend") || !XNode.DeepEquals(written, wanted))
                     throw Fail("autounattend.xml does not match the choices.", "Media_FilesCheckFailed");
             }

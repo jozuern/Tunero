@@ -1,0 +1,136 @@
+<MCT>
+  <Catalogs>
+    <Catalog version="2.1">
+      <PublishedMedia id="" release="">
+        <Files>
+          <File id="">
+            <FileName>26300.9711.261011-1601.26h2_ge_release_svc_refresh_CLIENTCONSUMER_RET_x64FRE_en-us.esd</FileName>
+            <LanguageCode>en-us</LanguageCode>
+            <Language>English (United States)</Language>
+            <Edition>Professional</Edition>
+            <Architecture>x64</Architecture>
+            <Size>6338662255</Size>
+            <Sha256>a7217f5e14eaf61b967b740d289a95093f430b116e1b64fbe41fd98dcd19f139</Sha256>
+            <FilePath>http://dl.delivery.mp.microsoft.com/filestreamingservice/files/1fa2fb16-757a-4c59-8371-1924cdf38384/26300.9711.261011-1601.26h2_ge_release_svc_refresh_CLIENTCONSUMER_RET_x64FRE_en-us.esd</FilePath>
+            <Key />
+            <Architecture_Loc>%ARCH_64%</Architecture_Loc>
+            <Edition_Loc>%CLIENT%</Edition_Loc>
+            <IsRetailOnly>False</IsRetailOnly>
+          </File>
+          <File id="">
+            <FileName>26300.9711.261011-1601.26h2_ge_release_svc_refresh_CLIENTCONSUMER_RET_x64FRE_en-us.esd</FileName>
+            <LanguageCode>en-us</LanguageCode>
+            <Language>English (United States)</Language>
+            <Edition>Core</Edition>
+            <Architecture>x64</Architecture>
+            <Size>6338662255</Size>
+            <Sha256>a7217f5e14eaf61b967b740d289a95093f430b116e1b64fbe41fd98dcd19f139</Sha256>
+            <FilePath>http://dl.delivery.mp.microsoft.com/filestreamingservice/files/1fa2fb16-757a-4c59-8371-1924cdf38384/26300.9711.261011-1601.26h2_ge_release_svc_refresh_CLIENTCONSUMER_RET_x64FRE_en-us.esd</FilePath>
+            <Key />
+            <Architecture_Loc>%ARCH_64%</Architecture_Loc>
+            <Edition_Loc>%CLIENT%</Edition_Loc>
+            <IsRetailOnly>False</IsRetailOnly>
+          </File>
+          <File id="">
+            <FileName>26300.9711.261011-1601.26h2_ge_release_svc_refresh_CLIENTCONSUMER_RET_x64FRE_de-de.esd</FileName>
+            <LanguageCode>de-de</LanguageCode>
+            <Language>German (Germany)</Language>
+            <Edition>Professional</Edition>
+            <Architecture>x64</Architecture>
+            <Size>6304176500</Size>
+            <Sha256>8e4e7c270e7933c4561e845ec3535201647cbc37a70bea6dfa4ec6fd3a245279</Sha256>
+            <FilePath>http://dl.delivery.mp.microsoft.com/filestreamingservice/files/ebb3e9db-a4e1-4591-a58c-1c142107a183/26300.9711.261011-1601.26h2_ge_release_svc_refresh_CLIENTCONSUMER_RET_x64FRE_de-de.esd</FilePath>
+            <Key />
+            <Architecture_Loc>%ARCH_64%</Architecture_Loc>
+            <Edition_Loc>%CLIENT%</Edition_Loc>
+            <IsRetailOnly>False</IsRetailOnly>
+          </File>
+          <File id="">
+            <FileName>26300.9711.261011-1601.26h2_ge_release_svc_refresh_CLIENTCONSUMER_RET_x64FRE_de-de.esd</FileName>
+            <LanguageCode>de-de</LanguageCode>
+            <Language>German (Germany)</Language>
+            <Edition>Core</Edition>
+            <Architecture>x64</Architecture>
+            <Size>6304176500</Size>
+            <Sha256>8e4e7c270e7933c4561e845ec3535201647cbc37a70bea6dfa4ec6fd3a245279</Sha256>
+            <FilePath>http://dl.delivery.mp.microsoft.com/filestreamingservice/files/ebb3e9db-a4e1-4591-a58c-1c142107a183/26300.9711.261011-1601.26h2_ge_release_svc_refresh_CLIENTCONSUMER_RET_x64FRE_de-de.esd</FilePath>
+            <Key />
+            <Architecture_Loc>%ARCH_64%</Architecture_Loc>
+            <Edition_Loc>%CLIENT%</Edition_Loc>
+            <IsRetailOnly>False</IsRetailOnly>
+          </File>
+          <File id="">
+            <FileName>26300.9711.261011-1601.26h2_ge_release_svc_refresh_CLIENTCONSUMER_RET_x64FRE_en-us.esd</FileName>
+            <LanguageCode>en-us</LanguageCode>
+            <Language>English (United States)</Language>
+            <Edition>HomeBasic</Edition>
+            <Architecture>x64</Architecture>
+            <Size>6338662255</Size>
+            <Sha256>a7217f5e14eaf61b967b740d289a95093f430b116e1b64fbe41fd98dcd19f139</Sha256>
+            <FilePath>http://dl.delivery.mp.microsoft.com/filestreamingservice/files/1fa2fb16-757a-4c59-8371-1924cdf38384/26300.9711.261011-1601.26h2_ge_release_svc_refresh_CLIENTCONSUMER_RET_x64FRE_en-us.esd</FilePath>
+            <Key />
+            <Architecture_Loc>%ARCH_64%</Architecture_Loc>
+            <Edition_Loc>%CLIENT%</Edition_Loc>
+            <IsRetailOnly>False</IsRetailOnly>
+          </File>
+          <File id="">
+            <FileName>26300.9711.261011-1601.26h2_ge_release_svc_refresh_CLIENTCONSUMER_RET_x64FRE_de-de.esd</FileName>
+            <LanguageCode>de-de</LanguageCode>
+            <Language>German (Germany)</Language>
+            <Edition>HomeBasic</Edition>
+            <Architecture>x64</Architecture>
+            <Size>6304176500</Size>
+            <Sha256>8e4e7c270e7933c4561e845ec3535201647cbc37a70bea6dfa4ec6fd3a245279</Sha256>
+            <FilePath>http://dl.delivery.mp.microsoft.com/filestreamingservice/files/ebb3e9db-a4e1-4591-a58c-1c142107a183/26300.9711.261011-1601.26h2_ge_release_svc_refresh_CLIENTCONSUMER_RET_x64FRE_de-de.esd</FilePath>
+            <Key />
+            <Architecture_Loc>%ARCH_64%</Architecture_Loc>
+            <Edition_Loc>%CLIENT%</Edition_Loc>
+            <IsRetailOnly>False</IsRetailOnly>
+          </File>
+          <File id="">
+            <FileName>26300.9711.261011-1601.26h2_ge_release_svc_refresh_CLIENTBUSINESS_VOL_x64FRE_en-us.esd</FileName>
+            <LanguageCode>en-us</LanguageCode>
+            <Language>English (United States)</Language>
+            <Edition>Enterprise</Edition>
+            <Architecture>x64</Architecture>
+            <Size>6207041105</Size>
+            <Sha256>b61eddda20bfe6702c67bb93b93b5bc8b7c3b06824e1e3d2cf65c38ef935911f</Sha256>
+            <FilePath>http://dl.delivery.mp.microsoft.com/filestreamingservice/files/ebb7ccf6-f454-4acf-aafc-f1adcbb3796a/26300.9711.261011-1601.26h2_ge_release_svc_refresh_CLIENTBUSINESS_VOL_x64FRE_en-us.esd</FilePath>
+            <Key />
+            <Architecture_Loc>%ARCH_64%</Architecture_Loc>
+            <Edition_Loc>%ENTERPRISE%</Edition_Loc>
+            <IsRetailOnly>True</IsRetailOnly>
+          </File>
+          <File id="">
+            <FileName>26300.9711.261011-1601.26h2_ge_release_svc_refresh_CLIENTCONSUMER_RET_A64FRE_en-us.esd</FileName>
+            <LanguageCode>en-us</LanguageCode>
+            <Language>English (United States)</Language>
+            <Edition>Professional</Edition>
+            <Architecture>ARM64</Architecture>
+            <Size>6169241382</Size>
+            <Sha256>0ae7c7ea490afa7a40c008ab7bc5ddb457a5a8d3940de2bb136baf44c8569b05</Sha256>
+            <FilePath>http://dl.delivery.mp.microsoft.com/filestreamingservice/files/49f603e3-5946-46e9-90ad-a4398ffa4149/26300.9711.261011-1601.26h2_ge_release_svc_refresh_CLIENTCONSUMER_RET_A64FRE_en-us.esd</FilePath>
+            <Key />
+            <Architecture_Loc>%ARCH_64%</Architecture_Loc>
+            <Edition_Loc>%CLIENT%</Edition_Loc>
+            <IsRetailOnly>True</IsRetailOnly>
+          </File>
+    <File id="">
+      <FileName>26200.6584.250915-1905.25h2_ge_release_svc_refresh_CLIENTCONSUMER_RET_x64FRE_en-us.esd</FileName>
+      <LanguageCode>en-us</LanguageCode>
+      <Language>English (United States)</Language>
+      <Edition>Professional</Edition>
+      <Architecture>x64</Architecture>
+      <Size>5229633836</Size>
+      <Sha256>12fd7f1dd9a93244dd0f0aa55b9cea1f71697f183b6e20aa3fcf798383f28039</Sha256>
+      <FilePath>http://dl.delivery.mp.microsoft.com/filestreamingservice/files/21e11ad2-318a-44c8-ba9d-a732655fcc35/26200.6584.250915-1905.25h2_ge_release_svc_refresh_CLIENTCONSUMER_RET_x64FRE_en-us.esd</FilePath>
+      <Key />
+      <Architecture_Loc>%ARCH_64%</Architecture_Loc>
+      <Edition_Loc>%CLIENT%</Edition_Loc>
+      <IsRetailOnly>False</IsRetailOnly>
+    </File>
+        </Files>
+      </PublishedMedia>
+    </Catalog>
+  </Catalogs>
+</MCT>

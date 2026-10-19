@@ -28,6 +28,8 @@ public static class PageRegistry
         new(Page.Services, typeof(ServicesPage), vm => vm.ServicesPage.EnsureLoadedAsync(), vm => vm.ServicesPage.ReloadCommand),
         new(Page.Apps, typeof(AppsPage), vm => vm.Apps.EnsureLoadedAsync(), vm => vm.Apps.ReloadCommand),
         new(Page.Tools, typeof(ToolsPage), vm => vm.Tools.EnsureLoadedAsync()),
+        // Opening builds the lists (regions, keyboards, apps); the catalog is read only on "Check for the newest version".
+        new(Page.InstallMedia, typeof(InstallMediaPage), vm => vm.InstallMedia.EnsureLoadedAsync()),
         new(Page.Health, typeof(HealthPage), vm => vm.Health.EnsureLoadedAsync()),
         new(Page.Changes, typeof(ChangesPage)),
         new(Page.Hardware, typeof(HardwarePage)),

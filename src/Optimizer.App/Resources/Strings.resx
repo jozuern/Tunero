@@ -1643,4 +1643,113 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Setup_StepStartMenu" xml:space="preserve"><value>the Start menu entry</value></data>
   <data name="Uninstall_CloseFirst" xml:space="preserve"><value>Tunero is open. Uninstall it there: Settings &gt; Uninstall.</value></data>
   <data name="Reapply_UserFolderManual" xml:space="preserve"><value>Available when Tunero is in a folder only administrators can change (Program Files, or winget or Chocolatey for all users): the task starts it with administrator rights without asking.</value></data>
+  <data name="Nav_InstallMedia" xml:space="preserve"><value>Windows install media</value></data>
+  <data name="Media_Title" xml:space="preserve"><value>Windows install media</value></data>
+  <data name="Media_Intro" xml:space="preserve"><value>Build a Windows 11 ISO for a new installation: fewer preinstalled apps, no account questions, and Tunero's profile on the first sign-in.</value></data>
+  <data name="Media_SourceTitle" xml:space="preserve"><value>Source</value></data>
+  <data name="Media_UseDownload" xml:space="preserve"><value>Download the newest Windows 11 from Microsoft</value></data>
+  <data name="Media_UseDownloadHint" xml:space="preserve"><value>Tunero asks Microsoft's media catalog for the newest version and, when you build, downloads the Windows image (about 6 GB) from Microsoft's servers. Every file is checked against the SHA-256 the catalog names.</value></data>
+  <data name="Media_CheckCatalog" xml:space="preserve"><value>Check for the newest version</value></data>
+  <data name="Media_CatalogStep_search" xml:space="preserve"><value>Catalog search</value></data>
+  <data name="Media_CatalogStep_cab" xml:space="preserve"><value>Catalog download</value></data>
+  <data name="Media_CatalogStep_unpack" xml:space="preserve"><value>Unpacking the catalog</value></data>
+  <data name="Media_CatalogFound" xml:space="preserve"><value>Windows 11, build {0}, download {1}</value></data>
+  <data name="Media_CatalogFailed" xml:space="preserve"><value>Microsoft's catalog could not be read ({0}). Try again later, or use your own ISO file.</value></data>
+  <data name="Media_Language" xml:space="preserve"><value>Language</value></data>
+  <data name="Media_UseIso" xml:space="preserve"><value>Use my ISO file</value></data>
+  <data name="Media_UseIsoHint" xml:space="preserve"><value>A Windows 11 ISO for x64 PCs that you already have. Tunero copies it and leaves the file as it is. An answer file inside it is removed and replaced by the choices on this page; other files it adds to Windows stay.</value></data>
+  <data name="Media_PickIso" xml:space="preserve"><value>Choose ISO</value></data>
+  <data name="Media_IsoFiles" xml:space="preserve"><value>ISO files</value></data>
+  <data name="Media_X64Only" xml:space="preserve"><value>This PC has an ARM processor. Tunero builds x64 media only, for PCs with an Intel or AMD processor.</value></data>
+  <data name="Media_EditionTitle" xml:space="preserve"><value>Edition</value></data>
+  <data name="Media_Edition" xml:space="preserve"><value>Windows edition</value></data>
+  <data name="Media_EditionHint" xml:space="preserve"><value>The edition your product key or digital license is for. Preselected: this PC's edition. For your own ISO, the build checks that the ISO has it.</value></data>
+  <data name="Media_Edition_Core" xml:space="preserve"><value>Windows 11 Home</value></data>
+  <data name="Media_Edition_CoreN" xml:space="preserve"><value>Windows 11 Home N</value></data>
+  <data name="Media_Edition_Professional" xml:space="preserve"><value>Windows 11 Pro</value></data>
+  <data name="Media_Edition_ProfessionalN" xml:space="preserve"><value>Windows 11 Pro N</value></data>
+  <data name="Media_Edition_Education" xml:space="preserve"><value>Windows 11 Education</value></data>
+  <data name="Media_Edition_EducationN" xml:space="preserve"><value>Windows 11 Education N</value></data>
+  <data name="Media_Edition_ProfessionalEducation" xml:space="preserve"><value>Windows 11 Pro Education</value></data>
+  <data name="Media_Edition_ProfessionalEducationN" xml:space="preserve"><value>Windows 11 Pro Education N</value></data>
+  <data name="Media_Edition_ProfessionalWorkstation" xml:space="preserve"><value>Windows 11 Pro for Workstations</value></data>
+  <data name="Media_Edition_ProfessionalWorkstationN" xml:space="preserve"><value>Windows 11 Pro N for Workstations</value></data>
+  <data name="Media_ChangesTitle" xml:space="preserve"><value>Changes</value></data>
+  <data name="Media_RemoveAppsTitle" xml:space="preserve"><value>Remove preinstalled apps</value></data>
+  <data name="Media_RemoveAppsText" xml:space="preserve"><value>The apps you tick are removed from the image, so no account on the new PC gets them. It is the list Remove apps uses; apps the image does not have are skipped.</value></data>
+  <data name="Media_AppsChosen" xml:space="preserve"><value>{0} of {1} chosen</value></data>
+  <data name="Media_AppStore" xml:space="preserve"><value>The Microsoft Store still offers this app.</value></data>
+  <data name="Media_AppNoStore" xml:space="preserve"><value>This app cannot be installed again.</value></data>
+  <data name="Media_SkipSetupTitle" xml:space="preserve"><value>Skip account and setup questions</value></data>
+  <data name="Media_SkipSetupText" xml:space="preserve"><value>Setup creates a local administrator account with this name and answers the privacy questions with the most private choice. No password is stored on the ISO: Windows asks for a new one at the next sign-in.</value></data>
+  <data name="Media_AccountName" xml:space="preserve"><value>Account name</value></data>
+  <data name="Media_Region" xml:space="preserve"><value>Region format</value></data>
+  <data name="Media_Keyboard" xml:space="preserve"><value>Keyboard</value></data>
+  <data name="Media_PasswordNote" xml:space="preserve"><value>Region format and keyboard are preselected from this PC.</value></data>
+  <data name="Media_NameEmpty" xml:space="preserve"><value>Enter a name for the account.</value></data>
+  <data name="Media_NameTooLong" xml:space="preserve"><value>The name can have at most 20 characters.</value></data>
+  <data name="Media_NameInvalid" xml:space="preserve"><value>The name cannot contain any of " / \ [ ] : ; | = , + * ? &lt; &gt; @ % &amp; ^ and cannot end with a period.</value></data>
+  <data name="Media_NameReserved" xml:space="preserve"><value>Windows already uses this name for an account or group.</value></data>
+  <data name="Media_ProfileTitle" xml:space="preserve"><value>Apply a Tunero profile</value></data>
+  <data name="Media_ProfileText" xml:space="preserve"><value>Tunero is copied onto the ISO and opens at the first sign-in. It scans that PC and applies the profile's recommendations; every change appears under Changes and can be undone.</value></data>
+  <data name="Media_Profile" xml:space="preserve"><value>Profile</value></data>
+  <data name="Media_ProfileNeedsRelease" xml:space="preserve"><value>Only the released Tunero.exe can be copied onto the ISO. This copy is a development build.</value></data>
+  <data name="Media_UnsupportedTitle" xml:space="preserve"><value>Allow unsupported PCs</value></data>
+  <data name="Media_PreviewTag" xml:space="preserve"><value>Preview</value></data>
+  <data name="Media_UnsupportedText" xml:space="preserve"><value>Windows Setup skips its checks for TPM 2.0, Secure Boot, the processor and memory. Microsoft does not support Windows 11 on such PCs and says they are not guaranteed to get updates, security updates included. These values are not documented by Microsoft.</value></data>
+  <data name="Media_UnsupportedSourceSupport" xml:space="preserve"><value>Microsoft: Windows 11 on devices that don't meet minimum system requirements</value></data>
+  <data name="Media_UnsupportedSourceSpecs" xml:space="preserve"><value>Microsoft: Windows 11 specifications</value></data>
+  <data name="Media_BuildTitle" xml:space="preserve"><value>Build</value></data>
+  <data name="Media_Output" xml:space="preserve"><value>ISO file</value></data>
+  <data name="Media_PickOutput" xml:space="preserve"><value>Change</value></data>
+  <data name="Media_Needed" xml:space="preserve"><value>The build needs about {0} free on this drive; {1} are free.</value></data>
+  <data name="Media_NeededOnly" xml:space="preserve"><value>The build needs about {0} free on the drive of the ISO file.</value></data>
+  <data name="Media_SecureBootNote" xml:space="preserve"><value>The ISO starts with the same boot files as Microsoft's own Windows 11 ISO.</value></data>
+  <data name="Media_BuildButton" xml:space="preserve"><value>Build ISO</value></data>
+  <data name="Media_Building" xml:space="preserve"><value>Building the Windows ISO</value></data>
+  <data name="Media_NeedsAdmin" xml:space="preserve"><value>Building install media needs administrator rights.</value></data>
+  <data name="Media_NeedsCatalog" xml:space="preserve"><value>Check for the newest version first, or choose your own ISO file.</value></data>
+  <data name="Media_NoImage" xml:space="preserve"><value>Microsoft's catalog has no image for this language and edition.</value></data>
+  <data name="Media_NeedsIso" xml:space="preserve"><value>Choose an ISO file.</value></data>
+  <data name="Media_NeedsRegion" xml:space="preserve"><value>Choose a region format and a keyboard.</value></data>
+  <data name="Media_OpenFolder" xml:space="preserve"><value>Show in folder</value></data>
+  <data name="Media_OpenLog" xml:space="preserve"><value>Show log</value></data>
+  <data name="Media_Done" xml:space="preserve"><value>The ISO is ready: {0} ({1}).</value></data>
+  <data name="Media_DoneNoSize" xml:space="preserve"><value>The ISO is ready: {0}.</value></data>
+  <data name="Media_Failed" xml:space="preserve"><value>The build stopped at "{0}": {1}</value></data>
+  <data name="Media_ErrorCode" xml:space="preserve"><value>Error code: {0}.</value></data>
+  <data name="Media_LogAt" xml:space="preserve"><value>Log: {0}</value></data>
+  <data name="Media_FailedUnknown" xml:space="preserve"><value>An unexpected error occurred.</value></data>
+  <data name="Media_FailedRequest" xml:space="preserve"><value>The choices could not be used: {0}</value></data>
+  <data name="Media_Stopped" xml:space="preserve"><value>The build was stopped. The ISO file was not changed.</value></data>
+  <data name="Media_Stage_Catalog" xml:space="preserve"><value>Catalog</value></data>
+  <data name="Media_Stage_Download" xml:space="preserve"><value>Download</value></data>
+  <data name="Media_Stage_Check" xml:space="preserve"><value>Checking the download</value></data>
+  <data name="Media_Stage_Unpack" xml:space="preserve"><value>Unpacking the image</value></data>
+  <data name="Media_Stage_Apps" xml:space="preserve"><value>Removing apps</value></data>
+  <data name="Media_Stage_Files" xml:space="preserve"><value>Adding the setup files</value></data>
+  <data name="Media_Stage_Iso" xml:space="preserve"><value>Writing the ISO</value></data>
+  <data name="Media_Stage_Verify" xml:space="preserve"><value>Checking the ISO</value></data>
+  <data name="Media_Stage_Cleanup" xml:space="preserve"><value>Cleaning up</value></data>
+  <data name="Media_OutputInvalid" xml:space="preserve"><value>Choose an .iso file in an existing folder; it cannot be the source ISO.</value></data>
+  <data name="Media_OutputLink" xml:space="preserve"><value>The output folder or file is a link. Choose a regular folder.</value></data>
+  <data name="Media_OutputReadOnly" xml:space="preserve"><value>The existing file at the output path is read-only.</value></data>
+  <data name="Media_OutputInUse" xml:space="preserve"><value>The existing file at the output path is open in another program, for example mounted in Explorer. Eject it there and try again.</value></data>
+  <data name="Media_OutputNotLocal" xml:space="preserve"><value>The ISO file must be on a local drive of this PC, not on a network or removable drive.</value></data>
+  <data name="Media_OutputMoveFailed" xml:space="preserve"><value>The finished ISO could not be moved to the output path.</value></data>
+  <data name="Media_SourceMissing" xml:space="preserve"><value>The ISO file you chose no longer exists.</value></data>
+  <data name="Media_WorkFolderFailed" xml:space="preserve"><value>Tunero could not create its protected work folder on the output drive.</value></data>
+  <data name="Media_NotEnoughSpace" xml:space="preserve"><value>There is not enough free space on the output drive.</value></data>
+  <data name="Media_NotWindows11" xml:space="preserve"><value>The image is not Windows 11 install media.</value></data>
+  <data name="Media_NotX64" xml:space="preserve"><value>The image is not for x64 PCs. Tunero builds x64 media only.</value></data>
+  <data name="Media_NoUefiBoot" xml:space="preserve"><value>The media has no UEFI boot files.</value></data>
+  <data name="Media_EditionMissing" xml:space="preserve"><value>The image does not contain the chosen edition.</value></data>
+  <data name="Media_ImageCheckFailed" xml:space="preserve"><value>A check of the Windows image failed.</value></data>
+  <data name="Media_Unhealthy" xml:space="preserve"><value>DISM reports damage in the Windows image; the changes were not saved.</value></data>
+  <data name="Media_FilesCheckFailed" xml:space="preserve"><value>A file written to the media did not read back as written.</value></data>
+  <data name="Media_IsoInUse" xml:space="preserve"><value>The ISO file is open in another program, for example mounted in Explorer. Eject it there and try again.</value></data>
+  <data name="Media_VerifyFailed" xml:space="preserve"><value>The written ISO differs from the prepared files.</value></data>
+  <data name="Media_CloseTitle" xml:space="preserve"><value>Stop the build?</value></data>
+  <data name="Media_CloseText" xml:space="preserve"><value>Tunero is building install media. Closing stops the build and removes its work files first; this can take a moment.</value></data>
+  <data name="Media_CloseStop" xml:space="preserve"><value>Stop and close</value></data>
 </root>

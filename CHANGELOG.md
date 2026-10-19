@@ -4,6 +4,7 @@
 
 ### Added
 
+- **Windows install media:** a new page builds a Windows 11 ISO (x64) from Microsoft's newest download or your own ISO: without the preinstalled apps you tick, without the account and setup questions, if you like for PCs Windows 11 does not support (Preview), and with Tunero applying your profile at the first sign-in. Downloads are checked against Microsoft's catalog, and the ISO is read back before it is saved.
 - **Live readings show which programs use each device:** every card (processor, memory, graphics card and each drive) names its three busiest programs; folded, a sortable list with totals since the readings were switched on and programs that just ended. Drives are per disk, unlike Task Manager, and data Windows writes later from its cache counts for the program that saved it. A program's details offer Open in Explorer, a start priority rule and End task.
 
 ### Changed

@@ -98,14 +98,35 @@ public sealed class AppServices
     /// The signed-in user's Documents folder (also when moved, to OneDrive for example), for the file dialogs: under a
     /// separate admin account this process's own Documents would be that account's. Null when it cannot be found.
     /// </summary>
-    public string? SessionDocumentsFolder()
+    public string? SessionDocumentsFolder() => SessionFolder("Personal", "Documents");
+
+    /// <summary>The signed-in user's account name without the PC or domain (not the elevated account's); null when unknown.</summary>
+    public string? SessionUserName()
+    {
+        if (UserSid is not { } sid) return null;
+        try
+        {
+            var account = new System.Security.Principal.SecurityIdentifier(sid).Translate(typeof(System.Security.Principal.NTAccount)).Value;
+            return account[(account.LastIndexOf('\\') + 1)..];
+        }
+        catch (Exception ex) when (ex is ArgumentException or System.Security.Principal.IdentityNotMappedException or SystemException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>The signed-in user's Downloads folder, where the install media page saves its ISO. Null when it cannot be found.</summary>
+    public string? SessionDownloadsFolder() => SessionFolder("{374DE290-123F-4565-9164-39C4925E467B}", "Downloads");
+
+    /// <summary>A known folder of the signed-in user from User Shell Folders (<paramref name="value"/>), else its usual place.</summary>
+    private string? SessionFolder(string value, string fallback)
     {
         if (ProfilePath is not { } profile) return null;
         try
         {
             using var key = Context.Registry.Open(Hive.User, @"Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders", writable: false);
-            var raw = key?.GetValue("Personal", null, Microsoft.Win32.RegistryValueOptions.DoNotExpandEnvironmentNames) as string;
-            var folder = raw is { Length: > 0 } ? MachineEnvironment.ForUser(profile)(raw) : Path.Combine(profile, "Documents");
+            var raw = key?.GetValue(value, null, Microsoft.Win32.RegistryValueOptions.DoNotExpandEnvironmentNames) as string;
+            var folder = raw is { Length: > 0 } ? MachineEnvironment.ForUser(profile)(raw) : Path.Combine(profile, fallback);
             return Directory.Exists(folder) ? folder : null;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException or ArgumentException)
@@ -134,8 +155,8 @@ public interface IDialogs
     /// <summary>Generic question; returns true when the primary button was chosen.</summary>
     bool Ask(string title, string text, string primary);
 
-    /// <summary>Save dialog for a changes file; returns the chosen path or null.</summary>
-    string? PickSaveFile(string defaultName, string filterName, string extension);
+    /// <summary>Save dialog for a file; returns the chosen path or null. <paramref name="folder"/>: where it opens (null: Documents).</summary>
+    string? PickSaveFile(string defaultName, string filterName, string extension, string? folder = null);
 
     /// <summary>Open dialog for a changes file; returns the chosen path or null.</summary>
     string? PickOpenFile(string filterName, string extension);

@@ -73,6 +73,11 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
         ServicesPage = new ServicesViewModel(this, services, Runner);
         Apps = new AppsViewModel(this, services, dialogs);
         Tools = new ToolsViewModel(this, services, Runner, dialogs);
+        InstallMedia = new InstallMediaViewModel(this, dialogs,
+            new Optimizer.Core.Media.MediaCatalogSource(new Optimizer.Core.Media.MediaSteps(), services.Context.Processes, System.IO.Path.GetPathRoot(Environment.SystemDirectory)!),
+            (request, progress, ct) => new Optimizer.Core.Media.MediaBuild(new Optimizer.Core.Media.MediaSteps()).RunAsync(request, progress, ct),
+            InstallMediaSystem.ForThisPc(services, () => _usage.Id, () => _settings.Theme, path => ShowInExplorerCommand.Execute(path), Install.IsPublishedExe),
+            InstallMediaSystem.CleanLeftoversAsync);
         Health = new HealthViewModel(this, dialogs, exe =>
         {
             Tools.PrefillPriorityRule(exe);
@@ -85,12 +90,12 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
             Rebuild();
             Network.Rebuild();
             OnPropertyChanged(nameof(ReapplyHint));
-            foreach (var page in new PageViewModel[] { Debloat, Cleanup, Storage, Startup, ServicesPage, Apps, Tools, Health }) page.OnLanguageChanged();
+            foreach (var page in new PageViewModel[] { Debloat, Cleanup, Storage, Startup, ServicesPage, Apps, Tools, InstallMedia, Health }) page.OnLanguageChanged();
         };
     }
 
     /// <summary>Every page that loads its own data.</summary>
-    public IReadOnlyList<PageViewModel> Pages => [Network, Debloat, Cleanup, Storage, Startup, ServicesPage, Apps, Tools, Health];
+    public IReadOnlyList<PageViewModel> Pages => [Network, Debloat, Cleanup, Storage, Startup, ServicesPage, Apps, Tools, InstallMedia, Health];
 
     /// <summary>
     /// After the first scan, the pages that read slow data of their own (startup entries, services, programs and
@@ -119,6 +124,7 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
     public ServicesViewModel ServicesPage { get; }
     public AppsViewModel Apps { get; }
     public ToolsViewModel Tools { get; }
+    public InstallMediaViewModel InstallMedia { get; }
     public HealthViewModel Health { get; }
 
     [ObservableProperty] private Page _currentPage = Page.Overview;

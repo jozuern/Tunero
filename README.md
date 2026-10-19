@@ -45,6 +45,7 @@ A copy installed this way is updated by its package manager: "Update now" in the
 - **Install & update:** install common apps with winget or search winget for any other package, update them one at a time or all at once, and see how old the drivers are, grouped by where to get updates.
 - **Storage:** a page of its own that reads a drive only when you select Analyze (with Stop), straight from the NTFS file table (MFT) with administrator rights (in the test VM 0.6 s instead of 1.2 s for 177,000 files), where a file with several names (hard links) counts once, and folder by folder otherwise. It then shows it as a folder tree beside a treemap, the space by file type, its largest files and, on request, duplicate files. Open in Explorer, Copy path and Move to Recycle Bin work on files and folders. Windows, program, game and AppData folders, drive roots, user profiles and folders such as Documents themselves are never offered for deletion, and neither are links or anything in OneDrive or another cloud folder (remove those in File Explorer). Every item is checked again when it is moved, what you delete goes to the Recycle Bin, and Find duplicates never opens a file kept online only.
 - **Tools and health:** Windows features, program start priorities, network fixes, Windows Update repair, SFC and DISM, quick fixes (icon cache, Defender update, winget sources, Advanced startup for Safe Mode), a frame time benchmark with PresentMon, throttle check, drive health, opt-in live readings that also show which programs use the processor, memory, graphics card and each drive (with End task, Open in Explorer and a priority rule).
+- **Windows install media:** builds a Windows 11 ISO (x64) for a new installation, from Microsoft's newest download or your own ISO: it removes the preinstalled apps you tick, skips the account and setup questions with a local account (Windows asks for its password at the first sign-in), can let Setup install on PCs Windows 11 does not support (Preview), and copies Tunero onto it to apply your profile at the first sign-in. Downloads are checked against the SHA-256 in Microsoft's signed catalog, every step is checked, the ISO is read back before it is saved, and a failed or stopped build cleans up after itself.
 - **New accounts:** copy the per-user tweaks you turned on to the Default profile, so accounts created later start with them (undone on the Changes page).
 - **Export, Import and command line:** move your changes to another PC or a fresh install, if you like with removed apps, service start types and startup entries, in the app or with `--apply` ([Command line](#command-line)).
 - **System info:** everything the scan read, from processor and memory modules to displays, drives, firmware security and the power plan, with a button that copies it all for a forum post or a bug report.
@@ -77,7 +78,7 @@ Tunero is built to be the only PC optimizer you need, and it says plainly where 
 - **Driver removal and custom driver packages:** a clean graphics driver removal stays with Display Driver Uninstaller (DDU) and custom NVIDIA packages with NVCleanstall; the Drivers card links to both.
 - **Live per-process rules:** Process Lasso adjusts running programs all the time, which needs a program in the background. Tunero runs only when you start it, so it offers start priorities that Windows applies by itself instead.
 - **Security trade-offs:** tweaks that turn off Defender, UAC, updates or exploit protections for a few frames stay out ([docs/not-included.md](docs/not-included.md) lists them with sources). Tools such as AtlasOS that do this go further than Tunero on purpose.
-- **Installing Windows:** media creation and setup changes (Flyoobe, Rufus) are out of scope; Tunero optimizes the Windows that is running.
+- **Writing USB drives and changing Setup further:** Tunero builds the ISO; a tool such as Rufus writes it to a USB drive. Disk layouts, drivers in the image and other Setup changes (Flyoobe, NTLite) stay with those tools.
 
 <p align="center"><img src="docs/screenshots/search-en-light.png" width="800" alt="Search for defender: the reason why turning off Defender is not offered comes first, then what the app offers for Defender"></p>
 
@@ -107,7 +108,7 @@ Exit codes: 0 done, 1 some changes failed, 2 not a valid changes file, 3 no admi
 
 ## Privacy
 
-No telemetry, no accounts. The app goes online only for features you start or turn on (update check, VirusTotal lookup, DNS benchmark, app installs). After an unexpected error it asks whether to open a GitHub bug report filled in with the error details, without your user or computer name; nothing is sent unless you submit it there. Details: [docs/PRIVACY.md](docs/PRIVACY.md).
+No telemetry, no accounts. The app goes online only for features you start or turn on (update check, VirusTotal lookup, DNS benchmark, app installs, the Windows download for install media). After an unexpected error it asks whether to open a GitHub bug report filled in with the error details, without your user or computer name; nothing is sent unless you submit it there. Details: [docs/PRIVACY.md](docs/PRIVACY.md).
 
 ## Uninstall
 

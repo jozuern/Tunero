@@ -134,6 +134,32 @@ public partial class DocLintTests(ITestOutputHelper output)
         Assert.Empty(missing);
     }
 
+    /// <summary>
+    /// The install media page builds keys at run time: a text for every reason a build can fail with
+    /// (MediaBuildException.Keys), every stage, every offered edition, every account name problem and catalog step.
+    /// </summary>
+    [Fact]
+    public void MediaKeysExistInBothLanguages()
+    {
+        string[] keys =
+        [
+            .. Media.MediaBuildException.Keys,
+            .. Enum.GetNames<Media.MediaStage>().Select(s => "Media_Stage_" + s),
+            .. Media.MediaCatalog.OfferedEditions.Select(e => "Media_Edition_" + e),
+            "Media_NameEmpty", "Media_NameTooLong", "Media_NameInvalid", "Media_NameReserved",
+            .. new[] { "search", "cab", "unpack" }.Select(s => "Media_CatalogStep_" + s),
+        ];
+        var missing = new List<string>();
+        foreach (var file in new[] { "Strings.resx", "Strings.de.resx" })
+        {
+            var defined = XDocument.Load(Path.Combine(RepoPaths.App, "Resources", file)).Descendants("data")
+                .Select(d => (string)d.Attribute("name")!).ToHashSet(StringComparer.Ordinal);
+            missing.AddRange(keys.Where(k => !defined.Contains(k)).Select(k => $"{file}: {k}"));
+        }
+        foreach (var m in missing) output.WriteLine(m);
+        Assert.Empty(missing);
+    }
+
     [GeneratedRegex(@"Loc\.Instance(?:\[|\.Format\()""(\w+)""")]
     private static partial Regex CodeKeyPattern();
 

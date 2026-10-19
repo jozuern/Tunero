@@ -16,6 +16,9 @@ public partial class MainWindow : FluentWindow, IServiceProvider
 
     private bool _syncing;
 
+    /// <summary>Closing waits for a stopped install media build to clean up.</summary>
+    private bool _closingAfterBuild;
+
     public MainWindow(MainViewModel vm)
     {
         InitializeComponent();
@@ -45,8 +48,28 @@ public partial class MainWindow : FluentWindow, IServiceProvider
         };
         // Closing ends the process, and with it the threads of a change in progress: a batch, an undo, a winget run or
         // an app removal would stop halfway. The window stays open until the change has finished.
-        Closing += (_, e) =>
+        Closing += async (_, e) =>
         {
+            // An install media build can stop safely: asked first, it stops and cleans up (unmount, work folder), then the
+            // window closes.
+            if (vm.InstallMedia.IsBuilding)
+            {
+                e.Cancel = true;
+                if (_closingAfterBuild) return;
+                if (MessageWindow.Show(this, Loc.Instance["Media_CloseTitle"], Loc.Instance["Media_CloseText"], Loc.Instance["Confirm_Cancel"], Loc.Instance["Media_CloseStop"]) != 1)
+                    return;
+                _closingAfterBuild = true;
+                try
+                {
+                    await vm.InstallMedia.StopAndWaitAsync();
+                }
+                finally
+                {
+                    _closingAfterBuild = false;
+                }
+                if (!ChangeGate.Instance.Busy) Close();
+                return;
+            }
             if (!ChangeGate.Instance.Busy) return;
             e.Cancel = true;
             vm.ShowResult(Loc.Instance["Close_WhileBusy"], InfoBarSeverity.Warning);

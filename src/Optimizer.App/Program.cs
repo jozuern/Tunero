@@ -97,6 +97,7 @@ public static class Program
                 Log.Info("app", "the single-instance lock is taken but no other copy runs in this session; starting without it");
             }
         }
+        HoldsInstanceLock = instance is not null;
         try
         {
             // The embedded catalogs take about 200 ms to read (JSON, and the serializer's first use): read beside WPF's
@@ -113,6 +114,12 @@ public static class Program
             instance?.Dispose();
         }
     }
+
+    /// <summary>
+    /// This process holds the single-instance lock: it is the one window of this session. Only that one cleans up after
+    /// earlier install media builds at start (a second process or a command line run never does).
+    /// </summary>
+    public static bool HoldsInstanceLock { get; private set; }
 
     /// <summary>The first process's start (UTC) when this one is its restart for the protected runtime folder; for --perf.</summary>
     public static DateTime? LaunchedAt { get; private set; }

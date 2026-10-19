@@ -11,7 +11,7 @@ using Wpf.Ui.Controls;
 
 namespace Optimizer.App.ViewModels;
 
-public enum Page { Overview, Tweaks, Advisor, Network, Debloat, Cleanup, Storage, Startup, Services, Apps, Tools, Health, Changes, Hardware, Settings }
+public enum Page { Overview, Tweaks, Advisor, Network, Debloat, Cleanup, Storage, Startup, Services, Apps, Tools, InstallMedia, Health, Changes, Hardware, Settings }
 
 /// <summary>A notice at the top of the page (Fluent InfoBar).</summary>
 public sealed record Banner(string Text, bool IsWarning)

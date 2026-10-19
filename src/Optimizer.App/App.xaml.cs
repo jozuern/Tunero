@@ -198,6 +198,9 @@ public partial class App : Application
         var vm = new MainViewModel(_settings, services, new Dialogs(services.SessionDocumentsFolder)) { ProfileOverride = args.Value("--profile") };
         // Without the confirmation: only for runs without admin rights (Debug), not for whoever starts the elevated exe.
         if (args.Value("--expert") is "on" && !DataPaths.ProcessIsElevated) vm.EnableExpertForSession();
+        // Developer aid: the install media page with a sample catalog and a build that only shows its stages (no network,
+        // nothing runs). --media-demo fail, done or expand (comma separated) shows a result or unfolds the cards.
+        if (args.Has("--media-demo")) vm.InstallMedia.UseDemo(args.Value("--media-demo") is { } demo && !demo.StartsWith("--", StringComparison.Ordinal) ? demo : null);
         Mark("view model ready");
         // The scan starts before the window is built: its probes run on other threads while WPF creates the window and
         // the page (about a third of a second), and the results only reach the view model.
@@ -252,6 +255,9 @@ public partial class App : Application
             else vm.OfferSetupAsync(SingleInstance.Applies(e.Args)).Forget("setup");
             OfferErrorReport(lastSession: true);
             vm.CheckForUpdatesAsync(atStart: true).Forget("update check");
+            // What killed or crashed install media builds left (work folders at drive roots, mounted images): only the
+            // session's one window does it, elevated, and never beside a build (the page waits for it before building).
+            if (DataPaths.ProcessIsElevated && Program.HoldsInstanceLock && !args.Has("--media-demo")) vm.InstallMedia.CleanLeftoversAsync().Forget("media cleanup");
         }
 
         if (args.Value("--screenshot") is { } shot)
@@ -274,6 +280,8 @@ public partial class App : Application
     private async Task SaveScreenshotsAsync(CliArgs args, MainViewModel vm, MainWindow window, AppServices services, string shot)
     {
         if (Enum.TryParse<Page>(args.Value("--page"), true, out var page)) vm.CurrentPage = page;
+        // The install media page with --media-demo reads its sample catalog on opening: the picture shows it read.
+        if (vm.CurrentPage == Page.InstallMedia) await vm.InstallMedia.EnsureLoadedAsync();
         if (args.Value("--pane") is "closed") window.Nav.IsPaneOpen = false;
         if (double.TryParse(args.Value("--width"), CultureInfo.InvariantCulture, out var width)) window.Width = Math.Max(window.MinWidth, width);
         if (double.TryParse(args.Value("--height"), CultureInfo.InvariantCulture, out var height)) window.Height = Math.Max(window.MinHeight, height);

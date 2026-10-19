@@ -288,6 +288,20 @@ public sealed class MediaBuildTests : IDisposable
         Assert.Equal(FirstSignIn.Serialize(request.FirstSignIn!), Encoding.UTF8.GetString(_steps.IsoContents[@"sources\$OEM$\$$\Setup\Tunero\first-sign-in.json"]));
     }
 
+    /// <summary>
+    /// The page cannot know the language of an own ISO: Setup's language in the answer file is the one the chosen image
+    /// has, never one it lacks.
+    /// </summary>
+    [Fact]
+    public async Task AnswerFileTakesTheLanguageOfTheImage()
+    {
+        _steps.OwnLanguage = "de-DE";
+        var request = OwnIso() with { Answers = Plain with { SkipSetup = true, AccountName = "Anna" } };
+        await Run(request);
+        Assert.Equal(AnswerFile.Build(request.Answers with { UiLanguage = "de-DE" }), Encoding.UTF8.GetString(_steps.IsoContents["autounattend.xml"]));
+        Assert.Contains(_steps.LogLines, l => l.Contains("de-DE", StringComparison.Ordinal));
+    }
+
     [Fact]
     public async Task NoChoicesMeansNoAnswerFile()
     {
@@ -1001,7 +1015,7 @@ public sealed class MediaBuildTests : IDisposable
 }
 
 /// <summary>An image inside a fake WIM or ESD.</summary>
-internal sealed record Img(string Name, string? Edition, string Architecture = "x64", string Version = "10.0.26300", bool Bootable = false);
+internal sealed record Img(string Name, string? Edition, string Architecture = "x64", string Version = "10.0.26300", bool Bootable = false, string Language = "en-US");
 
 /// <summary>
 /// Records every step. A fake image file is a 208-byte WIM header (image count, boot index) followed by a token that names
@@ -1051,6 +1065,7 @@ internal sealed class FakeMediaSteps : IMediaSteps
     public bool OwnBothImages { get; set; }
     public string OwnVersion { get; set; } = "";
     public string OwnArchitecture { get; set; } = "";
+    public string OwnLanguage { get; set; } = "en-US";
     /// <summary>The boot.wim images of the own ISO, or null for no boot.wim.</summary>
     public List<Img>? OwnBootImages { get; set; }
     public bool WithoutUefi { get; set; }
@@ -1260,7 +1275,7 @@ internal sealed class FakeDism(FakeMediaSteps steps) : IDism
                 ? $"Version : {string.Join('.', version.Take(3))}\nServicePack Build : {(version.Length > 3 ? version[3] : "1")}\n"
                 : "Version : <undefined>\nServicePack Build : <undefined>\n");
             text.Append($"ServicePack Level : 0\nEdition : {img.Edition ?? "<undefined>"}\n");
-            text.Append("Installation : Client\nLanguages :\n\ten-US (Default)\n");
+            text.Append($"Installation : Client\nLanguages :\n\t{img.Language} (Default)\n");
         }
         text.Append("\nThe operation completed successfully.\n");
         return Task.FromResult(text.ToString());
@@ -1406,8 +1421,8 @@ internal sealed class FakeIsoReader(FakeMediaSteps steps) : IIsoReader
         if (steps.OwnBootImages is { } boot) steps.PutImages(Path.Combine(targetFolder, "sources", "boot.wim"), boot);
         Img[] editions =
         [
-            new("Windows 11 Home", "Core", steps.OwnArchitecture, steps.OwnVersion),
-            new("Windows 11 Pro", "Professional", steps.OwnArchitecture, steps.OwnVersion),
+            new("Windows 11 Home", "Core", steps.OwnArchitecture, steps.OwnVersion, Language: steps.OwnLanguage),
+            new("Windows 11 Pro", "Professional", steps.OwnArchitecture, steps.OwnVersion, Language: steps.OwnLanguage),
         ];
         if (steps.OwnImageFile is { } name) steps.PutImages(Path.Combine(targetFolder, "sources", name), editions);
         if (steps.OwnBothImages)

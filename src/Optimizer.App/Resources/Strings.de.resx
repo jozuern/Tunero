@@ -1643,4 +1643,113 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Setup_StepStartMenu" xml:space="preserve"><value>Eintrag im Startmenü</value></data>
   <data name="Uninstall_CloseFirst" xml:space="preserve"><value>Tunero ist geöffnet. Deinstalliere es dort: Einstellungen &gt; Deinstallieren.</value></data>
   <data name="Reapply_UserFolderManual" xml:space="preserve"><value>Verfügbar, wenn Tunero in einem Ordner liegt, den nur Administratoren ändern können (Programme oder winget bzw. Chocolatey für alle Benutzer): Die Aufgabe startet es ohne Nachfrage mit Administratorrechten.</value></data>
+  <data name="Nav_InstallMedia" xml:space="preserve"><value>Windows-Installationsmedium</value></data>
+  <data name="Media_Title" xml:space="preserve"><value>Windows-Installationsmedium</value></data>
+  <data name="Media_Intro" xml:space="preserve"><value>Erstellt eine Windows-11-ISO für eine Neuinstallation: weniger vorinstallierte Apps, keine Kontofragen und Tuneros Profil bei der ersten Anmeldung.</value></data>
+  <data name="Media_SourceTitle" xml:space="preserve"><value>Quelle</value></data>
+  <data name="Media_UseDownload" xml:space="preserve"><value>Neuestes Windows 11 von Microsoft herunterladen</value></data>
+  <data name="Media_UseDownloadHint" xml:space="preserve"><value>Tunero fragt Microsofts Medienkatalog nach der neuesten Version und lädt beim Erstellen das Windows-Abbild (etwa 6 GB) von Microsofts Servern. Jede Datei wird mit dem SHA-256 aus dem Katalog geprüft.</value></data>
+  <data name="Media_CheckCatalog" xml:space="preserve"><value>Nach neuester Version suchen</value></data>
+  <data name="Media_CatalogStep_search" xml:space="preserve"><value>Katalogsuche</value></data>
+  <data name="Media_CatalogStep_cab" xml:space="preserve"><value>Katalog-Download</value></data>
+  <data name="Media_CatalogStep_unpack" xml:space="preserve"><value>Katalog entpacken</value></data>
+  <data name="Media_CatalogFound" xml:space="preserve"><value>Windows 11, Build {0}, Download {1}</value></data>
+  <data name="Media_CatalogFailed" xml:space="preserve"><value>Microsofts Katalog ließ sich nicht lesen ({0}). Versuch es später noch einmal oder nimm deine eigene ISO-Datei.</value></data>
+  <data name="Media_Language" xml:space="preserve"><value>Sprache</value></data>
+  <data name="Media_UseIso" xml:space="preserve"><value>Eigene ISO-Datei verwenden</value></data>
+  <data name="Media_UseIsoHint" xml:space="preserve"><value>Eine Windows-11-ISO für x64-PCs, die du schon hast. Tunero kopiert sie und lässt die Datei unverändert. Eine Antwortdatei darin wird entfernt und durch die Auswahl auf dieser Seite ersetzt; andere Dateien, die sie Windows hinzufügt, bleiben.</value></data>
+  <data name="Media_PickIso" xml:space="preserve"><value>ISO auswählen</value></data>
+  <data name="Media_IsoFiles" xml:space="preserve"><value>ISO-Dateien</value></data>
+  <data name="Media_X64Only" xml:space="preserve"><value>Dieser PC hat einen ARM-Prozessor. Tunero erstellt nur x64-Medien, für PCs mit Intel- oder AMD-Prozessor.</value></data>
+  <data name="Media_EditionTitle" xml:space="preserve"><value>Edition</value></data>
+  <data name="Media_Edition" xml:space="preserve"><value>Windows-Edition</value></data>
+  <data name="Media_EditionHint" xml:space="preserve"><value>Die Edition, für die dein Produktschlüssel oder deine digitale Lizenz gilt. Vorausgewählt ist die Edition dieses PCs. Bei einer eigenen ISO prüft Tunero beim Erstellen, ob sie diese Edition enthält.</value></data>
+  <data name="Media_Edition_Core" xml:space="preserve"><value>Windows 11 Home</value></data>
+  <data name="Media_Edition_CoreN" xml:space="preserve"><value>Windows 11 Home N</value></data>
+  <data name="Media_Edition_Professional" xml:space="preserve"><value>Windows 11 Pro</value></data>
+  <data name="Media_Edition_ProfessionalN" xml:space="preserve"><value>Windows 11 Pro N</value></data>
+  <data name="Media_Edition_Education" xml:space="preserve"><value>Windows 11 Education</value></data>
+  <data name="Media_Edition_EducationN" xml:space="preserve"><value>Windows 11 Education N</value></data>
+  <data name="Media_Edition_ProfessionalEducation" xml:space="preserve"><value>Windows 11 Pro Education</value></data>
+  <data name="Media_Edition_ProfessionalEducationN" xml:space="preserve"><value>Windows 11 Pro Education N</value></data>
+  <data name="Media_Edition_ProfessionalWorkstation" xml:space="preserve"><value>Windows 11 Pro für Workstations</value></data>
+  <data name="Media_Edition_ProfessionalWorkstationN" xml:space="preserve"><value>Windows 11 Pro N für Workstations</value></data>
+  <data name="Media_ChangesTitle" xml:space="preserve"><value>Änderungen</value></data>
+  <data name="Media_RemoveAppsTitle" xml:space="preserve"><value>Vorinstallierte Apps entfernen</value></data>
+  <data name="Media_RemoveAppsText" xml:space="preserve"><value>Die angehakten Apps werden aus dem Abbild entfernt, damit kein Konto auf dem neuen PC sie bekommt. Es ist dieselbe Liste wie unter Apps entfernen; Apps, die das Abbild nicht enthält, werden übersprungen.</value></data>
+  <data name="Media_AppsChosen" xml:space="preserve"><value>{0} von {1} ausgewählt</value></data>
+  <data name="Media_AppStore" xml:space="preserve"><value>Der Microsoft Store bietet diese App weiterhin an.</value></data>
+  <data name="Media_AppNoStore" xml:space="preserve"><value>Diese App lässt sich nicht wieder installieren.</value></data>
+  <data name="Media_SkipSetupTitle" xml:space="preserve"><value>Konto- und Einrichtungsfragen überspringen</value></data>
+  <data name="Media_SkipSetupText" xml:space="preserve"><value>Setup legt ein lokales Administratorkonto mit diesem Namen an und beantwortet die Datenschutzfragen mit der privatesten Wahl. Auf der ISO wird kein Kennwort gespeichert: Windows fragt bei der nächsten Anmeldung nach einem neuen.</value></data>
+  <data name="Media_AccountName" xml:space="preserve"><value>Kontoname</value></data>
+  <data name="Media_Region" xml:space="preserve"><value>Regionales Format</value></data>
+  <data name="Media_Keyboard" xml:space="preserve"><value>Tastatur</value></data>
+  <data name="Media_PasswordNote" xml:space="preserve"><value>Regionales Format und Tastatur sind von diesem PC übernommen.</value></data>
+  <data name="Media_NameEmpty" xml:space="preserve"><value>Gib einen Namen für das Konto ein.</value></data>
+  <data name="Media_NameTooLong" xml:space="preserve"><value>Der Name darf höchstens 20 Zeichen lang sein.</value></data>
+  <data name="Media_NameInvalid" xml:space="preserve"><value>Der Name darf keines dieser Zeichen enthalten: " / \ [ ] : ; | = , + * ? &lt; &gt; @ % &amp; ^ und nicht auf einen Punkt enden.</value></data>
+  <data name="Media_NameReserved" xml:space="preserve"><value>Windows verwendet diesen Namen schon für ein Konto oder eine Gruppe.</value></data>
+  <data name="Media_ProfileTitle" xml:space="preserve"><value>Tunero-Profil anwenden</value></data>
+  <data name="Media_ProfileText" xml:space="preserve"><value>Tunero wird auf die ISO kopiert und öffnet sich bei der ersten Anmeldung. Es prüft den PC und wendet die Empfehlungen des Profils an; jede Änderung erscheint unter Änderungen und lässt sich rückgängig machen.</value></data>
+  <data name="Media_Profile" xml:space="preserve"><value>Profil</value></data>
+  <data name="Media_ProfileNeedsRelease" xml:space="preserve"><value>Nur die veröffentlichte Tunero.exe lässt sich auf die ISO kopieren. Diese Kopie ist ein Entwicklungs-Build.</value></data>
+  <data name="Media_UnsupportedTitle" xml:space="preserve"><value>Nicht unterstützte PCs zulassen</value></data>
+  <data name="Media_PreviewTag" xml:space="preserve"><value>Vorschau</value></data>
+  <data name="Media_UnsupportedText" xml:space="preserve"><value>Windows Setup überspringt seine Prüfungen von TPM 2.0, Secure Boot, Prozessor und Arbeitsspeicher. Microsoft unterstützt Windows 11 auf solchen PCs nicht und sagt, dass Updates für sie nicht garantiert sind, auch Sicherheitsupdates nicht. Diese Werte sind von Microsoft nicht dokumentiert.</value></data>
+  <data name="Media_UnsupportedSourceSupport" xml:space="preserve"><value>Microsoft: Windows 11 auf Geräten, die die Mindestsystemanforderungen nicht erfüllen</value></data>
+  <data name="Media_UnsupportedSourceSpecs" xml:space="preserve"><value>Microsoft: Spezifikationen von Windows 11</value></data>
+  <data name="Media_BuildTitle" xml:space="preserve"><value>Erstellen</value></data>
+  <data name="Media_Output" xml:space="preserve"><value>ISO-Datei</value></data>
+  <data name="Media_PickOutput" xml:space="preserve"><value>Ändern</value></data>
+  <data name="Media_Needed" xml:space="preserve"><value>Zum Erstellen braucht Tunero etwa {0} freien Speicher auf diesem Laufwerk; frei sind {1}.</value></data>
+  <data name="Media_NeededOnly" xml:space="preserve"><value>Zum Erstellen braucht Tunero etwa {0} freien Speicher auf dem Laufwerk der ISO-Datei.</value></data>
+  <data name="Media_SecureBootNote" xml:space="preserve"><value>Die ISO startet mit denselben Startdateien wie Microsofts eigene Windows-11-ISO.</value></data>
+  <data name="Media_BuildButton" xml:space="preserve"><value>ISO erstellen</value></data>
+  <data name="Media_Building" xml:space="preserve"><value>Windows-ISO wird erstellt</value></data>
+  <data name="Media_NeedsAdmin" xml:space="preserve"><value>Zum Erstellen eines Installationsmediums braucht Tunero Administratorrechte.</value></data>
+  <data name="Media_NeedsCatalog" xml:space="preserve"><value>Such zuerst nach der neuesten Version oder wähl deine eigene ISO-Datei.</value></data>
+  <data name="Media_NoImage" xml:space="preserve"><value>Microsofts Katalog hat kein Abbild für diese Sprache und Edition.</value></data>
+  <data name="Media_NeedsIso" xml:space="preserve"><value>Wähl eine ISO-Datei aus.</value></data>
+  <data name="Media_NeedsRegion" xml:space="preserve"><value>Wähl ein regionales Format und eine Tastatur aus.</value></data>
+  <data name="Media_OpenFolder" xml:space="preserve"><value>Im Ordner zeigen</value></data>
+  <data name="Media_OpenLog" xml:space="preserve"><value>Protokoll zeigen</value></data>
+  <data name="Media_Done" xml:space="preserve"><value>Die ISO ist fertig: {0} ({1}).</value></data>
+  <data name="Media_DoneNoSize" xml:space="preserve"><value>Die ISO ist fertig: {0}.</value></data>
+  <data name="Media_Failed" xml:space="preserve"><value>Das Erstellen brach bei „{0}“ ab: {1}</value></data>
+  <data name="Media_ErrorCode" xml:space="preserve"><value>Fehlercode: {0}.</value></data>
+  <data name="Media_LogAt" xml:space="preserve"><value>Protokoll: {0}</value></data>
+  <data name="Media_FailedUnknown" xml:space="preserve"><value>Ein unerwarteter Fehler ist aufgetreten.</value></data>
+  <data name="Media_FailedRequest" xml:space="preserve"><value>Die Auswahl ließ sich nicht verwenden: {0}</value></data>
+  <data name="Media_Stopped" xml:space="preserve"><value>Das Erstellen wurde angehalten. Die ISO-Datei blieb unverändert.</value></data>
+  <data name="Media_Stage_Catalog" xml:space="preserve"><value>Katalog</value></data>
+  <data name="Media_Stage_Download" xml:space="preserve"><value>Download</value></data>
+  <data name="Media_Stage_Check" xml:space="preserve"><value>Download prüfen</value></data>
+  <data name="Media_Stage_Unpack" xml:space="preserve"><value>Abbild entpacken</value></data>
+  <data name="Media_Stage_Apps" xml:space="preserve"><value>Apps entfernen</value></data>
+  <data name="Media_Stage_Files" xml:space="preserve"><value>Setup-Dateien hinzufügen</value></data>
+  <data name="Media_Stage_Iso" xml:space="preserve"><value>ISO schreiben</value></data>
+  <data name="Media_Stage_Verify" xml:space="preserve"><value>ISO prüfen</value></data>
+  <data name="Media_Stage_Cleanup" xml:space="preserve"><value>Aufräumen</value></data>
+  <data name="Media_OutputInvalid" xml:space="preserve"><value>Wähl eine .iso-Datei in einem vorhandenen Ordner; sie darf nicht die Quell-ISO sein.</value></data>
+  <data name="Media_OutputLink" xml:space="preserve"><value>Der Zielordner oder die Zieldatei ist ein Link. Wähl einen normalen Ordner.</value></data>
+  <data name="Media_OutputReadOnly" xml:space="preserve"><value>Die vorhandene Datei am Zielpfad ist schreibgeschützt.</value></data>
+  <data name="Media_OutputInUse" xml:space="preserve"><value>Die vorhandene Datei am Zielpfad ist in einem anderen Programm geöffnet, zum Beispiel im Explorer bereitgestellt. Wirf sie dort aus und versuch es noch einmal.</value></data>
+  <data name="Media_OutputNotLocal" xml:space="preserve"><value>Die ISO-Datei muss auf einem lokalen Laufwerk dieses PCs liegen, nicht auf einem Netzlaufwerk oder Wechseldatenträger.</value></data>
+  <data name="Media_OutputMoveFailed" xml:space="preserve"><value>Die fertige ISO ließ sich nicht an den Zielpfad verschieben.</value></data>
+  <data name="Media_SourceMissing" xml:space="preserve"><value>Die gewählte ISO-Datei gibt es nicht mehr.</value></data>
+  <data name="Media_WorkFolderFailed" xml:space="preserve"><value>Tunero konnte seinen geschützten Arbeitsordner auf dem Ziellaufwerk nicht anlegen.</value></data>
+  <data name="Media_NotEnoughSpace" xml:space="preserve"><value>Auf dem Ziellaufwerk ist nicht genug Speicher frei.</value></data>
+  <data name="Media_NotWindows11" xml:space="preserve"><value>Das Abbild ist kein Installationsmedium für Windows 11.</value></data>
+  <data name="Media_NotX64" xml:space="preserve"><value>Das Abbild ist nicht für x64-PCs. Tunero erstellt nur x64-Medien.</value></data>
+  <data name="Media_NoUefiBoot" xml:space="preserve"><value>Dem Medium fehlen die UEFI-Startdateien.</value></data>
+  <data name="Media_EditionMissing" xml:space="preserve"><value>Das Abbild enthält die gewählte Edition nicht.</value></data>
+  <data name="Media_ImageCheckFailed" xml:space="preserve"><value>Eine Prüfung des Windows-Abbilds ist fehlgeschlagen.</value></data>
+  <data name="Media_Unhealthy" xml:space="preserve"><value>DISM meldet Schäden im Windows-Abbild; die Änderungen wurden nicht gespeichert.</value></data>
+  <data name="Media_FilesCheckFailed" xml:space="preserve"><value>Eine auf das Medium geschriebene Datei ließ sich nicht unverändert zurücklesen.</value></data>
+  <data name="Media_IsoInUse" xml:space="preserve"><value>Die ISO-Datei ist in einem anderen Programm geöffnet, zum Beispiel im Explorer bereitgestellt. Wirf sie dort aus und versuch es noch einmal.</value></data>
+  <data name="Media_VerifyFailed" xml:space="preserve"><value>Die geschriebene ISO weicht von den vorbereiteten Dateien ab.</value></data>
+  <data name="Media_CloseTitle" xml:space="preserve"><value>Erstellen anhalten?</value></data>
+  <data name="Media_CloseText" xml:space="preserve"><value>Tunero erstellt gerade ein Installationsmedium. Beim Schließen wird das Erstellen angehalten, und zuerst werden die Arbeitsdateien entfernt; das kann einen Moment dauern.</value></data>
+  <data name="Media_CloseStop" xml:space="preserve"><value>Anhalten und schließen</value></data>
 </root>

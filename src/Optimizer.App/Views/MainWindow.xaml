@@ -74,6 +74,7 @@
                     <v:NavHeader x:Name="HeaderMaintain" Text="{l:Tr Nav_GroupMaintain}" Style="{StaticResource NavGroupHeader}" />
                     <v:NavItem Content="{l:Tr Nav_Apps}" TargetPageType="{x:Type v:AppsPage}" Icon="{ui:SymbolIcon Apps24}" />
                     <v:NavItem Content="{l:Tr Nav_Tools}" TargetPageType="{x:Type v:ToolsPage}" Icon="{ui:SymbolIcon Toolbox24}" />
+                    <v:NavItem Content="{l:Tr Nav_InstallMedia}" TargetPageType="{x:Type v:InstallMediaPage}" Icon="{ui:SymbolIcon UsbStick24}" />
                     <v:NavItem Content="{l:Tr Nav_Health}" TargetPageType="{x:Type v:HealthPage}" Icon="{ui:SymbolIcon HeartPulse24}" />
                     <v:NavItem Content="{l:Tr Nav_Advisor}" TargetPageType="{x:Type v:AdvisorPage}" Icon="{ui:SymbolIcon ClipboardTaskListLtr24}">
                         <v:NavItem.InfoBadge>

@@ -249,6 +249,6 @@ internal sealed class FakeDialogs : IDialogs
         return Answer;
     }
 
-    public string? PickSaveFile(string defaultName, string filterName, string extension) => null;
+    public string? PickSaveFile(string defaultName, string filterName, string extension, string? folder = null) => null;
     public string? PickOpenFile(string filterName, string extension) => null;
 }
