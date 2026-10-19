@@ -1,0 +1,35 @@
+
+Deployment Image Servicing and Management tool
+Version: 10.0.26100.9549
+
+Image Version: 10.0.26300.9711
+
+Getting the list of app packages (.appx or .appxbundle) in this image...
+
+DisplayName : Clipchamp.Clipchamp
+Version : 4.7.10020.0
+Architecture : neutral
+ResourceId : ~
+PackageName : Clipchamp.Clipchamp_4.7.10020.0_neutral_~_yxz26nhyzhsrt
+Regions : all
+
+DisplayName : Microsoft.ApplicationCompatibilityEnhancements
+Version : 1.2511.9.0
+Architecture : neutral
+ResourceId : ~
+PackageName : Microsoft.ApplicationCompatibilityEnhancements_1.2511.9.0_neutral_~_8wekyb3d8bbwe
+Regions : all
+
+DisplayName : Microsoft.AV1VideoExtension
+Version : 2.0.35.0
+Architecture : neutral
+ResourceId : ~
+PackageName : Microsoft.AV1VideoExtension_2.0.35.0_neutral_~_8wekyb3d8bbwe
+Regions : all
+
+DisplayName : Microsoft.AVCEncoderVideoExtension
+Version : 1.1.47.0
+Architecture : neutral
+ResourceId : ~
+PackageName : Microsoft.AVCEncoderVideoExtension_1.1.47.0_neutral_~_8wekyb3d8bbwe
+Regions : all

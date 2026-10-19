@@ -1,0 +1,30 @@
+
+Deployment Image Servicing and Management tool
+Version: 10.0.26100.9549
+
+Details for image : C:\spike\win.esd
+
+Index : 6
+Name : Windows 11 Home Single Language
+Description : Windows 11 Home Single Language
+Size : 25.814.100.365 bytes
+WIM Bootable : No
+Architecture : x64
+Hal : <undefined>
+Version : 10.0.26300
+ServicePack Build : 9711
+ServicePack Level : 0
+Edition : CoreSingleLanguage
+Installation : Client
+ProductType : WinNT
+ProductSuite : Terminal Server
+System Root : WINDOWS
+Directories : 33970
+Files : 151108
+Created : 11/10/2026 - 19:14:18
+Modified : 11/10/2026 - 20:48:15
+Languages :
+	en-US (Default)
+
+The operation completed successfully.
+

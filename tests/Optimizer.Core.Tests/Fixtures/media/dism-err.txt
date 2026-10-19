@@ -1,0 +1,11 @@
+
+Deployment Image Servicing and Management tool
+Version: 10.0.26100.9549
+
+
+Error: 2
+
+The system cannot find the file specified.
+
+The DISM log file can be found at C:\WINDOWS\Logs\DISM\dism.log
+

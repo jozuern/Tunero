@@ -1,0 +1,58 @@
+
+Deployment Image Servicing and Management tool
+Version: 10.0.26100.9549
+
+Details for image : C:\spike\win.esd
+
+Index : 1
+Name : Windows Setup Media
+Description : Windows Setup Media
+Size : 274.985.933 bytes
+
+Index : 2
+Name : Microsoft Windows PE (amd64)
+Description : Microsoft Windows PE (amd64)
+Size : 2.446.433.261 bytes
+
+Index : 3
+Name : Microsoft Windows Setup (amd64)
+Description : Microsoft Windows Setup (amd64)
+Size : 2.558.803.289 bytes
+
+Index : 4
+Name : Windows 11 Home
+Description : Windows 11 Home
+Size : 25.836.310.592 bytes
+
+Index : 5
+Name : Windows 11 Home N
+Description : Windows 11 Home N
+Size : 25.090.070.974 bytes
+
+Index : 6
+Name : Windows 11 Home Single Language
+Description : Windows 11 Home Single Language
+Size : 25.814.100.365 bytes
+
+Index : 7
+Name : Windows 11 Education
+Description : Windows 11 Education
+Size : 26.857.225.009 bytes
+
+Index : 8
+Name : Windows 11 Education N
+Description : Windows 11 Education N
+Size : 26.122.411.573 bytes
+
+Index : 9
+Name : Windows 11 Pro
+Description : Windows 11 Pro
+Size : 26.879.604.810 bytes
+
+Index : 10
+Name : Windows 11 Pro N
+Description : Windows 11 Pro N
+Size : 26.143.692.172 bytes
+
+The operation completed successfully.
+
