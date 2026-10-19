@@ -41,7 +41,40 @@ public static class StorageProbe
     public static StorageInfo Read(CatalogData catalog)
     {
         const string ns = @"root\Microsoft\Windows\Storage";
-        var disks = Wmi.PhysicalDisks()
+        // The disks come from Windows' storage provider, which can fail or hang; free space does not need it, so a full
+        // system drive is still reported then.
+        List<PhysicalDisk> disks;
+        var letterToDisk = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        var disksUnread = false;
+        try
+        {
+            disks = ReadDisks(catalog);
+            foreach (var p in Wmi.Query("SELECT DiskNumber, DriveLetter FROM MSFT_Partition", ns))
+            {
+                var letter = p.Str("DriveLetter");
+                if (letter.Length == 1 && letter[0] != '\0' && p.Int("DiskNumber") is { } n) letterToDisk[letter] = n;
+            }
+        }
+        catch (Exception ex) when (ex is System.Management.ManagementException or System.Runtime.InteropServices.COMException or TimeoutException or UnauthorizedAccessException)
+        {
+            Logging.Log.Warn("scan", $"disks not read: {ex.Message}");
+            disks = [];
+            letterToDisk.Clear();
+            disksUnread = true;
+        }
+
+        var systemRoot = Path.GetPathRoot(Environment.SystemDirectory) ?? "C:\\";
+        var volumes = DriveInfo.GetDrives()
+            .Where(d => d.DriveType == DriveType.Fixed && d.IsReady)
+            .Select(d => new Volume(d.RootDirectory.FullName, d.VolumeLabel, d.TotalSize, d.AvailableFreeSpace,
+                letterToDisk.TryGetValue(d.Name[..1], out var n) ? n : null,
+                string.Equals(d.RootDirectory.FullName, systemRoot, StringComparison.OrdinalIgnoreCase)))
+            .ToList();
+        return new StorageInfo(disks, volumes) { DisksUnread = disksUnread };
+    }
+
+    private static List<PhysicalDisk> ReadDisks(CatalogData catalog) =>
+        Wmi.PhysicalDisks()
             .Select(r =>
             {
                 var name = r.Str("FriendlyName");
@@ -56,23 +89,6 @@ public static class StorageProbe
                     catalog.Storage.IsSmr(model) || catalog.Storage.IsSmr(name));
             })
             .ToList();
-
-        var letterToDisk = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-        foreach (var p in Wmi.Query("SELECT DiskNumber, DriveLetter FROM MSFT_Partition", ns))
-        {
-            var letter = p.Str("DriveLetter");
-            if (letter.Length == 1 && letter[0] != '\0' && p.Int("DiskNumber") is { } n) letterToDisk[letter] = n;
-        }
-
-        var systemRoot = Path.GetPathRoot(Environment.SystemDirectory) ?? "C:\\";
-        var volumes = DriveInfo.GetDrives()
-            .Where(d => d.DriveType == DriveType.Fixed && d.IsReady)
-            .Select(d => new Volume(d.RootDirectory.FullName, d.VolumeLabel, d.TotalSize, d.AvailableFreeSpace,
-                letterToDisk.TryGetValue(d.Name[..1], out var n) ? n : null,
-                string.Equals(d.RootDirectory.FullName, systemRoot, StringComparison.OrdinalIgnoreCase)))
-            .ToList();
-        return new StorageInfo(disks, volumes);
-    }
 }
 
 public static class NetworkProbe

@@ -214,7 +214,11 @@ public sealed class OverlaysCheck : IFindingCheck
 
     public IEnumerable<Finding> Evaluate(HardwareProfile p, CatalogData c)
     {
-        if (p.Extras is null) yield break;
+        if (p.Extras is null)
+        {
+            if (p.ProbeFailed("Extras")) yield return Finding.NotRead(Id);
+            yield break;
+        }
         var running = p.Extras.RunningOverlays;
         yield return new Finding
         {
@@ -245,7 +249,12 @@ public sealed class AmdChipsetCheck : IFindingCheck
 
     public IEnumerable<Finding> Evaluate(HardwareProfile p, CatalogData c)
     {
-        if (p.Cpu?.Vendor != Vendor.Amd || p.IsLaptop || p.Extras is null) yield break;
+        if (p.Cpu?.Vendor != Vendor.Amd || p.IsLaptop) yield break;
+        if (p.Extras is null)
+        {
+            if (p.ProbeFailed("Extras")) yield return Finding.NotRead(Id);
+            yield break;
+        }
         var programs = p.Extras.Programs;
         var package = programs.FirstOrDefault(x => IsChipsetPackage(x.Name));
         var x3d = X3d.Classify(p.Cpu, c) == X3dLayout.MultiCcdAsymmetric;
@@ -731,7 +740,13 @@ public sealed class RyzenMemoryCheck : IPhysicalHardwareCheck
     public IEnumerable<Finding> Evaluate(HardwareProfile p, CatalogData c)
     {
         // A mobile Ryzen in a mini PC is no laptop, but its memory limits are the mobile ones (DDR5-4800 for a 6800H).
-        if (p.Cpu?.Vendor != Vendor.Amd || p.IsLaptop || AmdFtpmCheck.IsMobileRyzen(p.Cpu.Name) || p.Memory is null || p.Memory.Modules.Count == 0) yield break;
+        if (p.Cpu?.Vendor != Vendor.Amd || p.IsLaptop || AmdFtpmCheck.IsMobileRyzen(p.Cpu.Name)) yield break;
+        if (p.Memory is null)
+        {
+            if (p.ProbeFailed("Memory")) yield return Finding.NotRead(Id);
+            yield break;
+        }
+        if (p.Memory.Modules.Count == 0) yield break;
         var type = p.Memory.Modules[0].Type;
         if (SweetSpot(type) is not { } range) yield break;
         var configured = p.Memory.Modules.Select(RamSpeed.NormalizeConfigured).ToList();
@@ -907,7 +922,11 @@ public sealed class StartupCountCheck : IFindingCheck
 
     public IEnumerable<Finding> Evaluate(HardwareProfile p, CatalogData c)
     {
-        if (p.Extras?.StartupPrograms is not { } programs) yield break;
+        if (p.Extras?.StartupPrograms is not { } programs)
+        {
+            if (p.Extras is null && p.ProbeFailed("Extras")) yield return Finding.NotRead(Id);
+            yield break;
+        }
         yield return new Finding
         {
             Id = Id,
@@ -989,6 +1008,7 @@ public sealed class DiskHealthCheck : IPhysicalHardwareCheck
 
     public IEnumerable<Finding> Evaluate(HardwareProfile p, CatalogData c)
     {
+        if (p.Extras is null && p.ProbeFailed("Extras")) yield return Finding.NotRead(Id);
         foreach (var d in p.Extras?.DiskHealth ?? [])
         {
             var status = d.IsProblem ? FindingStatus.Problem : d.Health == "Unknown" ? FindingStatus.Unknown : FindingStatus.Ok;
@@ -1067,6 +1087,11 @@ public sealed class SystemOnHddCheck : IPhysicalHardwareCheck
 
     public IEnumerable<Finding> Evaluate(HardwareProfile p, CatalogData c)
     {
+        if (p.Storage is null ? p.ProbeFailed("Storage") : p.Storage.DisksUnread)
+        {
+            yield return Finding.NotRead(Id);
+            yield break;
+        }
         var system = p.Storage?.Volumes.FirstOrDefault(v => v.IsSystem);
         if (system?.DiskNumber is null) yield break;
         var disk = p.Storage!.DiskOf(system);

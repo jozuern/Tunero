@@ -147,7 +147,12 @@ public sealed class PowerSaverCheck : IFindingCheck
 
     public IEnumerable<Finding> Evaluate(HardwareProfile p, CatalogData c)
     {
-        if (p.IsLaptop || p.Power is null) yield break;
+        if (p.IsLaptop) yield break;
+        if (p.Power is null)
+        {
+            if (p.ProbeFailed("Power")) yield return Finding.NotRead(Id);
+            yield break;
+        }
         yield return new Finding
         {
             Id = Id,
@@ -173,7 +178,11 @@ public sealed class EnergySaverCheck : IFindingCheck
 
     public IEnumerable<Finding> Evaluate(HardwareProfile p, CatalogData c)
     {
-        if (p.Power is null) yield break;
+        if (p.Power is null)
+        {
+            if (p.ProbeFailed("Power")) yield return Finding.NotRead(Id);
+            yield break;
+        }
         // On battery, Energy Saver is expected behavior; only report it on laptops known to be on AC power.
         if (p.IsLaptop && p.Power.OnAc != true) yield break;
         yield return new Finding

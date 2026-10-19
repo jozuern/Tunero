@@ -54,6 +54,18 @@ public sealed record Finding
 
     public bool IsProblem => Status == FindingStatus.Problem;
     public string Key => InstanceKey is null ? Id : $"{Id}#{InstanceKey}";
+
+    /// <summary>
+    /// The result of a check whose data could not be read (its probe failed or timed out): Unknown, with no advice. Without
+    /// it the check would simply be missing, and the score would rise as if it had passed.
+    /// </summary>
+    public static Finding NotRead(string id) => new()
+    {
+        Id = id,
+        Kind = id.StartsWith("A.", StringComparison.Ordinal) ? FindingKind.Advisor
+            : id.StartsWith("G.", StringComparison.Ordinal) ? FindingKind.GameAccess : FindingKind.Finding,
+        Status = FindingStatus.Unknown,
+    };
 }
 
 public interface IFindingCheck

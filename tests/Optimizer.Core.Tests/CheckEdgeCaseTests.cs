@@ -782,4 +782,45 @@ public class CheckEdgeCaseTests
             with { Firmware = TestData.Firmware() with { BoardProduct = "PRO B760M-A" } };
         Assert.Equal(FindingStatus.Problem, One(new XmpCheck(), current).Status);
     }
+
+    /// <summary>
+    /// A probe that failed or timed out leaves its checks Unknown instead of missing, so the score does not rise as if
+    /// they had passed. Without a failed probe they stay silent (nothing was read, nothing to judge).
+    /// </summary>
+    [Fact]
+    public void ChecksOfAFailedProbeAreUnknownNotMissing()
+    {
+        var failed = P(p => p with
+        {
+            Cpu = TestData.Cpu9700K(),
+            ProbeErrors = new Dictionary<string, string> { ["Storage"] = "no answer", ["Memory"] = "x", ["Power"] = "x", ["Extras"] = "x" },
+        });
+        IFindingCheck[] checks =
+        [
+            new LowDiskSpaceCheck(), new SystemOnHddCheck(), new TrimCheck(), new LowRamCheck(), new XmpCheck(), new DualChannelCheck(),
+            new MixedMemoryCheck(), new PowerSaverCheck(), new EnergySaverCheck(), new OverlaysCheck(), new StartupCountCheck(), new DiskHealthCheck(),
+        ];
+        foreach (var check in checks)
+        {
+            var f = One(check, failed);
+            Assert.Equal(FindingStatus.Unknown, f.Status);
+            Assert.Equal(check.DocIds[0], f.Id);
+            AssertRenders(f);
+        }
+        foreach (var check in checks)
+            Assert.Empty(check.Evaluate(P(p => p with { Cpu = TestData.Cpu9700K() }), C));
+    }
+
+    /// <summary>Windows' storage provider failed: the volumes are still read (a full system drive is reported), the disk checks say Unknown.</summary>
+    [Fact]
+    public void UnreadDisksStillReportAFullSystemDrive()
+    {
+        var p = P(p => p with
+        {
+            Storage = new StorageInfo([], [new Volume(@"C:\", "", 500_000_000_000, 2_000_000_000, null, true)]) { DisksUnread = true },
+        });
+        Assert.Equal(FindingStatus.Problem, One(new LowDiskSpaceCheck(), p).Status);
+        Assert.Equal(FindingStatus.Unknown, One(new SystemOnHddCheck(), p).Status);
+        Assert.Equal(FindingStatus.Unknown, One(new TrimCheck(), p).Status);
+    }
 }

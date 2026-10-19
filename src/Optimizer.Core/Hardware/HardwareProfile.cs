@@ -31,6 +31,9 @@ public sealed record HardwareProfile
     public IReadOnlyDictionary<string, string> ProbeErrors { get; init; } = new Dictionary<string, string>();
 
     public bool IsLaptop => System?.IsLaptop ?? false;
+
+    /// <summary>The probe (its name in <see cref="ProbeErrors"/>: "Storage", "Memory", "Power", "Extras") failed or timed out.</summary>
+    public bool ProbeFailed(string probe) => ProbeErrors.ContainsKey(probe);
 }
 
 public sealed record SystemInfo(string Manufacturer, string Model, IReadOnlyList<int> ChassisTypes, bool HasBattery, bool LidPresent, bool HypervisorPresent)
@@ -252,6 +255,9 @@ public sealed record Volume(string Root, string Label, long SizeBytes, long Free
 
 public sealed record StorageInfo(IReadOnlyList<PhysicalDisk> Disks, IReadOnlyList<Volume> Volumes)
 {
+    /// <summary>The disks could not be read (Windows' storage provider failed or did not answer); the volumes still were.</summary>
+    public bool DisksUnread { get; init; }
+
     /// <summary>
     /// The physical disk a volume lies on, or null when that is not certain. The volume's disk number is the number of
     /// the disk Windows sees; for Storage Spaces that is the virtual disk, whose number a pooled physical disk can carry

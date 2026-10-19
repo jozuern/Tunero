@@ -62,7 +62,12 @@ public sealed class MixedMemoryCheck : IFindingCheck
 
     public IEnumerable<Finding> Evaluate(HardwareProfile p, CatalogData c)
     {
-        if (p.Memory is null || p.Memory.Modules.Count < 2) yield break;
+        if (p.Memory is null)
+        {
+            if (p.ProbeFailed("Memory")) yield return Finding.NotRead(Id);
+            yield break;
+        }
+        if (p.Memory.Modules.Count < 2) yield break;
         var modules = p.Memory.Modules;
         var parts = modules.Select(m => m.PartNumber.Trim()).ToList();
         var status = parts.Any(string.IsNullOrEmpty) ? FindingStatus.Unknown

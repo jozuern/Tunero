@@ -99,7 +99,12 @@ public sealed class XmpCheck : IPhysicalHardwareCheck
 
     public IEnumerable<Finding> Evaluate(HardwareProfile p, CatalogData c)
     {
-        if (p.Memory is null || p.Memory.Modules.Count == 0) yield break;
+        if (p.Memory is null)
+        {
+            if (p.ProbeFailed("Memory")) yield return Finding.NotRead(Id);
+            yield break;
+        }
+        if (p.Memory.Modules.Count == 0) yield break;
         var first = p.Memory.Modules[0];
         var rated = p.Memory.Modules.Select(m => RamSpeed.DecodeRated(m.PartNumber, c)).ToList();
         var configured = p.Memory.Modules.Select(RamSpeed.NormalizeConfigured).ToList();
@@ -172,7 +177,12 @@ public sealed class DualChannelCheck : IPhysicalHardwareCheck
 
     public IEnumerable<Finding> Evaluate(HardwareProfile p, CatalogData c)
     {
-        if (p.Memory is null || p.Memory.Modules.Count == 0) yield break;
+        if (p.Memory is null)
+        {
+            if (p.ProbeFailed("Memory")) yield return Finding.NotRead(Id);
+            yield break;
+        }
+        if (p.Memory.Modules.Count == 0) yield break;
         var modules = p.Memory.Modules;
         var channels = modules.Select(m => RamSpeed.Channel(m, c)).ToList();
         FindingStatus status;
@@ -224,7 +234,11 @@ public sealed class LowRamCheck : IFindingCheck
 
     public IEnumerable<Finding> Evaluate(HardwareProfile p, CatalogData c)
     {
-        if (p.Memory is null) yield break;
+        if (p.Memory is null)
+        {
+            if (p.ProbeFailed("Memory")) yield return Finding.NotRead(Id);
+            yield break;
+        }
         var gb = p.Memory.TotalBytes / (double)(1L << 30);
         yield return new Finding
         {
@@ -249,7 +263,11 @@ public sealed class LowDiskSpaceCheck : IFindingCheck
 
     public IEnumerable<Finding> Evaluate(HardwareProfile p, CatalogData c)
     {
-        if (p.Storage is null) yield break;
+        if (p.Storage is null)
+        {
+            if (p.ProbeFailed("Storage")) yield return Finding.NotRead(Id);
+            yield break;
+        }
         var gameRoots = (p.Software?.GameLibraryPaths ?? []).Select(Path.GetPathRoot).Where(r => r is not null).ToHashSet(StringComparer.OrdinalIgnoreCase);
         foreach (var v in p.Storage.Volumes)
         {
@@ -284,7 +302,12 @@ public sealed class GamesOnHddCheck : IFindingCheck
 
     public IEnumerable<Finding> Evaluate(HardwareProfile p, CatalogData c)
     {
-        if (p.Storage is null || p.Software is null || p.Software.GameLibraryPaths.Count == 0) yield break;
+        if (p.Software is null || p.Software.GameLibraryPaths.Count == 0) yield break;
+        if (p.Storage is null || p.Storage.DisksUnread)
+        {
+            if (p.ProbeFailed("Storage") || p.Storage?.DisksUnread == true) yield return Finding.NotRead(Id);
+            yield break;
+        }
         var storage = p.Storage;
         // One finding per disk: two libraries on the same hard disk are one problem, not two.
         var byDisk = p.Software.GameLibraryPaths
@@ -329,7 +352,12 @@ public sealed class TrimCheck : IFindingCheck
 
     public IEnumerable<Finding> Evaluate(HardwareProfile p, CatalogData c)
     {
-        if (p.Storage is null || !p.Storage.Disks.Any(d => d.MediaType == "SSD")) yield break;
+        if (p.Storage is null || p.Storage.DisksUnread)
+        {
+            if (p.ProbeFailed("Storage") || p.Storage?.DisksUnread == true) yield return Finding.NotRead(Id);
+            yield break;
+        }
+        if (!p.Storage.Disks.Any(d => d.MediaType == "SSD")) yield break;
         var trim = p.Extras?.Trim;
         yield return new Finding
         {

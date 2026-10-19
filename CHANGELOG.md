@@ -16,6 +16,7 @@
 - **Messages:** a failed update download or log copy shows as a warning instead of closing by itself.
 - **Leftovers after an uninstall:** a folder that also holds files of a Windows Installer program still installed is no longer offered (it was ticked by default).
 - **Startup page:** a PowerShell entry that runs code after a Windows path no longer counts as Microsoft's (and is no longer hidden with them); codecs for 32-bit players are listed with their file; an Explorer extension blocked for the PC and for your account switches on in one go; a VirusTotal lookup answered by a proxy or Wi-Fi login page shows an error.
+- **Scan:** when Windows does not answer for drives, memory, power or the extra details, their checks show "unknown" instead of disappearing, and a nearly full system drive is still reported when only the disk details are missing.
 - **Storage:** a record of the NTFS file table whose name holds a path counts as damaged, so no item can point outside the drive.
 - **Undo:** the refresh rate fix goes back at the resolution you use now, not the one it was made at; a value Windows removed whose absence means the same (Game Mode) no longer stops the original from coming back; a key a program made again is left alone.
 
