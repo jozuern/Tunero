@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -54,9 +55,10 @@ public static class MediaCatalog
             if (doc.RootElement.ValueKind != JsonValueKind.Array) return null;
             foreach (var update in doc.RootElement.EnumerateArray())
             {
-                if (!update.TryGetProperty("FileLocations", out var locations) || locations.ValueKind != JsonValueKind.Array) continue;
+                if (update.ValueKind != JsonValueKind.Object || !update.TryGetProperty("FileLocations", out var locations) || locations.ValueKind != JsonValueKind.Array) continue;
                 foreach (var location in locations.EnumerateArray())
                 {
+                    if (location.ValueKind != JsonValueKind.Object) continue;
                     if (!string.Equals(Text(location, "FileName"), "products.cab", StringComparison.OrdinalIgnoreCase)) continue;
                     if (!Uri.TryCreate(Text(location, "Url"), UriKind.Absolute, out var url)) return null;
                     if (!location.TryGetProperty("Size", out var size) || !size.TryGetInt64(out var bytes)) return null;
@@ -86,7 +88,7 @@ public static class MediaCatalog
             {
                 var url = Required(file, "FilePath");
                 if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) throw new FormatException($"Bad FilePath: {url}");
-                if (!long.TryParse(Required(file, "Size"), out var size)) throw new FormatException("Bad Size");
+                if (!long.TryParse(Required(file, "Size"), NumberStyles.None, CultureInfo.InvariantCulture, out var size)) throw new FormatException("Bad Size");
                 result.Add(new EsdFile(
                     Required(file, "FileName"), Required(file, "LanguageCode"), Required(file, "Language"), Required(file, "Edition"),
                     Required(file, "Architecture"), size, Required(file, "Sha256").ToLowerInvariant(), uri));

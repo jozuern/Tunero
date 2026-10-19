@@ -42,6 +42,21 @@ public class MediaCatalogTests
     }
 
     [Fact]
+    public void SearchAnswerWithNonObjectEntriesIsNull()
+    {
+        Assert.Null(MediaCatalog.ParseSearchAnswer("[1]"));
+        Assert.Null(MediaCatalog.ParseSearchAnswer("""[{"FileLocations":[1]}]"""));
+        Assert.Null(MediaCatalog.ParseSearchAnswer("""[{"FileLocations":1}]"""));
+    }
+
+    [Theory]
+    [InlineData("1.234")]
+    [InlineData("-5")]
+    public void ProductsWithABadSizeThrowFormatException(string size) =>
+        Assert.Throws<FormatException>(() => MediaCatalog.ParseProducts(
+            $"<Files><File><FileName>1.2.a_CLIENTCONSUMER.esd</FileName><LanguageCode>en-us</LanguageCode><Language>E</Language><Edition>Core</Edition><Architecture>x64</Architecture><Size>{size}</Size><Sha256>AB</Sha256><FilePath>http://x.example/a</FilePath></File></Files>"));
+
+    [Fact]
     public void ProductsParseAllFields()
     {
         var first = Products()[0];
