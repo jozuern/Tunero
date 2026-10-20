@@ -1,36 +1,28 @@
 # Changelog
 
-## Unreleased
+## 1.4.0
+
+Tunero now builds a debloated Windows 11 ISO, shows which programs use each device, and updates Chocolatey and Scoop apps too.
 
 ### Added
 
-- **More package managers on Install & update:** Update all apps also runs Chocolatey (2.1.0 or newer, with its download cache ignored) and Scoop (as your account, in its own window) and opens the Microsoft Store's updates page, after one question that names them. A new folded card lists what was found, Chocolatey's outdated packages to update one by one, and developer tools (npm, pip, .NET tools, cargo) with an update command to copy; Tunero does not run those. Update all unfolds the card, so its output and any failure are in view. When Chocolatey cannot reach its source, the card says it could not check.
-- **Windows install media:** a new page builds a Windows 11 ISO (x64) from Microsoft's newest download or your own ISO: without the preinstalled apps you tick, without the account and setup questions, if you like for PCs Windows 11 does not support (Preview), and with Tunero setting up the new PC once, at the first sign-in: it installs itself (a newer installed Tunero is kept), applies your profile's recommendations with the progress shown and opens Changes, where each one can be undone. Online, Windows or the Microsoft Store can bring some removed apps back. Started inside Windows, its setup.exe upgrades as Microsoft's does; Tunero's answers for Setup and the first sign-in apply only when the PC starts from the ISO or a USB stick made from it (an upgrade leaves the unused folder `C:\Windows\Setup\Tunero`, which can be deleted). Downloads are checked against Microsoft's catalog, and the ISO is read back before it is saved.
-- **Live readings show which programs use each device:** every card (processor, memory, graphics card and each drive) names its three busiest programs; folded, a sortable list with totals since the readings were switched on and programs that just ended. Drives are per disk, unlike Task Manager, and data Windows writes later from its cache counts for the program that saved it. A program's details offer Open in Explorer, a start priority rule and End task.
+- **Windows install media:** a Windows 11 ISO from Microsoft's newest download or your own ISO, without the apps you tick and the account questions, if you like for unsupported PCs (Preview). At the first sign-in Tunero applies your profile's recommendations, each one undoable on Changes.
+- **Live readings per program:** each device card names its busiest programs, with a sortable list, Open in Explorer, a priority rule and End task.
+- **More package managers:** Update all also runs Chocolatey and Scoop and opens the Store's updates; a new card lists Chocolatey's outdated packages and update commands for developer tools.
 
 ### Changed
 
-- **Update now for a Chocolatey copy:** Chocolatey runs with its download cache ignored, a folder users can add files to; with Chocolatey older than 2.1.0, which lacks that option, the app shows the command instead.
-- **Navigation:** the group headings sit closer to their pages, so every page still fits at the default window height.
-- **Website and README:** they now say that the opt-in task "Apply my changes again" runs once after sign-in, that installing in Program Files is optional, and that every setting (not every change) can be undone. Both show the Chocolatey install again, now that Chocolatey offers the current version. The README links tunero.dev at the top, and the website names Windows install media, the Chocolatey and Scoop updates and the live readings. Their screenshots and the README's apply and undo animation show the current app, made again in the test VM.
-- **Icons:** the app icon, the website icons and the brand files no longer carry embedded content credentials (C2PA metadata); they look the same.
-- **Website:** the link preview says every setting can be undone; a sitemap and robots.txt, the 404 page left out of search; screen readers hear why a tweak's rating depends on the PC; no sideways scrolling at 320 px; the removal answer names `scoop uninstall`.
-- **Changelog:** the preview releases are summed up in a few lines; their full notes stay in the changelog as of 1.3.0.
+- **Website and README:** current screenshots, tunero.dev at the top of the README, and Chocolatey back as a way to install.
+- **Icons:** no embedded content credentials (C2PA); they look the same.
 
 ### Fixed
 
-- **Honest results:** a tweak this PC has nothing for (a network adapter tweak on Wi-Fi only) said "already in place"; it now says it is not available here. A Task Scheduler error no longer lets a change skip its tasks and still report Applied.
-- **Install in Program Files:** closing the window or signing out waits until the install has finished; a failed start of the installed copy leaves the Start menu entry on the copy that keeps running; a failed uninstall keeps Tunero under Installed apps; the setup screen stays when a running change makes Install wait. The installed copy must be signed under a root the PC itself trusts, not one only your account added.
-- **Apply again:** the task "Apply my changes again" is registered only for a Tunero.exe in a folder users cannot change, also when "Apply again" brings it back after an uninstall; `choco uninstall` removes it.
-- **Messages:** a failed update download or log copy shows as a warning instead of closing by itself.
-- **Leftovers after an uninstall:** a folder that also holds files of a Windows Installer program still installed is no longer offered (it was ticked by default).
-- **Startup page:** a PowerShell entry that runs code after a Windows path no longer counts as Microsoft's (and is no longer hidden with them); codecs for 32-bit players are listed with their file; an Explorer extension blocked for the PC and for your account switches on in one go; a VirusTotal lookup answered by a proxy or Wi-Fi login page shows an error.
-- **Scan:** when Windows does not answer for drives, memory, power or the extra details, their checks show "unknown" instead of disappearing, and a nearly full system drive is still reported when only the disk details are missing.
-- **Export and Import:** the file dialogs open in your own Documents folder, also when Tunero runs under a separate administrator account.
-- **Screen readers:** the output boxes of tools, installs and licenses have names.
-- **Intel APO check:** says the Dynamic Tuning driver is probably installed, not certainly: the service names it looks for are not confirmed on real hardware yet.
-- **Storage:** a record of the NTFS file table whose name holds a path counts as damaged, so no item can point outside the drive.
-- **Undo:** the refresh rate fix goes back at the resolution you use now, not the one it was made at; a value Windows removed whose absence means the same (Game Mode) no longer stops the original from coming back; a key a program made again is left alone.
+- **Scan:** checks Windows does not answer for show "unknown" instead of disappearing; a tweak with nothing to change on this PC no longer says "already in place".
+- **Install and Apply again:** closing or signing out waits for the install; the reapply task runs only from a folder users cannot change, and `choco uninstall` removes it.
+- **Uninstall leftovers:** a folder shared with a program that is still installed is no longer offered.
+- **Startup page:** a PowerShell entry behind a Windows path no longer passes as Microsoft's.
+- **Undo:** the refresh rate fix returns at your current resolution, and Game Mode's original value comes back.
+- Smaller fixes for Storage, Export and Import, messages and screen reader names.
 
 ## 1.3.0
 
