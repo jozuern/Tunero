@@ -1399,7 +1399,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Debloat_PageHint" xml:space="preserve"><value>Apps that came with Windows, and desktop programs you installed.</value></data>
   <data name="Debloat_TabStore" xml:space="preserve"><value>Preinstalled apps</value></data>
   <data name="Apps_TabApps" xml:space="preserve"><value>Get apps</value></data>
-  <data name="Apps_TabAppsHint" xml:space="preserve"><value>Installed with winget from their official sources.</value></data>
+  <data name="Apps_TabAppsHint" xml:space="preserve"><value>Update all apps runs the package managers below. The apps in the list install with winget from their official sources.</value></data>
   <data name="Apps_SearchTitle" xml:space="preserve"><value>Search winget for other apps</value></data>
   <data name="Apps_SearchHint" xml:space="preserve"><value>Any package of the winget community repository, beyond the list below. Tunero has not reviewed these: winget installs the package as its listing there says, from the vendor's download.</value></data>
   <data name="Apps_SearchPlaceholder" xml:space="preserve"><value>Name or id, for example Blender</value></data>
@@ -1782,7 +1782,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Apps_HowWinget" xml:space="preserve"><value>Programs for the whole PC update here, programs for your account in a window of their own.</value></data>
   <data name="Apps_HowWingetUser" xml:space="preserve"><value>Updates in a window of its own, as your account.</value></data>
   <data name="Apps_HowChoco" xml:space="preserve"><value>Updates every outdated package here, with administrator rights.</value></data>
-  <data name="Apps_HowChocoUntrusted" xml:space="preserve"><value>Its folder can be changed without administrator rights, so Tunero does not run it with them. If you trust it, run choco upgrade all in a terminal yourself.</value></data>
+  <data name="Apps_HowChocoUntrusted" xml:space="preserve"><value>Its folder, or a folder it loads scripts from, can be changed without administrator rights, so Tunero does not run it with them. If you trust it, run choco upgrade all in a terminal yourself.</value></data>
   <data name="Apps_HowScoop" xml:space="preserve"><value>Updates itself and its apps in a window of its own, as your account.</value></data>
   <data name="Apps_HowStore" xml:space="preserve"><value>Opens the Store's page for updates; select Get updates there.</value></data>
   <data name="Apps_DevToolsTitle" xml:space="preserve"><value>Developer tools</value></data>
@@ -1801,4 +1801,13 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Apps_ChocoCount" xml:space="preserve"><value>Updates from Chocolatey: {0}</value></data>
   <data name="Apps_ChocoCheckFailed" xml:space="preserve"><value>Chocolatey could not check for updates.</value></data>
   <data name="Apps_ChocoMeta" xml:space="preserve"><value>Chocolatey, {0} to {1}</value></data>
+  <data name="Apps_UpdateAllWingetMachine" xml:space="preserve"><value>winget updates every program installed for the whole PC that it knows a newer version for in its source, here and without asking per program.</value></data>
+  <data name="Apps_UpdateAllWingetUser" xml:space="preserve"><value>winget updates the programs installed for your account in a window of its own, as your account.</value></data>
+  <data name="Apps_HowWingetMachine" xml:space="preserve"><value>Updates programs for the whole PC here.</value></data>
+  <data name="Apps_ChocoTimeout" xml:space="preserve"><value>Chocolatey did not answer within 2 minutes. Try again later.</value></data>
+  <data name="Apps_DevInCommandPrompt" xml:space="preserve"><value>Run it in Command Prompt.</value></data>
+  <data name="Apps_ManagerOpensPage" xml:space="preserve"><value>Opens its page</value></data>
+  <data name="Apps_PythonVersion" xml:space="preserve"><value>Python {0}</value></data>
+  <data name="Apps_ManagersSummary" xml:space="preserve"><value>{0}; developer tools: {1}</value></data>
+  <data name="Apps_DevToolsSummary" xml:space="preserve"><value>Developer tools: {0}</value></data>
 </root>

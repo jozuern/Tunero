@@ -63,6 +63,24 @@ public static class Chocolatey
     }
 
     /// <summary>
+    /// The folders under Chocolatey's root that an elevated choco.exe loads code or settings from: its PowerShell helpers,
+    /// installed extensions (modules imported into every run) and hooks (scripts run before and after each package), its
+    /// configuration (package sources), the packages' own scripts in lib, the tools it calls (7-Zip, shimgen) and the shims
+    /// and redirects in bin and redirects.
+    /// </summary>
+    public static readonly IReadOnlyList<string> CodeFolders = ["helpers", "extensions", "hooks", "config", "lib", "tools", "bin", "redirects"];
+
+    /// <summary>
+    /// Whether choco.exe in <paramref name="root"/> may run elevated: the exe passes <paramref name="isAdminOnlyFile"/>, and
+    /// the root and every one of <see cref="CodeFolders"/> that exists pass <paramref name="isAdminOnlyFolder"/> (a folder
+    /// that does not exist cannot be created by users once the root is admin-only). The packages' folders inside lib keep
+    /// lib's permissions unless an installer changed them; they are not walked one by one.
+    /// </summary>
+    public static bool IsTrustedInstall(string root, Func<string, bool> isAdminOnlyFile, Func<string, bool> isAdminOnlyFolder) =>
+        isAdminOnlyFile(Path.Combine(root, "choco.exe")) && isAdminOnlyFolder(root) &&
+        CodeFolders.Select(f => Path.Combine(root, f)).Where(Directory.Exists).All(isAdminOnlyFolder);
+
+    /// <summary>
     /// The environment of an elevated choco.exe (after <see cref="Platform.ProcessHardening.Apply"/>): choco takes its root,
     /// and with it its configuration (package sources), PowerShell helpers and extensions, from ChocolateyInstall before
     /// its own folder, and a user can set that variable and the other Chocolatey* ones for their account. All of them are

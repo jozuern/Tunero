@@ -69,8 +69,16 @@ public class PackageInstallTests
         Assert.False(package.CanRunFromApp(_ => false));
         Assert.Null(package.TrustedChocolatey(_ => false));
         // The app's exe is started elevated again after the update: it has to be admin-only too.
-        Assert.Null(package.TrustedChocolatey(path => path == @"C:\ProgramData\chocolatey\choco.exe"));
-        var choco = package.TrustedChocolatey(path => path.StartsWith(@"C:\ProgramData\chocolatey\", StringComparison.Ordinal));
+        Assert.Null(package.TrustedChocolatey(path => path == @"C:\ProgramData\chocolatey\choco.exe", _ => true));
+        // choco loads its helpers, extensions and configuration from its root: that folder must be admin-only too.
+        var checkedFolders = new List<string>();
+        Assert.Null(package.TrustedChocolatey(_ => true, folder =>
+        {
+            checkedFolders.Add(folder);
+            return false;
+        }));
+        Assert.Equal([@"C:\ProgramData\chocolatey"], checkedFolders);
+        var choco = package.TrustedChocolatey(path => path.StartsWith(@"C:\ProgramData\chocolatey\", StringComparison.Ordinal), _ => true);
         Assert.Equal(@"C:\ProgramData\chocolatey\choco.exe", choco);
 
         var args = package.UpdateArguments(7, @"C:\ProgramData\chocolatey\lib\tunero\tools\Tunero.exe", "Updating", "Failed", choco);

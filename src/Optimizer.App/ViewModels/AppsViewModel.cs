@@ -79,13 +79,21 @@ public sealed partial class ManagerRow(PackageManagerInfo info) : ObservableObje
 
     public PackageManagerInfo Info { get; } = info;
     public string Name => Info.Name;
-    public string VersionText { get; } = info.Version is { } v ? Loc.Instance.Format("Apps_ManagerVersion", v) : "";
-    public bool Included => Info.InUpdateAll;
-    public string StatusText { get; } = info.InUpdateAll ? Loc.Instance["Apps_ManagerIncluded"] : Loc.Instance["Apps_ManagerExcluded"];
+    /// <summary>The tool's own version; for pip the version of the Python it belongs to, labelled as such.</summary>
+    public string VersionText { get; } = info.Version is not { } v ? ""
+        : info.Kind == ManagerKind.Pip ? Loc.Instance.Format("Apps_PythonVersion", v)
+        : Loc.Instance.Format("Apps_ManagerVersion", v);
+
+    /// <summary>The check mark: Update all runs it (the Store only opens its page, which says so in words).</summary>
+    public bool Included => Info.InUpdateAll && Info.Run != ManagerRun.StorePage;
+
+    public string StatusText { get; } = info.Run == ManagerRun.StorePage ? Loc.Instance["Apps_ManagerOpensPage"]
+        : info.InUpdateAll ? Loc.Instance["Apps_ManagerIncluded"] : Loc.Instance["Apps_ManagerExcluded"];
 
     /// <summary>What Update all does with it, or for a developer tool what its command does.</summary>
     public string Meta { get; } = (info.Kind, info.Run) switch
     {
+        (ManagerKind.Winget, ManagerRun.Elevated) when info.UserPath is null => Loc.Instance["Apps_HowWingetMachine"],
         (ManagerKind.Winget, ManagerRun.Elevated) => Loc.Instance["Apps_HowWinget"],
         (ManagerKind.Winget, _) => Loc.Instance["Apps_HowWingetUser"],
         (ManagerKind.Chocolatey, ManagerRun.Elevated) => Loc.Instance["Apps_HowChoco"],
@@ -93,6 +101,7 @@ public sealed partial class ManagerRow(PackageManagerInfo info) : ObservableObje
         (ManagerKind.Scoop, _) => Loc.Instance["Apps_HowScoop"],
         (ManagerKind.Store, _) => Loc.Instance["Apps_HowStore"],
         (ManagerKind.Npm, _) => Loc.Instance["Apps_DevNpm"],
+        (ManagerKind.Pip, _) when info.CommandPrompt => Loc.Instance["Apps_DevPip"] + " " + Loc.Instance["Apps_DevInCommandPrompt"],
         (ManagerKind.Pip, _) => Loc.Instance["Apps_DevPip"],
         (ManagerKind.DotnetTools, _) => Loc.Instance["Apps_DevDotnet"],
         _ => info.Commands is ["cargo install-update -a"] ? Loc.Instance["Apps_DevCargoUpdate"] : Loc.Instance["Apps_DevCargo"],
@@ -106,7 +115,10 @@ public sealed partial class ManagerRow(PackageManagerInfo info) : ObservableObje
     [ObservableProperty] private string _copyState = "";
 }
 
-/// <summary>A package from Chocolatey's update list.</summary>
+/// <summary>
+/// A package from Chocolatey's update list. A language switch relabels the row instead of replacing it: an update that
+/// runs keeps its row, so its Update button stays off until it ends.
+/// </summary>
 public sealed partial class ChocolateyUpdateRow(ChocolateyOutdated package) : ObservableObject
 {
     // What screen readers announce for this item in a list.
@@ -114,12 +126,28 @@ public sealed partial class ChocolateyUpdateRow(ChocolateyOutdated package) : Ob
 
     public ChocolateyOutdated Package { get; } = package;
     public string Name => Package.Id;
-    public string Meta { get; } = Loc.Instance.Format("Apps_ChocoMeta", package.Current, package.Available);
+    public string Meta => Loc.Instance.Format("Apps_ChocoMeta", Package.Current, Package.Available);
     public string UpdateLabel => Loc.Instance.Format("Apps_UpdateName", Name);
 
     [ObservableProperty] private bool _isUpdating;
     [ObservableProperty] private bool _updated;
     [ObservableProperty] private string _stateText = "";
+
+    /// <summary>The state line as a function, so a language switch can say it again in the new language.</summary>
+    private Func<string>? _state;
+
+    public void ShowState(Func<string>? state)
+    {
+        _state = state;
+        StateText = state?.Invoke() ?? "";
+    }
+
+    public void Relabel()
+    {
+        OnPropertyChanged(nameof(Meta));
+        OnPropertyChanged(nameof(UpdateLabel));
+        if (_state is not null) StateText = _state();
+    }
 }
 
 public sealed record DriverItem(string Device, string ClassText, string Provider, string Version, string DateText, string? UpdateUrl, bool Old)
@@ -196,7 +224,7 @@ public sealed partial class LeftoverRow(Leftover leftover, string program) : Obs
     [ObservableProperty] private string? _stateText;
 }
 
-public sealed partial class AppsViewModel(IPageHost owner, AppServices services, IDialogs dialogs) : PageViewModel(owner)
+public sealed partial class AppsViewModel(IPageHost owner, AppServices services, IDialogs dialogs, PackageUpdates? packageRuns = null) : PageViewModel(owner)
 {
     /// <summary>The installed state of the catalog apps comes from the scan result (installed programs).</summary>
     protected override bool UsesProfile => true;
@@ -623,7 +651,7 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
 
     private IReadOnlyList<PackageManagerInfo> _managers = [];
     private bool _managerDemo;
-    private PackageUpdates? _packageRuns;
+    private PackageUpdates? _packageRuns = packageRuns;
 
     private PackageUpdates PackageRuns => _packageRuns ??= new PackageUpdates(new Launch(), services.Elevation);
 
@@ -635,15 +663,32 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
     [ObservableProperty] private string _managerOutput = "";
     [ObservableProperty] private bool _hasManagers;
     [ObservableProperty] private bool _hasDeveloperTools;
+    [ObservableProperty] private bool _hasManagerCard;
+    [ObservableProperty] private string _managersSummary = "";
+
+    /// <summary>The card starts folded; opened or closed, it stays so for the session (the view model lives as long as the window).</summary>
+    [ObservableProperty] private bool _managersExpanded;
     [ObservableProperty] private bool _canCheckChocolatey;
     [ObservableProperty] private bool _isCheckingChocolatey;
     [ObservableProperty] private string? _chocolateyNote;
 
     /// <summary>
     /// Developer aid for screenshots (--pm-demo): fixed package managers (all found, some developer tools) and a sample
-    /// Chocolatey update list instead of this PC's. Nothing is read or run; Update all only shows its question.
+    /// Chocolatey update list instead of this PC's. Nothing is read or run; Update all only shows its question. With
+    /// <paramref name="expand"/> the card starts open.
     /// </summary>
-    public void UseManagerDemo() => _managerDemo = true;
+    public void UseManagerDemo(bool expand = false)
+    {
+        _managerDemo = true;
+        ManagersExpanded = expand;
+    }
+
+    /// <summary>The detected package managers (tests set them directly instead of reading this PC).</summary>
+    internal void SetManagers(IReadOnlyList<PackageManagerInfo> managers)
+    {
+        _managers = managers;
+        ShowManagers();
+    }
 
     private void ShowManagers()
     {
@@ -652,19 +697,21 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
         foreach (var m in _managers) (m.IsDeveloperTool ? DeveloperTools : Managers).Add(new ManagerRow(m));
         HasManagers = Managers.Count > 0;
         HasDeveloperTools = DeveloperTools.Count > 0;
+        // Developer tools alone still get the card.
+        HasManagerCard = HasManagers || HasDeveloperTools;
+        var names = string.Join(", ", Managers.Select(m => m.Name));
+        ManagersSummary = !HasDeveloperTools ? names
+            : HasManagers ? Loc.Instance.Format("Apps_ManagersSummary", names, DeveloperTools.Count)
+            : Loc.Instance.Format("Apps_DevToolsSummary", DeveloperTools.Count);
         CanCheckChocolatey = TrustedChocolatey is not null;
         if (_managerDemo && ChocolateyUpdates.Count == 0)
         {
             ChocolateyUpdates.Add(new ChocolateyUpdateRow(new ChocolateyOutdated("git", "2.47.0", "2.47.1")));
             ChocolateyUpdates.Add(new ChocolateyUpdateRow(new ChocolateyOutdated("7zip", "24.08.0", "24.09.0")));
         }
-        for (var i = 0; i < ChocolateyUpdates.Count; i++)
-        {
-            var old = ChocolateyUpdates[i];
-            ChocolateyUpdates[i] = new ChocolateyUpdateRow(old.Package) { Updated = old.Updated, StateText = old.Updated ? Loc.Instance["Apps_Updated"] : "" };
-        }
+        // A language switch relabels the rows in place: an update that runs keeps its row and its state.
+        foreach (var row in ChocolateyUpdates) row.Relabel();
         if (_managerDemo && _chocolateyNoteText is null) ShowChocolateyNote(() => Loc.Instance.Format("Apps_ChocoCount", ChocolateyUpdates.Count));
-        // A language switch: the note in the new language.
         else if (_chocolateyNoteText is { } note) ChocolateyNote = note();
     }
 
@@ -679,25 +726,45 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
 
     private PackageManagerInfo? TrustedChocolatey => _managers.FirstOrDefault(m => m is { Kind: ManagerKind.Chocolatey, Run: ManagerRun.Elevated });
 
-    /// <summary>choco outdated from the checked folder (a read that asks the package sources; started by the user).</summary>
+    /// <summary>
+    /// choco outdated from the checked folder (a read that asks the package sources; started by the user). It runs like
+    /// any page operation (one at a time with changes, scans and updates), never while a package of the list updates,
+    /// and ends after <see cref="PackageUpdates.OutdatedTimeout"/>.
+    /// </summary>
     [RelayCommand]
     private async Task CheckChocolateyAsync()
     {
         if (IsCheckingChocolatey || TrustedChocolatey is not { } choco || _managerDemo) return;
+        if (ChocolateyUpdates.Any(r => r.IsUpdating)) return;
+        if (!ChangeGate.Instance.CanChange)
+        {
+            ShowChocolateyNote(() => Loc.Instance["Change_Busy"]);
+            return;
+        }
         IsCheckingChocolatey = true;
-        ShowChocolateyNote(() => Loc.Instance["Apps_ChocoChecking"]);
-        ChocolateyUpdates.Clear();
         try
         {
-            var found = await PackageRuns.ChocolateyOutdatedAsync(choco);
-            foreach (var p in found ?? []) ChocolateyUpdates.Add(new ChocolateyUpdateRow(p));
-            ShowChocolateyNote(() => found is null ? Loc.Instance["Apps_ChocoCheckFailed"]
-                : found.Count == 0 ? Loc.Instance["Apps_ChocoNone"]
-                : Loc.Instance.Format("Apps_ChocoCount", found.Count));
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or IOException)
-        {
-            ShowChocolateyNote(() => Loc.Instance.Format("Result_Error", ex.Message));
+            await RunWorkAsync("choco outdated", async () =>
+            {
+                ShowChocolateyNote(() => Loc.Instance["Apps_ChocoChecking"]);
+                ChocolateyUpdates.Clear();
+                try
+                {
+                    var found = await PackageRuns.ChocolateyOutdatedAsync(choco);
+                    foreach (var p in found ?? []) ChocolateyUpdates.Add(new ChocolateyUpdateRow(p));
+                    ShowChocolateyNote(() => found is null ? Loc.Instance["Apps_ChocoCheckFailed"]
+                        : found.Count == 0 ? Loc.Instance["Apps_ChocoNone"]
+                        : Loc.Instance.Format("Apps_ChocoCount", found.Count));
+                }
+                catch (TimeoutException)
+                {
+                    ShowChocolateyNote(() => Loc.Instance["Apps_ChocoTimeout"]);
+                }
+                catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or IOException)
+                {
+                    ShowChocolateyNote(() => Loc.Instance.Format("Result_Error", ex.Message));
+                }
+            });
         }
         finally
         {
@@ -709,9 +776,9 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
     [RelayCommand]
     private async Task UpdateChocolateyPackageAsync(ChocolateyUpdateRow? row)
     {
-        if (row is null || row.IsUpdating || row.Updated || TrustedChocolatey is not { } choco || _managerDemo) return;
+        if (row is null || row.IsUpdating || row.Updated || IsCheckingChocolatey || TrustedChocolatey is not { } choco || _managerDemo) return;
         row.IsUpdating = true;
-        row.StateText = Loc.Instance["Apps_Updating"];
+        row.ShowState(() => Loc.Instance["Apps_Updating"]);
         var lines = new List<string>();
         var progress = new Progress<string>(l =>
         {
@@ -725,13 +792,13 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
                 {
                     var code = await PackageRuns.ChocolateyUpgradeAsync(choco, row.Package.Id, progress);
                     row.Updated = Chocolatey.IsSuccess(code);
-                    row.StateText = row.Updated ? Loc.Instance["Apps_Updated"] : Loc.Instance.Format("Apps_ChocoUpdateFailed", code);
+                    row.ShowState(row.Updated ? () => Loc.Instance["Apps_Updated"] : () => Loc.Instance.Format("Apps_ChocoUpdateFailed", code));
                 }))
-                row.StateText = "";
+                row.ShowState(null);
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or IOException or ArgumentException)
         {
-            row.StateText = Loc.Instance.Format("Result_Error", ex.Message);
+            row.ShowState(() => Loc.Instance.Format("Result_Error", ex.Message));
         }
         finally
         {

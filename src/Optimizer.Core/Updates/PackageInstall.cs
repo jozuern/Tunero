@@ -82,13 +82,15 @@ public sealed record PackageInstall(PackageManager Manager, string Name, string 
     /// is not run: the app shows the command instead. A global Scoop install never runs from the app: Scoop itself lives
     /// in the user's profile, where the user could change it.
     /// </summary>
-    public string? TrustedChocolatey(Func<string, bool>? isAdminOnly = null)
+    public string? TrustedChocolatey(Func<string, bool>? isAdminOnly = null, Func<string, bool>? isAdminOnlyFolder = null)
     {
         if (Manager != PackageManager.Chocolatey) return null;
         var choco = Path.Combine(Folder, "choco.exe");
         // The elevated window starts this exe again after the update, without a prompt: it must be just as protected.
         var check = isAdminOnly ?? TrustedPath.IsAdminOnlyBelowSharedFolders;
-        return check(choco) && check(Exe) ? choco : null;
+        // choco also loads its helpers, extensions, hooks and configuration from its root (Apps.Chocolatey.CodeFolders).
+        var folders = isAdminOnlyFolder ?? TrustedPath.IsAdminOnlyFolderBelowSharedFolders;
+        return Apps.Chocolatey.IsTrustedInstall(Folder, check, folders) && check(Exe) ? choco : null;
     }
 
     /// <summary>

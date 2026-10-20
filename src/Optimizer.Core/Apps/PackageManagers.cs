@@ -45,6 +45,9 @@ public sealed record PackageManagerInfo(ManagerKind Kind, string Name, string Pa
     /// <summary>What to type in a terminal to update a developer tool's packages, one command per line.</summary>
     public IReadOnlyList<string> Commands { get; init; } = [];
 
+    /// <summary>The commands are written for Command Prompt (a quoted program path, which PowerShell would read as text).</summary>
+    public bool CommandPrompt { get; init; }
+
     public bool InUpdateAll => Run is ManagerRun.Elevated or ManagerRun.AsUser or ManagerRun.StorePage;
 
     public bool IsDeveloperTool => Kind >= ManagerKind.Npm;
@@ -78,6 +81,9 @@ public sealed class ManagerSystem
 
     /// <summary>Whether a program may run elevated (<see cref="TrustedPath.IsAdminOnlyBelowSharedFolders"/>).</summary>
     public Func<string, bool> IsAdminOnly { get; init; } = TrustedPath.IsAdminOnlyBelowSharedFolders;
+
+    /// <summary>Whether an elevated program may load code from a folder (<see cref="TrustedPath.IsAdminOnlyFolderBelowSharedFolders"/>).</summary>
+    public Func<string, bool> IsAdminOnlyFolder { get; init; } = TrustedPath.IsAdminOnlyFolderBelowSharedFolders;
 
     /// <summary>The product version a file carries in its version resource (read, never started).</summary>
     public Func<string, string?> FileVersion { get; init; } = ReadFileVersion;
@@ -170,24 +176,32 @@ public static partial class PackageManagers
     }
 
     /// <summary>
-    /// choco.exe in the folder ChocolateyInstall names (the machine variable first, then the user's, as UniGetUI sets
-    /// it), else in ProgramData\chocolatey. It runs elevated only when the trust check passes, as for Tunero's own
-    /// Chocolatey update (<see cref="PackageInstall.TrustedChocolatey"/>).
+    /// choco.exe in the folder ChocolateyInstall names (the machine variable, then the user's, as UniGetUI sets it), or in
+    /// ProgramData\chocolatey. The first install that passes the trust check runs elevated, as for Tunero's own Chocolatey
+    /// update (<see cref="PackageInstall.TrustedChocolatey"/>): choco.exe and the folders it loads code from
+    /// (<see cref="Apps.Chocolatey.IsTrustedInstall"/>). A user's variable cannot hide a trusted install that way; with
+    /// none trusted, the first one found is listed as not included.
     /// </summary>
     private static PackageManagerInfo? Chocolatey(ManagerSystem s)
     {
-        var roots = new[] { s.MachineVariable("ChocolateyInstall"), s.UserVariable("ChocolateyInstall"), Path.Combine(s.ProgramData, "chocolatey") };
-        foreach (var root in roots.OfType<string>().Where(Path.IsPathFullyQualified))
+        // Without the user's profile the user's variable would be expanded with this (elevated) account's values.
+        var user = s.ProfilePath is null ? null : s.UserVariable("ChocolateyInstall");
+        var found = new[] { s.MachineVariable("ChocolateyInstall"), user, Path.Combine(s.ProgramData, "chocolatey") }
+            .OfType<string>()
+            .Where(Path.IsPathFullyQualified)
+            .Select(root => Path.TrimEndingDirectorySeparator(Path.GetFullPath(root)))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Where(root => File.Exists(Path.Combine(root, "choco.exe")))
+            .ToList();
+        if (found.Count == 0) return null;
+        var trusted = found.FirstOrDefault(root => Apps.Chocolatey.IsTrustedInstall(root, s.IsAdminOnly, s.IsAdminOnlyFolder));
+        var root = trusted ?? found[0];
+        var choco = Path.Combine(root, "choco.exe");
+        return new(ManagerKind.Chocolatey, "Chocolatey", choco, trusted is not null ? ManagerRun.Elevated : ManagerRun.NotRun)
         {
-            var choco = Path.Combine(root, "choco.exe");
-            if (!File.Exists(choco)) continue;
-            return new(ManagerKind.Chocolatey, "Chocolatey", choco, s.IsAdminOnly(choco) ? ManagerRun.Elevated : ManagerRun.NotRun)
-            {
-                Root = Path.GetDirectoryName(choco),
-                Version = s.FileVersion(choco),
-            };
-        }
-        return null;
+            Root = root,
+            Version = s.FileVersion(choco),
+        };
     }
 
     /// <summary>
@@ -196,8 +210,10 @@ public static partial class PackageManagers
     /// </summary>
     private static PackageManagerInfo? Scoop(ManagerSystem s)
     {
-        var root = s.UserVariable("SCOOP") ?? (s.ProfilePath is { } profile ? Path.Combine(profile, "scoop") : null);
-        if (root is null || !Path.IsPathFullyQualified(root)) return null;
+        // Without the user's profile, the user's SCOOP value would be expanded with this (elevated) account's values.
+        if (s.ProfilePath is not { } profile) return null;
+        var root = s.UserVariable("SCOOP") ?? Path.Combine(profile, "scoop");
+        if (!Path.IsPathFullyQualified(root)) return null;
         var shim = Path.Combine(root, "shims", "scoop.ps1");
         if (!File.Exists(shim)) return null;
         return new(ManagerKind.Scoop, "Scoop", shim, ManagerRun.AsUser) { Version = ScoopVersion(Path.Combine(root, @"apps\scoop\current\CHANGELOG.md")) };
@@ -250,8 +266,14 @@ public static partial class PackageManagers
             .FirstOrDefault();
         var launcher = launchers.FirstOrDefault(File.Exists);
         if (launcher is null && newest is null) return null;
+        // Without the launcher the command names python.exe by its path, in quotes: Command Prompt runs that as it is.
         var command = launcher is not null ? "py -m pip list --outdated" : $"\"{newest}\" -m pip list --outdated";
-        return new(ManagerKind.Pip, "pip", newest ?? launcher!, ManagerRun.Copy) { Version = newest is null ? null : s.FileVersion(newest), Commands = [command] };
+        return new(ManagerKind.Pip, "pip", newest ?? launcher!, ManagerRun.Copy)
+        {
+            Version = newest is null ? null : s.FileVersion(newest),
+            Commands = [command],
+            CommandPrompt = launcher is null,
+        };
     }
 
     /// <summary>Python3NN folders (python.org's names) with their minor version for the order.</summary>
@@ -305,7 +327,10 @@ public static partial class PackageManagers
         return commands.Count == 0 ? null : new(ManagerKind.Cargo, "cargo", cargo, ManagerRun.Copy) { Commands = commands };
     }
 
-    /// <summary>The crates.io crates in cargo's install record: keys "name version (registry+url)" or "(sparse+url)".</summary>
+    /// <summary>The two ways cargo names crates.io as a crate's source (the git index and the sparse index).</summary>
+    private static readonly string[] CratesIo = ["(registry+https://github.com/rust-lang/crates.io-index)", "(sparse+https://index.crates.io/)"];
+
+    /// <summary>The crates.io crates in cargo's install record (keys "name version (source)"); other registries are left out.</summary>
     private static IEnumerable<string> RegistryCrates(string file)
     {
         try
@@ -315,7 +340,7 @@ public static partial class PackageManagers
             if (!doc.RootElement.TryGetProperty("installs", out var installs) || installs.ValueKind != JsonValueKind.Object) return [];
             return installs.EnumerateObject()
                 .Select(p => p.Name.Split(' ', 3))
-                .Where(p => p.Length == 3 && (p[2].StartsWith("(registry+", StringComparison.Ordinal) || p[2].StartsWith("(sparse+", StringComparison.Ordinal)) && IsSafeName(p[0]))
+                .Where(p => p.Length == 3 && CratesIo.Contains(p[2], StringComparer.Ordinal) && IsSafeName(p[0]))
                 .Select(p => p[0])
                 .Distinct()
                 .Order(StringComparer.Ordinal)

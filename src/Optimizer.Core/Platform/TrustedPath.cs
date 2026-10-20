@@ -50,18 +50,41 @@ public static class TrustedPath
             var full = Path.GetFullPath(path);
             if (!IsOnLocalFixedDrive(full) || !File.Exists(full) || !SafeDelete.HasNoLinks(full)) return false;
             if (!Check(new FileInfo(full).GetAccessControl())) return false;
-            var folder = new DirectoryInfo(Path.GetDirectoryName(full)!);
-            if ((folder.Attributes & FileAttributes.ReparsePoint) != 0 || !Check(folder.GetAccessControl())) return false;
-            for (var dir = folder.Parent; dir?.Parent is not null; dir = dir.Parent)
-            {
-                if ((dir.Attributes & FileAttributes.ReparsePoint) != 0 || !Check(dir.GetAccessControl(), Replacing)) return false;
-            }
-            return true;
+            return FolderIsAdminOnlyBelowSharedFolders(new DirectoryInfo(Path.GetDirectoryName(full)!));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException or System.Security.SecurityException)
         {
             return false;
         }
+    }
+
+    /// <summary>
+    /// A folder in which only Administrators, SYSTEM or TrustedInstaller can add or change files, while folders above it
+    /// may let others add new entries (as <see cref="IsAdminOnlyBelowSharedFolders"/>): Chocolatey's root and the folders
+    /// it loads scripts and modules from, under <c>C:\ProgramData</c>.
+    /// </summary>
+    public static bool IsAdminOnlyFolderBelowSharedFolders(string folder)
+    {
+        try
+        {
+            var full = Path.GetFullPath(folder);
+            var dir = new DirectoryInfo(full);
+            return IsOnLocalFixedDrive(full) && dir.Exists && FolderIsAdminOnlyBelowSharedFolders(dir);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException or System.Security.SecurityException)
+        {
+            return false;
+        }
+    }
+
+    private static bool FolderIsAdminOnlyBelowSharedFolders(DirectoryInfo folder)
+    {
+        if ((folder.Attributes & FileAttributes.ReparsePoint) != 0 || !Check(folder.GetAccessControl())) return false;
+        for (var dir = folder.Parent; dir?.Parent is not null; dir = dir.Parent)
+        {
+            if ((dir.Attributes & FileAttributes.ReparsePoint) != 0 || !Check(dir.GetAccessControl(), Replacing)) return false;
+        }
+        return true;
     }
 
     /// <summary>A folder (for example a PATH entry) in which only Administrators, SYSTEM or TrustedInstaller can add or change files.</summary>

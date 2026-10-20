@@ -63,8 +63,9 @@ public sealed class Launch
 
     /// <summary>
     /// Runs a program in this process's rights with its output read line by line (<see cref="StreamingProcess"/>), in the
-    /// given encoding (null: UTF-8) and with the hardened environment changed as the last argument says; returns the exit code.
+    /// given encoding (null: UTF-8) and with the hardened environment changed as the next argument says; returns the exit
+    /// code. Cancelling ends the program and what it started.
     /// </summary>
-    public Func<string, string, IProgress<string>?, System.Text.Encoding?, Action<IDictionary<string, string?>>?, Task<int>> RunStreaming { get; init; } =
-        (file, arguments, lines, encoding, environment) => StreamingProcess.RunAsync(file, arguments, lines, CancellationToken.None, encoding, environment: environment);
+    public Func<string, string, IProgress<string>?, System.Text.Encoding?, Action<IDictionary<string, string?>>?, CancellationToken, Task<int>> RunStreaming { get; init; } =
+        (file, arguments, lines, encoding, environment, ct) => StreamingProcess.RunAsync(file, arguments, lines, ct, encoding, environment: environment);
 }

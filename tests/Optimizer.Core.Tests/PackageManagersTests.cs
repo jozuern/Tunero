@@ -27,7 +27,8 @@ public sealed class PackageManagersTests : IDisposable
     }
 
     private ManagerSystem Pc(Func<string, bool>? adminOnly = null, Dictionary<string, string>? machine = null, Dictionary<string, string>? user = null,
-        string? profile = "", string? wingetTrusted = null, string? wingetUser = null, string? store = "22608.1401.7.0") => new()
+        string? profile = "", string? wingetTrusted = null, string? wingetUser = null, string? store = "22608.1401.7.0",
+        Func<string, bool>? adminOnlyFolder = null) => new()
     {
         ProgramFiles = ProgramFiles,
         ProgramData = ProgramData,
@@ -39,6 +40,7 @@ public sealed class PackageManagersTests : IDisposable
         MachineVariable = name => machine?.GetValueOrDefault(name),
         UserVariable = name => user?.GetValueOrDefault(name),
         IsAdminOnly = adminOnly ?? (_ => true),
+        IsAdminOnlyFolder = adminOnlyFolder ?? (_ => true),
         FileVersion = path => Path.GetFileName(path) switch
         {
             "choco.exe" => "2.4.1",
@@ -103,12 +105,38 @@ public sealed class PackageManagersTests : IDisposable
         Assert.Equal([choco], checkedPaths);
     }
 
+    /// <summary>
+    /// An elevated choco loads helpers, extensions, hooks, its configuration and the packages' scripts from its root: the
+    /// root and each of those folders must be admin-only too, not only choco.exe.
+    /// </summary>
+    [Fact]
+    public void ChocolateyRunsElevatedOnlyWhenTheFoldersItLoadsFromAreAdminOnly()
+    {
+        var choco = File(@"ProgramData\chocolatey\choco.exe");
+        var root = Path.GetDirectoryName(choco)!;
+        foreach (var folder in new[] { "helpers", "extensions", "hooks", "config", "lib", "lib-bkp" }) Directory.CreateDirectory(Path.Combine(root, folder));
+        var checkedFolders = new List<string>();
+        var all = Get(PackageManagers.Detect(Pc(adminOnlyFolder: f =>
+        {
+            checkedFolders.Add(f);
+            return true;
+        })), ManagerKind.Chocolatey);
+        Assert.Equal(ManagerRun.Elevated, all.Run);
+        Assert.Equal(new[] { root }.Concat(new[] { "helpers", "extensions", "hooks", "config", "lib" }.Select(f => Path.Combine(root, f))), checkedFolders);
+
+        foreach (var weak in new[] { "helpers", "extensions", "hooks", "config", "lib" })
+        {
+            var found = Get(PackageManagers.Detect(Pc(adminOnlyFolder: f => !f.EndsWith(weak, StringComparison.Ordinal))), ManagerKind.Chocolatey);
+            Assert.Equal(ManagerRun.NotRun, found.Run);
+        }
+        Assert.Equal(ManagerRun.NotRun, Get(PackageManagers.Detect(Pc(adminOnlyFolder: f => f != root)), ManagerKind.Chocolatey).Run);
+    }
+
     [Fact]
     public void ChocolateyInstallFromTheMachineThenTheUserVariable()
     {
         var machineChoco = File(@"Tools\choco\choco.exe");
         var userChoco = File(@"Users\a\AppData\Local\UniGetUI\Chocolatey\choco.exe");
-        File(@"ProgramData\chocolatey\choco.exe");
         var machine = new Dictionary<string, string> { ["ChocolateyInstall"] = Path.GetDirectoryName(machineChoco)! };
         var user = new Dictionary<string, string> { ["ChocolateyInstall"] = Path.GetDirectoryName(userChoco)! };
         Assert.Equal(machineChoco, Get(PackageManagers.Detect(Pc(machine: machine, user: user)), ManagerKind.Chocolatey).Path);
@@ -116,6 +144,22 @@ public sealed class PackageManagersTests : IDisposable
         var fromUser = Get(PackageManagers.Detect(Pc(user: user, adminOnly: p => !p.Contains("UniGetUI", StringComparison.Ordinal))), ManagerKind.Chocolatey);
         Assert.Equal(userChoco, fromUser.Path);
         Assert.Equal(ManagerRun.NotRun, fromUser.Run);
+        // Without the user's profile, the user's variable is not read (it would be expanded for the elevated account).
+        Assert.DoesNotContain(PackageManagers.Detect(Pc(user: user, profile: null)), m => m.Kind == ManagerKind.Chocolatey);
+    }
+
+    /// <summary>A user's ChocolateyInstall cannot hide a trusted install in ProgramData: the first trusted root wins.</summary>
+    [Fact]
+    public void AUserChocolateyDoesNotHideATrustedOne()
+    {
+        var userChoco = File(@"Users\a\AppData\Local\UniGetUI\Chocolatey\choco.exe");
+        var defaultChoco = File(@"ProgramData\chocolatey\choco.exe");
+        var user = new Dictionary<string, string> { ["ChocolateyInstall"] = Path.GetDirectoryName(userChoco)! };
+        static bool NotUniGetUi(string p) => !p.Contains("UniGetUI", StringComparison.Ordinal);
+        var found = Get(PackageManagers.Detect(Pc(user: user, adminOnly: NotUniGetUi, adminOnlyFolder: NotUniGetUi)), ManagerKind.Chocolatey);
+        Assert.Equal(defaultChoco, found.Path);
+        Assert.Equal(ManagerRun.Elevated, found.Run);
+        Assert.Equal(Path.GetDirectoryName(defaultChoco), found.Root);
     }
 
     [Fact]
@@ -132,6 +176,8 @@ public sealed class PackageManagersTests : IDisposable
         var user = new Dictionary<string, string> { ["SCOOP"] = Path.Combine(_root, @"D\Scoop") };
         Assert.Equal(moved, Get(PackageManagers.Detect(Pc(user: user)), ManagerKind.Scoop).Path);
         Assert.Null(Get(PackageManagers.Detect(Pc(user: user)), ManagerKind.Scoop).Version);
+        // Without the user's profile, a SCOOP value is not used either.
+        Assert.DoesNotContain(PackageManagers.Detect(Pc(user: user, profile: null)), m => m.Kind == ManagerKind.Scoop);
     }
 
     [Fact]
@@ -162,6 +208,8 @@ public sealed class PackageManagersTests : IDisposable
               "ripgrep 14.1.1 (registry+https://github.com/rust-lang/crates.io-index)":{},
               "bat 0.25.0 (sparse+https://index.crates.io/)":{},
               "mytool 0.1.0 (git+https://example.com/mytool#abc)":{},
+              "inhouse 1.0.0 (registry+https://example.com/index)":{},
+              "inhouse2 1.0.0 (sparse+https://cargo.example.com/)":{},
               "local 0.1.0 (path+file:///C:/src/local)":{}
             }}
             """);
@@ -180,6 +228,7 @@ public sealed class PackageManagersTests : IDisposable
         var pip = Get(found, ManagerKind.Pip);
         Assert.Equal("3.13.1", pip.Version);
         Assert.Equal(["py -m pip list --outdated"], pip.Commands);
+        Assert.False(pip.CommandPrompt);
 
         var dotnet = Get(found, ManagerKind.DotnetTools);
         Assert.Equal("10.0.0", dotnet.Version);
@@ -205,6 +254,8 @@ public sealed class PackageManagersTests : IDisposable
         var python = File(@"Users\a\AppData\Local\Programs\Python\Python312\python.exe");
         var pip = Get(PackageManagers.Detect(Pc()), ManagerKind.Pip);
         Assert.Equal([$"\"{python}\" -m pip list --outdated"], pip.Commands);
+        // A quoted path is text in PowerShell: the page says to run it in Command Prompt.
+        Assert.True(pip.CommandPrompt);
     }
 
     [Fact]

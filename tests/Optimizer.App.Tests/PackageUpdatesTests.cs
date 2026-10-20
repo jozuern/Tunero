@@ -1,5 +1,6 @@
 using System.IO;
 using Optimizer.App.Services;
+using Optimizer.App.ViewModels;
 using Optimizer.Core.Apps;
 using Optimizer.Core.Platform;
 
@@ -26,7 +27,10 @@ public sealed class PackageUpdatesTests
     private readonly Dictionary<string, string[]> _printed = new(StringComparer.OrdinalIgnoreCase);
     private bool _openFails;
 
-    private PackageUpdates Updates() => new(new Launch
+    /// <summary>The fake Chocolatey never answers (until the time limit cancels it).</summary>
+    private bool _hangs;
+
+    private PackageUpdates Updates(TimeSpan? limit = null) => new(new Launch
     {
         Start = _ => throw new InvalidOperationException("nothing starts in this test"),
         OpenAsUser = (file, arguments, _) =>
@@ -34,15 +38,16 @@ public sealed class PackageUpdatesTests
             _opened.Add((file, arguments));
             return !_openFails;
         },
-        RunStreaming = (file, arguments, lines, encoding, environment) =>
+        RunStreaming = async (file, arguments, lines, encoding, environment, ct) =>
         {
             var env = new Dictionary<string, string?> { ["ChocolateyInstall"] = @"C:\Users\a\evil", ["ChocolateyToolsLocation"] = @"C:\Users\a\tools" };
             environment?.Invoke(env);
             _runs.Add((file, arguments, env, encoding));
+            if (_hangs) await Task.Delay(Timeout.Infinite, ct);
             foreach (var line in _printed.GetValueOrDefault(Path.GetFileName(file)) ?? []) lines?.Report(line);
-            return Task.FromResult(_codes.GetValueOrDefault(Path.GetFileName(file)));
+            return _codes.GetValueOrDefault(Path.GetFileName(file));
         },
-    }, null);
+    }, null) { OutdatedTimeout = limit ?? TimeSpan.FromMinutes(2) };
 
     private static PackageManagerInfo Winget(string? user = WingetUser) => new(ManagerKind.Winget, "winget", WingetExe, ManagerRun.Elevated) { UserPath = user };
     private static PackageManagerInfo Choco(ManagerRun run = ManagerRun.Elevated) => new(ManagerKind.Chocolatey, "Chocolatey", Path.Combine(ChocoRoot, "choco.exe"), run) { Root = ChocoRoot };
@@ -131,6 +136,15 @@ public sealed class PackageUpdatesTests
         foreach (var key in new[] { "Apps_UpdateAllWinget", "Apps_UpdateAllChoco", "Apps_UpdateAllScoop", "Apps_UpdateAllStore", "Apps_UpdateAllRestart" })
             Assert.Contains(Loc.Instance[key], all);
 
+        // winget's sentence says what runs: the whole PC and the user's window, the whole PC alone, or the user's window alone.
+        Assert.DoesNotContain(Loc.Instance["Apps_UpdateAllWingetMachine"], all);
+        var machineOnly = PackageUpdates.ConfirmText([Winget(user: null)]);
+        Assert.Contains(Loc.Instance["Apps_UpdateAllWingetMachine"], machineOnly);
+        Assert.DoesNotContain(Loc.Instance["Apps_UpdateAllWinget"], machineOnly);
+        var userOnly = PackageUpdates.ConfirmText([new PackageManagerInfo(ManagerKind.Winget, "winget", WingetUser, ManagerRun.AsUser)]);
+        Assert.Contains(Loc.Instance["Apps_UpdateAllWingetUser"], userOnly);
+        Assert.DoesNotContain(Loc.Instance["Apps_UpdateAllWinget"], userOnly);
+
         var wingetOnly = PackageUpdates.ConfirmText([Winget()]);
         Assert.StartsWith(Loc.Instance.Format("Apps_UpdateAllRuns", "winget"), wingetOnly);
         Assert.DoesNotContain(Loc.Instance["Apps_UpdateAllChoco"], wingetOnly);
@@ -151,6 +165,109 @@ public sealed class PackageUpdatesTests
         _codes["choco.exe"] = 1;
         Assert.Null(await Updates().ChocolateyOutdatedAsync(Choco()));
         await Assert.ThrowsAsync<InvalidOperationException>(() => Updates().ChocolateyOutdatedAsync(Choco(ManagerRun.NotRun)));
+    }
+
+    /// <summary>A Chocolatey that does not answer (no connection to a source) is ended after the time limit.</summary>
+    [Fact]
+    public async Task TheOutdatedCheckHasATimeLimit()
+    {
+        _hangs = true;
+        await Assert.ThrowsAsync<TimeoutException>(() => Updates(TimeSpan.FromMilliseconds(50)).ChocolateyOutdatedAsync(Choco()));
+    }
+
+    // ---------------- the page ----------------
+
+    private AppsViewModel Page(params PackageManagerInfo[] managers)
+    {
+        var page = new AppsViewModel(new FakePageHost(), null!, new FakeDialogs(), Updates());
+        page.SetManagers(managers);
+        return page;
+    }
+
+    private static PackageManagerInfo Pip(bool commandPrompt = false) =>
+        new(ManagerKind.Pip, "pip", @"C:\Program Files\Python313\python.exe", ManagerRun.Copy) { Version = "3.13.1", Commands = ["py -m pip list --outdated"], CommandPrompt = commandPrompt };
+
+    /// <summary>The check never clears the list while one of its packages updates.</summary>
+    [Fact]
+    public async Task NoCheckWhileAPackageUpdates()
+    {
+        var page = Page(Choco());
+        page.ChocolateyUpdates.Add(new ChocolateyUpdateRow(new ChocolateyOutdated("git", "1", "2")) { IsUpdating = true });
+        await page.CheckChocolateyCommand.ExecuteAsync(null);
+        Assert.Empty(_runs);
+        Assert.Single(page.ChocolateyUpdates);
+    }
+
+    /// <summary>Another change, scan or update runs: the check waits for it like every other page operation.</summary>
+    [Fact]
+    public async Task NoCheckWhileOtherWorkRuns()
+    {
+        var page = Page(Choco());
+        ChangeGate.Instance.Busy = true;
+        try
+        {
+            await page.CheckChocolateyCommand.ExecuteAsync(null);
+        }
+        finally
+        {
+            ChangeGate.Instance.Busy = false;
+        }
+        Assert.Empty(_runs);
+        Assert.Equal(Loc.Instance["Change_Busy"], page.ChocolateyNote);
+    }
+
+    /// <summary>A language switch keeps a running update's row (its Update button stays off) and relabels it.</summary>
+    [Fact]
+    public void ALanguageSwitchKeepsTheUpdatingRow()
+    {
+        var language = Loc.Instance.Language;
+        try
+        {
+            Loc.Instance.SetLanguage("en");
+            var page = Page(Choco());
+            var row = new ChocolateyUpdateRow(new ChocolateyOutdated("git", "1", "2")) { IsUpdating = true };
+            page.ChocolateyUpdates.Add(row);
+            Loc.Instance.SetLanguage("de");
+            page.SetManagers([Choco()]);
+            Assert.Same(row, Assert.Single(page.ChocolateyUpdates));
+            Assert.True(row.IsUpdating);
+            Assert.Equal(Loc.Instance.Format("Apps_ChocoMeta", "1", "2"), row.Meta);
+        }
+        finally
+        {
+            Loc.Instance.SetLanguage(language);
+        }
+    }
+
+    [Fact]
+    public void RowsSayWhatEachOneDoes()
+    {
+        var page = Page(Winget(), Winget(user: null) with { Name = "winget2" }, Store, Pip(), Pip(commandPrompt: true) with { Name = "pip2" });
+        Assert.Equal(Loc.Instance["Apps_HowWinget"], page.Managers[0].Meta);
+        Assert.Equal(Loc.Instance["Apps_HowWingetMachine"], page.Managers[1].Meta);
+        // The Store only opens its page: no check mark, its own status.
+        var store = page.Managers[2];
+        Assert.False(store.Included);
+        Assert.Equal(Loc.Instance["Apps_ManagerOpensPage"], store.StatusText);
+        // pip shows the Python version it belongs to; a quoted python.exe path is for Command Prompt.
+        Assert.Equal(Loc.Instance.Format("Apps_PythonVersion", "3.13.1"), page.DeveloperTools[0].VersionText);
+        Assert.DoesNotContain(Loc.Instance["Apps_DevInCommandPrompt"], page.DeveloperTools[0].Meta);
+        Assert.Contains(Loc.Instance["Apps_DevInCommandPrompt"], page.DeveloperTools[1].Meta);
+    }
+
+    /// <summary>The card is folded by default with a one-line summary, and shows for developer tools alone too.</summary>
+    [Fact]
+    public void TheCardIsFoldedWithASummary()
+    {
+        var page = Page(Winget(), Choco(), Store, Pip(), Npm);
+        Assert.False(page.ManagersExpanded);
+        Assert.True(page.HasManagerCard);
+        Assert.Equal(Loc.Instance.Format("Apps_ManagersSummary", "winget, Chocolatey, Microsoft Store", 2), page.ManagersSummary);
+
+        var toolsOnly = Page(Npm);
+        Assert.True(toolsOnly.HasManagerCard);
+        Assert.Equal(Loc.Instance.Format("Apps_DevToolsSummary", 1), toolsOnly.ManagersSummary);
+        Assert.False(Page().HasManagerCard);
     }
 
     [Fact]

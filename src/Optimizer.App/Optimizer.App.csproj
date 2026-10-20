@@ -12,7 +12,7 @@
     <StartupObject>Optimizer.App.Program</StartupObject>
     <!-- DOTNET_STARTUP_HOOKS from the user's environment would run code in the elevated app before Main. -->
     <StartupHookSupport>false</StartupHookSupport>
-    <Version>1.3.31</Version>
+    <Version>1.3.32</Version>
     <Product>Tunero</Product>
     <Authors>Joshua Zürn</Authors>
     <Company>Joshua Zürn</Company>
@@ -47,6 +47,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Optimizer.Core\Optimizer.Core.csproj" />
+  </ItemGroup>
+
+  <!-- View model tests set a page's data directly (internal entry points) instead of reading this PC. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Optimizer.App.Tests" />
   </ItemGroup>
 
   <!-- UI Automation: a plain ItemsControl (WPF-UI's navigation rail) wraps each item in a generic data item that hides

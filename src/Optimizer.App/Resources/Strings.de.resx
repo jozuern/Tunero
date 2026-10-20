@@ -1399,7 +1399,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Debloat_PageHint" xml:space="preserve"><value>Apps, die mit Windows kamen, und Desktopprogramme, die du installiert hast.</value></data>
   <data name="Debloat_TabStore" xml:space="preserve"><value>Vorinstallierte Apps</value></data>
   <data name="Apps_TabApps" xml:space="preserve"><value>Apps holen</value></data>
-  <data name="Apps_TabAppsHint" xml:space="preserve"><value>Installiert mit winget aus den offiziellen Quellen.</value></data>
+  <data name="Apps_TabAppsHint" xml:space="preserve"><value>„Alle Apps aktualisieren“ führt die Paketmanager unten aus. Die Apps in der Liste installiert winget aus ihren offiziellen Quellen.</value></data>
   <data name="Apps_SearchTitle" xml:space="preserve"><value>Weitere Apps über winget suchen</value></data>
   <data name="Apps_SearchHint" xml:space="preserve"><value>Jedes Paket aus dem winget-Community-Verzeichnis, über die Liste unten hinaus. Tunero hat diese nicht geprüft: winget installiert das Paket so, wie sein Eintrag dort es angibt, aus dem Download des Herstellers.</value></data>
   <data name="Apps_SearchPlaceholder" xml:space="preserve"><value>Name oder ID, zum Beispiel Blender</value></data>
@@ -1782,7 +1782,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Apps_HowWinget" xml:space="preserve"><value>Programme für den ganzen PC werden hier aktualisiert, Programme für dein Konto in einem eigenen Fenster.</value></data>
   <data name="Apps_HowWingetUser" xml:space="preserve"><value>Aktualisiert in einem eigenen Fenster, als dein Konto.</value></data>
   <data name="Apps_HowChoco" xml:space="preserve"><value>Aktualisiert hier jedes veraltete Paket, mit Administratorrechten.</value></data>
-  <data name="Apps_HowChocoUntrusted" xml:space="preserve"><value>Sein Ordner lässt sich ohne Administratorrechte ändern, deshalb startet Tunero es nicht mit diesen Rechten. Wenn du ihm vertraust, führe choco upgrade all selbst in einem Terminal aus.</value></data>
+  <data name="Apps_HowChocoUntrusted" xml:space="preserve"><value>Sein Ordner oder ein Ordner, aus dem es Skripte lädt, lässt sich ohne Administratorrechte ändern, deshalb startet Tunero es nicht mit diesen Rechten. Wenn du ihm vertraust, führe choco upgrade all selbst in einem Terminal aus.</value></data>
   <data name="Apps_HowScoop" xml:space="preserve"><value>Aktualisiert sich selbst und seine Apps in einem eigenen Fenster, als dein Konto.</value></data>
   <data name="Apps_HowStore" xml:space="preserve"><value>Öffnet die Seite des Stores für Updates; wähle dort „Updates abrufen“.</value></data>
   <data name="Apps_DevToolsTitle" xml:space="preserve"><value>Entwicklerwerkzeuge</value></data>
@@ -1801,4 +1801,13 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Apps_ChocoCount" xml:space="preserve"><value>Updates von Chocolatey: {0}</value></data>
   <data name="Apps_ChocoCheckFailed" xml:space="preserve"><value>Chocolatey konnte nicht nach Updates suchen.</value></data>
   <data name="Apps_ChocoMeta" xml:space="preserve"><value>Chocolatey, {0} auf {1}</value></data>
+  <data name="Apps_UpdateAllWingetMachine" xml:space="preserve"><value>winget aktualisiert hier jedes Programm für den ganzen PC, für das es in seiner Quelle eine neuere Version kennt, ohne einzeln zu fragen.</value></data>
+  <data name="Apps_UpdateAllWingetUser" xml:space="preserve"><value>winget aktualisiert die Programme für dein Konto in einem eigenen Fenster, als dein Konto.</value></data>
+  <data name="Apps_HowWingetMachine" xml:space="preserve"><value>Aktualisiert hier die Programme für den ganzen PC.</value></data>
+  <data name="Apps_ChocoTimeout" xml:space="preserve"><value>Chocolatey hat nicht innerhalb von 2 Minuten geantwortet. Versuche es später noch einmal.</value></data>
+  <data name="Apps_DevInCommandPrompt" xml:space="preserve"><value>Führe ihn in der Eingabeaufforderung aus.</value></data>
+  <data name="Apps_ManagerOpensPage" xml:space="preserve"><value>Öffnet seine Seite</value></data>
+  <data name="Apps_PythonVersion" xml:space="preserve"><value>Python {0}</value></data>
+  <data name="Apps_ManagersSummary" xml:space="preserve"><value>{0}; Entwicklerwerkzeuge: {1}</value></data>
+  <data name="Apps_DevToolsSummary" xml:space="preserve"><value>Entwicklerwerkzeuge: {0}</value></data>
 </root>
