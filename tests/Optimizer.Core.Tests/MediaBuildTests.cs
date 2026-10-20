@@ -1815,6 +1815,7 @@ internal sealed class FakeIsoReader(FakeMediaSteps steps) : IIsoReader
             FakeMediaSteps.Put(targetFolder, @"sources\$OEM$\$$\Panther\unattend.xml", "<old/>", readOnly: true);
             FakeMediaSteps.Put(targetFolder, @"sources\$OEM$\$$\Panther\AutoUnattend.XML", "<old/>");
             FakeMediaSteps.Put(targetFolder, @"sources\$OEM$\$$\Panther\Unattend\Unattend.xml", "<old/>");
+            FakeMediaSteps.Put(targetFolder, @"sources\$OEM$\$$\Panther\Unattend\AutoUnattend.xml", "<old/>");
             FakeMediaSteps.Put(targetFolder, @"sources\$OEM$\$$\System32\Sysprep\unattend.xml", "<old/>");
             FakeMediaSteps.Put(targetFolder, @"sources\$OEM$\$$\Panther\notes.txt", "keep");
         }

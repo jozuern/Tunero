@@ -126,7 +126,10 @@ public interface IMediaSteps
     /// </summary>
     IOfflineHive LoadSystemHive(string file);
 
-    /// <summary>Unloads hives that a Tunero no longer running left loaded (<see cref="OfflineSystemHive.UnloadLeftovers"/>). Never throws.</summary>
+    /// <summary>
+    /// Unloads the hives no build holds: those of Tuneros no longer running and this process's given-up ones
+    /// (<see cref="OfflineSystemHive.UnloadLeftovers"/>). Never throws.
+    /// </summary>
     void UnloadLeftoverHives();
 
     /// <summary>Appends a line to the build's log. Never throws.</summary>
