@@ -58,7 +58,8 @@ public sealed class MediaBuildException(MediaStage stage, string message, int? c
         "Media_OutputInvalid", "Media_OutputLink", "Media_OutputReadOnly", "Media_OutputInUse", "Media_OutputNotLocal",
         "Media_OutputMoveFailed", "Media_SourceMissing", "Media_WorkFolderFailed",
         "Media_NotEnoughSpace", "Media_NotWindows11", "Media_NotX64", "Media_NoUefiBoot", "Media_EditionMissing",
-        "Media_ImageCheckFailed", "Media_Unhealthy", "Media_FilesCheckFailed", "Media_IsoInUse", "Media_VerifyFailed",
+        "Media_ImageCheckFailed", "Media_Unhealthy", "Media_FilesCheckFailed", "Media_BootImageAnswerFile", "Media_IsoInUse",
+        "Media_VerifyFailed",
     ];
 }
 
@@ -119,6 +120,15 @@ public interface IMediaSteps
     /// <summary>The work folders at the root of <paramref name="drive"/>.</summary>
     IEnumerable<string> LeftoverWorkFolders(string drive);
 
+    /// <summary>
+    /// Loads the SYSTEM hive file of a mounted image, read only, until the result is disposed (<see cref="OfflineSystemHive"/>).
+    /// Throws IOException or UnauthorizedAccessException when it cannot be loaded.
+    /// </summary>
+    IOfflineHive LoadSystemHive(string file);
+
+    /// <summary>Unloads hives that a Tunero no longer running left loaded (<see cref="OfflineSystemHive.UnloadLeftovers"/>). Never throws.</summary>
+    void UnloadLeftoverHives();
+
     /// <summary>Appends a line to the build's log. Never throws.</summary>
     void Log(string line);
 
@@ -126,12 +136,12 @@ public interface IMediaSteps
 }
 
 /// <summary>
-/// Builds the changed install media: download or own ISO, unpack with DISM, remove apps, add the answer file and Tunero,
-/// write the ISO and read it back. The ISO is written and verified inside the locked work folder and only then moved to
-/// the output path, so that path only ever holds a verified ISO and an older file there survives every failure. Every
-/// safety check fails the build with a <see cref="MediaBuildException"/>; on any failure or Stop a mounted image is
-/// discarded and the work folder deleted. A folder whose image cannot be unmounted is kept (deleting it would reach into
-/// the mounted image) and removed by <see cref="CleanLeftoversAsync"/> at the next start.
+/// Builds the changed install media: download or own ISO, unpack with DISM, remove apps, add the answer file (inside
+/// boot.wim) and Tunero, write the ISO and read it back. The ISO is written and verified inside the locked work folder
+/// and only then moved to the output path, so that path only ever holds a verified ISO and an older file there survives
+/// every failure. Every safety check fails the build with a <see cref="MediaBuildException"/>; on any failure or Stop a
+/// mounted image is discarded and the work folder deleted. A folder whose image cannot be unmounted is kept (deleting it
+/// would reach into the mounted image) and removed by <see cref="CleanLeftoversAsync"/> at the next start.
 /// </summary>
 public sealed class MediaBuild(IMediaSteps steps)
 {
@@ -252,6 +262,8 @@ public sealed class MediaBuild(IMediaSteps steps)
             steps.Log($"{running} belongs to a build that is still running; left alone");
             folders.Remove(running);
         }
+        // A SYSTEM hive a killed build left loaded holds a file of its mounted boot.wim open: unloaded first, or the discard fails.
+        steps.UnloadLeftoverHives();
         var ours = mounted.Where(d => folders.Any(f => IsInside(d, f))).ToList();
         var still = mounted;
         if (ours.Count > 0)
@@ -369,9 +381,11 @@ public sealed class MediaBuild(IMediaSteps steps)
     {
         private readonly Stopwatch _clock = new();
         private MediaStage _stage;
-        private string? _work, _media, _mount, _workIso;
+        private string? _work, _media, _mount, _bootMount, _workIso;
         private WorkFolder? _workFolder;
-        private bool _mounted, _answerFileWritten;
+
+        /// <summary>The folder an image is mounted in right now (from the start of the mount on), or null. A failure or Stop discards it.</summary>
+        private string? _mounted;
 
         /// <summary>The page's choices with Setup's language set to one the chosen image has (<see cref="AnswersFor"/>).</summary>
         private AnswerChoices _answers = r.Answers;
@@ -396,6 +410,7 @@ public sealed class MediaBuild(IMediaSteps steps)
                 steps.Log("Work folder " + _work);
                 _media = Path.Combine(_work, "media");
                 _mount = Path.Combine(_work, "mount");
+                _bootMount = Path.Combine(_work, "bootmount");
 
                 string edition;
                 if (download is not null)
@@ -421,7 +436,7 @@ public sealed class MediaBuild(IMediaSteps steps)
                     await RemoveAppsAsync();
                 }
                 Begin(MediaStage.Files);
-                WriteFiles();
+                await WriteFilesAsync();
                 Begin(MediaStage.Iso);
                 await WriteIsoAsync(build);
                 Begin(MediaStage.Verify);
@@ -652,7 +667,9 @@ public sealed class MediaBuild(IMediaSteps steps)
             string[] answerFiles =
             [
                 Path.Combine(_media!, "autounattend.xml"),
+                Path.Combine(_media!, "unattend.xml"),
                 Path.Combine(Sources, "autounattend.xml"),
+                Path.Combine(Sources, "unattend.xml"),
                 Path.Combine(oem, "$$", "Panther", "unattend.xml"),
                 Path.Combine(oem, "$$", "Panther", "autounattend.xml"),
                 Path.Combine(oem, "$$", "Panther", "Unattend", "unattend.xml"),
@@ -730,14 +747,20 @@ public sealed class MediaBuild(IMediaSteps steps)
 
             var boot = DismOutput.ParseWimInfo(await Dism(DismArgs.WimInfo(BootWim, null), () => steps.Dism.GetWimInfoAsync(BootWim, null, ct)));
             if (boot.Count != 2) throw Fail($"boot.wim holds {boot.Count} images, not 2.", "Media_ImageCheckFailed");
-            // DISM's "WIM Bootable" line does not show this (see WimHeader); the header does.
-            var header = WimHeader.Read(BootWim);
-            if (header is not { ImageCount: 2, BootIndex: 2 })
-                throw Fail($"boot.wim does not name image 2 as the one that boots (header: {header?.ImageCount} images, boot index {header?.BootIndex}).", "Media_ImageCheckFailed");
+            CheckBootHeader();
             var (setup, _) = await DetailAsync(BootWim, 2);
             if (!Same(setup.Architecture, "x64")) throw Fail($"boot.wim is for {setup.Architecture}; only x64 media can be built.", "Media_NotX64");
             steps.Log($"Images checked: {image.Name} ({image.Edition}, {image.Architecture}, {image.Version}), boot.wim boots image 2");
             return Version.Parse(image.Version!).Build.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        /// <summary>The header of boot.wim names image 2 (Setup) of its 2 images as the one that boots.</summary>
+        private void CheckBootHeader()
+        {
+            // DISM's "WIM Bootable" line does not show this (see WimHeader); the header does.
+            var header = WimHeader.Read(BootWim);
+            if (header is not { ImageCount: 2, BootIndex: 2 })
+                throw Fail($"boot.wim does not name image 2 as the one that boots (header: {header?.ImageCount} images, boot index {header?.BootIndex}).", "Media_ImageCheckFailed");
         }
 
         /// <summary>
@@ -758,10 +781,7 @@ public sealed class MediaBuild(IMediaSteps steps)
             var catalog = CatalogData.Current.Appx;
             // Validate checked that every name is an allowlist entry.
             var entries = catalog.Apps.Where(a => r.RemoveApps.Contains(a.Name, StringComparer.OrdinalIgnoreCase)).ToList();
-            Directory.CreateDirectory(_mount!);
-            // Counted as mounted from the start: a mount that fails or stops halfway is discarded too.
-            _mounted = true;
-            await Dism(DismArgs.Mount(InstallWim, 1, _mount!), () => steps.Dism.MountAsync(InstallWim, 1, _mount!, Percent("install.wim"), ct));
+            await MountAsync(InstallWim, 1, _mount!, readOnly: false, "install.wim");
             var provisioned = await Dism(DismArgs.Provisioned(_mount!), () => steps.Dism.ProvisionedAsync(_mount!, ct));
             // Provisioned names are full package names (Name_Version_Arch_ResourceId_PublisherId); the allowlist has the Name.
             var remove = provisioned.Where(p => PackageName(p) is var name && !catalog.IsProtected(name) && entries.Any(e => e.Matches(name))).ToList();
@@ -775,26 +795,35 @@ public sealed class MediaBuild(IMediaSteps steps)
             var health = await Dism(DismArgs.CheckHealth(_mount!), () => steps.Dism.CheckHealthAsync(_mount!, ct));
             if (!DismOutput.Healthy(health)) throw Fail("The image reports component store corruption; the changes were not saved.", "Media_Unhealthy");
             // Nothing removed: the image stays exactly as it was.
-            var commit = remove.Count > 0;
-            await Dism(DismArgs.Unmount(_mount!, commit), () => steps.Dism.UnmountAsync(_mount!, commit, Percent("install.wim"), ct));
-            _mounted = false;
+            await UnmountAsync(_mount!, commit: remove.Count > 0, "install.wim");
         }
 
         private static string PackageName(string fullName) => fullName.Split('_')[0];
 
-        /// <summary>autounattend.xml when a choice needs it, and Tunero with its first sign-in file; each read back and checked.</summary>
-        private void WriteFiles()
+        /// <summary>
+        /// Mounts into an empty folder of the work folder. Counted as mounted from the start: a mount that fails or stops
+        /// halfway is discarded too (<see cref="CleanUpAfterFailureAsync"/>).
+        /// </summary>
+        private async Task MountAsync(string image, int index, string folder, bool readOnly, string detail)
         {
-            var a = _answers;
-            if (a.SkipSetup || a.AllowUnsupported || a.FirstSignInTunero)
-            {
-                var xml = AnswerFile.Build(a);
-                var path = Path.Combine(_media!, "autounattend.xml");
-                File.WriteAllText(path, xml);   // UTF-8 without a byte order mark, as the declaration says
-                _answerFileWritten = true;
-                CheckAnswerFile(path, xml);
-                steps.Log("Wrote autounattend.xml");
-            }
+            Directory.CreateDirectory(folder);
+            _mounted = folder;
+            await Dism(DismArgs.Mount(image, index, folder, readOnly), () => steps.Dism.MountAsync(image, index, folder, readOnly, Percent(detail), ct));
+        }
+
+        private async Task UnmountAsync(string folder, bool commit, string detail)
+        {
+            await Dism(DismArgs.Unmount(folder, commit), () => steps.Dism.UnmountAsync(folder, commit, Percent(detail), ct));
+            _mounted = null;
+        }
+
+        /// <summary>
+        /// The answer file into boot.wim when a choice needs it (<see cref="WriteBootWimAsync"/>), and Tunero with its first
+        /// sign-in file; each read back and checked. Last, the media itself must hold no answer file.
+        /// </summary>
+        private async Task WriteFilesAsync()
+        {
+            await WriteBootWimAsync();
             if (r.TuneroExe is { } exe)
             {
                 Directory.CreateDirectory(TuneroFolder);
@@ -807,11 +836,137 @@ public sealed class MediaBuild(IMediaSteps steps)
                     throw Fail($"{FirstSignIn.FileName} does not read back as written.", "Media_FilesCheckFailed");
                 steps.Log($"Copied Tunero from {exe}");
             }
+            CheckMediaHasNoAnswerFile();
+        }
+
+        /// <summary>The name Setup in Windows PE looks for at the root of its system drive, X:\ (any case would do).</summary>
+        private const string BootAnswerFile = "Autounattend.xml";
+
+        /// <summary>
+        /// The answer file lives only at X:\Autounattend.xml inside image 2 of boot.wim, the Windows PE that Setup runs in when
+        /// the PC starts from the media. Microsoft's implicit answer file search order
+        /// (https://learn.microsoft.com/windows-hardware/manufacture/desktop/windows-setup-automation-overview, "Implicit Answer
+        /// File Search Order") also has the roots of removable media (rows 4 and 5), the \Sources folder of the media (row 6)
+        /// and the root of the drive setup.exe runs from (row 8). A setup.exe started inside a running Windows sees all of them,
+        /// and with an answer file there it offered only a clean install that moved the old Windows to Windows.old (VM test 1e).
+        /// %SYSTEMDRIVE% (row 7) is X:\ only in the Windows PE of the media, and Setup caches the file it used into the new
+        /// Windows' Panther folder, so the specialize and oobeSystem settings still apply.
+        /// Every build also clears the image of answer files that Setup in Windows PE would prefer or also find (an own ISO can
+        /// carry them, and files that were not chosen must not run on the new PC) and refuses an image whose registry points
+        /// Setup to one. With nothing to write and nothing found, the image is discarded unchanged; a changed image is checked
+        /// again after the commit, from what the committed boot.wim holds.
+        /// </summary>
+        private async Task WriteBootWimAsync()
+        {
+            var a = _answers;
+            var xml = a.SkipSetup || a.AllowUnsupported || a.FirstSignInTunero ? AnswerFile.Build(a) : null;
+            var root = _bootMount!;
+            await MountAsync(BootWim, 2, root, readOnly: false, "boot.wim");
+            CheckSetupRegistry(root);
+            var removed = RemoveBootAnswerFiles(root);
+            if (xml is not null)
+            {
+                var path = Path.Combine(root, BootAnswerFile);
+                File.WriteAllText(path, xml);   // UTF-8 without a byte order mark, as the declaration says
+                CheckAnswerFile(path, xml);
+                steps.Log($"Wrote {BootAnswerFile} into image 2 of boot.wim");
+            }
+            var commit = xml is not null || removed;
+            await UnmountAsync(root, commit, "boot.wim");
+            if (!commit)
+            {
+                steps.Log("boot.wim left unchanged");
+                return;
+            }
+
+            CheckBootHeader();
+            await MountAsync(BootWim, 2, root, readOnly: true, "boot.wim");
+            var found = BootAnswerFilesIn(root);
+            if (xml is not null)
+            {
+                var ours = found.FirstOrDefault(f => Same(f, Path.Combine(root, BootAnswerFile)));
+                if (ours is null) throw Fail($"The committed boot.wim has no {BootAnswerFile}.", "Media_FilesCheckFailed");
+                CheckAnswerFile(ours, xml);
+                found.Remove(ours);
+            }
+            if (found.Count > 0)
+                throw Fail("The committed boot.wim still holds " + string.Join(", ", found.Select(f => Path.GetRelativePath(root, f))) + ".", "Media_FilesCheckFailed");
+            await UnmountAsync(root, commit: false, "boot.wim");
+            steps.Log("boot.wim checked after the commit: boots image 2" + (xml is not null ? $", {BootAnswerFile} as written" : ", no answer file"));
+        }
+
+        /// <summary>Setup reads HKLM\SYSTEM\Setup\UnattendFile before every other place: a boot image that sets it is refused.</summary>
+        private void CheckSetupRegistry(string root)
+        {
+            string? pointer;
+            try
+            {
+                using var hive = steps.LoadSystemHive(Path.Combine(root, @"Windows\System32\config\SYSTEM"));
+                pointer = hive.SetupValue("UnattendFile");
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+            {
+                throw Fail($"The registry of image 2 of boot.wim could not be read: {ex.Message}", "Media_ImageCheckFailed");
+            }
+            if (!string.IsNullOrWhiteSpace(pointer))
+                throw Fail($@"The registry of image 2 of boot.wim points Setup to the answer file {pointer} (Setup\UnattendFile).", "Media_BootImageAnswerFile");
+        }
+
+        /// <summary>Removes every answer file of <see cref="BootAnswerFilesIn"/>, checked gone, fail closed. True when there were any.</summary>
+        private bool RemoveBootAnswerFiles(string root)
+        {
+            var found = BootAnswerFilesIn(root);
+            foreach (var file in found)
+            {
+                steps.Log($"Removing {Path.GetRelativePath(root, file)} from image 2 of boot.wim");
+                try
+                {
+                    SafeDelete.DeleteFile(file);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    throw Fail($"{Path.GetRelativePath(root, file)} in boot.wim could not be removed: {ex.Message}", "Media_FilesCheckFailed");
+                }
+            }
+            if (BootAnswerFilesIn(root).Count > 0) throw Fail("An answer file in boot.wim could not be removed.", "Media_FilesCheckFailed");
+            return found.Count > 0;
+        }
+
+        /// <summary>
+        /// The answer files that Setup in Windows PE would use or also find in the image mounted at <paramref name="root"/>
+        /// (X:\), with their names as they are (names compare without case).
+        /// </summary>
+        private static List<string> BootAnswerFilesIn(string root)
+        {
+            string[] both = ["autounattend.xml", "unattend.xml"];
+            return
+            [
+                .. Named(root, n => both.Contains(n, StringComparer.OrdinalIgnoreCase)),
+                .. Named(Path.Combine(root, "sources"), n => both.Contains(n, StringComparer.OrdinalIgnoreCase)),
+                .. Named(Path.Combine(root, @"Windows\Panther"), n => both.Contains(n, StringComparer.OrdinalIgnoreCase)),
+                .. Named(Path.Combine(root, @"Windows\Panther\Unattend"), n => n.EndsWith(".xml", StringComparison.OrdinalIgnoreCase)),
+                .. Named(Path.Combine(root, @"Windows\System32\Sysprep"), n => Same(n, "unattend.xml")),
+            ];
+        }
+
+        /// <summary>The files and folders directly in <paramref name="folder"/> whose name matches, hidden and system ones included.</summary>
+        private static IEnumerable<string> Named(string folder, Func<string, bool> match) =>
+            Directory.Exists(folder)
+                ? Directory.EnumerateFileSystemEntries(folder, "*", new EnumerationOptions { AttributesToSkip = 0 }).Where(e => match(Path.GetFileName(e))).ToList()
+                : [];
+
+        /// <summary>A setup.exe started inside Windows finds an answer file at the media's root or in sources (<see cref="WriteBootWimAsync"/>): none may be there.</summary>
+        private void CheckMediaHasNoAnswerFile()
+        {
+            bool IsAnswerFile(string name) => Same(name, "autounattend.xml") || Same(name, "unattend.xml");
+            var found = Named(_media!, IsAnswerFile).Concat(Named(Sources, IsAnswerFile)).ToList();
+            if (found.Count > 0)
+                throw Fail("The media holds an answer file outside boot.wim: " + string.Join(", ", found.Select(f => Path.GetRelativePath(_media!, f))) + ".", "Media_FilesCheckFailed");
         }
 
         private void CheckAnswerFile(string path, string expected)
         {
-            if (File.ReadAllText(path) != expected) throw Fail("autounattend.xml does not read back as written.", "Media_FilesCheckFailed");
+            if (File.ReadAllText(path) != expected) throw Fail($"{Path.GetFileName(path)} does not read back as written.", "Media_FilesCheckFailed");
             try
             {
                 // Read from the bytes on disk as Setup does (the declaration names the encoding); both sides without layout whitespace.
@@ -820,11 +975,11 @@ public sealed class MediaBuild(IMediaSteps steps)
                 using (var reader = XmlReader.Create(path, settings)) written = XDocument.Load(reader);
                 using (var reader = XmlReader.Create(new StringReader(AnswerFile.Build(_answers)), settings)) wanted = XDocument.Load(reader);
                 if (written.Root?.Name != XName.Get("unattend", "urn:schemas-microsoft-com:unattend") || !XNode.DeepEquals(written, wanted))
-                    throw Fail("autounattend.xml does not match the choices.", "Media_FilesCheckFailed");
+                    throw Fail($"{Path.GetFileName(path)} does not match the choices.", "Media_FilesCheckFailed");
             }
             catch (XmlException ex)
             {
-                throw Fail("autounattend.xml is not valid XML: " + ex.Message, "Media_FilesCheckFailed");
+                throw Fail($"{Path.GetFileName(path)} is not valid XML: " + ex.Message, "Media_FilesCheckFailed");
             }
         }
 
@@ -847,8 +1002,8 @@ public sealed class MediaBuild(IMediaSteps steps)
         /// <summary>Reads the ISO back: its boot catalog and the files that decide whether Windows installs as chosen.</summary>
         private async Task VerifyAsync()
         {
+            // boot.wim carries the answer file (WriteBootWimAsync): compared byte for byte like install.wim.
             var files = new List<string> { @"sources\install.wim", @"sources\boot.wim" };
-            if (_answerFileWritten) files.Add("autounattend.xml");
             // Without etfsboot.com the media has no BIOS entry at all; the UEFI files are required (RequireUefiBoot).
             if (File.Exists(Path.Combine(_media!, IsoBoot.BiosImage))) files.Add(IsoBoot.BiosImage);
             files.Add(IsoBoot.UefiImage);
@@ -898,14 +1053,14 @@ public sealed class MediaBuild(IMediaSteps steps)
         private async Task CleanUpAfterFailureAsync()
         {
             Report(MediaStage.Cleanup, null, null);
-            if (_mounted && _mount is { } mount)
+            if (_mounted is { } mount)
             {
                 var none = CancellationToken.None;
                 if (await RetryAsync("Discarding the mounted image",
                         () => Dism(DismArgs.Unmount(mount, commit: false), () => steps.Dism.UnmountAsync(mount, false, null, none)),
                         ex => ex is DismException or IOException))
                 {
-                    _mounted = false;
+                    _mounted = null;
                 }
                 else
                 {
@@ -913,7 +1068,7 @@ public sealed class MediaBuild(IMediaSteps steps)
                     {
                         await Dism(DismArgs.CleanupMountpoints(), () => steps.Dism.CleanupMountpointsAsync(none));
                         var still = await Dism(DismArgs.MountedImageInfo(), () => steps.Dism.MountedDirsAsync(none));
-                        _mounted = still.Any(d => IsInside(d, mount));
+                        if (!still.Any(d => IsInside(d, mount))) _mounted = null;
                     }
                     catch (Exception ex)
                     {
@@ -923,9 +1078,9 @@ public sealed class MediaBuild(IMediaSteps steps)
             }
             ReleaseLock();
             if (_work is null) return;
-            if (_mounted)
+            if (_mounted is not null)
             {
-                Warn(steps, $"The image is still mounted at {_mount}; {_work} stays until the next start of Tunero removes it.");
+                Warn(steps, $"The image is still mounted at {_mounted}; {_work} stays until the next start of Tunero removes it.");
                 return;
             }
             if (!await DeleteWorkFolderAsync()) Warn(steps, $"work folder {_work} stays until the next start of Tunero removes it");
@@ -1095,6 +1250,10 @@ public sealed class MediaSteps : IMediaSteps
     }
 
     public long FreeBytes(string path) => new DriveInfo(Path.GetPathRoot(Path.GetFullPath(path))!).AvailableFreeSpace;
+
+    public IOfflineHive LoadSystemHive(string file) => OfflineSystemHive.Load(file);
+
+    public void UnloadLeftoverHives() => OfflineSystemHive.UnloadLeftovers();
 
     public IEnumerable<string> LocalDrives() =>
         DriveInfo.GetDrives().Where(d => d.DriveType == DriveType.Fixed && d.IsReady).Select(d => d.RootDirectory.FullName).ToList();

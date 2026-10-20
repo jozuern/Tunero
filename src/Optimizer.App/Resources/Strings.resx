@@ -1675,12 +1675,12 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Media_Edition_ProfessionalWorkstationN" xml:space="preserve"><value>Windows 11 Pro N for Workstations</value></data>
   <data name="Media_ChangesTitle" xml:space="preserve"><value>Changes</value></data>
   <data name="Media_RemoveAppsTitle" xml:space="preserve"><value>Remove preinstalled apps</value></data>
-  <data name="Media_RemoveAppsText" xml:space="preserve"><value>The apps you tick are removed from the image, so no account on the new PC gets them. It is the list Remove apps uses; apps the image does not have are skipped.</value></data>
+  <data name="Media_RemoveAppsText" xml:space="preserve"><value>The apps you tick are removed from the image, so no account on the new PC gets them. It is the list Remove apps uses; apps the image does not have are skipped. Once the new PC is online, Windows or the Microsoft Store can install some of them again; Remove apps in Tunero removes them again.</value></data>
   <data name="Media_AppsChosen" xml:space="preserve"><value>{0} of {1} chosen</value></data>
   <data name="Media_AppStore" xml:space="preserve"><value>The Microsoft Store still offers this app.</value></data>
   <data name="Media_AppNoStore" xml:space="preserve"><value>This app cannot be installed again.</value></data>
   <data name="Media_SkipSetupTitle" xml:space="preserve"><value>Skip account and setup questions</value></data>
-  <data name="Media_SkipSetupText" xml:space="preserve"><value>Setup creates a local administrator account with this name and answers the privacy questions with the most private choice. No password is stored on the ISO: Windows asks for a new one at the next sign-in.</value></data>
+  <data name="Media_SkipSetupText" xml:space="preserve"><value>Setup creates a local administrator account with this name and answers the privacy questions with the most private choice. No password is stored on the ISO: Windows asks for a new one at the next sign-in. Setup still shows its pages for the product key, the license terms and the drive.</value></data>
   <data name="Media_AccountName" xml:space="preserve"><value>Account name</value></data>
   <data name="Media_Region" xml:space="preserve"><value>Region format</value></data>
   <data name="Media_Keyboard" xml:space="preserve"><value>Keyboard</value></data>
@@ -1704,6 +1704,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Media_Needed" xml:space="preserve"><value>The build needs about {0} free on this drive; {1} are free.</value></data>
   <data name="Media_NeededOnly" xml:space="preserve"><value>The build needs about {0} free on the drive of the ISO file.</value></data>
   <data name="Media_SecureBootNote" xml:space="preserve"><value>The ISO starts with the same boot files as Microsoft's own Windows 11 ISO.</value></data>
+  <data name="Media_UpgradeNote" xml:space="preserve"><value>Started inside Windows, setup.exe on this ISO upgrades Windows as it does on Microsoft's ISO and can keep files and apps. Tunero's answers for Setup and the first sign-in apply only when the PC starts from the ISO or from a USB stick made from it.</value></data>
   <data name="Media_BuildButton" xml:space="preserve"><value>Build ISO</value></data>
   <data name="Media_Building" xml:space="preserve"><value>Building the Windows ISO</value></data>
   <data name="Media_NeedsAdmin" xml:space="preserve"><value>Building install media needs administrator rights.</value></data>
@@ -1746,6 +1747,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Media_ImageCheckFailed" xml:space="preserve"><value>A check of the Windows image failed.</value></data>
   <data name="Media_Unhealthy" xml:space="preserve"><value>DISM reports damage in the Windows image; the changes were not saved.</value></data>
   <data name="Media_FilesCheckFailed" xml:space="preserve"><value>A file written to the media did not read back as written.</value></data>
+  <data name="Media_BootImageAnswerFile" xml:space="preserve"><value>The boot image of this ISO tells Windows Setup to use an answer file of its own. Use an unchanged ISO from Microsoft.</value></data>
   <data name="Media_IsoInUse" xml:space="preserve"><value>The ISO file is open in another program, for example mounted in Explorer. Eject it there and try again.</value></data>
   <data name="Media_VerifyFailed" xml:space="preserve"><value>The written ISO differs from the prepared files.</value></data>
   <data name="Media_CloseTitle" xml:space="preserve"><value>Stop the build?</value></data>

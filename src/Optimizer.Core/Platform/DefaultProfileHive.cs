@@ -87,7 +87,7 @@ public static class DefaultProfileHive
     }
 
     /// <summary>A Tunero with this process id runs: the id alone may belong to another program by now (ids are reused).</summary>
-    private static bool IsTuneroRunning(int pid)
+    internal static bool IsTuneroRunning(int pid)
     {
         try
         {

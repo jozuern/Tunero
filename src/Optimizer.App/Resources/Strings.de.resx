@@ -1675,12 +1675,12 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Media_Edition_ProfessionalWorkstationN" xml:space="preserve"><value>Windows 11 Pro N for Workstations</value></data>
   <data name="Media_ChangesTitle" xml:space="preserve"><value>Änderungen</value></data>
   <data name="Media_RemoveAppsTitle" xml:space="preserve"><value>Vorinstallierte Apps entfernen</value></data>
-  <data name="Media_RemoveAppsText" xml:space="preserve"><value>Die angehakten Apps werden aus dem Abbild entfernt, damit kein Konto auf dem neuen PC sie bekommt. Es ist dieselbe Liste wie unter Apps entfernen; Apps, die das Abbild nicht enthält, werden übersprungen.</value></data>
+  <data name="Media_RemoveAppsText" xml:space="preserve"><value>Die angehakten Apps werden aus dem Abbild entfernt, damit kein Konto auf dem neuen PC sie bekommt. Es ist dieselbe Liste wie unter Apps entfernen; Apps, die das Abbild nicht enthält, werden übersprungen. Sobald der neue PC online ist, können Windows oder der Microsoft Store einige davon wieder installieren; Apps entfernen in Tunero entfernt sie dann erneut.</value></data>
   <data name="Media_AppsChosen" xml:space="preserve"><value>{0} von {1} ausgewählt</value></data>
   <data name="Media_AppStore" xml:space="preserve"><value>Der Microsoft Store bietet diese App weiterhin an.</value></data>
   <data name="Media_AppNoStore" xml:space="preserve"><value>Diese App lässt sich nicht wieder installieren.</value></data>
   <data name="Media_SkipSetupTitle" xml:space="preserve"><value>Konto- und Einrichtungsfragen überspringen</value></data>
-  <data name="Media_SkipSetupText" xml:space="preserve"><value>Das Windows-Setup legt ein lokales Administratorkonto mit diesem Namen an und beantwortet die Datenschutzfragen mit der datenschutzfreundlichsten Auswahl. Auf der ISO wird kein Kennwort gespeichert: Windows fragt bei der nächsten Anmeldung nach einem neuen.</value></data>
+  <data name="Media_SkipSetupText" xml:space="preserve"><value>Das Windows-Setup legt ein lokales Administratorkonto mit diesem Namen an und beantwortet die Datenschutzfragen mit der datenschutzfreundlichsten Auswahl. Auf der ISO wird kein Kennwort gespeichert: Windows fragt bei der nächsten Anmeldung nach einem neuen. Das Setup zeigt weiterhin seine Seiten für den Produktschlüssel, die Lizenzbedingungen und das Laufwerk.</value></data>
   <data name="Media_AccountName" xml:space="preserve"><value>Kontoname</value></data>
   <data name="Media_Region" xml:space="preserve"><value>Regionales Format</value></data>
   <data name="Media_Keyboard" xml:space="preserve"><value>Tastatur</value></data>
@@ -1704,6 +1704,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Media_Needed" xml:space="preserve"><value>Zum Erstellen braucht Tunero etwa {0} freien Speicherplatz auf diesem Laufwerk; frei sind {1}.</value></data>
   <data name="Media_NeededOnly" xml:space="preserve"><value>Zum Erstellen braucht Tunero etwa {0} freien Speicherplatz auf dem Laufwerk der ISO-Datei.</value></data>
   <data name="Media_SecureBootNote" xml:space="preserve"><value>Die ISO startet mit denselben Startdateien wie Microsofts eigene Windows-11-ISO.</value></data>
+  <data name="Media_UpgradeNote" xml:space="preserve"><value>In einem laufenden Windows gestartet, aktualisiert setup.exe dieser ISO Windows wie bei Microsofts ISO und kann Dateien und Apps behalten. Tuneros Antworten für das Setup und die erste Anmeldung gelten nur, wenn der PC von der ISO oder einem daraus erstellten USB-Stick startet.</value></data>
   <data name="Media_BuildButton" xml:space="preserve"><value>ISO erstellen</value></data>
   <data name="Media_Building" xml:space="preserve"><value>Windows-ISO wird erstellt</value></data>
   <data name="Media_NeedsAdmin" xml:space="preserve"><value>Zum Erstellen eines Installationsmediums braucht Tunero Administratorrechte.</value></data>
@@ -1746,6 +1747,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Media_ImageCheckFailed" xml:space="preserve"><value>Eine Prüfung des Windows-Abbilds ist fehlgeschlagen.</value></data>
   <data name="Media_Unhealthy" xml:space="preserve"><value>DISM meldet Schäden im Windows-Abbild; die Änderungen wurden nicht gespeichert.</value></data>
   <data name="Media_FilesCheckFailed" xml:space="preserve"><value>Eine auf das Medium geschriebene Datei ließ sich nicht unverändert zurücklesen.</value></data>
+  <data name="Media_BootImageAnswerFile" xml:space="preserve"><value>Das Startabbild dieser ISO weist das Windows-Setup an, eine eigene Antwortdatei zu verwenden. Verwende eine unveränderte ISO von Microsoft.</value></data>
   <data name="Media_IsoInUse" xml:space="preserve"><value>Die ISO-Datei ist in einem anderen Programm geöffnet, zum Beispiel im Explorer bereitgestellt. Wirf sie dort aus und versuch es noch einmal.</value></data>
   <data name="Media_VerifyFailed" xml:space="preserve"><value>Die geschriebene ISO weicht von den vorbereiteten Dateien ab.</value></data>
   <data name="Media_CloseTitle" xml:space="preserve"><value>Erstellen anhalten?</value></data>

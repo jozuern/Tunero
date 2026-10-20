@@ -69,6 +69,7 @@ public sealed class MediaBuildTests : IDisposable
         Assert.False(Directory.Exists(_steps.WorkFolder), "work folder left behind");
         Assert.False(File.Exists(OutputIso), "ISO at the output path");
         Assert.Empty(_steps.Dism.Mounted);
+        Assert.Empty(_steps.LoadedHives);
     }
 
     // ---- stage order and the download path ----
@@ -85,6 +86,7 @@ public sealed class MediaBuildTests : IDisposable
             "WimInfo image.esd 4", "WimInfo image.esd 5", "WimInfo image.esd 6", "WimInfo image.esd 7",
             "Export image.esd 6 install.wim",
             "WimInfo install.wim", "WimInfo install.wim 1", "WimInfo boot.wim", "WimInfo boot.wim 2",
+            "Mount boot.wim 2", "LoadHive", "UnloadHive", "Unmount discard",
             "WriteIso", "VerifyIso", "DeleteWorkFolder",
         ], _steps.Calls);
         Assert.Equal("ISO WIN11_26300_X64", File.ReadAllText(OutputIso));
@@ -266,7 +268,7 @@ public sealed class MediaBuildTests : IDisposable
             "Microsoft.WindowsStore_22510.1401.5.0_neutral_~_8wekyb3d8bbwe",
         ];
         await Run(Download(apps: ["Microsoft.BingNews", "Microsoft.ZuneMusic"]));
-        var apps = _steps.Calls.SkipWhile(c => !c.StartsWith("Mount", StringComparison.Ordinal)).TakeWhile(c => c != "WriteIso").ToList();
+        var apps = _steps.Calls.SkipWhile(c => !c.StartsWith("Mount", StringComparison.Ordinal)).TakeWhile(c => c != "Mount boot.wim 2").ToList();
         Assert.Equal(
         [
             "Mount install.wim 1", "Provisioned", "Remove Microsoft.BingNews_4.55.62231.0_neutral_~_8wekyb3d8bbwe", "CheckHealth", "Unmount commit",
@@ -285,10 +287,10 @@ public sealed class MediaBuildTests : IDisposable
     }
 
     [Fact]
-    public async Task NoAppsMeansNoMount()
+    public async Task NoAppsMeansNoInstallWimMount()
     {
         await Run(Download());
-        Assert.DoesNotContain(_steps.Calls, c => c.StartsWith("Mount", StringComparison.Ordinal) || c.StartsWith("Unmount", StringComparison.Ordinal));
+        Assert.DoesNotContain(_steps.Calls, c => c.StartsWith("Mount install.wim", StringComparison.Ordinal));
         Assert.DoesNotContain(_steps.Progress, p => p.Stage == MediaStage.Apps);
     }
 
@@ -313,8 +315,8 @@ public sealed class MediaBuildTests : IDisposable
         var request = WithTunero(Download(answers: answers)) with { FirstSignIn = new FirstSignInFile(CatalogData.Current.Profiles.Default.Id, "de", "Dark") };
         await Run(request);
 
-        Assert.Equal(AnswerFile.Build(request.Answers), Encoding.UTF8.GetString(_steps.IsoContents["autounattend.xml"]));
-        Assert.False(_steps.IsoContents["autounattend.xml"].AsSpan().StartsWith(Encoding.UTF8.Preamble), "no byte order mark");
+        Assert.Equal(AnswerFile.Build(request.Answers), Encoding.UTF8.GetString(BootFiles()["Autounattend.xml"]));
+        Assert.False(BootFiles()["Autounattend.xml"].AsSpan().StartsWith(Encoding.UTF8.Preamble), "no byte order mark");
         Assert.Equal("MZ fake Tunero", Encoding.ASCII.GetString(_steps.IsoContents[@"sources\$OEM$\$$\Setup\Tunero\Tunero.exe"]));
         Assert.Equal(FirstSignIn.Serialize(request.FirstSignIn!), Encoding.UTF8.GetString(_steps.IsoContents[@"sources\$OEM$\$$\Setup\Tunero\first-sign-in.json"]));
     }
@@ -329,7 +331,7 @@ public sealed class MediaBuildTests : IDisposable
         _steps.OwnLanguage = "de-DE";
         var request = OwnIso() with { Answers = Plain with { SkipSetup = true, AccountName = "Anna" } };
         await Run(request);
-        Assert.Equal(AnswerFile.Build(request.Answers with { UiLanguage = "de-DE" }), Encoding.UTF8.GetString(_steps.IsoContents["autounattend.xml"]));
+        Assert.Equal(AnswerFile.Build(request.Answers with { UiLanguage = "de-DE" }), Encoding.UTF8.GetString(BootFiles()["Autounattend.xml"]));
         Assert.Contains(_steps.LogLines, l => l.Contains("de-DE", StringComparison.Ordinal));
     }
 
@@ -341,7 +343,7 @@ public sealed class MediaBuildTests : IDisposable
         _steps.OwnOtherLanguage = "en-GB";
         var request = OwnIso() with { Answers = Plain with { UiLanguage = "fr-FR", SkipSetup = true, AccountName = "Anna" } };
         await Run(request);
-        Assert.Equal(AnswerFile.Build(request.Answers with { UiLanguage = "de-DE" }), Encoding.UTF8.GetString(_steps.IsoContents["autounattend.xml"]));
+        Assert.Equal(AnswerFile.Build(request.Answers with { UiLanguage = "de-DE" }), Encoding.UTF8.GetString(BootFiles()["Autounattend.xml"]));
     }
 
     [Fact]
@@ -349,7 +351,170 @@ public sealed class MediaBuildTests : IDisposable
     {
         await Run(Download());
         Assert.DoesNotContain("autounattend.xml", _steps.IsoContents.Keys);
+        Assert.DoesNotContain("Autounattend.xml", BootFiles().Keys);
         Assert.DoesNotContain(_steps.IsoContents.Keys, k => k.Contains("$OEM$", StringComparison.Ordinal));
+    }
+
+    // ---- boot.wim: the answer file's only place ----
+
+    private IReadOnlyDictionary<string, byte[]> BootFiles() =>
+        _steps.ImagesOf(_steps.IsoContents[@"sources\boot.wim"])[1].Files ?? FakeMediaSteps.PeFiles();
+
+    private static bool IsAnswerFileName(string path) =>
+        Path.GetFileName(path).Equals("autounattend.xml", StringComparison.OrdinalIgnoreCase) ||
+        Path.GetFileName(path).Equals("unattend.xml", StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith(@"Windows\Panther\Unattend\", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Every place in Windows PE where Setup would also find an answer file (names in mixed case).</summary>
+    private static readonly string[] BootAnswerFiles =
+    [
+        "autounattend.xml", "UNATTEND.XML", @"sources\AutoUnattend.xml", @"sources\unattend.xml",
+        @"Windows\Panther\Unattend.xml", @"Windows\Panther\autounattend.xml", @"Windows\Panther\Unattend\custom.xml",
+        @"Windows\Panther\Unattend\Unattend.XML", @"Windows\System32\Sysprep\Unattend.xml",
+    ];
+
+    private void PlantBootAnswerFiles() =>
+        _steps.OwnBootImages![1] = _steps.OwnBootImages[1] with
+        {
+            Files = FakeMediaSteps.PeFiles("", [.. BootAnswerFiles.Select(f => (f, "<old/>")), (@"Windows\Panther\notes.txt", "keep")]),
+        };
+
+    /// <summary>
+    /// setup.exe started inside Windows finds an answer file at the media root or in sources and then offers only a clean
+    /// install (VM 1e). Inside image 2 of boot.wim it is X:\, which Setup searches only when the PC starts from the media.
+    /// </summary>
+    [Fact]
+    public async Task AnswerFileGoesIntoBootWimImage2Only()
+    {
+        var request = Download(answers: Plain with { SkipSetup = true, AccountName = "Anna" });
+        await Run(request);
+        var files = _steps.Calls.SkipWhile(c => c != "WimInfo boot.wim 2").Skip(1).TakeWhile(c => c != "WriteIso");
+        Assert.Equal(["Mount boot.wim 2", "LoadHive", "UnloadHive", "Unmount commit", "Mount boot.wim 2 readonly", "Unmount discard"], files);
+        var boot = BootFiles();
+        Assert.Equal(AnswerFile.Build(request.Answers), Encoding.UTF8.GetString(boot["Autounattend.xml"]));
+        Assert.Contains("Autounattend.xml", boot.Keys, StringComparer.Ordinal);
+        Assert.DoesNotContain(_steps.IsoContents.Keys, IsAnswerFileName);
+        // Image 1 is untouched, and the header still boots image 2.
+        var images = _steps.ImagesOf(_steps.IsoContents[@"sources\boot.wim"]);
+        Assert.Null(images[0].Files);
+        Assert.Equal(new WimHeader.Info(2, 2), WimHeader.Read(new MemoryStream(_steps.IsoContents[@"sources\boot.wim"])));
+        Assert.Contains(_steps.Progress, p => p.Stage == MediaStage.Files && p.Detail == "boot.wim");
+        Assert.All(_steps.Dism.Unmounted, d => Assert.StartsWith(_steps.WorkFolder!, d, StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task OwnIsoEndsUpWithoutAnyAnswerFile()
+    {
+        _steps.PlantOldFiles = true;
+        PlantBootAnswerFiles();
+        await Run(OwnIso());
+        Assert.DoesNotContain(_steps.IsoContents.Keys, IsAnswerFileName);
+        Assert.DoesNotContain(BootFiles().Keys, IsAnswerFileName);
+        Assert.Contains(@"Windows\Panther\notes.txt", BootFiles().Keys);
+        // Removing them is a change: committed and checked in the committed image.
+        Assert.Contains("Unmount commit", _steps.Calls);
+        Assert.Contains("Mount boot.wim 2 readonly", _steps.Calls);
+        foreach (var file in BootAnswerFiles)
+            Assert.Contains(_steps.LogLines, l => l.Contains(file, StringComparison.Ordinal) && l.Contains("boot.wim", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task CleanIsoWithoutAnswerFileLeavesBootWimUnchanged()
+    {
+        await Run(OwnIso());
+        Assert.Contains("Unmount discard", _steps.Calls);
+        Assert.DoesNotContain("Unmount commit", _steps.Calls);
+        Assert.DoesNotContain("Mount boot.wim 2 readonly", _steps.Calls);
+        Assert.Null(_steps.ImagesOf(_steps.IsoContents[@"sources\boot.wim"])[1].Files);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task BootImagePointingToAnAnswerFileFailsClosed(bool download)
+    {
+        var pointer = FakeMediaSteps.PeFiles(@"X:\Windows\setup.xml");
+        if (download) _steps.EsdImages[2] = _steps.EsdImages[2] with { Files = pointer };
+        else _steps.OwnBootImages![1] = _steps.OwnBootImages[1] with { Files = pointer };
+        await FailsAt(download ? Download() : OwnIso(), MediaStage.Files, "Media_BootImageAnswerFile");
+        // The hive is unloaded before the image is discarded.
+        Assert.Equal(["Mount boot.wim 2", "LoadHive", "UnloadHive", "Unmount discard", "DeleteWorkFolder"], _steps.Calls.SkipWhile(c => c != "Mount boot.wim 2"));
+        AssertCleanedUp();
+    }
+
+    [Fact]
+    public async Task BootImageWithoutASystemHiveFailsClosed()
+    {
+        _steps.OwnBootImages![1] = _steps.OwnBootImages[1] with { Files = new Dictionary<string, byte[]>() };
+        await FailsAt(OwnIso(), MediaStage.Files, "Media_ImageCheckFailed");
+        AssertCleanedUp();
+    }
+
+    [Fact]
+    public async Task BootWimThatNoLongerBootsImage2AfterTheCommitFails()
+    {
+        _steps.Dism.CommitBreaksHeader = true;
+        await FailsAt(Download(answers: Plain with { SkipSetup = true, AccountName = "Anna" }), MediaStage.Files, "Media_ImageCheckFailed");
+        Assert.DoesNotContain("WriteIso", _steps.Calls);
+        AssertCleanedUp();
+    }
+
+    /// <summary>The committed image is mounted read-only and checked: what Setup will read, not what was written before the commit.</summary>
+    [Theory]
+    [InlineData("lost")]
+    [InlineData("changed")]
+    [InlineData("extra")]
+    public async Task CommittedBootImageIsCheckedAgain(string tamper)
+    {
+        _steps.Dism.CommitTamper = files =>
+        {
+            if (tamper == "lost") files.Remove("Autounattend.xml");
+            if (tamper == "changed") files["Autounattend.xml"] = Encoding.UTF8.GetBytes("<unattend/>");
+            if (tamper == "extra") files[@"Windows\Panther\unattend.xml"] = Encoding.UTF8.GetBytes("<old/>");
+        };
+        await FailsAt(Download(answers: Plain with { SkipSetup = true, AccountName = "Anna" }), MediaStage.Files, "Media_FilesCheckFailed");
+        Assert.Contains("Mount boot.wim 2 readonly", _steps.Calls);
+        Assert.DoesNotContain("WriteIso", _steps.Calls);
+        AssertCleanedUp();
+    }
+
+    [Fact]
+    public async Task StopWhileBootWimIsMountedDiscardsIt()
+    {
+        using var stop = new CancellationTokenSource();
+        _steps.Dism.StopOnMountOf = "boot.wim";
+        _steps.Dism.StopOnMount = stop;
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Run(Download(answers: Plain with { SkipSetup = true, AccountName = "Anna" }), stop.Token));
+        Assert.Equal(["Mount boot.wim 2", "Unmount discard", "DeleteWorkFolder"], _steps.Calls.SkipWhile(c => c != "Mount boot.wim 2"));
+        AssertCleanedUp();
+    }
+
+    [Fact]
+    public async Task FailingBootWimMountIsDiscarded()
+    {
+        _steps.Dism.MountFailsFor = "boot.wim";
+        var ex = await FailsAt(Download(), MediaStage.Files, null);
+        Assert.Equal(5, ex.Code);
+        Assert.Contains("Unmount discard", _steps.Calls);
+        AssertCleanedUp();
+    }
+
+    [Fact]
+    public async Task AnswerFileOnTheDownloadedMediaFailsTheFilesCheck()
+    {
+        _steps.SetupFilesCarryAnswerFile = true;
+        await FailsAt(Download(), MediaStage.Files, "Media_FilesCheckFailed");
+        Assert.DoesNotContain("WriteIso", _steps.Calls);
+        AssertCleanedUp();
+    }
+
+    [Fact]
+    public async Task LeftoverBootWimMountIsDiscardedAfterItsHive()
+    {
+        _steps.Dism.Mounted.Add(@"X:\TuneroMedia.ab12cd34\bootmount");
+        await Build().CleanLeftoversAsync(CancellationToken.None);
+        Assert.Equal(["MountedDirs", "UnloadLeftoverHives", "Unmount discard", "CleanupMountpoints", "MountedDirs", "DeleteWorkFolder"], _steps.Calls);
+        Assert.Equal([@"X:\TuneroMedia.ab12cd34"], _steps.DeletedFolders);
     }
 
     // ---- failure, Stop and cleanup ----
@@ -485,6 +650,7 @@ public sealed class MediaBuildTests : IDisposable
             "NewWorkFolder", "CopyMedia",
             "WimInfo install.esd", "WimInfo install.esd 2", "Export install.esd 2 install.wim",
             "WimInfo install.wim", "WimInfo install.wim 1", "WimInfo boot.wim", "WimInfo boot.wim 2",
+            "Mount boot.wim 2", "LoadHive", "UnloadHive", "Unmount discard",
             "WriteIso", "VerifyIso", "DeleteWorkFolder",
         ], _steps.Calls);
         Assert.Contains(@"sources\install.wim", _steps.IsoContents.Keys);
@@ -596,10 +762,13 @@ public sealed class MediaBuildTests : IDisposable
     public async Task OwnIsoOldAnswerFileIsReplacedByTheNewOne()
     {
         _steps.PlantOldFiles = true;
+        PlantBootAnswerFiles();
         var request = WithTunero(OwnIso());
         await Run(request);
-        Assert.Equal(AnswerFile.Build(request.Answers), Encoding.UTF8.GetString(_steps.IsoContents["autounattend.xml"]));
-        Assert.DoesNotContain(@"sources\autounattend.xml", _steps.IsoContents.Keys);
+        Assert.Equal(AnswerFile.Build(request.Answers), Encoding.UTF8.GetString(BootFiles()["Autounattend.xml"]));
+        // Ours is the only answer file left, in the boot image and on the media.
+        Assert.Equal(["Autounattend.xml"], BootFiles().Keys.Where(IsAnswerFileName));
+        Assert.DoesNotContain(_steps.IsoContents.Keys, IsAnswerFileName);
         Assert.Equal("MZ fake Tunero", Encoding.ASCII.GetString(_steps.IsoContents[@"sources\$OEM$\$$\Setup\Tunero\Tunero.exe"]));
         Assert.DoesNotContain(@"sources\$OEM$\$$\Setup\Tunero\old.txt", _steps.IsoContents.Keys);
     }
@@ -698,7 +867,7 @@ public sealed class MediaBuildTests : IDisposable
         _steps.IsoReader.Mismatch = [@"sources\boot.wim"];
         await FailsAt(Download(apps: ["Microsoft.BingNews"]), MediaStage.Verify, "Media_VerifyFailed");
         Assert.Equal(1, Count("Unmount commit"));
-        Assert.Equal(0, Count("Unmount discard"));
+        Assert.DoesNotContain(_steps.Calls.SkipWhile(c => c != "WriteIso"), c => c.StartsWith("Unmount", StringComparison.Ordinal));
         AssertCleanedUp();
     }
 
@@ -713,7 +882,7 @@ public sealed class MediaBuildTests : IDisposable
         Assert.StartsWith(_steps.WorkFolder!, _steps.IsoReader.VerifiedIso!, StringComparison.OrdinalIgnoreCase);
         Assert.Equal(
         [
-            @"sources\install.wim", @"sources\boot.wim", "autounattend.xml",
+            @"sources\install.wim", @"sources\boot.wim",
             @"boot\etfsboot.com", @"efi\microsoft\boot\efisys.bin", @"efi\boot\bootx64.efi",
             @"sources\$OEM$\$$\Setup\Tunero\Tunero.exe", @"sources\$OEM$\$$\Setup\Tunero\first-sign-in.json",
         ], _steps.IsoReader.Verified);
@@ -836,7 +1005,7 @@ public sealed class MediaBuildTests : IDisposable
     {
         _steps.Dism.Mounted.AddRange([@"X:\TuneroMedia.ab12cd34\mount", @"C:\Other"]);
         await Build().CleanLeftoversAsync(CancellationToken.None);
-        Assert.Equal(["MountedDirs", "Unmount discard", "CleanupMountpoints", "MountedDirs", "DeleteWorkFolder"], _steps.Calls);
+        Assert.Equal(["MountedDirs", "UnloadLeftoverHives", "Unmount discard", "CleanupMountpoints", "MountedDirs", "DeleteWorkFolder"], _steps.Calls);
         Assert.Equal([@"X:\TuneroMedia.ab12cd34\mount"], _steps.Dism.Unmounted);
         Assert.Equal([@"X:\TuneroMedia.ab12cd34"], _steps.DeletedFolders);
         Assert.Equal([@"C:\Other"], _steps.Dism.Mounted);
@@ -1056,8 +1225,12 @@ public sealed class MediaBuildTests : IDisposable
     }
 }
 
-/// <summary>An image inside a fake WIM or ESD.</summary>
-internal sealed record Img(string Name, string? Edition, string Architecture = "x64", string Version = "10.0.26300", bool Bootable = false, string Language = "en-US", string? OtherLanguage = null);
+/// <summary>
+/// An image inside a fake WIM or ESD. <paramref name="Files"/> is what a mount of it shows (relative path to bytes); null
+/// stands for <see cref="FakeMediaSteps.PeFiles"/> without an answer file pointer.
+/// </summary>
+internal sealed record Img(string Name, string? Edition, string Architecture = "x64", string Version = "10.0.26300", bool Bootable = false, string Language = "en-US",
+    string? OtherLanguage = null, IReadOnlyDictionary<string, byte[]>? Files = null);
 
 /// <summary>
 /// Records every step. A fake image file is a 208-byte WIM header (image count, boot index) followed by a token that names
@@ -1116,12 +1289,19 @@ internal sealed class FakeMediaSteps : IMediaSteps
     public bool WithoutUefi { get; set; }
     public bool PlantOldFiles { get; set; }
 
+    /// <summary>The setup files of the download carry a root Unattend.xml (Microsoft's never do).</summary>
+    public bool SetupFilesCarryAnswerFile { get; set; }
+
+    /// <summary>Hive files loaded through <see cref="LoadSystemHive"/> and not unloaded yet.</summary>
+    public List<string> LoadedHives { get; } = [];
+
     public string LogPath => Path.Combine(_root, "media-test.log");
 
     public void Reset()
     {
         Calls.Clear();
         LogLines.Clear();
+        LoadedHives.Clear();
         Progress.Clear();
         DeletedFolders.Clear();
         IsoContents = [];
@@ -1191,6 +1371,29 @@ internal sealed class FakeMediaSteps : IMediaSteps
 
     public List<Img> ImagesOf(byte[] content) => _images[TokenOf(content)];
 
+    /// <summary>
+    /// What Windows PE's image holds of interest here: the SYSTEM hive, whose fake content is the value of Setup\UnattendFile
+    /// ("" for none), plus <paramref name="extra"/> files.
+    /// </summary>
+    public static IReadOnlyDictionary<string, byte[]> PeFiles(string unattendFile = "", params (string Path, string Content)[] extra)
+    {
+        var files = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase) { [@"Windows\System32\config\SYSTEM"] = Encoding.UTF8.GetBytes(unattendFile) };
+        foreach (var (path, content) in extra) files[path] = Encoding.UTF8.GetBytes(content);
+        return files;
+    }
+
+    /// <summary>The files a mount of image <paramref name="index"/> of <paramref name="path"/> shows.</summary>
+    public IReadOnlyDictionary<string, byte[]> FilesOf(string path, int index) => ImagesAt(path)[index - 1].Files ?? PeFiles();
+
+    /// <summary>A commit: the image gets <paramref name="files"/> and the file a new token, as DISM rewrites the WIM.</summary>
+    public void Commit(string path, int index, IReadOnlyDictionary<string, byte[]> files, bool breakHeader)
+    {
+        var images = ImagesAt(path).ToList();
+        images[index - 1] = images[index - 1] with { Files = files };
+        if (breakHeader) images = images.Select(i => i with { Bootable = false }).ToList();
+        PutImages(path, images);
+    }
+
     public static void Put(string folder, string relative, string content, bool readOnly = false)
     {
         var path = Path.Combine(folder, relative);
@@ -1210,6 +1413,7 @@ internal sealed class FakeMediaSteps : IMediaSteps
         }
         Put(folder, @"sources\setup.exe", "setup");
         Put(folder, "setup.exe", "setup");
+        if (SetupFilesCarryAnswerFile) Put(folder, "Unattend.xml", "<old/>");
     }
 
     private static bool IsHeldOpen(string path)
@@ -1275,7 +1479,37 @@ internal sealed class FakeMediaSteps : IMediaSteps
 
     public IEnumerable<string> LeftoverWorkFolders(string drive) => Leftovers.TryGetValue(drive, out var list) ? list : [];
 
+    public IOfflineHive LoadSystemHive(string file)
+    {
+        Calls.Add("LoadHive");
+        Assert.True(Path.IsPathFullyQualified(file), $"{file} is not absolute");
+        if (!File.Exists(file)) throw new IOException($"{file} could not be loaded as a registry hive: The system cannot find the file specified.");
+        LoadedHives.Add(file);
+        return new FakeHive(this, file, File.ReadAllText(file));
+    }
+
+    public void UnloadLeftoverHives() => Calls.Add("UnloadLeftoverHives");
+
     public void Log(string line) => LogLines.Add(line);
+
+    private sealed class FakeHive(FakeMediaSteps steps, string file, string unattendFile) : IOfflineHive
+    {
+        private bool _unloaded;
+
+        public string? SetupValue(string name)
+        {
+            Assert.False(_unloaded, "the hive was read after it was unloaded");
+            return name == "UnattendFile" && unattendFile.Length > 0 ? unattendFile : null;
+        }
+
+        public void Dispose()
+        {
+            if (_unloaded) return;
+            _unloaded = true;
+            steps.Calls.Add("UnloadHive");
+            steps.LoadedHives.Remove(file);
+        }
+    }
 }
 
 internal sealed class FakeDism(FakeMediaSteps steps) : IDism
@@ -1291,6 +1525,17 @@ internal sealed class FakeDism(FakeMediaSteps steps) : IDism
     public List<string> Unmounted { get; } = [];
     public Func<string, Img, Img>? ExportTamper { get; set; }
     public string? DoubleExportInto { get; set; }
+
+    /// <summary>A mount of this image file (by name) fails, or is stopped by <see cref="StopOnMount"/> once it is mounted.</summary>
+    public string? MountFailsFor { get; set; }
+    public string? StopOnMountOf { get; set; }
+    public CancellationTokenSource? StopOnMount { get; set; }
+
+    /// <summary>A commit writes a header without a boot index, or changes the files on the way.</summary>
+    public bool CommitBreaksHeader { get; set; }
+    public Action<Dictionary<string, byte[]>>? CommitTamper { get; set; }
+
+    private readonly Dictionary<string, (string Image, int Index, bool ReadOnly)> _mounts = new(StringComparer.OrdinalIgnoreCase);
 
     private static string Name(string path) => Path.GetFileName(path);
 
@@ -1354,14 +1599,30 @@ internal sealed class FakeDism(FakeMediaSteps steps) : IDism
         return Task.CompletedTask;
     }
 
-    public Task MountAsync(string image, int index, string mountDir, IProgress<double>? p, CancellationToken ct)
+    public Task MountAsync(string image, int index, string mountDir, bool readOnly, IProgress<double>? p, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
         Absolute(image);
+        Absolute(mountDir);
         Assert.True(Directory.Exists(mountDir), "the mount folder must exist");
-        steps.Calls.Add($"Mount {Name(image)} {index}");
-        if (MountThrows) throw new DismException(5, "Error: 5\n\nAccess is denied.");
+        Assert.Empty(Directory.EnumerateFileSystemEntries(mountDir));
+        steps.Calls.Add($"Mount {Name(image)} {index}" + (readOnly ? " readonly" : ""));
+        if (MountThrows || string.Equals(Name(image), MountFailsFor, StringComparison.OrdinalIgnoreCase))
+            throw new DismException(5, "Error: 5\n\nAccess is denied.");
         Mounted.Add(mountDir);
+        _mounts[mountDir] = (image, index, readOnly);
+        foreach (var (relative, content) in steps.FilesOf(image, index))
+        {
+            var path = Path.Combine(mountDir, relative);
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllBytes(path, content);
+        }
+        p?.Report(50);
+        if (StopOnMount is { } stop && string.Equals(Name(image), StopOnMountOf, StringComparison.OrdinalIgnoreCase))
+        {
+            stop.Cancel();
+            ct.ThrowIfCancellationRequested();
+        }
         return Task.CompletedTask;
     }
 
@@ -1402,6 +1663,31 @@ internal sealed class FakeDism(FakeMediaSteps steps) : IDism
         {
             UnmountFailures--;
             throw new DismException(5, "Error: 5\n\nAccess is denied.");
+        }
+        // A hive loaded from the image keeps its file open: DISM cannot unmount it.
+        if (steps.LoadedHives.Any(h => h.StartsWith(mountDir + @"\", StringComparison.OrdinalIgnoreCase)))
+            throw new DismException(5, "Error: 0xc1420117\n\nThe directory could not be completely unmounted.");
+        if (_mounts.Remove(mountDir, out var mount))
+        {
+            if (commit)
+            {
+                Assert.False(mount.ReadOnly, "a read-only mount was committed");
+                var files = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
+                foreach (var file in Directory.EnumerateFiles(mountDir, "*", SearchOption.AllDirectories))
+                    files[Path.GetRelativePath(mountDir, file)] = File.ReadAllBytes(file);
+                CommitTamper?.Invoke(files);
+                steps.Commit(mount.Image, mount.Index, files, CommitBreaksHeader);
+            }
+            // DISM leaves the empty mount folder behind.
+            foreach (var entry in new DirectoryInfo(mountDir).EnumerateFileSystemInfos())
+            {
+                if (entry is DirectoryInfo d) d.Delete(recursive: true);
+                else
+                {
+                    entry.Attributes = FileAttributes.Normal;
+                    entry.Delete();
+                }
+            }
         }
         Unmounted.Add(mountDir);
         Mounted.RemoveAll(m => string.Equals(m, mountDir, StringComparison.OrdinalIgnoreCase));
@@ -1483,7 +1769,9 @@ internal sealed class FakeIsoReader(FakeMediaSteps steps) : IIsoReader
         if (steps.PlantOldFiles)
         {
             FakeMediaSteps.Put(targetFolder, "autounattend.xml", "<old/>", readOnly: true);
+            FakeMediaSteps.Put(targetFolder, "Unattend.xml", "<old/>", readOnly: true);
             FakeMediaSteps.Put(targetFolder, @"sources\autounattend.xml", "<old/>", readOnly: true);
+            FakeMediaSteps.Put(targetFolder, @"sources\Unattend.XML", "<old/>");
             FakeMediaSteps.Put(targetFolder, @"sources\$OEM$\$$\Setup\Tunero\Tunero.exe", "old Tunero", readOnly: true);
             FakeMediaSteps.Put(targetFolder, @"sources\$OEM$\$$\Setup\Tunero\old.txt", "old");
             FakeMediaSteps.Put(targetFolder, @"sources\$OEM$\$$\Setup\Scripts\keep.cmd", "rem keep");

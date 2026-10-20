@@ -160,8 +160,8 @@ public static class DismArgs
     public static string Export(string source, int index, string target, bool bootable) =>
         $"/English /Export-Image /SourceImageFile:{Q(source)} /SourceIndex:{index} /DestinationImageFile:{Q(target)} /Compress:max" + (bootable ? " /Bootable" : "");
 
-    public static string Mount(string image, int index, string mountDir) =>
-        $"/English /Mount-Image /ImageFile:{Q(image)} /Index:{index} /MountDir:{Q(mountDir)}";
+    public static string Mount(string image, int index, string mountDir, bool readOnly = false) =>
+        $"/English /Mount-Image /ImageFile:{Q(image)} /Index:{index} /MountDir:{Q(mountDir)}" + (readOnly ? " /ReadOnly" : "");
 
     public static string Provisioned(string mountDir) =>
         $"/English /Image:{Q(mountDir)} /Get-ProvisionedAppxPackages";
@@ -199,7 +199,8 @@ public interface IDism
     Task<string> GetWimInfoAsync(string image, int? index, CancellationToken ct);
     Task ApplyAsync(string image, int index, string target, IProgress<double>? p, CancellationToken ct);
     Task ExportAsync(string source, int index, string target, bool bootable, IProgress<double>? p, CancellationToken ct);
-    Task MountAsync(string image, int index, string mountDir, IProgress<double>? p, CancellationToken ct);
+    /// <summary>Mounts the image; a read-only mount can only be unmounted without commit.</summary>
+    Task MountAsync(string image, int index, string mountDir, bool readOnly, IProgress<double>? p, CancellationToken ct);
     Task<IReadOnlyList<string>> ProvisionedAsync(string mountDir, CancellationToken ct);
     Task RemoveProvisionedAsync(string mountDir, string packageName, CancellationToken ct);
     /// <summary>Runs /CheckHealth on the mounted image and returns the output (see <see cref="DismOutput.Healthy"/>).</summary>
@@ -223,8 +224,8 @@ public sealed class DismTool : IDism
     public async Task ExportAsync(string source, int index, string target, bool bootable, IProgress<double>? p, CancellationToken ct) =>
         await RunAsync(DismArgs.Export(source, index, target, bootable), p, ct);
 
-    public async Task MountAsync(string image, int index, string mountDir, IProgress<double>? p, CancellationToken ct) =>
-        await RunAsync(DismArgs.Mount(image, index, mountDir), p, ct);
+    public async Task MountAsync(string image, int index, string mountDir, bool readOnly, IProgress<double>? p, CancellationToken ct) =>
+        await RunAsync(DismArgs.Mount(image, index, mountDir, readOnly), p, ct);
 
     public async Task<IReadOnlyList<string>> ProvisionedAsync(string mountDir, CancellationToken ct) =>
         DismOutput.ParseProvisioned(await RunAsync(DismArgs.Provisioned(mountDir), null, ct));

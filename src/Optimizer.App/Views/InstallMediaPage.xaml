@@ -216,6 +216,7 @@
                                   Visibility="{Binding InstallMedia.NeededText, Converter={StaticResource NullToVisibility}}" />
                     <!-- Room for a later choice of boot files; today the media keeps Microsoft's own -->
                     <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Media_SecureBootNote}" Margin="0,4,0,0" />
+                    <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Media_UpgradeNote}" Margin="0,4,0,0" />
                     <WrapPanel Margin="0,16,0,0">
                         <ui:Button Appearance="Primary" Content="{l:Tr Media_BuildButton}" Icon="{ui:SymbolIcon Play20}" Command="{Binding InstallMedia.BuildCommand}" Margin="0,0,12,0" />
                         <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding InstallMedia.BuildNote}" VerticalAlignment="Center"

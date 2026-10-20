@@ -191,6 +191,7 @@ public class DismParsingTests
 
     [Fact] public void ApplyArgs() => Assert.Equal("/English /Apply-Image /ImageFile:\"C:\\a.esd\" /Index:6 /ApplyDir:\"C:\\t\"", DismArgs.Apply(@"C:\a.esd", 6, @"C:\t"));
     [Fact] public void MountArgs() => Assert.Equal("/English /Mount-Image /ImageFile:\"C:\\a.wim\" /Index:1 /MountDir:\"C:\\m\"", DismArgs.Mount(@"C:\a.wim", 1, @"C:\m"));
+    [Fact] public void ReadOnlyMountArgs() => Assert.Equal("/English /Mount-Image /ImageFile:\"C:\\a.wim\" /Index:2 /MountDir:\"C:\\m\" /ReadOnly", DismArgs.Mount(@"C:\a.wim", 2, @"C:\m", readOnly: true));
     [Fact] public void ProvisionedArgs() => Assert.Equal("/English /Image:\"C:\\m\" /Get-ProvisionedAppxPackages", DismArgs.Provisioned(@"C:\m"));
     [Fact] public void RemoveProvisionedArgs() => Assert.Equal("/English /Image:\"C:\\m\" /Remove-ProvisionedAppxPackage /PackageName:Microsoft.BingNews_1.0_neutral_~_8wekyb3d8bbwe", DismArgs.RemoveProvisioned(@"C:\m", "Microsoft.BingNews_1.0_neutral_~_8wekyb3d8bbwe"));
     [Fact] public void CheckHealthArgs() => Assert.Equal("/English /Image:\"C:\\m\" /Cleanup-Image /CheckHealth", DismArgs.CheckHealth(@"C:\m"));
