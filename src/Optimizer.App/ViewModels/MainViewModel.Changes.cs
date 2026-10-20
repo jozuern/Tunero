@@ -72,6 +72,57 @@ public sealed partial class MainViewModel
         await Runner.ApplyBatchAsync(chosen, Loc.Instance["Rec_Title"], Loc.Instance["Rec_Intro"]);
     }
 
+    /// <summary>
+    /// The first sign-in on a PC installed from Tunero's install media (<see cref="FirstSignInStart.ApplySwitch"/>), after
+    /// the first scan: the profile's recommended changes exactly as --apply-recommended picks them
+    /// (<see cref="CommandLineApply.RecommendedPlanAsync"/>), applied as the only change with the banner showing each one,
+    /// without the confirmation (the owner chose them on the media) and without a restore point (a new installation has
+    /// nothing to go back to). Changes needing their own confirmation stay on the Overview. Every change is recorded, so
+    /// Changes opens with the result and each can be undone there. Without a scan or with a profile this PC does not offer
+    /// (a laptop profile on a desktop), nothing is applied and the message says so.
+    /// </summary>
+    public async Task FirstSignInApplyAsync(string profileId)
+    {
+        if (ScanFailed || Profile is null)
+        {
+            Log.Warn("firstsignin", "the first scan failed: nothing applied");
+            ShowResult(Loc.Instance["Media_FirstSignInScanFailed"], InfoBarSeverity.Error);
+            return;
+        }
+        var known = _catalog.Profiles.Profiles.FirstOrDefault(p => p.Id == profileId);
+        var name = known is null ? profileId : ProfileName(known);
+        RecommendedSelection? plan = null;
+        BatchOutcome? outcome = null;
+        var ran = await Runner.RunExclusiveAsync("first sign-in", Loc.Instance.Format("Media_FirstSignInTitle", name), async work =>
+        {
+            work.Indeterminate(Loc.Instance["Scan_Running"]);
+            (var pc, plan) = await CommandLineApply.RecommendedPlanAsync(_services, profileId, null, IgnoredKeys());
+            if (plan is null) return;
+            foreach (var t in plan.Together) ChangeLogText.Remember(t);
+            // No Stop: the run is short and each change applies whole; the banner counts them.
+            var steps = new Progress<BatchStep>(s => work.Step(s.Done, s.Total, s.Tweak is { } t ? Runner.Title(t) : null));
+            outcome = await _services.Session.ApplyBatchAsync(plan.Together, pc.Facts, pc.Applied, new ApplyOptions { WithoutRestorePoint = true },
+                () => RestorePointChoice.Continue, steps);
+        });
+        if (!ran) return;
+        if (plan is null)
+        {
+            Log.Warn("firstsignin", "the profile is not offered on this PC: nothing applied", new { profileId });
+            ShowResult(Loc.Instance.Format("Media_FirstSignInNoProfile", name), InfoBarSeverity.Warning);
+            return;
+        }
+        var done = outcome ?? BatchOutcome.Cancelled;
+        Log.Info("firstsignin", "profile applied", new { profileId, done.Applied, done.Failed, done.Skipped, inApp = plan.InApp.Count });
+        // The pages read the PC again (as after any change), then Changes shows what was applied, with the result kept open.
+        _reuseSlowParts = true;
+        await ScanAsync();
+        RefreshReapply();
+        CurrentPage = Page.Changes;
+        ShowResult(Loc.Instance.Format("Media_FirstSignInDone", ProfileName(plan.Profile), done.Applied, done.Failed, done.Skipped + plan.InApp.Count),
+            done.Failed > 0 || done.BackupsNotUpdated ? InfoBarSeverity.Warning : InfoBarSeverity.Success);
+        _resultTimer?.Stop();
+    }
+
     [RelayCommand(CanExecute = nameof(CanChange))]
     private async Task UndoRecordAsync(string tweakId)
     {

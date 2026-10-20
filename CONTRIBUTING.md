@@ -54,6 +54,14 @@ is ignored: whoever starts the exe names the paths, and the app writes with admi
 | `--preview-uninstall on` | opens Remove apps > Installed programs, ticks the first two programs and shows a waiting uninstall queue and sample leftovers (nothing is started or moved) |
 | `--expert on` | Expert mode for this session (runs without admin rights only) |
 
+Two switches belong to the Windows install media and change the PC; they are not for manual use. Test them only in a VM
+(`docs/vm-test-plan.md`, section 7):
+
+| Switch | Effect |
+|---|---|
+| `--first-sign-in` | started by the answer file's FirstLogonCommands, elevated, before the first desktop. Only an exe in `%WINDIR%\Setup\Tunero` (admin-only) with a valid `first-sign-in.json` beside it does anything: it saves the language, theme and profile from the file, installs itself into Program Files with the Start menu entry (as the setup screen does), starts the installed copy with `--installed-from <this exe> --first-sign-in-apply <profile>` and ends at once. A copy that cannot be installed (a build without Tunero's signature) starts itself with `--first-sign-in-apply <profile>` instead. No window or dialog, ever; failures go to the log |
+| `--first-sign-in-apply <profile>` | opens the window, and after the first scan applies the profile's recommended changes exactly as `--apply-recommended --profile <profile>` picks them, with the progress banner, without the confirmation and without a restore point (a new installation has nothing to go back to), then opens Changes with the result. With `--installed-from`, the setup folder `%WINDIR%\Setup\Tunero` is deleted (files one by one, never through a link) |
+
 ## Layout
 
 ```

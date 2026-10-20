@@ -1,5 +1,6 @@
 using System.IO;
 using Optimizer.Core.Logging;
+using Optimizer.Core.Media;
 using Optimizer.Core.Platform;
 using Wpf.Ui.Controls;
 
@@ -20,7 +21,80 @@ public sealed class InstallService(string runningExe, AppSettings settings, Acti
     /// <param name="Install">Copies, checks and registers (<see cref="AppInstall.Install"/>).</param>
     /// <param name="Undo">Removes an install again (<see cref="AppInstall.Undo"/>).</param>
     /// <param name="AddStartMenu">Writes the Start menu entry for an exe.</param>
-    public sealed record Steps(Func<InstallResult> Install, Action<string> Undo, Action<string> AddStartMenu);
+    public sealed record Steps(Func<InstallResult> Install, Action<string> Undo, Action<string> AddStartMenu)
+    {
+        /// <summary>
+        /// The real steps for <paramref name="runningExe"/>: into <see cref="AppInstall.DefaultFolder"/>, checked there
+        /// (Tunero's signature, the version, folders only administrators can change), with the entry under HKLM, and the
+        /// Start menu entry in <paramref name="startMenuFolder"/>.
+        /// </summary>
+        public static Steps ForThisPc(string runningExe, Func<string?> startMenuFolder)
+        {
+            var machine = new SystemRegistryRoots(null);
+            return new Steps(
+                () => AppInstall.Install(new InstallRequest(runningExe, AppInstall.DefaultFolder, AppInfo.Text, AppInstall.IsTrustedFile,
+                    path => System.Diagnostics.FileVersionInfo.GetVersionInfo(path).ProductVersion, TrustedPath.IsAdminOnlyWritableFolder,
+                    TrustedPath.IsAdminOnlyBelowSharedFolders), machine),
+                exe => AppInstall.Undo(exe, machine),
+                exe => StartMenuShortcut.Create(startMenuFolder() ?? throw new DirectoryNotFoundException("no Start menu folder"), exe, Loc.Instance["StartMenu_Description"]));
+        }
+    }
+
+    /// <summary>
+    /// The installed copy's first start: deletes the exe it was installed from (<see cref="AppInstall.DeleteOldCopy"/>), and
+    /// when that was the copy Windows Setup put into %WINDIR%\Setup\Tunero (<see cref="FirstSignInStart"/>), that folder
+    /// with its file too. True when the old exe is gone.
+    /// </summary>
+    public static bool RemoveOldCopy(string oldExe, string installedExe) => RemoveOldCopy(oldExe, installedExe, FirstSignIn.Folder);
+
+    /// <param name="setupFolder">The setup folder (tests pass a temp stand-in).</param>
+    internal static bool RemoveOldCopy(string oldExe, string installedExe, string setupFolder)
+    {
+        var removed = AppInstall.DeleteOldCopy(oldExe, installedExe);
+        if (string.Equals(Path.GetDirectoryName(Path.GetFullPath(oldExe)), Path.GetFullPath(setupFolder).TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase))
+            RemoveSetupFolder(setupFolder);
+        return removed;
+    }
+
+    /// <summary>
+    /// Deletes the setup folder's files one by one through <see cref="SafeDelete"/> (never following a link), then the
+    /// empty folder. A subfolder or link in it stays, and so does the folder then; the log says why.
+    /// </summary>
+    private static void RemoveSetupFolder(string folder)
+    {
+        try
+        {
+            if (!Directory.Exists(folder)) return;
+            if (!SafeDelete.HasNoLinks(folder))
+            {
+                Log.Warn("install", $"{folder} is or lies under a link: not removed");
+                return;
+            }
+            foreach (var entry in new DirectoryInfo(folder).EnumerateFileSystemInfos("*", new EnumerationOptions { AttributesToSkip = 0 }))
+            {
+                if (entry is FileInfo && (entry.Attributes & FileAttributes.ReparsePoint) == 0) SafeDelete.DeleteFile(entry.FullName);
+                else Log.Warn("install", $"{entry.FullName} is a folder or a link: left in place");
+            }
+            SafeDelete.DeleteEmptyDirectory(folder);
+            Log.Info("install", "setup folder removed", new { folder });
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Log.Warn("install", $"setup folder {folder} not removed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// The start of a Tunero exe the setup put in place (or of this one again, <see cref="FirstSignInStart"/>): no shell, and
+    /// none of the variables that load code into a process.
+    /// </summary>
+    internal static System.Diagnostics.ProcessStartInfo ExeStart(string exe, IEnumerable<string> arguments)
+    {
+        var start = new System.Diagnostics.ProcessStartInfo(exe) { UseShellExecute = false };
+        foreach (var a in arguments) start.ArgumentList.Add(a);
+        ProcessHardening.RemoveCodeLoadingVariables(start.Environment);
+        return start;
+    }
 
     private readonly Launch _launch = launch ?? new Launch();
 
@@ -86,11 +160,7 @@ public sealed class InstallService(string runningExe, AppSettings settings, Acti
         }
         try
         {
-            var start = new System.Diagnostics.ProcessStartInfo(installed) { UseShellExecute = false };
-            start.ArgumentList.Add(InstalledFrom);
-            start.ArgumentList.Add(runningExe);
-            ProcessHardening.RemoveCodeLoadingVariables(start.Environment);
-            _launch.Start(start);
+            _launch.Start(ExeStart(installed, [InstalledFrom, runningExe]));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception or InvalidOperationException)
         {

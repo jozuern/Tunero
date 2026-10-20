@@ -37,5 +37,6 @@ public sealed class SingleInstanceTests
     [InlineData("--export", "out.json")]
     [InlineData("--lang", "de")]
     [InlineData("--after-update", "--screenshot", "shot.png")]
+    [InlineData("--first-sign-in")]
     public void SwitchesStartBesideAnOpenWindow(params string[] args) => Assert.False(SingleInstance.Applies(args));
 }

@@ -23,7 +23,9 @@ public static class SingleInstance
 
     /// <summary>
     /// A start takes part when it has no arguments, or only <see cref="AfterUpdate"/>, or only the setup's
-    /// <see cref="Services.InstallService.InstalledFrom"/> and its path.
+    /// <see cref="Services.InstallService.InstalledFrom"/> and its path (with the first sign-in's profile after it, or that
+    /// profile alone: <see cref="Services.FirstSignInStart"/>). --first-sign-in itself never takes the lock, so the copy it
+    /// starts is not refused.
     /// </summary>
     public static bool Applies(IReadOnlyList<string> args) => args.Count == 0 || WaitsForOther(args) || IsUninstall(args);
 
@@ -32,10 +34,13 @@ public static class SingleInstance
 
     public const string Uninstall = "--uninstall";
 
-    /// <summary>The start comes from a closing copy (an update, the setup): it waits for that copy to let go of the lock.</summary>
+    /// <summary>The start comes from a closing copy (an update, the setup, the first sign-in): it waits for that copy to let go of the lock.</summary>
     public static bool WaitsForOther(IReadOnlyList<string> args) =>
         (args.Count == 1 && args[0].Equals(AfterUpdate, StringComparison.OrdinalIgnoreCase)) ||
-        (args.Count == 2 && args[0].Equals(Services.InstallService.InstalledFrom, StringComparison.OrdinalIgnoreCase));
+        (args.Count == 2 && (args[0].Equals(Services.InstallService.InstalledFrom, StringComparison.OrdinalIgnoreCase) || IsFirstSignInApply(args, 0))) ||
+        (args.Count == 4 && args[0].Equals(Services.InstallService.InstalledFrom, StringComparison.OrdinalIgnoreCase) && IsFirstSignInApply(args, 2));
+
+    private static bool IsFirstSignInApply(IReadOnlyList<string> args, int at) => args[at].Equals(Services.FirstSignInStart.ApplySwitch, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Takes the lock for this process's lifetime (dispose it when the app ends). Null when an open Tunero holds it. A lock

@@ -1761,6 +1761,10 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Media_Off" xml:space="preserve"><value>Off</value></data>
   <data name="Media_IsoFacts" xml:space="preserve"><value>Windows, build {0}, {1}, {2}</value></data>
   <data name="Media_SetupSummaryNoName" xml:space="preserve"><value>No account name yet, {0}</value></data>
+  <data name="Media_FirstSignInTitle" xml:space="preserve"><value>Setting up this PC with the {0} profile</value></data>
+  <data name="Media_FirstSignInDone" xml:space="preserve"><value>Tunero set up this PC with the {0} profile. Applied: {1}. Failed: {2}. Not applied: {3} (changes that need their own confirmation are on the Overview). Each change can be undone here. No restore point was made, since this Windows installation is new.</value></data>
+  <data name="Media_FirstSignInNoProfile" xml:space="preserve"><value>The profile chosen for the install media, {0}, is not available on this PC, so Tunero changed nothing. Choose a profile on the Overview and apply its recommendations there.</value></data>
+  <data name="Media_FirstSignInScanFailed" xml:space="preserve"><value>The scan of this PC failed, so Tunero changed nothing. Scan again, then apply the recommendations on the Overview.</value></data>
   <data name="Apps_UpdateAllRuns" xml:space="preserve"><value>Runs one after the other: {0}.</value></data>
   <data name="Apps_UpdateAllWinget" xml:space="preserve"><value>winget updates every program it knows a newer version for in its source, without asking per program. Programs installed for the whole PC update here; programs installed only for your account update in a winget window of their own.</value></data>
   <data name="Apps_UpdateAllChoco" xml:space="preserve"><value>Chocolatey updates every outdated package here, with administrator rights. Tunero itself is left out: it updates through Update now in Settings.</value></data>

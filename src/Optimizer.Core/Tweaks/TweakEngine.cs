@@ -49,6 +49,12 @@ public sealed record ApplyOptions
     /// <summary>The user chose to continue although no restore point could be created.</summary>
     public bool ContinueWithoutRestorePoint { get; init; }
 
+    /// <summary>
+    /// No restore point is tried at all (the first sign-in on a new installation, which has nothing to go back to). A
+    /// later change without this option still makes the session's one.
+    /// </summary>
+    public bool WithoutRestorePoint { get; init; }
+
     /// <summary>Called right before the restore point is made, which can take a minute (the progress banner says so).</summary>
     public Action? RestorePointStarting { get; init; }
 }
@@ -362,7 +368,7 @@ public sealed class TweakEngine(ActionContext ctx, BackupStore store, IRestorePo
         }
 
         // Safety net: one restore point per session before the first change (secondary to the JSON backup).
-        if (!_restorePointDone && t.Id != RestorePointFrequencyTweak)
+        if (!_restorePointDone && !options.WithoutRestorePoint && t.Id != RestorePointFrequencyTweak)
         {
             options.RestorePointStarting?.Invoke();
             var ok = await EnsureRestorePointAsync(facts);

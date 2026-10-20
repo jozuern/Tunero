@@ -1761,6 +1761,10 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Media_Off" xml:space="preserve"><value>Aus</value></data>
   <data name="Media_IsoFacts" xml:space="preserve"><value>Windows, Build {0}, {1}, {2}</value></data>
   <data name="Media_SetupSummaryNoName" xml:space="preserve"><value>Noch kein Kontoname, {0}</value></data>
+  <data name="Media_FirstSignInTitle" xml:space="preserve"><value>Dieser PC wird mit dem Profil {0} eingerichtet</value></data>
+  <data name="Media_FirstSignInDone" xml:space="preserve"><value>Tunero hat diesen PC mit dem Profil {0} eingerichtet. Angewendet: {1}. Fehlgeschlagen: {2}. Nicht angewendet: {3} (Änderungen, die eine eigene Bestätigung brauchen, stehen in der Übersicht). Jede Änderung lässt sich hier rückgängig machen. Ein Wiederherstellungspunkt wurde nicht erstellt, da diese Windows-Installation neu ist.</value></data>
+  <data name="Media_FirstSignInNoProfile" xml:space="preserve"><value>Das für das Installationsmedium gewählte Profil {0} gibt es auf diesem PC nicht, daher hat Tunero nichts geändert. Wähle in der Übersicht ein Profil und wende dort seine Empfehlungen an.</value></data>
+  <data name="Media_FirstSignInScanFailed" xml:space="preserve"><value>Der Scan dieses PCs ist fehlgeschlagen, daher hat Tunero nichts geändert. Scanne erneut und wende dann die Empfehlungen in der Übersicht an.</value></data>
   <data name="Apps_UpdateAllRuns" xml:space="preserve"><value>Läuft nacheinander: {0}.</value></data>
   <data name="Apps_UpdateAllWinget" xml:space="preserve"><value>winget aktualisiert jedes Programm, für das es in seiner Quelle eine neuere Version kennt, ohne einzeln zu fragen. Programme für den ganzen PC werden hier aktualisiert, Programme nur für dein Konto in einem eigenen winget-Fenster.</value></data>
   <data name="Apps_UpdateAllChoco" xml:space="preserve"><value>Chocolatey aktualisiert hier jedes veraltete Paket, mit Administratorrechten. Tunero selbst bleibt außen vor: Es aktualisiert sich über „Jetzt aktualisieren“ in den Einstellungen.</value></data>

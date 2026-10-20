@@ -22,8 +22,8 @@ public static class Program
 #pragma warning disable IL3000
         var bundle = string.IsNullOrEmpty(typeof(Program).Assembly.Location);
 #pragma warning restore IL3000
-        // Command line runs (--apply, --apply-recommended, --export, --reapply, --undo-all) have no window: a refusal is an exit code,
-        // never a dialog a script waits on.
+        // Command line runs (--apply, --apply-recommended, --export, --reapply, --undo-all, --first-sign-in) have no window: a
+        // refusal is an exit code, never a dialog a script (or the first sign-in before the desktop) waits on.
         // The same rule as the start that follows (App.CliArgs): "--apply" without a file opens the window in both.
         var commandLineRun = new App.CliArgs(args).IsCommandLineRun;
         int Refuse(string text)

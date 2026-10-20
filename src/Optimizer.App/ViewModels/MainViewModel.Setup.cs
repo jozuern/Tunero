@@ -53,12 +53,7 @@ public sealed partial class MainViewModel
         RunsInstalled(exe) ? new UninstallService.InstalledCopy(AppInstall.DefaultFolder, () => AppInstall.RemoveEntry(MachineRegistry)) : null;
 
     private InstallService Installs => _installs ??= new InstallService(Install.ExePath ?? "", _settings, _settings.Save, this,
-        new InstallService.Steps(
-            () => AppInstall.Install(new InstallRequest(Install.ExePath!, AppInstall.DefaultFolder, AppInfo.Text, AppInstall.IsTrustedFile,
-                path => System.Diagnostics.FileVersionInfo.GetVersionInfo(path).ProductVersion, TrustedPath.IsAdminOnlyWritableFolder,
-                TrustedPath.IsAdminOnlyBelowSharedFolders), MachineRegistry),
-            exe => AppInstall.Undo(exe, MachineRegistry),
-            exe => StartMenuShortcut.Create(StartMenuFolder ?? throw new DirectoryNotFoundException("no Start menu folder"), exe, Loc.Instance["StartMenu_Description"])));
+        InstallService.Steps.ForThisPc(Install.ExePath ?? "", () => StartMenuFolder));
 
     /// <summary>
     /// At start, over the first results: the setup screen for a signed copy run from where it was downloaded, else the
@@ -117,13 +112,14 @@ public sealed partial class MainViewModel
     }
 
     /// <summary>
-    /// The installed copy's first start (--installed-from): deletes the downloaded exe when it is still the same file, and
-    /// moves a Start menu entry that still starts the downloaded exe to the installed one.
+    /// The installed copy's first start (--installed-from): deletes the downloaded exe when it is still the same file (and
+    /// the setup folder of a first sign-in it came from), and moves a Start menu entry that still starts the downloaded exe
+    /// to the installed one. <paramref name="report"/> false: the result goes to the log only (the first sign-in shows its own).
     /// </summary>
-    public async Task FinishInstallAsync(string oldExe)
+    public async Task FinishInstallAsync(string oldExe, bool report = true)
     {
         if (Install.ExePath is not { } exe || !RunsInstalled(exe)) return;
-        var removed = await Task.Run(() => AppInstall.DeleteOldCopy(oldExe, exe));
+        var removed = await Task.Run(() => InstallService.RemoveOldCopy(oldExe, exe));
         try
         {
             if (StartMenuFolder is { } folder && StartMenuShortcut.Target(folder) is { } target &&
@@ -136,8 +132,9 @@ public sealed partial class MainViewModel
         }
         OnPropertyChanged(nameof(StartMenuEntry));
         Log.Info("install", "installed copy started", new { oldExe, removed });
-        ShowResult(removed ? Loc.Instance.Format("Setup_Installed", AppInstall.DefaultFolder) : Loc.Instance.Format("Setup_OldCopyKept", AppInstall.DefaultFolder, oldExe),
-            removed ? InfoBarSeverity.Success : InfoBarSeverity.Warning);
+        if (report)
+            ShowResult(removed ? Loc.Instance.Format("Setup_Installed", AppInstall.DefaultFolder) : Loc.Instance.Format("Setup_OldCopyKept", AppInstall.DefaultFolder, oldExe),
+                removed ? InfoBarSeverity.Success : InfoBarSeverity.Warning);
     }
 
     [RelayCommand(CanExecute = nameof(SetupIdle))]

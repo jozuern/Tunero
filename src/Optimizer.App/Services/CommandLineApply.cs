@@ -172,7 +172,7 @@ public static class CommandLineApply
         // Removing an app cannot be undone: the command line only names them, the app's Import asks for them.
         if (plan.Apps.Count > 0)
             lines.Add(Loc.Instance.Format("Cli_AppsInApp", string.Join(", ", plan.Apps.Select(a => a.Entry.Label(Loc.Instance.Language)))));
-        return await ApplyTogetherAsync(services, pc, plan.Together, plan.OneByOne, withoutRestorePoint, lines,
+        return await ApplyTogetherAsync(Apply(services, pc, withoutRestorePoint), plan.Together, plan.OneByOne, lines,
             (ok, failed, skipped) => Loc.Instance.Format("Cli_Summary", ok, failed, skipped, plan.AlreadyOn, plan.NotForThisPc, plan.Unknown));
     }
 
@@ -190,22 +190,55 @@ public static class CommandLineApply
             return NotElevated;
         }
         var pc = await ScanAsync(services, ignored);
+        return await ApplyRecommendedPlanAsync(pc, profileId, savedProfileId, Apply(services, pc, withoutRestorePoint), lines);
+    }
+
+    /// <summary>
+    /// --apply-recommended after its scan: the plan of <see cref="RecommendedPlan"/>, its batch-safe part applied with
+    /// <paramref name="apply"/>, the rest listed. Tests pass a recording <paramref name="apply"/>.
+    /// </summary>
+    internal static async Task<int> ApplyRecommendedPlanAsync(PcSnapshot pc, string? profileId, string? savedProfileId,
+        Func<IReadOnlyList<TweakDefinition>, Task<BatchOutcome>> apply, List<string> lines)
+    {
+        if (RecommendedPlan(pc, profileId, savedProfileId) is not { } plan)
+        {
+            var profiles = CatalogData.Current.Profiles;
+            lines.Add(Loc.Instance.Format("Cli_UnknownProfile", profileId ?? "", string.Join(", ", profiles.Profiles.Where(p => p.IsAvailable(pc.Facts)).Select(p => p.Id))));
+            return UnknownProfile;
+        }
+        lines.Add(Loc.Instance.Format("Cli_Profile", ViewModels.MainViewModel.ProfileName(plan.Profile)));
+        return await ApplyTogetherAsync(apply, plan.Together, plan.InApp, lines,
+            (ok, failed, skipped) => Loc.Instance.Format("Cli_RecommendedSummary", ok, failed, skipped));
+    }
+
+    /// <summary>
+    /// The scan and plan of <see cref="RecommendedPlan"/>, for the window's first sign-in (Windows install media) and
+    /// --apply-recommended alike, so both always pick the same changes.
+    /// </summary>
+    public static async Task<(PcSnapshot Pc, RecommendedSelection? Plan)> RecommendedPlanAsync(AppServices services, string? profileId, string? savedProfileId,
+        IReadOnlyCollection<string> ignored)
+    {
+        var pc = await ScanAsync(services, ignored);
+        return (pc, RecommendedPlan(pc, profileId, savedProfileId));
+    }
+
+    /// <summary>
+    /// The Overview's recommended list for the profile (<paramref name="profileId"/>, which must exist and fit this PC;
+    /// without it the saved one, else the one that fits this PC best): <see cref="RecommendedSelection.Together"/> is
+    /// what applies without a confirmation, <see cref="RecommendedSelection.InApp"/> the previews, Expert, boot-critical
+    /// and anti-cheat sensitive changes that need their own. Null when the profile is unknown or not offered here.
+    /// </summary>
+    public static RecommendedSelection? RecommendedPlan(PcSnapshot pc, string? profileId, string? savedProfileId)
+    {
         var profiles = CatalogData.Current.Profiles;
         var profile = profileId is not null
             ? profiles.Profiles.FirstOrDefault(p => p.Id == profileId && p.IsAvailable(pc.Facts))
             : profiles.Profiles.FirstOrDefault(p => p.Id == savedProfileId && p.IsAvailable(pc.Facts)) ?? profiles.Suggest(pc.Facts);
-        if (profile is null)
-        {
-            lines.Add(Loc.Instance.Format("Cli_UnknownProfile", profileId ?? "", string.Join(", ", profiles.Profiles.Where(p => p.IsAvailable(pc.Facts)).Select(p => p.Id))));
-            return UnknownProfile;
-        }
-        var lang = Loc.Instance.Language;
-        lines.Add(Loc.Instance.Format("Cli_Profile", ViewModels.MainViewModel.ProfileName(profile)));
+        if (profile is null) return null;
         var plan = Recommendations.Build(Optimizer.Core.Profiles.ProfileView.For(profile, pc.States, pc.Facts),
             Optimizer.Core.Profiles.ProfileView.Findings(profile, pc.Findings));
         Log.Info("cli", "recommended plan", new { profile = profile.Id, items = plan.Items.Count, excluded = plan.Excluded.Count });
-        return await ApplyTogetherAsync(services, pc, plan.Items.Select(i => i.Tweak).ToList(), plan.Excluded.Select(i => i.Tweak).ToList(), withoutRestorePoint, lines,
-            (ok, failed, skipped) => Loc.Instance.Format("Cli_RecommendedSummary", ok, failed, skipped));
+        return new RecommendedSelection(profile, plan.Items.Select(i => i.Tweak).ToList(), plan.Excluded.Select(i => i.Tweak).ToList());
     }
 
     /// <summary>The changes file of the Changes page's Export, written to <paramref name="path"/>.</summary>
@@ -243,15 +276,19 @@ public static class CommandLineApply
         ChangeSession.ScanAsync(CatalogData.Current, services.Catalog, services.Engine, services.Context.Registry, services.BcdValues, ignored);
 
     /// <summary>
-    /// Applies the batch-safe changes in one go (one restore point) and lists the rest for the app. Without a restore
-    /// point the run stops, unless --no-restore-point said to go on (there is nobody to ask).
+    /// Applies a set in one go with one restore point. Without a restore point the run stops, unless --no-restore-point
+    /// said to go on (there is nobody to ask).
     /// </summary>
-    private static async Task<int> ApplyTogetherAsync(AppServices services, PcSnapshot pc, IReadOnlyList<TweakDefinition> together, IReadOnlyList<TweakDefinition> inApp,
-        bool withoutRestorePoint, List<string> lines, Func<int, int, int, string> summary)
+    private static Func<IReadOnlyList<TweakDefinition>, Task<BatchOutcome>> Apply(AppServices services, PcSnapshot pc, bool withoutRestorePoint) =>
+        together => services.Session.ApplyBatchAsync(together, pc.Facts, pc.Applied, new ApplyOptions { ContinueWithoutRestorePoint = withoutRestorePoint },
+            () => RestorePointChoice.Cancel);
+
+    /// <summary>Applies the batch-safe changes with <paramref name="apply"/> and lists the rest for the app.</summary>
+    private static async Task<int> ApplyTogetherAsync(Func<IReadOnlyList<TweakDefinition>, Task<BatchOutcome>> apply, IReadOnlyList<TweakDefinition> together,
+        IReadOnlyList<TweakDefinition> inApp, List<string> lines, Func<int, int, int, string> summary)
     {
         var lang = Loc.Instance.Language;
-        var outcome = await services.Session.ApplyBatchAsync(together, pc.Facts, pc.Applied, new ApplyOptions { ContinueWithoutRestorePoint = withoutRestorePoint },
-            () => RestorePointChoice.Cancel);
+        var outcome = await apply(together);
         if (together.Count > 0 && (outcome.Results.Count == 0 || outcome.StoppedForRestorePoint))
         {
             lines.Add(Loc.Instance["Cli_NoRestorePoint"]);
@@ -303,3 +340,9 @@ public static class CommandLineApply
         }
     }
 }
+
+/// <summary>
+/// The profile and its recommended list (<see cref="CommandLineApply.RecommendedPlan"/>): <paramref name="Together"/>
+/// applies without a confirmation, <paramref name="InApp"/> needs its own and is only listed.
+/// </summary>
+public sealed record RecommendedSelection(Optimizer.Core.Profiles.UsageProfile Profile, IReadOnlyList<TweakDefinition> Together, IReadOnlyList<TweakDefinition> InApp);

@@ -181,6 +181,27 @@ public partial class App : Application
             return;
         }
 
+        // The first sign-in on a PC installed from Tunero's media (FirstSignInStart): before the desktop appears, nothing is
+        // shown; it installs this exe, starts the installed copy with the profile and ends. A failure is logged and ends the
+        // run, so Windows always goes on to the desktop.
+        if (args.Has(Optimizer.Core.Media.FirstSignIn.Switch))
+        {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            try
+            {
+                var running = Environment.ProcessPath;
+                FirstSignInStart.Run(running, _settings, _settings.Save,
+                    InstallService.Steps.ForThisPc(running ?? "", () => StartMenuShortcut.ProgramsFolder(services.Elevation, services.ProfilePath)), new Launch());
+                Shutdown(0);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("firstsignin", "the first sign-in run failed", ex);
+                Shutdown(CommandLineApply.Error);
+            }
+            return;
+        }
+
         // Changes without the window (CommandLineApply): apply an exported changes file, or undo everything.
         if (args.IsCommandLineRun)
         {
@@ -253,9 +274,13 @@ public partial class App : Application
             // Over the first results. Windows Settings' Uninstall button starts --uninstall; the installed copy's first start
             // removes the downloaded exe; a downloaded copy offers the setup (Program Files, Start menu), or the Start menu
             // question as before.
+            // The first sign-in after an install from Tunero's media (FirstSignInStart): no setup screen or Start menu question;
+            // the profile's recommendations are applied and Changes shows them.
+            var firstSignIn = args.Value(FirstSignInStart.ApplySwitch);
             if (args.Has(SingleInstance.Uninstall)) vm.UninstallCommand.Execute(null);
-            else if (args.Value(InstallService.InstalledFrom) is { } oldExe) vm.FinishInstallAsync(oldExe).Forget("finish install");
-            else vm.OfferSetupAsync(SingleInstance.Applies(e.Args)).Forget("setup");
+            else if (args.Value(InstallService.InstalledFrom) is { } oldExe) vm.FinishInstallAsync(oldExe, report: firstSignIn is null).Forget("finish install");
+            else if (firstSignIn is null) vm.OfferSetupAsync(SingleInstance.Applies(e.Args)).Forget("setup");
+            if (firstSignIn is not null) vm.FirstSignInApplyAsync(firstSignIn).Forget("first sign-in");
             OfferErrorReport(lastSession: true);
             vm.CheckForUpdatesAsync(atStart: true).Forget("update check");
             // What killed or crashed install media builds left (work folders at drive roots, mounted images): only the
@@ -862,7 +887,11 @@ public partial class App : Application
 
         public bool Has(string name) => args.Any(a => string.Equals(a, name, StringComparison.OrdinalIgnoreCase));
 
-        /// <summary>--apply &lt;file&gt;, --apply-recommended, --export &lt;file&gt;, --reapply or --undo-all: no window, the result is the exit code (and the --log file).</summary>
-        public bool IsCommandLineRun => Value("--apply") is not null || Has("--apply-recommended") || Value("--export") is not null || Has(Optimizer.Core.Tweaks.ReapplyTask.Argument) || Has("--undo-all");
+        /// <summary>
+        /// --apply &lt;file&gt;, --apply-recommended, --export &lt;file&gt;, --reapply, --undo-all or --first-sign-in: no window, the
+        /// result is the exit code (and the --log file).
+        /// </summary>
+        public bool IsCommandLineRun => Value("--apply") is not null || Has("--apply-recommended") || Value("--export") is not null || Has(Optimizer.Core.Tweaks.ReapplyTask.Argument) || Has("--undo-all")
+            || Has(Optimizer.Core.Media.FirstSignIn.Switch);
     }
 }

@@ -220,6 +220,24 @@ public class EngineTests
         Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(T("power.gamingPlan"), Facts(), none, Expert)).Outcome);
     }
 
+    /// <summary>
+    /// The first sign-in on a new installation applies without a restore point (there is nothing to go back to): none is
+    /// made and the frequency limit is not touched; a later change in the same session still makes one.
+    /// </summary>
+    [Fact]
+    public async Task WithoutRestorePointMakesNoneAndLeavesTheNextChangeItsOwn()
+    {
+        using var fx = new EngineFixture();
+        var r = await fx.Engine.ApplyAsync(T("gpu.hags"), Facts(), new HashSet<string>(), new ApplyOptions { ExpertMode = true, WithoutRestorePoint = true });
+        Assert.Equal(ApplyOutcome.Applied, r.Outcome);
+        Assert.Equal(0, fx.RestorePoints.Created);
+        Assert.Null(fx.Store.Get(TweakEngine.RestorePointFrequencyTweak));
+        Assert.NotNull(fx.Store.Get("gpu.hags"));
+
+        await fx.Engine.ApplyAsync(T("power.throttlingOff"), Facts(), new HashSet<string>(), new ApplyOptions { ExpertMode = true });
+        Assert.Equal(1, fx.RestorePoints.Created);
+    }
+
     [Fact]
     public async Task RestorePointOncePerSessionAndFrequencyIsBackedUp()
     {
