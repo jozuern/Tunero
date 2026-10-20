@@ -87,7 +87,7 @@ public static class FirstSignInStart
         useLanguage?.Invoke(file.Language);
 
         // An upgrade or a reinstall that kept Program Files may hold a newer Tunero: the copy from the media never replaces it.
-        if (steps.NewerInstalled?.Invoke() is { } newer)
+        if (NewerTrustedCopy(steps) is { } newer)
         {
             Log.Info("firstsignin", "a newer Tunero is installed: kept, starting it", new { newer });
             AddStartMenu(steps, newer);
@@ -118,7 +118,29 @@ public static class FirstSignInStart
             Log.Info("firstsignin", "started again from the setup folder; the folder stays", new { exe });
             return FirstSignInOutcome.RunsFromSetupFolder;
         }
+        // Nothing runs that could take the marker: it goes, so no later start finds it.
+        markers.ClearPending();
         return FirstSignInOutcome.Failed;
+    }
+
+    /// <summary>
+    /// A newer installed Tunero that may be started elevated (<see cref="InstallService.Steps.TrustedExe"/>), or null. A
+    /// failed look counts as none, and a copy that fails the checks is not started: the normal install runs then.
+    /// </summary>
+    private static string? NewerTrustedCopy(InstallService.Steps steps)
+    {
+        try
+        {
+            if (steps.NewerInstalled?.Invoke() is not { } newer) return null;
+            if (steps.TrustedExe?.Invoke(newer) == true) return newer;
+            Log.Warn("firstsignin", "a newer Tunero is installed, but users could change it or it is not signed by Tunero's publisher: not started", new { newer });
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Log.Warn("firstsignin", $"looking for a newer installed Tunero failed; installing as usual: {ex.Message}");
+            return null;
+        }
     }
 
     /// <summary>The Start menu entry for <paramref name="exe"/>; a failure is logged (Settings offers the entry again).</summary>
@@ -172,6 +194,21 @@ public sealed class FirstSignInMarkers(string folder)
 
     public bool Done => File.Exists(Path.Combine(folder, DoneName));
 
+    public bool HasPending => File.Exists(Pending);
+
+    /// <summary>Deletes the pending marker (best effort, logged).</summary>
+    public void ClearPending()
+    {
+        try
+        {
+            File.Delete(Pending);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Log.Warn("firstsignin", $"the pending first sign-in marker was not removed: {ex.Message}");
+        }
+    }
+
     /// <summary>Writes the pending marker; false (logged) when it cannot be written.</summary>
     public bool SetPending(string profile, DateTime nowUtc) => Write(PendingName, profile, nowUtc);
 
@@ -181,6 +218,13 @@ public sealed class FirstSignInMarkers(string folder)
     /// </summary>
     public bool TakePending(string profile, DateTime nowUtc)
     {
+        // Applied once already: a pending marker beside the done one (left when its delete failed) never applies again.
+        if (Done)
+        {
+            Log.Info("firstsignin", "this PC was set up at its first sign-in already: nothing applied", new { profile });
+            ClearPending();
+            return false;
+        }
         Marker? marker;
         try
         {
@@ -199,14 +243,7 @@ public sealed class FirstSignInMarkers(string folder)
         var valid = marker is not null && marker.Profile == profile && (nowUtc - marker.At).Duration() <= MaxAge;
         if (!valid) Log.Warn("firstsignin", "the pending first sign-in is for another profile or too old: nothing applied", new { profile, marker });
         var taken = valid && Write(DoneName, profile, nowUtc);
-        try
-        {
-            File.Delete(Pending);
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            Log.Warn("firstsignin", $"the pending first sign-in marker was not removed: {ex.Message}");
-        }
+        ClearPending();
         return taken;
     }
 

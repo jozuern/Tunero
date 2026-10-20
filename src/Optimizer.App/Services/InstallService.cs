@@ -27,6 +27,12 @@ public sealed class InstallService(string runningExe, AppSettings settings, Acti
         public Func<string?>? NewerInstalled { get; init; }
 
         /// <summary>
+        /// The exe may be started elevated: only administrators can change it and its folders, and it is signed by Tunero's
+        /// publisher (the checks an install makes on its copy). Null: no exe is trusted.
+        /// </summary>
+        public Func<string, bool>? TrustedExe { get; init; }
+
+        /// <summary>
         /// The real steps for <paramref name="runningExe"/>: into <see cref="AppInstall.DefaultFolder"/>, checked there
         /// (Tunero's signature, the version, folders only administrators can change), with the entry under HKLM, and the
         /// Start menu entry in <paramref name="startMenuFolder"/>.
@@ -42,6 +48,7 @@ public sealed class InstallService(string runningExe, AppSettings settings, Acti
                 exe => StartMenuShortcut.Create(startMenuFolder() ?? throw new DirectoryNotFoundException("no Start menu folder"), exe, Loc.Instance["StartMenu_Description"]))
             {
                 NewerInstalled = () => NewerInstalledCopy(machine),
+                TrustedExe = exe => TrustedPath.IsAdminOnlyBelowSharedFolders(exe) && AppInstall.IsTrustedFile(exe),
             };
         }
     }

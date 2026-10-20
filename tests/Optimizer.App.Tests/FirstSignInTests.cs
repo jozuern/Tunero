@@ -46,7 +46,8 @@ public sealed class FirstSignInTests : IDisposable
     private FirstSignInOutcome RunWith(FirstSignInFile file, InstallService.Steps? steps = null, Launch? launch = null, DateTime? at = null) =>
         FirstSignInStart.Run(Exe, file, _settings, () => _saves++, steps ?? Steps(), launch ?? Launch(), Markers, at ?? Now);
 
-    private InstallService.Steps Steps(InstallResult? result = null, string? newerInstalled = null) => new(
+    private InstallService.Steps Steps(InstallResult? result = null, string? newerInstalled = null, bool newerTrusted = true,
+        Exception? newerFails = null) => new(
         () =>
         {
             _installs++;
@@ -55,7 +56,8 @@ public sealed class FirstSignInTests : IDisposable
         exe => _undone.Add(exe),
         exe => _startMenu.Add(exe))
     {
-        NewerInstalled = () => newerInstalled,
+        NewerInstalled = () => newerFails is null ? newerInstalled : throw newerFails,
+        TrustedExe = _ => newerTrusted,
     };
 
     private Launch Launch(Func<System.Diagnostics.ProcessStartInfo, bool>? fails = null) => new()
@@ -191,6 +193,8 @@ public sealed class FirstSignInTests : IDisposable
     {
         var outcome = RunWith(new FirstSignInFile("gaming", "en", "System"), Steps(new InstallResult(null, InstallStep.Copy, "disk full")), Launch(_ => true));
         Assert.Equal(FirstSignInOutcome.Failed, outcome);
+        // Nothing runs that could take it: the pending marker goes again.
+        Assert.False(Markers.HasPending);
         Assert.Empty(_started);
     }
 
@@ -255,6 +259,44 @@ public sealed class FirstSignInTests : IDisposable
         var start = Assert.Single(_started);
         Assert.Equal(Installed, start.FileName);
         Assert.Equal([InstallService.InstalledFrom, Exe, FirstSignInStart.ApplySwitch, "gaming"], start.ArgumentList);
+    }
+
+    /// <summary>
+    /// The done marker wins: a pending marker that could not be deleted after the apply (or one written later) never lets
+    /// a start apply again, and is removed.
+    /// </summary>
+    [Fact]
+    public void APendingMarkerBesideTheDoneMarkerAppliesNothing()
+    {
+        RunWith(new FirstSignInFile("gaming", "en", "System"));
+        Assert.True(Markers.TakePending("gaming", Now.AddMinutes(1)));
+        Assert.True(Markers.SetPending("gaming", Now.AddMinutes(2)));
+        Assert.False(Markers.TakePending("gaming", Now.AddMinutes(3)));
+        Assert.False(Markers.HasPending);
+    }
+
+    /// <summary>Reading the installed version fails: the run goes on as without a newer copy.</summary>
+    [Fact]
+    public void AFailedLookForANewerCopyInstallsAsUsual()
+    {
+        var outcome = RunWith(new FirstSignInFile("gaming", "en", "System"), Steps(newerFails: new IOException("registry unreadable")));
+        Assert.Equal(FirstSignInOutcome.Installed, outcome);
+        Assert.Equal(1, _installs);
+        Assert.Equal(Installed, Assert.Single(_started).FileName);
+    }
+
+    /// <summary>
+    /// A newer copy that users could change or that is not signed by Tunero's publisher is not started elevated: the
+    /// normal install runs, with its own checks.
+    /// </summary>
+    [Fact]
+    public void AnUntrustedNewerCopyIsNotStarted()
+    {
+        const string elsewhere = @"C:\Tools\Tunero.exe";
+        var outcome = RunWith(new FirstSignInFile("gaming", "en", "System"), Steps(newerInstalled: elsewhere, newerTrusted: false));
+        Assert.Equal(FirstSignInOutcome.Installed, outcome);
+        Assert.Equal(1, _installs);
+        Assert.DoesNotContain(_started, psi => psi.FileName == elsewhere);
     }
 
     /// <summary>The setup folder of a kept newer copy goes too, although its exe differs from the installed one; the result says it is gone.</summary>
