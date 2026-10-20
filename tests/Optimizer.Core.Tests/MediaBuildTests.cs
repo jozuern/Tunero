@@ -192,6 +192,37 @@ public sealed class MediaBuildTests : IDisposable
         Assert.Empty(_steps.Calls);
     }
 
+    /// <summary>Keyboards and locales the answer file names must be ones Windows knows: anything else is refused before any step.</summary>
+    [Theory]
+    [InlineData("0407", null, null)]
+    [InlineData("0407:0407", null, null)]
+    [InlineData("German", null, null)]
+    [InlineData("0407:00000407;", null, null)]
+    [InlineData(null, "xx-YY", null)]
+    [InlineData(null, "", null)]
+    [InlineData(null, null, "not a locale")]
+    public async Task UnknownKeyboardsAndLocalesAreRefusedBeforeAnything(string? keyboard, string? userLocale, string? uiLanguage)
+    {
+        var answers = Plain with
+        {
+            InputLocale = keyboard ?? Plain.InputLocale,
+            UserLocale = userLocale ?? Plain.UserLocale,
+            UiLanguage = uiLanguage ?? Plain.UiLanguage,
+        };
+        await Assert.ThrowsAsync<ArgumentException>(() => Run(Download(answers: answers)));
+        Assert.Empty(_steps.Calls);
+    }
+
+    [Theory]
+    [InlineData("0C07:00000407")]
+    [InlineData("0407:00000407;0409:00000409")]
+    [InlineData("0411:{03B5835F-F03C-411B-9CE2-AA23E1171E36}{A76C93D9-5523-4E90-AAFA-4DB112F9AC76}")]
+    public async Task WindowsKeyboardsAreAccepted(string keyboard)
+    {
+        await Run(Download(answers: Plain with { InputLocale = keyboard }));
+        Assert.True(File.Exists(OutputIso));
+    }
+
     [Fact]
     public async Task AppOutsideTheAllowlistIsRefusedBeforeAnything()
     {

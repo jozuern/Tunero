@@ -64,6 +64,28 @@ public static partial class MediaLocales
         return profiles;
     }
 
+    /// <summary>
+    /// An answer file's InputLocale: one or more input profiles ("0407:00000407", or a language id with an IME's two
+    /// GUIDs) separated by ';', nothing else.
+    /// </summary>
+    public static bool IsInputLocale(string? value) =>
+        !string.IsNullOrEmpty(value) && value.Split(';').All(part => InputProfileCode().IsMatch(part));
+
+    /// <summary>A specific culture Windows and .NET know by this name (like "de-DE"), not a made-up or neutral one.</summary>
+    public static bool IsLocaleName(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return false;
+        try
+        {
+            var culture = CultureInfo.GetCultureInfo(name, predefinedOnly: true);
+            return !culture.IsNeutralCulture && culture.Name.Equals(name, StringComparison.OrdinalIgnoreCase);
+        }
+        catch (CultureNotFoundException)
+        {
+            return false;
+        }
+    }
+
     /// <summary>"0c07:00000407" as "0C07:00000407"; null for anything that is not a language id with a layout id or two GUIDs.</summary>
     private static string? Normalize(string entry) => InputProfileCode().IsMatch(entry.Trim()) ? entry.Trim().ToUpperInvariant() : null;
 

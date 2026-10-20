@@ -434,6 +434,113 @@ public sealed class InstallMediaViewModelTests : IDisposable
         Assert.DoesNotContain("secret detail", media.CatalogError);
     }
 
+    // ---- reading an own ISO again, states and summaries (fix round 2) ----
+
+    private string IsoFile(string name = "Win11.iso")
+    {
+        var iso = Path.Combine(_root, name);
+        File.WriteAllText(iso, "iso");
+        return iso;
+    }
+
+    /// <summary>A read that failed (the ISO was mounted in Explorer) is tried again when the same file is picked again.</summary>
+    [Fact]
+    public async Task PickingTheSameIsoAgainReadsItAgain()
+    {
+        var reads = 0;
+        var system = System() with
+        {
+            ReadIso = (_, _) => ++reads == 1 ? throw new IsoAttachException(32, "in use") : Task.FromResult(_iso),
+        };
+        var media = await Loaded(Media(system: system));
+        _dialogs.OpenFile = IsoFile();
+        media.PickIsoCommand.Execute(null);
+        await media.IsoLoading;
+        Assert.Equal(Loc.Instance["Media_IsoInUse"], media.BuildNote);
+        media.PickIsoCommand.Execute(null);
+        await media.IsoLoading;
+        Assert.Equal(2, reads);
+        Assert.True(media.CanBuild);
+    }
+
+    /// <summary>A second ISO starts from this PC's edition, not from the image index chosen in the first one.</summary>
+    [Fact]
+    public async Task AnotherIsoPreselectsByEditionNotByIndex()
+    {
+        var media = await WithOwnIso();
+        media.Edition = media.Editions.Single(e => e.Key == "1");   // Home in the first ISO
+        _iso = Iso(Image(1, "Education", "Windows 11 Education"), Image(2, "Professional", "Windows 11 Pro"));
+        media.IsoPath = IsoFile("Other.iso");
+        await media.IsoLoading;
+        Assert.Equal("2", media.Edition?.Key);
+    }
+
+    [Fact]
+    public async Task ARefusedIsoIsNotCalledWindows11()
+    {
+        _iso = Iso(Image(1, "Professional", "Windows 10 Pro", build: 19045));
+        var media = await WithOwnIso();
+        Assert.DoesNotContain("Windows 11", media.IsoText);
+        Assert.Contains("19045", media.IsoText);
+        Assert.Equal(Loc.Instance["Media_NotWindows11"], media.BuildNote);
+    }
+
+    [Fact]
+    public async Task AnUnexpectedErrorWhileReadingIsAReadFailure()
+    {
+        var media = await WithOwnIso(Media(system: System() with { ReadIso = (_, _) => throw new InvalidOperationException("odd") }));
+        Assert.Equal(Loc.Instance["Media_IsoReadFailed"], media.BuildNote);
+        Assert.True(media.IsoLoading.IsCompletedSuccessfully);
+    }
+
+    /// <summary>An install image whose metadata could not be read is a read failure, not "not Windows 11".</summary>
+    [Fact]
+    public async Task UnreadableMetadataIsAReadFailure()
+    {
+        _iso = new IsoInfo("install.wim", [], HasBootWim: true);
+        var media = await WithOwnIso();
+        Assert.Equal(Loc.Instance["Media_IsoReadFailed"], media.BuildNote);
+    }
+
+    [Fact]
+    public async Task SetupSummaryWithoutANameShowsNoEmptyAccount()
+    {
+        var media = await WithCatalog();
+        media.AccountNameText = "";
+        Assert.Equal(Loc.Instance.Format("Media_SetupSummaryNoName", media.Region!.Text), media.SetupSummary);
+    }
+
+    /// <summary>A region brings its keyboard along, until a keyboard was picked by hand.</summary>
+    [Fact]
+    public async Task ARegionPreselectsItsKeyboardUntilOneIsPicked()
+    {
+        var media = await WithCatalog();
+        media.Region = media.Regions.Single(r => r.Key == "de-AT");
+        Assert.Equal(MediaLocales.DefaultKeyboard(new CultureInfo("de-AT")), media.Keyboard?.Key);
+        media.Region = media.Regions.Single(r => r.Key == "en-US");
+        Assert.Equal("0409:00000409", media.Keyboard?.Key);
+        media.Keyboard = media.Keyboards.Single(k => k.Key == "0407:00000407");
+        media.Region = media.Regions.Single(r => r.Key == "de-AT");
+        Assert.Equal("0407:00000407", media.Keyboard?.Key);
+    }
+
+    /// <summary>A timeout of the catalog request (HttpClient's TaskCanceledException) shows the catalog failure.</summary>
+    [Fact]
+    public async Task ACatalogTimeoutShowsTheFailure()
+    {
+        var media = new InstallMediaViewModel(_host, _dialogs, new TimingOutCatalog(), (_, _, _) => Task.FromResult(""), System());
+        await Loaded(media);
+        await media.CheckCatalogCommand.ExecuteAsync(null);
+        Assert.Equal(Loc.Instance.Format("Media_CatalogFailed", Loc.Instance["Media_CatalogStepUnknown"]), media.CatalogError);
+        Assert.False(media.IsCheckingCatalog);
+    }
+
+    private sealed class TimingOutCatalog : IMediaCatalogSource
+    {
+        public Task<IReadOnlyList<EsdFile>> LoadAsync(string arch, IProgress<string>? p, CancellationToken ct) =>
+            Task.FromException<IReadOnlyList<EsdFile>>(new TaskCanceledException("The request was canceled due to the configured HttpClient.Timeout."));
+    }
+
     private sealed class ThrowingCatalog : IMediaCatalogSource
     {
         public Task<IReadOnlyList<EsdFile>> LoadAsync(string arch, IProgress<string>? p, CancellationToken ct) =>

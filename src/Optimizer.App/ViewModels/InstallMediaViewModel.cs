@@ -278,12 +278,41 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     [ObservableProperty] private IReadOnlyList<FilterOption> _keyboards = [];
     [ObservableProperty] private FilterOption? _keyboard;
 
-    partial void OnRegionChanged(FilterOption? value) => Changed();
+    /// <summary>A region brings the keyboard Windows sets up first for it, until the user picked a keyboard.</summary>
+    partial void OnRegionChanged(FilterOption? value)
+    {
+        if (!_buildingLists && !_keyboardPicked && value is not null && Pick(Keyboards, DefaultKeyboard(value.Key)) is { } keyboard)
+            SetKeyboard(keyboard);
+        Changed();
+    }
 
-    partial void OnKeyboardChanged(FilterOption? value) => Changed();
+    partial void OnKeyboardChanged(FilterOption? value)
+    {
+        if (!_buildingLists && !_settingKeyboard) _keyboardPicked = true;
+        Changed();
+    }
+
+    private bool _buildingLists, _settingKeyboard, _keyboardPicked;
+
+    /// <summary>Sets the keyboard for the user (from this PC or the region), so it does not count as picked by hand.</summary>
+    private void SetKeyboard(FilterOption? keyboard)
+    {
+        _settingKeyboard = true;
+        try
+        {
+            Keyboard = keyboard;
+        }
+        finally
+        {
+            _settingKeyboard = false;
+        }
+    }
 
     /// <summary>What the folded setup card holds: "Account Anna, German (Austria)", or off.</summary>
-    public string SetupSummary => SkipSetup ? Loc.Instance.Format("Media_SetupSummary", AccountNameText.Trim(), Region?.Text ?? "") : Loc.Instance["Media_Off"];
+    public string SetupSummary =>
+        !SkipSetup ? Loc.Instance["Media_Off"]
+        : AccountNameText.Trim() is { Length: > 0 } name ? Loc.Instance.Format("Media_SetupSummary", name, Region?.Text ?? "")
+        : Loc.Instance.Format("Media_SetupSummaryNoName", Region?.Text ?? "");
 
     [ObservableProperty] private bool _applyProfile;
 
@@ -385,6 +414,8 @@ public sealed partial class InstallMediaViewModel : PageViewModel
             if (IsoPath is not { } iso || (!_demo && !File.Exists(iso))) return "Media_NeedsIso";
             if (IsReadingIso) return "Media_ReadingIso";
             if (_isoProblem is { } problem) return problem;
+            // An install image without a readable image list: the read failed, nothing says the media is wrong.
+            if (_isoInfo is { ImageFile: not null, Images.Count: 0 }) return "Media_IsoReadFailed";
             if (_isoInfo is not { ImageFile: not null, HasBootWim: true } info || info.Editions.Count == 0) return "Media_NotWindows11";
         }
         if (Edition is null) return "Media_NoImage";
@@ -486,6 +517,20 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     /// <summary>The lists in the current language; every choice keeps its key.</summary>
     private void BuildLists()
     {
+        _buildingLists = true;
+        try
+        {
+            BuildListsCore();
+        }
+        finally
+        {
+            _buildingLists = false;
+        }
+        Changed();
+    }
+
+    private void BuildListsCore()
+    {
         var lang = Lang;
         var regionKey = Region?.Key ?? _pc.Region ?? "en-US";
         Regions = _regionCultures!.Select(c => new FilterOption(c.Name, c.DisplayName)).OrderBy(o => o.Text, StringComparer.CurrentCulture).ToList();
@@ -517,7 +562,6 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         foreach (var row in AppRows) row.PropertyChanged += (_, _) => OnPropertyChanged(nameof(AppsSummary));
         OnPropertyChanged(nameof(AppRows));
         ShowEditions();
-        Changed();
     }
 
     private static FilterOption? Pick(IEnumerable<FilterOption> options, string? key) =>
@@ -606,9 +650,14 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     private void UpdateCatalogText() =>
         CatalogText = Download() is { } esd ? Loc.Instance.Format("Media_CatalogFound", esd.Build, ByteSize.Format(esd.Size)) : null;
 
+    /// <summary>
+    /// "Windows 11, build 26300.9711, de-DE, x64" for the chosen image; an image below Windows 11's first build is only
+    /// "Windows, build 19045.1, ..." (Build then names why it is refused).
+    /// </summary>
     private void UpdateIsoText() =>
         IsoText = !UseDownload && (SelectedImage() ?? _isoInfo?.Editions.FirstOrDefault()) is { } image
-            ? Loc.Instance.Format("Media_IsoFound", BuildText(image), image.DefaultLanguage ?? image.Languages.FirstOrDefault() ?? "?", image.Architecture ?? "?")
+            ? Loc.Instance.Format(image.Build is >= FirstWindows11Build ? "Media_IsoFound" : "Media_IsoFacts",
+                BuildText(image), image.DefaultLanguage ?? image.Languages.FirstOrDefault() ?? "?", image.Architecture ?? "?")
             : null;
 
     /// <summary>"26300.9711" from the version 10.0.26300.9711, as the catalog names a build.</summary>
@@ -650,11 +699,10 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         _isoRead?.Cancel();
         _isoInfo = null;
         _isoProblem = null;
-        if (path is null || (!_system.Elevated && !_demo))
-        {
-            ShowEditions();
-            return;
-        }
+        // A new ISO starts from this PC's edition: an image index means nothing in another ISO.
+        Edition = null;
+        ShowEditions();
+        if (path is null || (!_system.Elevated && !_demo)) return;
         using var read = new CancellationTokenSource();
         _isoRead = read;
         IsReadingIso = true;
@@ -674,9 +722,10 @@ public sealed partial class InstallMediaViewModel : PageViewModel
             Log.Warn("media", $"own ISO could not be read: {ex.Message}");
             problem = ex.InUse ? "Media_IsoInUse" : "Media_IsoReadFailed";
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is not OutOfMemoryException)
         {
-            Log.Warn("media", $"own ISO could not be read: {ex.Message}");
+            // Whatever else went wrong, the read failed: the page says so (never "not Windows 11"), the log has the cause.
+            Log.Error("media", "own ISO could not be read", ex);
             problem = "Media_IsoReadFailed";
         }
         finally
@@ -716,8 +765,9 @@ public sealed partial class InstallMediaViewModel : PageViewModel
             Log.Warn("media", $"catalog: {ex.Step} failed: {ex.Message}");
             CatalogError = Loc.Instance.Format("Media_CatalogFailed", Loc.Instance[$"Media_CatalogStep_{ex.Step}"]);
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or FormatException or System.Net.Http.HttpRequestException)
+        catch (Exception ex) when (ex is not OutOfMemoryException)
         {
+            // A timeout's TaskCanceledException included: nothing here is cancelled by the user.
             // The message is for the log: the page names no step it cannot know.
             Log.Warn("media", $"catalog failed: {ex.GetType().Name}: {ex.Message}");
             CatalogError = Loc.Instance.Format("Media_CatalogFailed", Loc.Instance["Media_CatalogStepUnknown"]);
@@ -729,12 +779,21 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         }
     }
 
+    /// <summary>Picks an ISO and reads it; picking the same file again reads it again (after it was ejected in Explorer).</summary>
     [RelayCommand]
     private void PickIso()
     {
         if (_dialogs.PickOpenFile(Loc.Instance["Media_IsoFiles"], ".iso") is not { } path) return;
         UseDownload = false;
-        IsoPath = path;
+        if (string.Equals(path, IsoPath, StringComparison.OrdinalIgnoreCase))
+        {
+            IsoLoading = ReadIsoAsync(path);
+            Changed();
+        }
+        else
+        {
+            IsoPath = path;
+        }
     }
 
     [RelayCommand]

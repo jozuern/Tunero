@@ -250,5 +250,8 @@ internal sealed class FakeDialogs : IDialogs
     }
 
     public string? PickSaveFile(string defaultName, string filterName, string extension, string? folder = null) => null;
-    public string? PickOpenFile(string filterName, string extension) => null;
+    /// <summary>What the open dialog returns (null: cancelled).</summary>
+    public string? OpenFile { get; set; }
+
+    public string? PickOpenFile(string filterName, string extension) => OpenFile;
 }

@@ -1760,4 +1760,6 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Media_AppsSummary" xml:space="preserve"><value>Zu entfernende Apps: {0}</value></data>
   <data name="Media_SetupSummary" xml:space="preserve"><value>Konto {0}, {1}</value></data>
   <data name="Media_Off" xml:space="preserve"><value>Aus</value></data>
+  <data name="Media_IsoFacts" xml:space="preserve"><value>Windows, Build {0}, {1}, {2}</value></data>
+  <data name="Media_SetupSummaryNoName" xml:space="preserve"><value>Noch kein Kontoname, {0}</value></data>
 </root>

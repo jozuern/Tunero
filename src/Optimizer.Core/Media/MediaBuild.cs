@@ -191,6 +191,10 @@ public sealed class MediaBuild(IMediaSteps steps)
         var apps = CatalogData.Current.Appx.Apps;
         foreach (var name in r.RemoveApps)
             if (!apps.Any(a => Same(a.Name, name))) throw new ArgumentException($"{name} is not in the app list.", nameof(r));
+        // Only keyboards and locales Windows knows reach the answer file (Setup ignores or stops at others).
+        if (!MediaLocales.IsInputLocale(r.Answers.InputLocale)) throw new ArgumentException($"{r.Answers.InputLocale} is not an input profile.", nameof(r));
+        foreach (var locale in new[] { r.Answers.UiLanguage, r.Answers.SystemLocale, r.Answers.UserLocale })
+            if (!MediaLocales.IsLocaleName(locale)) throw new ArgumentException($"{locale} is not a locale Windows knows.", nameof(r));
         AnswerFile.Build(r.Answers);   // throws ArgumentException for an invalid account name
         var tunero = r.TuneroExe is not null;
         if (tunero != (r.FirstSignIn is not null) || tunero != r.Answers.FirstSignInTunero)

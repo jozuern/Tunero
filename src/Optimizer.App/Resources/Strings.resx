@@ -1760,4 +1760,6 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Media_AppsSummary" xml:space="preserve"><value>Apps to remove: {0}</value></data>
   <data name="Media_SetupSummary" xml:space="preserve"><value>Account {0}, {1}</value></data>
   <data name="Media_Off" xml:space="preserve"><value>Off</value></data>
+  <data name="Media_IsoFacts" xml:space="preserve"><value>Windows, build {0}, {1}, {2}</value></data>
+  <data name="Media_SetupSummaryNoName" xml:space="preserve"><value>No account name yet, {0}</value></data>
 </root>

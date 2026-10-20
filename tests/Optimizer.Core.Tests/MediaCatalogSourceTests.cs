@@ -46,12 +46,12 @@ public sealed class MediaCatalogSourceTests : IDisposable
         }
     }
 
-    private Handler Microsoft() => new(request => request.Method == HttpMethod.Post
+    private Handler Microsoft(bool cabTimesOut = false) => new(request => request.Method == HttpMethod.Post
         ? new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = new StringContent($$"""[{"FileLocations":[{"FileName":"products.cab","Size":{{_cab.Length}},"Digest":"{{Convert.ToBase64String(SHA256.HashData(_cab))}}","Url":"{{CabUrl}}"}]}]"""),
         }
-        : new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(_cab) });
+        : cabTimesOut ? throw new TaskCanceledException("timeout") : new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(_cab) });
 
     private MediaCatalogSource Source(Handler handler, bool signed = true) => new(_steps, _processes, _root, handler, _ => signed);
 
@@ -91,6 +91,25 @@ public sealed class MediaCatalogSourceTests : IDisposable
     {
         var source = new MediaCatalogSource(_steps, _processes, _root, Microsoft(), _ => throw new IOException("disk"));
         var ex = await Assert.ThrowsAsync<MediaDownloadException>(() => source.LoadAsync("amd64", null, CancellationToken.None));
+        Assert.Equal("cab", ex.Step);
+        Assert.False(Directory.Exists(_steps.WorkFolder));
+    }
+
+    /// <summary>A request that times out (HttpClient's TaskCanceledException, not a Stop) is a failed search.</summary>
+    [Fact]
+    public async Task ATimeoutIsAFailedSearch()
+    {
+        var handler = new Handler(_ => throw new TaskCanceledException("The request was canceled due to the configured HttpClient.Timeout."));
+        var ex = await Assert.ThrowsAsync<MediaDownloadException>(() => Source(handler).LoadAsync("amd64", null, CancellationToken.None));
+        Assert.Equal("search", ex.Step);
+        Assert.Null(_steps.WorkFolder);
+    }
+
+    /// <summary>The same while the cab downloads: the cab step fails and the work folder goes.</summary>
+    [Fact]
+    public async Task ATimeoutOfTheCabIsAFailedCabStep()
+    {
+        var ex = await Assert.ThrowsAsync<MediaDownloadException>(() => Source(Microsoft(cabTimesOut: true)).LoadAsync("amd64", null, CancellationToken.None));
         Assert.Equal("cab", ex.Step);
         Assert.False(Directory.Exists(_steps.WorkFolder));
     }
