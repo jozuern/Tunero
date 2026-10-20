@@ -160,6 +160,9 @@ public sealed class MediaBuild(IMediaSteps steps)
     /// <summary>Held open without sharing for the whole build: a work folder whose lock file cannot be opened belongs to a running build.</summary>
     internal const string LockFileName = "build.lock";
 
+    /// <summary>The folders of a work folder that DISM mounts install.wim and boot.wim into.</summary>
+    private const string MountFolder = "mount", BootMountFolder = "bootmount";
+
     private const int Attempts = 3;
     private const long Gigabyte = 1L << 30;
     private const string TuneroOnMedia = @"sources\$OEM$\$$\Setup\Tunero";
@@ -253,6 +256,13 @@ public sealed class MediaBuild(IMediaSteps steps)
     /// <see cref="DismWaitLimit"/>; a folder whose DISM is still busy after that is left alone for the next start, and so
     /// is every leftover while a dism.exe runs whose command line cannot be read. DISM is never ended.
     /// </para>
+    /// <para>
+    /// After a hard restart of the PC DISM can list no mount at all while the mount folder still holds the image, and a
+    /// delete is then refused inside it (VM 4b, 2026-10-20: "No mounted images found.", /Remount-Image refused, a manual
+    /// /Cleanup-Mountpoints unmounted it). So when a leftover's mount folder is not empty although DISM lists no mount in
+    /// the folder, or when a delete is refused inside a mount folder, /Cleanup-Mountpoints runs (once per cleanup) and the
+    /// list is read again before anything is deleted; a folder whose image is listed then is discarded or kept as above.
+    /// </para>
     /// </summary>
     public async Task CleanLeftoversAsync(CancellationToken ct)
     {
@@ -298,6 +308,14 @@ public sealed class MediaBuild(IMediaSteps steps)
         }
         // A SYSTEM hive a killed build left loaded holds a file of its mounted boot.wim open: unloaded first, or the discard fails.
         steps.UnloadLeftoverHives();
+        var cleanedUp = false;
+        var lost = folders.Where(f => !mounted.Any(m => IsInside(m.Dir, f)) && HasMountContent(f)).ToList();
+        if (lost.Count > 0)
+        {
+            foreach (var folder in lost) steps.Log($"No mount listed for {folder}, but its mount folder is not empty: cleaning up DISM mount points");
+            mounted = await CleanUpMountPointsAsync(steps, ct);
+            cleanedUp = true;
+        }
         var ours = mounted.Where(m => folders.Any(f => IsInside(m.Dir, f))).ToList();
         LogMounts(steps, ours);
         var still = mounted;
@@ -320,22 +338,75 @@ public sealed class MediaBuild(IMediaSteps steps)
         }
         foreach (var folder in folders)
         {
-            if (still.Any(m => IsInside(m.Dir, folder)))
+            if (StillMounted(folder)) continue;
+            var refused = TryDelete(folder);
+            // Refused inside a mount folder: an image that DISM did not list may still be mounted there.
+            if (refused is UnauthorizedAccessException && !cleanedUp && NamesAMountFolder(refused.Message, folder))
             {
-                Warn(steps, $"{folder} kept: an image is still mounted in it");
-                continue;
+                steps.Log($"Deleting {folder} was refused inside its mount folder: cleaning up DISM mount points");
+                still = await CleanUpMountPointsAsync(steps, ct);
+                cleanedUp = true;
+                if (StillMounted(folder)) continue;
+                refused = TryDelete(folder);
             }
+            if (refused is not null) Warn(steps, $"{folder} left in place: {refused.Message}");
+        }
+
+        bool StillMounted(string folder)
+        {
+            if (!still.Any(m => IsInside(m.Dir, folder))) return false;
+            Warn(steps, $"{folder} kept: an image is still mounted in it");
+            return true;
+        }
+
+        Exception? TryDelete(string folder)
+        {
             try
             {
                 steps.DeleteWorkFolder(folder);
                 steps.Log("Deleted " + folder);
+                return null;
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
             {
-                Warn(steps, $"{folder} left in place: {ex.Message}");
+                return ex;
             }
         }
     }
+
+    /// <summary>
+    /// True when the mount folder or the boot.wim mount folder of <paramref name="folder"/> has an entry: an image may be
+    /// mounted there that DISM does not list. Reads one entry at most and follows no link: a mount folder that is a link,
+    /// or lies in one, is not looked into (DeleteWorkFolder only unlinks it). A mount folder that cannot be read counts as
+    /// not empty, which only leads to /Cleanup-Mountpoints.
+    /// </summary>
+    private static bool HasMountContent(string folder)
+    {
+        foreach (var name in new[] { MountFolder, BootMountFolder })
+        {
+            var dir = Path.Combine(folder, name);
+            if (!SafeDelete.HasNoLinks(dir)) continue;
+            try
+            {
+                if (Directory.EnumerateFileSystemEntries(dir, "*", new EnumerationOptions { AttributesToSkip = 0 }).Any()) return true;
+            }
+            catch (DirectoryNotFoundException)
+            {
+                // No mount folder (yet): nothing to look at.
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>Whether a refusal's message names a path in a mount folder of <paramref name="folder"/>, or the mount folder itself.</summary>
+    private static bool NamesAMountFolder(string message, string folder) =>
+        new[] { MountFolder, BootMountFolder }.Any(name =>
+            message.Contains(Path.Combine(folder, name) + @"\", StringComparison.OrdinalIgnoreCase) ||
+            message.Contains(Path.Combine(folder, name) + "'", StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
     /// Waits until no dism.exe works in a leftover work folder any more, or <see cref="DismWaitLimit"/> has passed; returns
@@ -506,6 +577,15 @@ public sealed class MediaBuild(IMediaSteps steps)
             failed = true;
         }
         if (!failed && !cleanUpAlways) return null;
+        return await CleanUpMountPointsAsync(steps, ct);
+    }
+
+    /// <summary>
+    /// /Cleanup-Mountpoints (a failure is only logged), then the images DISM lists now. A DismException of that list goes to
+    /// the caller: without it nothing may be deleted.
+    /// </summary>
+    private static async Task<IReadOnlyList<MountedImage>> CleanUpMountPointsAsync(IMediaSteps steps, CancellationToken ct)
+    {
         try
         {
             await LoggedAsync(steps, DismArgs.CleanupMountpoints(), () => steps.Dism.CleanupMountpointsAsync(ct));
@@ -565,8 +645,8 @@ public sealed class MediaBuild(IMediaSteps steps)
                 if (!Path.IsPathFullyQualified(_work)) throw Fail($"The work folder {_work} is not an absolute path.", "Media_WorkFolderFailed");
                 steps.Log("Work folder " + _work);
                 _media = Path.Combine(_work, "media");
-                _mount = Path.Combine(_work, "mount");
-                _bootMount = Path.Combine(_work, "bootmount");
+                _mount = Path.Combine(_work, MountFolder);
+                _bootMount = Path.Combine(_work, BootMountFolder);
 
                 string edition;
                 if (download is not null)
@@ -1257,7 +1337,8 @@ public sealed class MediaBuild(IMediaSteps steps)
                 Warn(steps, $"The image is still mounted at {_mounted}; {_work} stays until the next start of Tunero removes it.");
                 return;
             }
-            if (!await DeleteWorkFolderAsync()) Warn(steps, $"work folder {_work} stays until the next start of Tunero removes it");
+            if (await DeleteWorkFolderAsync()) steps.Log("Deleted " + _work);
+            else Warn(steps, $"work folder {_work} stays until the next start of Tunero removes it");
         }
 
         private void ReleaseLock()

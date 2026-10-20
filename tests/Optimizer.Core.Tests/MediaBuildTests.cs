@@ -641,6 +641,16 @@ public sealed class MediaBuildTests : IDisposable
         AssertCleanedUp();
     }
 
+    /// <summary>The failure path names the deleted work folder in the media log, as the start cleanup does.</summary>
+    [Fact]
+    public async Task CleanupAfterAFailureLogsTheDeletedFolder()
+    {
+        _steps.Dism.ProvisionedThrows = true;
+        await FailsAt(Download(apps: ["Microsoft.BingNews"]), MediaStage.Apps, null);
+        AssertCleanedUp();
+        Assert.Contains("Deleted " + _steps.WorkFolder, _steps.LogLines);
+    }
+
     [Fact]
     public async Task ProgressSinkThatThrowsDoesNotStopTheCleanup()
     {
@@ -1111,6 +1121,159 @@ public sealed class MediaBuildTests : IDisposable
         Assert.Equal(2, _steps.LogLines.Count(l => l == @"Mounted image X:\TuneroMedia.ab12cd34\mount: status Invalid"));
     }
 
+    /// <summary>
+    /// A work folder at a drive under the temp folder whose mount folder (or boot.wim mount folder) still holds the image
+    /// files, as after a hard restart while install.wim was mounted (VM 4b, 2026-10-20).
+    /// </summary>
+    private string LostMount(string id, string mountFolder = "mount")
+    {
+        var drive = Path.Combine(_root, "drive");
+        var folder = Path.Combine(drive, "TuneroMedia." + id);
+        FakeMediaSteps.Put(folder, $@"{mountFolder}\Windows\bfsvc.exe", "image file");
+        FakeMediaSteps.Put(folder, @"media\sources\setup.exe", "setup");
+        if (!_steps.Drives.Contains(drive)) _steps.Drives.Add(drive);
+        _steps.Leftovers[drive] = [.. _steps.Leftovers.GetValueOrDefault(drive, []), folder];
+        return folder;
+    }
+
+    private static string NoMountListed(string folder) =>
+        $"No mount listed for {folder}, but its mount folder is not empty: cleaning up DISM mount points";
+
+    /// <summary>
+    /// After a hard restart DISM lists no mount although the mount folder still holds the image, and deleting the folder is
+    /// refused inside it. /Cleanup-Mountpoints unmounts it (VM 4b); then the list is read again and the folder deleted.
+    /// </summary>
+    [Fact]
+    public async Task UnlistedMountThatIsNotEmptyIsCleanedUpBeforeTheDelete()
+    {
+        var folder = LostMount("a180be9e");
+        _steps.Dism.CleanupDoes = () => TestFolders.Delete(Path.Combine(folder, "mount", "Windows"));
+        await Build().CleanLeftoversAsync(CancellationToken.None);
+        Assert.Equal(["MountedImages", "UnloadLeftoverHives", "CleanupMountpoints", "MountedImages", "DeleteWorkFolder"], _steps.Calls);
+        Assert.Equal([folder], _steps.DeletedFolders);
+        Assert.Contains(NoMountListed(folder), _steps.LogLines);
+        Assert.Contains("dism /English /Cleanup-Mountpoints", _steps.LogLines);
+        Assert.Contains("dism /English /Get-MountedImageInfo", _steps.LogLines);
+        Assert.Contains("Deleted " + folder, _steps.LogLines);
+    }
+
+    [Fact]
+    public async Task TwoUnlistedMountsNeedOneCleanupOfTheMountPoints()
+    {
+        var first = LostMount("a180be9e");
+        var second = LostMount("a1740bc3", "bootmount");
+        await Build().CleanLeftoversAsync(CancellationToken.None);
+        Assert.Equal(1, Count("CleanupMountpoints"));
+        Assert.Equal([first, second], _steps.DeletedFolders);
+        Assert.Contains(NoMountListed(first), _steps.LogLines);
+        Assert.Contains(NoMountListed(second), _steps.LogLines);
+    }
+
+    /// <summary>A mount DISM lists again after its cleanup goes the usual way: discarded, then the folder deleted.</summary>
+    [Fact]
+    public async Task UnlistedMountThatIsListedAfterTheCleanupIsDiscarded()
+    {
+        var folder = LostMount("a180be9e");
+        var mount = Path.Combine(folder, "mount");
+        var listed = false;
+        _steps.Dism.CleanupDoes = () =>
+        {
+            if (listed) return;
+            listed = true;
+            _steps.Dism.Mounted.Add(mount);
+        };
+        await Build().CleanLeftoversAsync(CancellationToken.None);
+        Assert.Equal(["MountedImages", "UnloadLeftoverHives", "CleanupMountpoints", "MountedImages", "Unmount discard", "CleanupMountpoints", "MountedImages", "DeleteWorkFolder"],
+            _steps.Calls);
+        Assert.Equal([mount], _steps.Dism.Unmounted);
+        Assert.Equal([folder], _steps.DeletedFolders);
+        Assert.Contains($"Mounted image {mount}: status Ok", _steps.LogLines);
+    }
+
+    /// <summary>Never a delete into a mount DISM lists: a folder whose image stays listed is kept.</summary>
+    [Fact]
+    public async Task UnlistedMountThatStaysListedIsKept()
+    {
+        var folder = LostMount("a180be9e");
+        var mount = Path.Combine(folder, "mount");
+        _steps.Dism.CleanupDoes = () =>
+        {
+            if (!_steps.Dism.Mounted.Contains(mount)) _steps.Dism.Mounted.Add(mount);
+        };
+        _steps.Dism.UnmountFailures = int.MaxValue;
+        _steps.Dism.RemountFails = true;
+        await Build().CleanLeftoversAsync(CancellationToken.None);
+        Assert.Empty(_steps.DeletedFolders);
+        Assert.DoesNotContain("DeleteWorkFolder", _steps.Calls);
+        Assert.Contains($"{folder} kept: an image is still mounted in it", _steps.LogLines);
+        Assert.True(File.Exists(Path.Combine(mount, "Windows", "bfsvc.exe")));
+    }
+
+    /// <summary>An empty mount folder (DISM leaves it behind after an unmount) needs no DISM step: the folder is deleted as before.</summary>
+    [Fact]
+    public async Task EmptyMountFolderNeedsNoCleanupOfTheMountPoints()
+    {
+        var folder = LostMount("a180be9e");
+        TestFolders.Delete(Path.Combine(folder, "mount", "Windows"));
+        Directory.CreateDirectory(Path.Combine(folder, "bootmount"));
+        await Build().CleanLeftoversAsync(CancellationToken.None);
+        Assert.Equal(["MountedImages", "UnloadLeftoverHives", "DeleteWorkFolder"], _steps.Calls);
+        Assert.Equal([folder], _steps.DeletedFolders);
+    }
+
+    /// <summary>A delete refused inside a mount folder: /Cleanup-Mountpoints, the list again, then one more delete.</summary>
+    [Fact]
+    public async Task DeleteRefusedInsideAMountFolderIsTriedAgainAfterACleanup()
+    {
+        _steps.Drives.Add(@"D:\");
+        _steps.Leftovers[@"D:\"] = [@"D:\TuneroMedia.0000ffff"];
+        _steps.DeniedPath = @"D:\TuneroMedia.0000ffff\mount\Windows\bfsvc.exe";
+        _steps.DeleteDenials = 1;
+        await Build().CleanLeftoversAsync(CancellationToken.None);
+        Assert.Equal(["MountedImages", "UnloadLeftoverHives", "DeleteWorkFolder", "CleanupMountpoints", "MountedImages", "DeleteWorkFolder"], _steps.Calls);
+        Assert.Equal([@"D:\TuneroMedia.0000ffff"], _steps.DeletedFolders);
+        Assert.Contains(@"Deleting D:\TuneroMedia.0000ffff was refused inside its mount folder: cleaning up DISM mount points", _steps.LogLines);
+    }
+
+    /// <summary>The retry happens once per cleanup, only for a refusal inside a mount folder, and never into a listed mount.</summary>
+    [Fact]
+    public async Task DeleteRefusedElsewhereOrAfterTheCleanupIsLeftInPlace()
+    {
+        _steps.Drives.Add(@"D:\");
+        _steps.Leftovers[@"D:\"] = [@"D:\TuneroMedia.0000ffff"];
+        _steps.DeniedPath = @"D:\TuneroMedia.0000ffff\media\sources\install.wim";
+        _steps.DeleteDenials = 1;
+        await Build().CleanLeftoversAsync(CancellationToken.None);
+        Assert.Equal(["MountedImages", "UnloadLeftoverHives", "DeleteWorkFolder"], _steps.Calls);
+        Assert.Contains(_steps.LogLines, l => l.StartsWith(@"D:\TuneroMedia.0000ffff left in place: Access to the path", StringComparison.Ordinal));
+
+        // The mount points were cleaned up already for the lost mount: a refusal inside a mount folder is not retried.
+        _steps.Reset();
+        _steps.Drives.Clear();
+        _steps.Leftovers.Clear();
+        var folder = LostMount("a180be9e");
+        _steps.DeniedPath = Path.Combine(folder, "mount", "Windows", "bfsvc.exe");
+        _steps.DeleteDenials = 1;
+        await Build().CleanLeftoversAsync(CancellationToken.None);
+        Assert.Equal(1, Count("CleanupMountpoints"));
+        Assert.Equal(1, Count("DeleteWorkFolder"));
+        Assert.Empty(_steps.DeletedFolders);
+
+        // The mount the cleanup brings back into the list is not deleted into.
+        _steps.Reset();
+        _steps.Drives.Clear();
+        _steps.Leftovers.Clear();
+        _steps.Drives.Add(@"D:\");
+        _steps.Leftovers[@"D:\"] = [@"D:\TuneroMedia.0000ffff"];
+        _steps.DeniedPath = @"D:\TuneroMedia.0000ffff\bootmount\Windows\System32\config\SYSTEM";
+        _steps.DeleteDenials = 1;
+        _steps.Dism.CleanupDoes = () => _steps.Dism.Mounted.Add(@"D:\TuneroMedia.0000ffff\bootmount");
+        await Build().CleanLeftoversAsync(CancellationToken.None);
+        Assert.Equal(["MountedImages", "UnloadLeftoverHives", "DeleteWorkFolder", "CleanupMountpoints", "MountedImages"], _steps.Calls);
+        Assert.Empty(_steps.DeletedFolders);
+        Assert.Contains(@"D:\TuneroMedia.0000ffff kept: an image is still mounted in it", _steps.LogLines);
+    }
+
     [Fact]
     public async Task LeftoverFoldersWithoutMountsAreDeleted()
     {
@@ -1492,6 +1655,10 @@ internal sealed class FakeMediaSteps : IMediaSteps
     public bool LockHeldDuringDownload { get; private set; }
     public int DeleteFailures { get; set; }
     public bool DeleteThrowsArgument { get; set; }
+
+    /// <summary>The next deletes refused with access denied on <see cref="DeniedPath"/>.</summary>
+    public int DeleteDenials { get; set; }
+    public string DeniedPath { get; set; } = "";
     public bool ApplyPlantsImage { get; set; }
 
     /// <summary>The image file on the own ISO: "install.wim", "install.esd" or null for none.</summary>
@@ -1530,6 +1697,8 @@ internal sealed class FakeMediaSteps : IMediaSteps
         Free = long.MaxValue;
         DeleteFailures = 0;
         DeleteThrowsArgument = false;
+        DeleteDenials = 0;
+        DeniedPath = "";
         OwnImageFile = "install.wim";
         OwnVersion = "10.0.26300";
         OwnArchitecture = "x64";
@@ -1683,6 +1852,12 @@ internal sealed class FakeMediaSteps : IMediaSteps
     {
         Calls.Add("DeleteWorkFolder");
         if (DeleteThrowsArgument) throw new ArgumentException("refused");
+        if (DeleteDenials > 0)
+        {
+            DeleteDenials--;
+            // The message of the refusal in VM 4b: a file of the image that DISM no longer listed.
+            throw new UnauthorizedAccessException($"Access to the path '{DeniedPath}' is denied.");
+        }
         if (DeleteFailures > 0)
         {
             DeleteFailures--;
@@ -1973,10 +2148,14 @@ internal sealed class FakeDism(FakeMediaSteps steps) : IDism
         return Task.CompletedTask;
     }
 
+    /// <summary>What /Cleanup-Mountpoints does: unmount an image DISM no longer lists, or bring it back into the list.</summary>
+    public Action? CleanupDoes { get; set; }
+
     public Task CleanupMountpointsAsync(CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
         steps.Calls.Add("CleanupMountpoints");
+        CleanupDoes?.Invoke();
         return Task.CompletedTask;
     }
 }
