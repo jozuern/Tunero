@@ -192,4 +192,19 @@ public class AnswerFileTests
     [InlineData("Josh", null)]
     [InlineData("abcdefghijklmnopqrst", null)]
     public void AccountNameRules(string name, string? key) => Assert.Equal(key, AccountName.Problem(name));
+
+    /// <summary>
+    /// Fixtures/media/autounattend-vm1.xml is the Autounattend.xml from boot.wim image 2 of the ISO that installed in the
+    /// VM test (VM 1: every change, account Anna, en-US, allow unsupported PCs, Tunero copy). A change to the answer file
+    /// must be proven in a VM again before this file is replaced.
+    /// </summary>
+    [Fact]
+    public void Vm1AnswerFileIsTheOneThatInstalled()
+    {
+        var expected = File.ReadAllText(Path.Combine(RepoPaths.Root, "tests", "Optimizer.Core.Tests", "Fixtures", "media", "autounattend-vm1.xml"));
+        var built = AnswerFile.Build(new AnswerChoices("amd64", "en-US", "0409:00000409", "en-US", "en-US", "Anna",
+            SkipSetup: true, AllowUnsupported: true, FirstSignInTunero: true));
+        // Line endings may change on checkout (core.autocrlf); the content may not.
+        Assert.Equal(expected.ReplaceLineEndings("\n"), built.ReplaceLineEndings("\n"));
+    }
 }
