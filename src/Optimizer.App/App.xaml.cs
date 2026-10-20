@@ -275,8 +275,9 @@ public partial class App : Application
             // removes the downloaded exe; a downloaded copy offers the setup (Program Files, Start menu), or the Start menu
             // question as before.
             // The first sign-in after an install from Tunero's media (FirstSignInStart): no setup screen or Start menu question;
-            // the profile's recommendations are applied and Changes shows them.
-            var firstSignIn = args.Value(FirstSignInStart.ApplySwitch);
+            // the profile's recommendations are applied and Changes shows them. Only once, and only when --first-sign-in left
+            // its pending marker: any other start with the switch opens normally and applies nothing.
+            var firstSignIn = args.Value(FirstSignInStart.ApplySwitch) is { } pending && FirstSignInStart.TakePending(pending) ? pending : null;
             if (args.Has(SingleInstance.Uninstall)) vm.UninstallCommand.Execute(null);
             else if (args.Value(InstallService.InstalledFrom) is { } oldExe) vm.FinishInstallAsync(oldExe, report: firstSignIn is null).Forget("finish install");
             else if (firstSignIn is null) vm.OfferSetupAsync(SingleInstance.Applies(e.Args)).Forget("setup");

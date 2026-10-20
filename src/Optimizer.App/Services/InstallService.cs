@@ -23,6 +23,9 @@ public sealed class InstallService(string runningExe, AppSettings settings, Acti
     /// <param name="AddStartMenu">Writes the Start menu entry for an exe.</param>
     public sealed record Steps(Func<InstallResult> Install, Action<string> Undo, Action<string> AddStartMenu)
     {
+        /// <summary>An installed Tunero newer than this one, which an install would replace with an older version; null when none.</summary>
+        public Func<string?>? NewerInstalled { get; init; }
+
         /// <summary>
         /// The real steps for <paramref name="runningExe"/>: into <see cref="AppInstall.DefaultFolder"/>, checked there
         /// (Tunero's signature, the version, folders only administrators can change), with the entry under HKLM, and the
@@ -36,29 +39,48 @@ public sealed class InstallService(string runningExe, AppSettings settings, Acti
                     path => System.Diagnostics.FileVersionInfo.GetVersionInfo(path).ProductVersion, TrustedPath.IsAdminOnlyWritableFolder,
                     TrustedPath.IsAdminOnlyBelowSharedFolders), machine),
                 exe => AppInstall.Undo(exe, machine),
-                exe => StartMenuShortcut.Create(startMenuFolder() ?? throw new DirectoryNotFoundException("no Start menu folder"), exe, Loc.Instance["StartMenu_Description"]));
+                exe => StartMenuShortcut.Create(startMenuFolder() ?? throw new DirectoryNotFoundException("no Start menu folder"), exe, Loc.Instance["StartMenu_Description"]))
+            {
+                NewerInstalled = () => NewerInstalledCopy(machine),
+            };
         }
     }
 
+    /// <summary>The installed exe (the Installed apps entry's, else the default place) when it is newer than this one; null otherwise.</summary>
+    public static string? NewerInstalledCopy(Optimizer.Core.Actions.IRegistryRoots machine)
+    {
+        var installed = AppInstall.InstalledExe(machine) ?? (File.Exists(DefaultExe) ? DefaultExe : null);
+        return installed is not null && AppInstall.IsDowngrade(System.Diagnostics.FileVersionInfo.GetVersionInfo(installed).ProductVersion, AppInfo.Text)
+            ? installed : null;
+    }
+
+    private static string DefaultExe => Path.Combine(AppInstall.DefaultFolder, AppInstall.ExeName);
+
     /// <summary>
-    /// The installed copy's first start: deletes the exe it was installed from (<see cref="AppInstall.DeleteOldCopy"/>), and
-    /// when that was the copy Windows Setup put into %WINDIR%\Setup\Tunero (<see cref="FirstSignInStart"/>), that folder
-    /// with its file too. True when the old exe is gone.
+    /// The installed copy's first start: deletes the exe it was installed from (<see cref="AppInstall.DeleteOldCopy"/>), or,
+    /// when that was the copy Windows Setup put into %WINDIR%\Setup\Tunero (<see cref="FirstSignInStart"/>), that whole
+    /// folder. True when the old exe is gone.
     /// </summary>
     public static bool RemoveOldCopy(string oldExe, string installedExe) => RemoveOldCopy(oldExe, installedExe, FirstSignIn.Folder);
 
     /// <param name="setupFolder">The setup folder (tests pass a temp stand-in).</param>
     internal static bool RemoveOldCopy(string oldExe, string installedExe, string setupFolder)
     {
-        var removed = AppInstall.DeleteOldCopy(oldExe, installedExe);
-        if (string.Equals(Path.GetDirectoryName(Path.GetFullPath(oldExe)), Path.GetFullPath(setupFolder).TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase))
-            RemoveSetupFolder(setupFolder);
+        if (!string.Equals(Path.GetDirectoryName(Path.GetFullPath(oldExe)), Path.GetFullPath(setupFolder).TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase))
+            return AppInstall.DeleteOldCopy(oldExe, installedExe);
+        // The setup folder holds only what Windows Setup copied from the media, and only administrators can change it: its
+        // exe goes also when it differs from the installed one (a newer installed copy was kept), so the content check of a
+        // downloaded exe does not apply here.
+        RemoveSetupFolder(setupFolder);
+        var removed = !File.Exists(oldExe);
+        Log.Info("install", removed ? "the setup copy is removed with its folder" : "the setup copy stays", new { oldExe, installedExe });
         return removed;
     }
 
     /// <summary>
     /// Deletes the setup folder's files one by one through <see cref="SafeDelete"/> (never following a link), then the
-    /// empty folder. A subfolder or link in it stays, and so does the folder then; the log says why.
+    /// empty folder. A subfolder or link in it stays, and so does the folder then; the log says why. The copy that started
+    /// this one may hold its exe for a moment after it ended: each file is tried for up to five seconds.
     /// </summary>
     private static void RemoveSetupFolder(string folder)
     {
@@ -70,9 +92,9 @@ public sealed class InstallService(string runningExe, AppSettings settings, Acti
                 Log.Warn("install", $"{folder} is or lies under a link: not removed");
                 return;
             }
-            foreach (var entry in new DirectoryInfo(folder).EnumerateFileSystemInfos("*", new EnumerationOptions { AttributesToSkip = 0 }))
+            foreach (var entry in new DirectoryInfo(folder).EnumerateFileSystemInfos("*", new EnumerationOptions { AttributesToSkip = 0 }).ToList())
             {
-                if (entry is FileInfo && (entry.Attributes & FileAttributes.ReparsePoint) == 0) SafeDelete.DeleteFile(entry.FullName);
+                if (entry is FileInfo && (entry.Attributes & FileAttributes.ReparsePoint) == 0) DeleteWithRetry(entry.FullName);
                 else Log.Warn("install", $"{entry.FullName} is a folder or a link: left in place");
             }
             SafeDelete.DeleteEmptyDirectory(folder);
@@ -81,6 +103,22 @@ public sealed class InstallService(string runningExe, AppSettings settings, Acti
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             Log.Warn("install", $"setup folder {folder} not removed: {ex.Message}");
+        }
+    }
+
+    private static void DeleteWithRetry(string file)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                SafeDelete.DeleteFile(file);
+                return;
+            }
+            catch (Exception ex) when ((ex is IOException or UnauthorizedAccessException) && attempt < 20)
+            {
+                Thread.Sleep(250);
+            }
         }
     }
 

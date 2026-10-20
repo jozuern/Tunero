@@ -37,6 +37,12 @@ public sealed class ChangeRunner(AppServices services, IDialogs dialogs, Func<Fa
     /// <summary>Raised after any change was written or undone (also when it failed half-way), so pages refresh their state.</summary>
     public event EventHandler<TweakDefinition?>? Changed;
 
+    /// <summary>
+    /// Raises <see cref="Changed"/> for changes made inside <see cref="RunExclusiveAsync(string, string, Func{WorkProgress.Scope, Task}, CancellationTokenSource?)"/>
+    /// through the change session (the first sign-in); null: several at once, everything is read again.
+    /// </summary>
+    public void NotifyChanged(TweakDefinition? t) => Changed?.Invoke(this, t);
+
     public string Title(TweakDefinition t) => TitleOf(t, Loc.Instance.Language);
 
     // HKU\<SID of this process>: the hive that this process sees as HKCU.

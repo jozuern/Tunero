@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text.Json;
 using Optimizer.Core.Logging;
 using Optimizer.Core.Media;
 using Optimizer.Core.Platform;
@@ -11,8 +12,14 @@ public enum FirstSignInOutcome
     /// <summary>Not started from %WINDIR%\Setup\Tunero with a valid file beside it: nothing was done.</summary>
     NotFirstSignIn,
 
+    /// <summary>The first sign-in has been set up before (<see cref="FirstSignInMarkers.Done"/>): nothing was done.</summary>
+    AlreadyDone,
+
     /// <summary>Installed into Program Files; the installed copy was started with the profile.</summary>
     Installed,
+
+    /// <summary>A newer Tunero is installed already: it was kept and started with the profile.</summary>
+    KeptNewer,
 
     /// <summary>Not installed (a build without Tunero's signature, a failed step): this copy was started again with the profile.</summary>
     RunsFromSetupFolder,
@@ -24,12 +31,14 @@ public enum FirstSignInOutcome
 /// <summary>
 /// The first sign-in on a PC installed from Tunero's install media. Windows runs <c>Tunero.exe --first-sign-in</c> from
 /// %WINDIR%\Setup\Tunero (FirstLogonCommands, elevated for the new administrator account) before the desktop appears, so
-/// this start shows nothing and ends quickly: it saves the language, theme and profile chosen on the media, installs the
-/// exe into Program Files with its Start menu entry (<see cref="AppInstall"/>, as the first start's setup does), and
-/// starts the installed copy with <see cref="ApplySwitch"/> and <see cref="InstallService.InstalledFrom"/>. That copy opens
-/// its window, applies the profile's recommendations and removes the setup folder (<see cref="InstallService.RemoveOldCopy(string, string)"/>).
-/// When the copy cannot be installed, this exe is started again with the profile from where it is. Every failure is
-/// logged and ends the run: Windows always goes on to the desktop.
+/// this start shows nothing and ends quickly: it saves the language, theme and profile chosen on the media, leaves a
+/// pending marker (<see cref="FirstSignInMarkers"/>), installs the exe into Program Files with its Start menu entry
+/// (<see cref="AppInstall"/>, as the first start's setup does; a newer installed copy is kept), and starts the installed
+/// copy with <see cref="ApplySwitch"/> and <see cref="InstallService.InstalledFrom"/>. That copy takes the marker, opens its
+/// window, applies the profile's recommendations and removes the setup folder
+/// (<see cref="InstallService.RemoveOldCopy(string, string)"/>). When the copy cannot be installed, this exe is started
+/// again with the profile from where it is. It runs once: after the apply, a later --first-sign-in does nothing. Every
+/// failure is logged and ends the run: Windows always goes on to the desktop.
 /// </summary>
 public static class FirstSignInStart
 {
@@ -45,15 +54,28 @@ public static class FirstSignInStart
             Log.Warn("firstsignin", "not started from the setup folder, or its file is missing or not valid: nothing done", new { exe });
             return FirstSignInOutcome.NotFirstSignIn;
         }
-        return Run(exe, file, settings, save, steps, launch, Loc.Instance.SetLanguage);
+        return Run(exe, file, settings, save, steps, launch, new FirstSignInMarkers(DataPaths.Root), DateTime.UtcNow, Loc.Instance.SetLanguage);
     }
 
-    /// <summary>The run for a file already read and trusted (tests pass one, and no <paramref name="useLanguage"/>).</summary>
+    /// <summary>
+    /// --first-sign-in-apply in the started copy: true when the pending marker for <paramref name="profileId"/> was there
+    /// (it is used up now, so the apply runs once); false for any other start, which opens normally and applies nothing.
+    /// </summary>
+    public static bool TakePending(string profileId) => new FirstSignInMarkers(DataPaths.Root).TakePending(profileId, DateTime.UtcNow);
+
+    /// <summary>The run for a file already read and trusted (tests pass one, their own markers, and no <paramref name="useLanguage"/>).</summary>
     /// <param name="useLanguage">Switches the app's language to the file's (the Start menu entry's description is in it).</param>
     internal static FirstSignInOutcome Run(string exe, FirstSignInFile file, AppSettings settings, Action save, InstallService.Steps steps, Launch launch,
-        Action<string>? useLanguage = null)
+        FirstSignInMarkers markers, DateTime now, Action<string>? useLanguage = null)
     {
+        if (markers.Done)
+        {
+            Log.Info("firstsignin", "this PC was set up at its first sign-in already: nothing done", new { exe });
+            return FirstSignInOutcome.AlreadyDone;
+        }
         Log.Info("firstsignin", "setting up this PC", new { exe, file.Profile, file.Language, file.Theme });
+        // Without the marker the started copy would apply nothing: then nothing is started either.
+        if (!markers.SetPending(file.Profile, now)) return FirstSignInOutcome.Failed;
         // The choices on the media are the app's settings from now on: the installed copy reads them at its start, and later
         // starts keep them. The setup screen and the Start menu question are answered by this run.
         settings.Language = file.Language;
@@ -64,28 +86,32 @@ public static class FirstSignInStart
         save();
         useLanguage?.Invoke(file.Language);
 
-        var result = steps.Install();
-        if (result.InstalledExe is { } installed)
+        // An upgrade or a reinstall that kept Program Files may hold a newer Tunero: the copy from the media never replaces it.
+        if (steps.NewerInstalled?.Invoke() is { } newer)
         {
-            try
-            {
-                steps.AddStartMenu(installed);
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Runtime.InteropServices.COMException)
-            {
-                // Installed apps lists it and Settings offers the entry again: no reason to give up the install.
-                Log.Error("firstsignin", "installed, but the Start menu entry failed", ex);
-            }
-            if (Start(launch, installed, [InstallService.InstalledFrom, exe, ApplySwitch, file.Profile]))
-            {
-                Log.Info("firstsignin", "installed, starting the installed copy", new { installed });
-                return FirstSignInOutcome.Installed;
-            }
-            steps.Undo(installed);
+            Log.Info("firstsignin", "a newer Tunero is installed: kept, starting it", new { newer });
+            AddStartMenu(steps, newer);
+            if (Start(launch, newer, [InstallService.InstalledFrom, exe, ApplySwitch, file.Profile])) return FirstSignInOutcome.KeptNewer;
         }
         else
         {
-            Log.Warn("firstsignin", $"not installed ({result.FailedAt}: {result.Error}); setting up this PC from the setup folder");
+            var result = steps.Install();
+            if (result.InstalledExe is { } installed)
+            {
+                var entry = AddStartMenu(steps, installed);
+                if (Start(launch, installed, [InstallService.InstalledFrom, exe, ApplySwitch, file.Profile]))
+                {
+                    Log.Info("firstsignin", "installed, starting the installed copy", new { installed });
+                    return FirstSignInOutcome.Installed;
+                }
+                steps.Undo(installed);
+                // The entry started the copy that is gone now: it starts the one that sets up the PC instead.
+                if (entry) AddStartMenu(steps, exe);
+            }
+            else
+            {
+                Log.Warn("firstsignin", $"not installed ({result.FailedAt}: {result.Error}); setting up this PC from the setup folder");
+            }
         }
         if (Start(launch, exe, [ApplySwitch, file.Profile]))
         {
@@ -93,6 +119,21 @@ public static class FirstSignInStart
             return FirstSignInOutcome.RunsFromSetupFolder;
         }
         return FirstSignInOutcome.Failed;
+    }
+
+    /// <summary>The Start menu entry for <paramref name="exe"/>; a failure is logged (Settings offers the entry again).</summary>
+    private static bool AddStartMenu(InstallService.Steps steps, string exe)
+    {
+        try
+        {
+            steps.AddStartMenu(exe);
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Runtime.InteropServices.COMException)
+        {
+            Log.Error("firstsignin", $"the Start menu entry for {exe} failed", ex);
+            return false;
+        }
     }
 
     /// <summary>Starts the exe on its own (this run ends right after); false when it did not start.</summary>
@@ -106,6 +147,80 @@ public static class FirstSignInStart
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception or InvalidOperationException)
         {
             Log.Error("firstsignin", $"{exe} did not start", ex);
+            return false;
+        }
+    }
+}
+
+/// <summary>
+/// Run-once markers in Tunero's data folder (admin-only when elevated, <see cref="SecureFolder"/>): --first-sign-in writes
+/// "pending" with the profile and the time; the started copy applies only while that marker is there, for that profile and
+/// within a day, and replaces it with "done" before it applies anything. With "done", a later --first-sign-in (a setup
+/// folder that stayed, a reinstall that kept the data folder) does nothing, and no start applies without a confirmation.
+/// </summary>
+public sealed class FirstSignInMarkers(string folder)
+{
+    private const string PendingName = "first-sign-in.pending";
+    private const string DoneName = "first-sign-in.done";
+
+    /// <summary>How long after --first-sign-in its pending marker still counts.</summary>
+    public static readonly TimeSpan MaxAge = TimeSpan.FromHours(24);
+
+    private sealed record Marker(string Profile, DateTime At);
+
+    private string Pending => Path.Combine(folder, PendingName);
+
+    public bool Done => File.Exists(Path.Combine(folder, DoneName));
+
+    /// <summary>Writes the pending marker; false (logged) when it cannot be written.</summary>
+    public bool SetPending(string profile, DateTime nowUtc) => Write(PendingName, profile, nowUtc);
+
+    /// <summary>
+    /// Uses up the pending marker: true when it was there, for <paramref name="profile"/>, and less than <see cref="MaxAge"/>
+    /// off <paramref name="nowUtc"/>, and the done marker is written. The pending marker is gone afterwards in any case.
+    /// </summary>
+    public bool TakePending(string profile, DateTime nowUtc)
+    {
+        Marker? marker;
+        try
+        {
+            if (!File.Exists(Pending))
+            {
+                Log.Info("firstsignin", "no pending first sign-in: nothing applied", new { profile });
+                return false;
+            }
+            marker = JsonSerializer.Deserialize<Marker>(File.ReadAllText(Pending));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+        {
+            Log.Warn("firstsignin", $"the pending first sign-in could not be read: nothing applied ({ex.Message})");
+            marker = null;
+        }
+        var valid = marker is not null && marker.Profile == profile && (nowUtc - marker.At).Duration() <= MaxAge;
+        if (!valid) Log.Warn("firstsignin", "the pending first sign-in is for another profile or too old: nothing applied", new { profile, marker });
+        var taken = valid && Write(DoneName, profile, nowUtc);
+        try
+        {
+            File.Delete(Pending);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Log.Warn("firstsignin", $"the pending first sign-in marker was not removed: {ex.Message}");
+        }
+        return taken;
+    }
+
+    private bool Write(string name, string profile, DateTime nowUtc)
+    {
+        try
+        {
+            Directory.CreateDirectory(folder);
+            DurableFile.WriteAllText(Path.Combine(folder, name), JsonSerializer.Serialize(new Marker(profile, nowUtc)));
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Log.Error("firstsignin", $"the first sign-in marker {name} could not be written", ex);
             return false;
         }
     }

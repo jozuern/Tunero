@@ -73,13 +73,14 @@ public sealed partial class MainViewModel
     }
 
     /// <summary>
-    /// The first sign-in on a PC installed from Tunero's install media (<see cref="FirstSignInStart.ApplySwitch"/>), after
-    /// the first scan: the profile's recommended changes exactly as --apply-recommended picks them
-    /// (<see cref="CommandLineApply.RecommendedPlanAsync"/>), applied as the only change with the banner showing each one,
-    /// without the confirmation (the owner chose them on the media) and without a restore point (a new installation has
-    /// nothing to go back to). Changes needing their own confirmation stay on the Overview. Every change is recorded, so
-    /// Changes opens with the result and each can be undone there. Without a scan or with a profile this PC does not offer
-    /// (a laptop profile on a desktop), nothing is applied and the message says so.
+    /// The first sign-in on a PC installed from Tunero's install media (<see cref="FirstSignInStart.ApplySwitch"/>, once its
+    /// pending marker was taken), after the first scan: the profile's recommended changes exactly as --apply-recommended
+    /// picks them (<see cref="CommandLineApply.RecommendedPlanAsync"/>), applied as the only change with the banner showing
+    /// each one, without the confirmation (the owner chose them on the media) and without a restore point (a new
+    /// installation has nothing to go back to). Changes needing their own confirmation stay on the Overview. Whenever a plan
+    /// was made, the pages read the PC again and Changes opens with the result (also after an error, with what was applied
+    /// listed there), and each change can be undone there. Without a scan, with a profile this PC does not offer (a laptop
+    /// profile on a desktop) or while another change runs, nothing is applied and the message says so.
     /// </summary>
     public async Task FirstSignInApplyAsync(string profileId)
     {
@@ -93,34 +94,62 @@ public sealed partial class MainViewModel
         var name = known is null ? profileId : ProfileName(known);
         RecommendedSelection? plan = null;
         BatchOutcome? outcome = null;
+        Exception? error = null;
         var ran = await Runner.RunExclusiveAsync("first sign-in", Loc.Instance.Format("Media_FirstSignInTitle", name), async work =>
         {
-            work.Indeterminate(Loc.Instance["Scan_Running"]);
-            (var pc, plan) = await CommandLineApply.RecommendedPlanAsync(_services, profileId, null, IgnoredKeys());
-            if (plan is null) return;
-            foreach (var t in plan.Together) ChangeLogText.Remember(t);
-            // No Stop: the run is short and each change applies whole; the banner counts them.
-            var steps = new Progress<BatchStep>(s => work.Step(s.Done, s.Total, s.Tweak is { } t ? Runner.Title(t) : null));
-            outcome = await _services.Session.ApplyBatchAsync(plan.Together, pc.Facts, pc.Applied, new ApplyOptions { WithoutRestorePoint = true },
-                () => RestorePointChoice.Continue, steps);
+            try
+            {
+                work.Indeterminate(Loc.Instance["Scan_Running"]);
+                (var pc, plan) = await CommandLineApply.RecommendedPlanAsync(_services, profileId, null, IgnoredKeys());
+                if (plan is null) return;
+                foreach (var t in plan.Together) ChangeLogText.Remember(t);
+                // No Stop: each change applies whole; the banner counts them.
+                var steps = new Progress<BatchStep>(s => work.Step(s.Done, s.Total, s.Tweak is { } t ? Runner.Title(t) : null));
+                outcome = await _services.Session.ApplyBatchAsync(plan.Together, pc.Facts, pc.Applied, new ApplyOptions { WithoutRestorePoint = true },
+                    () => RestorePointChoice.Continue, steps);
+            }
+            catch (Exception ex)
+            {
+                // Caught here, not by the runner: what was applied before the error still has to be read and shown.
+                Log.Error("firstsignin", "the first sign-in stopped with an error", ex);
+                error = ex;
+            }
         });
-        if (!ran) return;
-        if (plan is null)
+        if (!ran)
         {
-            Log.Warn("firstsignin", "the profile is not offered on this PC: nothing applied", new { profileId });
-            ShowResult(Loc.Instance.Format("Media_FirstSignInNoProfile", name), InfoBarSeverity.Warning);
+            // Another change or an update ran (the runner said so): nothing was applied.
+            Log.Warn("firstsignin", "another change was running: nothing applied", new { profileId });
+            ShowResult(Loc.Instance["Media_FirstSignInBusy"], InfoBarSeverity.Warning);
             return;
         }
-        var done = outcome ?? BatchOutcome.Cancelled;
-        Log.Info("firstsignin", "profile applied", new { profileId, done.Applied, done.Failed, done.Skipped, inApp = plan.InApp.Count });
-        // The pages read the PC again (as after any change), then Changes shows what was applied, with the result kept open.
-        _reuseSlowParts = true;
-        await ScanAsync();
-        RefreshReapply();
+        if (plan is null)
+        {
+            Log.Warn("firstsignin", error is null ? "the profile is not offered on this PC: nothing applied" : "the scan failed: nothing applied", new { profileId });
+            ShowResult(error is null ? Loc.Instance.Format("Media_FirstSignInNoProfile", name) : Loc.Instance["Media_FirstSignInScanFailed"],
+                error is null ? InfoBarSeverity.Warning : InfoBarSeverity.Error);
+            return;
+        }
+        string text;
+        InfoBarSeverity severity;
+        if (error is not null)
+        {
+            text = Loc.Instance.Format("Media_FirstSignInError", ProfileName(plan.Profile), error.Message);
+            severity = InfoBarSeverity.Error;
+        }
+        else
+        {
+            var done = outcome ?? BatchOutcome.Cancelled;
+            Log.Info("firstsignin", "profile applied", new { profileId, done.Applied, done.Failed, done.Skipped, inApp = plan.InApp.Count });
+            text = Loc.Instance.Format("Media_FirstSignInDone", ProfileName(plan.Profile), done.Applied, done.Failed, done.Skipped + plan.InApp.Count);
+            if (done.BackupsNotUpdated) text = $"{text} {Loc.Instance["Result_BackupsNotUpdated"]}";
+            severity = done.Failed > 0 || done.BackupsNotUpdated ? InfoBarSeverity.Warning : InfoBarSeverity.Success;
+        }
+        // Changes shows what was applied; the result stays open (also when the rescan after the change shows it again), and
+        // the change event lets every page read the PC again, as after Apply recommended.
         CurrentPage = Page.Changes;
-        ShowResult(Loc.Instance.Format("Media_FirstSignInDone", ProfileName(plan.Profile), done.Applied, done.Failed, done.Skipped + plan.InApp.Count),
-            done.Failed > 0 || done.BackupsNotUpdated ? InfoBarSeverity.Warning : InfoBarSeverity.Success);
-        _resultTimer?.Stop();
+        _stickyResult = text;
+        ShowResult(text, severity);
+        Runner.NotifyChanged(null);
     }
 
     [RelayCommand(CanExecute = nameof(CanChange))]

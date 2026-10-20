@@ -79,9 +79,7 @@ public sealed partial class MainViewModel
             var here = TrustedPath.IsAdminOnlyBelowSharedFolders(exe);
             var packaged = Install.Package is not null;
             // An older download does not replace a newer installed copy.
-            var installed = AppInstall.InstalledExe(MachineRegistry) ?? (File.Exists(InstalledPath) ? InstalledPath : null);
-            var downgrade = installed is not null &&
-                AppInstall.IsDowngrade(System.Diagnostics.FileVersionInfo.GetVersionInfo(installed).ProductVersion, AppInfo.Text);
+            var downgrade = InstallService.NewerInstalledCopy(MachineRegistry) is not null;
             return (!here && !packaged && !downgrade && AppInstall.IsTrustedFile(exe), here);
         });
         CanInstall = installable;

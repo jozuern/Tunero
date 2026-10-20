@@ -38,14 +38,25 @@ public sealed class FirstSignInTests : IDisposable
 
     private string Exe => Path.Combine(_folder, AppInstall.ExeName);
 
-    private InstallService.Steps Steps(InstallResult? result = null) => new(
+    /// <summary>Tunero's data folder (a temp stand-in) with the run-once markers.</summary>
+    private FirstSignInMarkers Markers => new(Path.Combine(_folder, "data"));
+
+    private static readonly DateTime Now = new(2026, 10, 20, 8, 0, 0, DateTimeKind.Utc);
+
+    private FirstSignInOutcome RunWith(FirstSignInFile file, InstallService.Steps? steps = null, Launch? launch = null, DateTime? at = null) =>
+        FirstSignInStart.Run(Exe, file, _settings, () => _saves++, steps ?? Steps(), launch ?? Launch(), Markers, at ?? Now);
+
+    private InstallService.Steps Steps(InstallResult? result = null, string? newerInstalled = null) => new(
         () =>
         {
             _installs++;
             return result ?? new InstallResult(Installed, null, null);
         },
         exe => _undone.Add(exe),
-        exe => _startMenu.Add(exe));
+        exe => _startMenu.Add(exe))
+    {
+        NewerInstalled = () => newerInstalled,
+    };
 
     private Launch Launch(Func<System.Diagnostics.ProcessStartInfo, bool>? fails = null) => new()
     {
@@ -130,7 +141,7 @@ public sealed class FirstSignInTests : IDisposable
     [Fact]
     public void FirstSignInInstallsAndStartsTheInstalledCopy()
     {
-        var outcome = FirstSignInStart.Run(Exe, new FirstSignInFile("office", "de", "Dark"), _settings, () => _saves++, Steps(), Launch());
+        var outcome = RunWith(new FirstSignInFile("office", "de", "Dark"));
         Assert.Equal(FirstSignInOutcome.Installed, outcome);
         Assert.Equal(1, _installs);
         Assert.Equal([Installed], _startMenu);
@@ -151,8 +162,8 @@ public sealed class FirstSignInTests : IDisposable
     [Fact]
     public void AFailedInstallStartsThisCopyWithTheProfile()
     {
-        var outcome = FirstSignInStart.Run(Exe, new FirstSignInFile("gaming", "en", "System"), _settings, () => _saves++,
-            Steps(new InstallResult(null, InstallStep.Check, "the copy is not signed by Tunero's publisher")), Launch());
+        var outcome = RunWith(new FirstSignInFile("gaming", "en", "System"),
+            Steps(new InstallResult(null, InstallStep.Check, "the copy is not signed by Tunero's publisher")));
         Assert.Equal(FirstSignInOutcome.RunsFromSetupFolder, outcome);
         Assert.Empty(_startMenu);
         var start = Assert.Single(_started);
@@ -160,14 +171,17 @@ public sealed class FirstSignInTests : IDisposable
         Assert.Equal([FirstSignInStart.ApplySwitch, "gaming"], start.ArgumentList);
     }
 
-    /// <summary>The installed copy does not start: the install is undone and this copy sets up the PC instead.</summary>
+    /// <summary>
+    /// The installed copy does not start: the install is undone, the Start menu entry made for it starts this copy, and this
+    /// copy sets up the PC instead.
+    /// </summary>
     [Fact]
     public void AFailedStartOfTheInstalledCopyUndoesTheInstall()
     {
-        var outcome = FirstSignInStart.Run(Exe, new FirstSignInFile("gaming", "en", "System"), _settings, () => _saves++, Steps(),
-            Launch(psi => psi.FileName == Installed));
+        var outcome = RunWith(new FirstSignInFile("gaming", "en", "System"), launch: Launch(psi => psi.FileName == Installed));
         Assert.Equal(FirstSignInOutcome.RunsFromSetupFolder, outcome);
         Assert.Equal([Installed], _undone);
+        Assert.Equal([Installed, Exe], _startMenu);
         Assert.Equal(Exe, Assert.Single(_started).FileName);
     }
 
@@ -175,10 +189,88 @@ public sealed class FirstSignInTests : IDisposable
     [Fact]
     public void NothingStartsWithoutBreakingTheSignIn()
     {
-        var outcome = FirstSignInStart.Run(Exe, new FirstSignInFile("gaming", "en", "System"), _settings, () => _saves++,
-            Steps(new InstallResult(null, InstallStep.Copy, "disk full")), Launch(_ => true));
+        var outcome = RunWith(new FirstSignInFile("gaming", "en", "System"), Steps(new InstallResult(null, InstallStep.Copy, "disk full")), Launch(_ => true));
         Assert.Equal(FirstSignInOutcome.Failed, outcome);
         Assert.Empty(_started);
+    }
+
+    /// <summary>
+    /// Run once: the start in the setup folder leaves a pending marker; the started copy takes it (a done marker replaces
+    /// it) before it applies anything, and a second take finds none.
+    /// </summary>
+    [Fact]
+    public void TheApplyRunsOnceForThePendingProfile()
+    {
+        Assert.Equal(FirstSignInOutcome.Installed, RunWith(new FirstSignInFile("gaming", "en", "System")));
+        Assert.True(Markers.TakePending("gaming", Now.AddMinutes(1)));
+        Assert.False(Markers.TakePending("gaming", Now.AddMinutes(2)));
+        Assert.True(Markers.Done);
+    }
+
+    /// <summary>A start with --first-sign-in-apply but no pending marker (typed by hand, a shortcut) opens normally and applies nothing.</summary>
+    [Fact]
+    public void WithoutAPendingMarkerNothingIsApplied()
+    {
+        Assert.False(Markers.TakePending("gaming", Now));
+        Assert.False(Markers.Done);
+    }
+
+    /// <summary>A pending marker for another profile, or one more than a day off, does not apply (and is used up).</summary>
+    [Theory]
+    [InlineData("office", 1)]
+    [InlineData("gaming", 25 * 60)]
+    [InlineData("gaming", -25 * 60)]
+    public void AStaleOrOtherPendingMarkerAppliesNothing(string profile, int minutesLater)
+    {
+        RunWith(new FirstSignInFile("gaming", "en", "System"));
+        Assert.False(Markers.TakePending(profile, Now.AddMinutes(minutesLater)));
+        Assert.False(Markers.TakePending("gaming", Now.AddMinutes(1)));
+    }
+
+    /// <summary>After the first sign-in has applied, a later --first-sign-in (a leftover setup folder, Windows Setup again) does nothing.</summary>
+    [Fact]
+    public void ALaterFirstSignInIsANoOp()
+    {
+        RunWith(new FirstSignInFile("gaming", "en", "System"));
+        Assert.True(Markers.TakePending("gaming", Now.AddMinutes(1)));
+        _started.Clear();
+        var installs = _installs;
+        _settings.Language = null;
+
+        Assert.Equal(FirstSignInOutcome.AlreadyDone, RunWith(new FirstSignInFile("office", "de", "Dark"), at: Now.AddDays(3)));
+        Assert.Equal(installs, _installs);
+        Assert.Empty(_started);
+        Assert.Null(_settings.Language);
+        Assert.False(Markers.TakePending("office", Now.AddDays(3)));
+    }
+
+    /// <summary>A newer Tunero already installed (an upgrade kept Program Files) is never replaced by the older copy from the media.</summary>
+    [Fact]
+    public void ANewerInstalledCopyIsKept()
+    {
+        var outcome = RunWith(new FirstSignInFile("gaming", "en", "System"), Steps(newerInstalled: Installed));
+        Assert.Equal(FirstSignInOutcome.KeptNewer, outcome);
+        Assert.Equal(0, _installs);
+        Assert.Empty(_undone);
+        var start = Assert.Single(_started);
+        Assert.Equal(Installed, start.FileName);
+        Assert.Equal([InstallService.InstalledFrom, Exe, FirstSignInStart.ApplySwitch, "gaming"], start.ArgumentList);
+    }
+
+    /// <summary>The setup folder of a kept newer copy goes too, although its exe differs from the installed one; the result says it is gone.</summary>
+    [Fact]
+    public void FinishRemovesAnOlderSetupExe()
+    {
+        var setup = Path.Combine(_folder, "Setup", "Tunero");
+        Directory.CreateDirectory(setup);
+        var old = Path.Combine(setup, AppInstall.ExeName);
+        File.WriteAllText(old, "older exe");
+        var installed = Path.Combine(_folder, "installed.exe");
+        File.WriteAllText(installed, "newer exe");
+
+        Assert.True(InstallService.RemoveOldCopy(old, installed, setup));
+        Assert.False(Directory.Exists(setup));
+        Assert.True(File.Exists(installed));
     }
 
     /// <summary>The installed copy's first start removes the setup folder (here a temp stand-in) with the downloaded exe and its file.</summary>

@@ -20,6 +20,9 @@ public sealed partial class MainViewModel
 
     private System.Windows.Threading.DispatcherTimer? _resultTimer;
 
+    /// <summary>A result that stays until it is closed, whatever its severity (the first sign-in's, <see cref="FirstSignInApplyAsync"/>).</summary>
+    private string? _stickyResult;
+
     /// <summary>Shows the result of an action at the bottom; it closes by itself after long enough to read it.</summary>
     [ObservableProperty] private InfoBarSeverity _resultSeverity = InfoBarSeverity.Informational;
 
@@ -44,8 +47,8 @@ public sealed partial class MainViewModel
             };
         }
         _resultTimer.Stop();
-        // Errors and warnings stay until closed: they must not disappear before they are read.
-        if (!ResultOpen || severity is InfoBarSeverity.Error or InfoBarSeverity.Warning) return;
+        // Errors and warnings stay until closed: they must not disappear before they are read. So does the first sign-in's result.
+        if (!ResultOpen || severity is InfoBarSeverity.Error or InfoBarSeverity.Warning || text == _stickyResult) return;
         _resultTimer.Interval = TimeSpan.FromSeconds(Math.Clamp(5 + text.Length / 15.0, 8, 20));
         _resultTimer.Start();
     }
