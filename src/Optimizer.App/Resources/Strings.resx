@@ -1695,9 +1695,9 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Media_ProfileNeedsRelease" xml:space="preserve"><value>Only the released Tunero.exe can be copied onto the ISO. This copy is a development build.</value></data>
   <data name="Media_UnsupportedTitle" xml:space="preserve"><value>Allow unsupported PCs</value></data>
   <data name="Media_PreviewTag" xml:space="preserve"><value>Preview</value></data>
-  <data name="Media_UnsupportedText" xml:space="preserve"><value>Windows Setup skips its checks for TPM 2.0, Secure Boot, the processor and memory. Microsoft does not support Windows 11 on such PCs and says they are not guaranteed to get updates, security updates included. These values are not documented by Microsoft.</value></data>
+  <data name="Media_UnsupportedText" xml:space="preserve"><value>Windows Setup skips its checks for TPM 2.0, Secure Boot, the processor and memory: Tunero adds the values Setup reads for that to the answer file. Microsoft says a PC that does not meet the requirements will not receive support from Microsoft and is not guaranteed to get updates, security updates included. Microsoft does not document these values.</value></data>
   <data name="Media_UnsupportedSourceSupport" xml:space="preserve"><value>Microsoft: Windows 11 on devices that don't meet minimum system requirements</value></data>
-  <data name="Media_UnsupportedSourceSpecs" xml:space="preserve"><value>Microsoft: Windows 11 specifications</value></data>
+  <data name="Media_UnsupportedSourceSpecs" xml:space="preserve"><value>Microsoft: Windows 11 specifications and system requirements</value></data>
   <data name="Media_BuildTitle" xml:space="preserve"><value>Build</value></data>
   <data name="Media_Output" xml:space="preserve"><value>ISO file</value></data>
   <data name="Media_PickOutput" xml:space="preserve"><value>Change</value></data>
