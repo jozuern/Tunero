@@ -165,6 +165,12 @@ public sealed class PackageUpdatesTests
 
         _codes["choco.exe"] = 1;
         Assert.Null(await Updates().ChocolateyOutdatedAsync(Choco()));
+
+        // Without a connection to its source choco exits with 0 and lists the installed versions as the newest: could not check.
+        _printed["choco.exe"] = ["Unable to load the service index for source https://community.chocolatey.org/api/v2/ ... Unable to connect to source",
+            "chocolatey|2.7.4|2.7.4|false", "jq|1.8.2|1.8.2|false"];
+        _codes["choco.exe"] = 0;
+        Assert.Null(await Updates().ChocolateyOutdatedAsync(Choco()));
         await Assert.ThrowsAsync<InvalidOperationException>(() => Updates().ChocolateyOutdatedAsync(Choco(ManagerRun.NotRun)));
     }
 

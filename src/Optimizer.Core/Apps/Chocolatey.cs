@@ -72,8 +72,22 @@ public static class Chocolatey
     public static bool IsSuccess(int exitCode) => exitCode is 0 or 2 or 1641 or 3010;
 
     /// <summary>
+    /// What choco outdated found: the packages, or null when Chocolatey could not check. That is a run that failed, and also
+    /// one that could not reach its source: choco then still lists every package with the installed version as the newest
+    /// and exits with 0 (2.7.4 with the network off, PCO-Test 2026-10-19).
+    /// </summary>
+    public static IReadOnlyList<ChocolateyOutdated>? OutdatedResult(int exitCode, string output) =>
+        IsSuccess(exitCode) && !CouldNotReachSource(output) ? ParseOutdated(output) : null;
+
+    /// <summary>Chocolatey's messages when a package source does not answer.</summary>
+    private static bool CouldNotReachSource(string output) =>
+        output.Contains("Unable to connect to source", StringComparison.OrdinalIgnoreCase) ||
+        output.Contains("Unable to load the service index", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
     /// The lines of choco outdated --limit-output that are packages. Pinned packages, ids that are not safe to pass on and
-    /// Tunero itself (updated through Update now) are left out, and so is everything else Chocolatey prints.
+    /// Tunero itself (updated through Update now) are left out, and so are lines whose newest version is the installed one
+    /// and everything else Chocolatey prints.
     /// </summary>
     public static IReadOnlyList<ChocolateyOutdated> ParseOutdated(string output)
     {
@@ -82,8 +96,9 @@ public static class Chocolatey
         {
             var parts = raw.Trim().Split('|');
             if (parts.Length != 4 || !IsSafeId(parts[0]) || IsTunero(parts[0]) || parts[3].Trim().Equals("true", StringComparison.OrdinalIgnoreCase)) continue;
-            if (parts[1].Length == 0 || parts[2].Length == 0) continue;
-            list.Add(new ChocolateyOutdated(parts[0], parts[1].Trim(), parts[2].Trim()));
+            var (current, available) = (parts[1].Trim(), parts[2].Trim());
+            if (current.Length == 0 || available.Length == 0 || current == available) continue;
+            list.Add(new ChocolateyOutdated(parts[0], current, available));
         }
         return list;
     }

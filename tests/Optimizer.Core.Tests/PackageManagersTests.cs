@@ -360,6 +360,41 @@ public sealed class PackageManagersTests : IDisposable
         Assert.Equal(("2.47.0", "2.47.1"), (list[0].Current, list[0].Available));
     }
 
+    /// <summary>A line whose newest version is the installed one is no update (choco prints such lines without a source).</summary>
+    [Fact]
+    public void ChocolateyLinesWithoutANewerVersionAreNoUpdates()
+    {
+        const string output = """
+            git|2.47.0|2.47.0|false
+            jq| 1.7 |1.7|false
+            curl|8.10.0|8.11.0|false
+            """;
+        Assert.Equal(["curl"], Chocolatey.ParseOutdated(output).Select(p => p.Id));
+    }
+
+    /// <summary>
+    /// choco outdated with the network off (PCO-Test, 2.7.4): it cannot reach its source, still lists every package with
+    /// its own version as the newest, and exits with 0. That is a check that failed, not an empty list.
+    /// </summary>
+    [Fact]
+    public void ChocolateyWithoutItsSourceCouldNotCheck()
+    {
+        const string offline = """
+            Unable to load the service index for source https://community.chocolatey.org/api/v2/ ... Unable to connect to source
+            chocolatey|2.7.4|2.7.4|false
+            jq|1.8.2|1.8.2|false
+            """;
+        Assert.Empty(Chocolatey.ParseOutdated(offline));
+        Assert.Null(Chocolatey.OutdatedResult(0, offline));
+        Assert.Null(Chocolatey.OutdatedResult(0, "Unable to load the service index for source https://community.chocolatey.org/api/v2/\ngit|2.47.0|2.47.1|false"));
+        Assert.Null(Chocolatey.OutdatedResult(2, "Unable to connect to source https://community.chocolatey.org/api/v2/\ngit|2.47.0|2.47.1|false"));
+
+        // A run that reached its source: its list; a failed run: null as before.
+        Assert.Equal(["git"], Chocolatey.OutdatedResult(2, "Chocolatey v2.7.4\ngit|2.47.0|2.47.1|false\njq|1.8.2|1.8.2|false")!.Select(p => p.Id));
+        Assert.Empty(Chocolatey.OutdatedResult(0, "chocolatey|2.7.4|2.7.4|false")!);
+        Assert.Null(Chocolatey.OutdatedResult(1, "git|2.47.0|2.47.1|false"));
+    }
+
     [Theory]
     [InlineData("jq", true)]
     [InlineData("7zip.install", true)]

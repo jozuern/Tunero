@@ -77,8 +77,8 @@ public sealed class PackageUpdates(Launch launch, ElevationInfo? elevation)
     }
 
     /// <summary>
-    /// choco outdated from the checked folder: the packages with a newer version, or null when Chocolatey failed (no
-    /// connection to its source, for example). Contacts the package sources; started by the user only. After
+    /// choco outdated from the checked folder: the packages with a newer version, or null when Chocolatey failed or could
+    /// not reach its source (<see cref="Chocolatey.OutdatedResult"/>). Contacts the package sources; started by the user only. After
     /// <see cref="OutdatedTimeout"/> Chocolatey is ended and a <see cref="TimeoutException"/> follows (a read: ending it
     /// changes nothing).
     /// </summary>
@@ -96,7 +96,7 @@ public sealed class PackageUpdates(Launch launch, ElevationInfo? elevation)
         {
             throw new TimeoutException($"choco outdated did not end within {OutdatedTimeout.TotalSeconds:0} s");
         }
-        return Chocolatey.IsSuccess(code) ? Chocolatey.ParseOutdated(output.Text) : null;
+        return Chocolatey.OutdatedResult(code, output.Text);
     }
 
     /// <summary>choco upgrade for one package of the update list; returns Chocolatey's exit code.</summary>
