@@ -38,6 +38,8 @@ public static class CommandLineApply
     public const int UnknownProfile = 9;
     /// <summary>--include names a part the export does not have.</summary>
     public const int UnknownSection = 10;
+    /// <summary>--build-media: the catalog or the build failed (<see cref="CommandLineMedia"/>; stage and reason in the log).</summary>
+    public const int MediaBuildFailed = 11;
 
     /// <summary>The names --include takes, in the order of the Changes page.</summary>
     public static readonly IReadOnlyList<string> Sections = ["apps", "services", "startup"];

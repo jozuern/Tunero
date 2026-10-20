@@ -73,9 +73,7 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
         ServicesPage = new ServicesViewModel(this, services, Runner);
         Apps = new AppsViewModel(this, services, dialogs);
         Tools = new ToolsViewModel(this, services, Runner, dialogs);
-        InstallMedia = new InstallMediaViewModel(this, dialogs,
-            new Optimizer.Core.Media.MediaCatalogSource(new Optimizer.Core.Media.MediaSteps(), services.Context.Processes, System.IO.Path.GetPathRoot(Environment.SystemDirectory)!),
-            (request, progress, ct) => new Optimizer.Core.Media.MediaBuild(new Optimizer.Core.Media.MediaSteps()).RunAsync(request, progress, ct),
+        InstallMedia = new InstallMediaViewModel(this, dialogs, InstallMediaSystem.CatalogSource(services), InstallMediaSystem.BuildAsync,
             InstallMediaSystem.ForThisPc(services, () => _usage.Id, () => _settings.Theme, path => ShowInExplorerCommand.Execute(path), Install.IsPublishedExe),
             InstallMediaSystem.CleanLeftoversAsync);
         Health = new HealthViewModel(this, dialogs, exe =>

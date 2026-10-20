@@ -22,7 +22,7 @@ public static class Program
 #pragma warning disable IL3000
         var bundle = string.IsNullOrEmpty(typeof(Program).Assembly.Location);
 #pragma warning restore IL3000
-        // Command line runs (--apply, --apply-recommended, --export, --reapply, --undo-all, --first-sign-in) have no window: a
+        // Command line runs (--apply, --apply-recommended, --export, --reapply, --undo-all, --first-sign-in, --build-media) have no window: a
         // refusal is an exit code, never a dialog a script (or the first sign-in before the desktop) waits on.
         // The same rule as the start that follows (App.CliArgs): "--apply" without a file opens the window in both.
         var commandLineRun = new App.CliArgs(args).IsCommandLineRun;
@@ -117,7 +117,8 @@ public static class Program
 
     /// <summary>
     /// This process holds the single-instance lock: it is the one window of this session. Only that one cleans up after
-    /// earlier install media builds at start (a second process or a command line run never does).
+    /// earlier install media builds at start (a second process never does; --build-media takes the lock for its cleanup
+    /// alone, so it cleans only while no window of this session runs).
     /// </summary>
     public static bool HoldsInstanceLock { get; private set; }
 

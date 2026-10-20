@@ -202,12 +202,14 @@ public partial class App : Application
             return;
         }
 
-        // Changes without the window (CommandLineApply): apply an exported changes file, or undo everything.
+        // Changes without the window (CommandLineApply): apply an exported changes file, or undo everything. And the
+        // developer switch --build-media (CommandLineMedia): an install media ISO from a request file, for the VM tests.
         if (args.IsCommandLineRun)
         {
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
             var log = args.Value("--log");
-            Shutdown(args.Value("--apply") is { } changes ? await CommandLineApply.ApplyAsync(changes, services, log, args.Has("--no-restore-point"))
+            Shutdown(args.Value(CommandLineMedia.Switch) is { } mediaRequest ? await CommandLineMedia.BuildAsync(mediaRequest, log, MediaCommandLineSystem.ForThisPc(services, _settings.Theme))
+                : args.Value("--apply") is { } changes ? await CommandLineApply.ApplyAsync(changes, services, log, args.Has("--no-restore-point"))
                 : args.Has("--apply-recommended") ? await CommandLineApply.ApplyRecommendedAsync(services, args.Value("--profile"), _settings.Profile, _settings.IgnoredFindings, log, args.Has("--no-restore-point"))
                 : args.Value("--export") is { } exportPath ? await CommandLineApply.ExportAsync(exportPath, services, log, args.Value("--include"))
                 : args.Has(Optimizer.Core.Tweaks.ReapplyTask.Argument) ? await CommandLineApply.ReapplyAsync(services, log)
@@ -889,10 +891,10 @@ public partial class App : Application
         public bool Has(string name) => args.Any(a => string.Equals(a, name, StringComparison.OrdinalIgnoreCase));
 
         /// <summary>
-        /// --apply &lt;file&gt;, --apply-recommended, --export &lt;file&gt;, --reapply, --undo-all or --first-sign-in: no window, the
-        /// result is the exit code (and the --log file).
+        /// --apply &lt;file&gt;, --apply-recommended, --export &lt;file&gt;, --reapply, --undo-all, --first-sign-in or
+        /// --build-media &lt;file&gt;: no window, the result is the exit code (and the --log file).
         /// </summary>
         public bool IsCommandLineRun => Value("--apply") is not null || Has("--apply-recommended") || Value("--export") is not null || Has(Optimizer.Core.Tweaks.ReapplyTask.Argument) || Has("--undo-all")
-            || Has(Optimizer.Core.Media.FirstSignIn.Switch);
+            || Has(Optimizer.Core.Media.FirstSignIn.Switch) || Value(CommandLineMedia.Switch) is not null;
     }
 }

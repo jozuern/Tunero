@@ -415,7 +415,7 @@ These tweaks use values Microsoft does not document and stay previews until a te
 
 ## 7. Windows install media
 
-Build the ISOs in PCO-Test with the published exe (`--screenshot` cannot drive a build: run the exe through a scheduled task while the owner is signed in on the console) and install each one in a new throwaway VM, never in PCO-Test itself; delete the throwaway VMs afterwards. Every installed VM gets the health check below, and each result goes into its row with the date and build.
+Build the ISOs in PCO-Test with the published exe: `Tunero.exe --build-media <request.json> --log <file>` in the elevated PowerShell Direct session builds from a request file with the page's own mapping of choices (format in CONTRIBUTING, developer switches); build at least one ISO through the page itself (`--screenshot` cannot drive a build: run the exe through a scheduled task while the owner is signed in on the console). Install each ISO in a new throwaway VM, never in PCO-Test itself; delete the throwaway VMs afterwards. Every installed VM gets the health check below, and each result goes into its row with the date and build.
 
 | Test | Expected | Result |
 |---|---|---|

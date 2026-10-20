@@ -78,6 +78,14 @@ public sealed record InstallMediaSystem
         ShowInExplorer = showInExplorer,
     };
 
+    /// <summary>Microsoft's catalog as the page reads it: work folder on the Windows drive, expand.exe through the app's runner.</summary>
+    public static IMediaCatalogSource CatalogSource(AppServices services) =>
+        new MediaCatalogSource(new MediaSteps(), services.Context.Processes, Path.GetPathRoot(Environment.SystemDirectory)!);
+
+    /// <summary>The real build (<see cref="MediaBuild.RunAsync"/>), with its own steps and log for each build.</summary>
+    public static Task<string> BuildAsync(MediaRequest request, IProgress<MediaProgress> progress, CancellationToken ct) =>
+        new MediaBuild(new MediaSteps()).RunAsync(request, progress, ct);
+
     /// <summary>
     /// The real cleanup after earlier builds (<see cref="MediaBuild.CleanLeftoversAsync"/>). Without a work folder at a
     /// drive root no build left anything (its mounted image lies inside one), so a start without leftovers runs no DISM.
@@ -150,8 +158,8 @@ public sealed partial class MediaAppGroup : ObservableObject
 /// </summary>
 public sealed partial class InstallMediaViewModel : PageViewModel
 {
-    private const string Architecture = "amd64";
-    private const string CatalogArchitecture = "x64";
+    private const string Architecture = MediaChoices.Architecture;
+    private const string CatalogArchitecture = MediaChoices.CatalogArchitecture;
     private const int FirstWindows11Build = 22000;
     private static readonly string[] GroupOrder = ["consumer", "microsoft", "xbox", "media", "legacy", "thirdParty", "oem"];
 
@@ -552,12 +560,12 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         // The ticks survive a language switch.
         var ticked = AppGroups.Count > 0 ? AppRows.Where(r => r.IsChecked).Select(r => r.Entry.Name).ToHashSet(StringComparer.OrdinalIgnoreCase) : null;
         var appx = CatalogData.Current.Appx;
-        AppGroups = appx.Apps.Where(a => !appx.IsProtected(a.Name))
+        AppGroups = MediaChoices.OfferedApps(appx)
             .GroupBy(a => a.Group)
             .OrderBy(g => Array.IndexOf(GroupOrder, g.Key) is var i and >= 0 ? i : GroupOrder.Length)
             .Select(g => new MediaAppGroup(g.Key, Labels.Current.Get(lang, $"debloatGroup.{g.Key}"),
                 g.OrderBy(a => a.Label(lang), StringComparer.CurrentCulture)
-                 .Select(a => new MediaAppRow(a, lang, ticked?.Contains(a.Name) ?? a.Group == "consumer")).ToList()))
+                 .Select(a => new MediaAppRow(a, lang, ticked?.Contains(a.Name) ?? MediaChoices.ChosenByDefault(a))).ToList()))
             .ToList();
         foreach (var row in AppRows) row.PropertyChanged += (_, _) => OnPropertyChanged(nameof(AppsSummary));
         OnPropertyChanged(nameof(AppRows));
@@ -604,7 +612,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         edition is not null && MediaCatalog.OfferedEditions.Contains(edition) ? Loc.Instance[$"Media_Edition_{edition}"] : fallback;
 
     /// <summary>The app language's Windows language: de-de for German, en-us otherwise.</summary>
-    private string DefaultLanguage => Lang == "de" ? "de-de" : "en-us";
+    private string DefaultLanguage => MediaChoices.WindowsLanguage(Lang);
 
     private void ShowCatalog()
     {
@@ -626,20 +634,6 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         try
         {
             return new CultureInfo(code).DisplayName;
-        }
-        catch (CultureNotFoundException)
-        {
-            return fallback;
-        }
-    }
-
-    /// <summary>A language tag as Windows writes it ("de-DE"), or <paramref name="fallback"/> for one .NET does not know.</summary>
-    private static string CultureName(string? code, string fallback)
-    {
-        if (code is null) return fallback;
-        try
-        {
-            return new CultureInfo(code).Name;
         }
         catch (CultureNotFoundException)
         {
@@ -818,23 +812,21 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         if (ResultLogPath is { } log) _system.ShowInExplorer(log);
     }
 
-    /// <summary>The request from the page's choices; null when they do not make one (Build is off then).</summary>
+    /// <summary>
+    /// The request from the page's choices (the mapping --build-media shares, <see cref="MediaChoices.ToRequest"/>); null
+    /// when they do not make one (Build is off then).
+    /// </summary>
     private MediaRequest? Request()
     {
         if (Problem() is not null || Source() is not { } source) return null;
-        var region = Region?.Key ?? "en-US";
         var image = UseDownload ? null : SelectedImage();
-        // Setup's language: the download's, or the one the own ISO's image names (the build checks it with DISM).
-        var uiLanguage = source.Download is { } esd
-            ? CultureName(esd.LanguageCode, "en-US")
-            : CultureName(image?.DefaultLanguage ?? image?.Languages.FirstOrDefault(), CultureName(DefaultLanguage, "en-US"));
-        var tunero = ApplyProfile && CanApplyProfile;
-        var answers = new AnswerChoices(Architecture, uiLanguage, Keyboard?.Key ?? "0409:00000409", MediaLocales.SystemLocale(region), region,
-            SkipSetup ? AccountNameText.Trim() : null, SkipSetup, AllowUnsupported, tunero);
-        var apps = RemoveApps ? AppRows.Where(r => r.IsChecked).Select(r => r.Entry.Name).ToList() : [];
-        var first = tunero ? new FirstSignInFile(Profile?.Key ?? _system.ProfileId(), Lang, _system.Theme()) : null;
-        var edition = image is not null ? image.Edition ?? image.Name : Edition!.Key;
-        return new MediaRequest(source, edition, image?.Index, apps, answers, tunero ? _system.ExePath : null, first, OutputPath!);
+        var tunero = ApplyProfile && CanApplyProfile && _system.ExePath is { } exe
+            ? new TuneroCopy(exe, Profile?.Key ?? _system.ProfileId(), _system.Theme())
+            : null;
+        return new MediaChoices(source, image is not null ? image.Edition ?? image.Name : Edition!.Key, image?.Index,
+            image?.DefaultLanguage ?? image?.Languages.FirstOrDefault(), Lang,
+            RemoveApps ? AppRows.Where(r => r.IsChecked).Select(r => r.Entry.Name).ToList() : [],
+            SkipSetup, AccountNameText, Region?.Key, Keyboard?.Key, AllowUnsupported, tunero, OutputPath!).ToRequest();
     }
 
     [RelayCommand(CanExecute = nameof(CanBuild))]
