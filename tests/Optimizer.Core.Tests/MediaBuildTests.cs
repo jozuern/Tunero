@@ -1137,17 +1137,6 @@ public sealed class MediaBuildTests : IDisposable
         Assert.Equal(@"Waiting for DISM to finish with D:\TuneroMedia.0000ffff", Assert.Single(_steps.LogLines, l => l.StartsWith("Waiting", StringComparison.Ordinal)));
     }
 
-    /// <summary>A work folder that only DISM names (it is not at a drive root the cleanup looks at, or is not listed yet) counts too.</summary>
-    [Fact]
-    public async Task LeftoverCleanupWaitsForDismInAnyWorkFolder()
-    {
-        _steps.DismRunning.Add(@"C:\Windows\System32\Dism.exe /Unmount-Image /MountDir:e:\tuneromedia.82FFEBCC\boot /Discard");
-        _steps.DismEndsAfterLooks = 2;
-        await Build().CleanLeftoversAsync(CancellationToken.None);
-        Assert.Equal(["DISM ended", "MountedDirs"], _steps.Calls);
-        Assert.Contains(@"Waiting for DISM to finish with e:\tuneromedia.82FFEBCC", _steps.LogLines);
-    }
-
     /// <summary>DISM for other folders, and DISM of a build that still runs (its lock is held), is not waited for.</summary>
     [Fact]
     public async Task DismForAnotherFolderIsNotWaitedFor()
@@ -1186,6 +1175,25 @@ public sealed class MediaBuildTests : IDisposable
         Assert.Equal([@"D:\TuneroMedia.0000eeee"], _steps.DeletedFolders);
         Assert.Contains(_steps.LogLines, l => l.StartsWith(@"D:\TuneroMedia.0000ffff left alone: DISM still works in it", StringComparison.Ordinal));
         Assert.Equal([@"D:\TuneroMedia.0000ffff\mount"], _steps.Dism.Mounted);
+    }
+
+    /// <summary>
+    /// A dism.exe runs but its command line cannot be read (WMI fails): it may be mounting into a leftover, so this start
+    /// leaves every leftover alone, with one line; the next start tries again.
+    /// </summary>
+    [Fact]
+    public async Task UnreadableDismLeavesEveryLeftoverAlone()
+    {
+        _steps.Drives.Add(@"D:\");
+        _steps.Leftovers[@"D:\"] = [@"D:\TuneroMedia.0000ffff", @"D:\TuneroMedia.0000eeee"];
+        _steps.Dism.Mounted.Add(@"D:\TuneroMedia.0000ffff\mount");
+        _steps.DismUnreadable = true;
+        await Build().CleanLeftoversAsync(CancellationToken.None);
+        Assert.Empty(_steps.Calls);
+        Assert.Empty(_steps.DeletedFolders);
+        Assert.Empty(_steps.Dism.Unmounted);
+        Assert.Equal(@"Left alone: D:\TuneroMedia.0000ffff, D:\TuneroMedia.0000eeee (DISM runs, but its command line cannot be read; the next start tries again)",
+            Assert.Single(_steps.LogLines));
     }
 
     /// <summary>Stop (closing the app) while the cleanup waits for DISM ends it quietly: nothing is discarded or deleted.</summary>
@@ -1628,9 +1636,13 @@ internal sealed class FakeMediaSteps : IMediaSteps
     public Action? DismLooked { get; set; }
     public int DismLooks { get; private set; }
 
-    public IReadOnlyList<string> DismCommandLines()
+    /// <summary>A dism.exe runs whose command line cannot be read.</summary>
+    public bool DismUnreadable { get; set; }
+
+    public IReadOnlyList<string>? DismCommandLines()
     {
         DismLooks++;
+        if (DismUnreadable) return null;
         DismLooked?.Invoke();
         if (DismRunning.Count > 0 && DismEndsAfterLooks >= 0 && DismLooks >= DismEndsAfterLooks)
         {

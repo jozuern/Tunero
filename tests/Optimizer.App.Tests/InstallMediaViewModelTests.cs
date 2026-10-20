@@ -396,6 +396,73 @@ public sealed class InstallMediaViewModelTests : IDisposable
     }
 
     /// <summary>
+    /// The real cleanup at the app start polls DISM through WMI for up to 15 minutes and deletes gigabytes: none of it may run
+    /// on the window's thread. A context that never runs what is posted to it stands in for a busy dispatcher: the cleanup
+    /// must get to DISM without it.
+    /// </summary>
+    [Fact]
+    public async Task TheStartupCleanupRunsOffTheCallingThread()
+    {
+        var steps = new LeftoverSteps();
+        var window = new NeverRuns();
+        var previous = SynchronizationContext.Current;
+        Task cleaning;
+        SynchronizationContext.SetSynchronizationContext(window);
+        try
+        {
+            cleaning = InstallMediaSystem.CleanLeftoversAsync(steps, CancellationToken.None);
+        }
+        finally
+        {
+            SynchronizationContext.SetSynchronizationContext(previous);
+        }
+        var context = await steps.DismAskedOn.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.NotSame(window, context);
+        Assert.NotEqual(Environment.CurrentManagedThreadId, steps.DismThread);
+        await cleaning.WaitAsync(TimeSpan.FromSeconds(10));
+    }
+
+    private sealed class NeverRuns : SynchronizationContext
+    {
+        public override void Post(SendOrPostCallback d, object? state)
+        {
+        }
+
+        public override void Send(SendOrPostCallback d, object? state) => throw new NotSupportedException();
+    }
+
+    /// <summary>One leftover work folder and a DISM whose command line cannot be read: the cleanup then stops there, touching nothing.</summary>
+    private sealed class LeftoverSteps : IMediaSteps
+    {
+        public TaskCompletionSource<SynchronizationContext?> DismAskedOn { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public int DismThread { get; private set; }
+
+        public IReadOnlyList<string>? DismCommandLines()
+        {
+            DismThread = Environment.CurrentManagedThreadId;
+            DismAskedOn.TrySetResult(SynchronizationContext.Current);
+            return null;
+        }
+
+        public IEnumerable<string> LocalDrives() => [@"X:\"];
+        public IEnumerable<string> LeftoverWorkFolders(string drive) => [@"X:\TuneroMedia.0000ffff"];
+        public void Log(string line)
+        {
+        }
+
+        public string LogPath => "";
+        public IDism Dism => throw new NotSupportedException();
+        public IIsoWriter IsoWriter => throw new NotSupportedException();
+        public IIsoReader IsoReader => throw new NotSupportedException();
+        public Task DownloadAsync(EsdFile file, string target, IProgress<(long Done, long Total)>? p, CancellationToken ct) => throw new NotSupportedException();
+        public WorkFolder NewWorkFolder(string outputIso) => throw new NotSupportedException();
+        public void DeleteWorkFolder(string folder) => throw new NotSupportedException();
+        public long FreeBytes(string path) => throw new NotSupportedException();
+        public IOfflineHive LoadSystemHive(string file) => throw new NotSupportedException();
+        public void UnloadLeftoverHives() => throw new NotSupportedException();
+    }
+
+    /// <summary>
     /// The cleanup can wait minutes for a DISM a killed build left running: meanwhile the banner says it cleans up, and Stop
     /// ends the build at once (the cleanup goes on by itself).
     /// </summary>

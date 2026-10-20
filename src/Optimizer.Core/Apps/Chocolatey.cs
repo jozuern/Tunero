@@ -73,11 +73,16 @@ public static class Chocolatey
 
     /// <summary>
     /// What choco outdated found: the packages, or null when Chocolatey could not check. That is a run that failed, and also
-    /// one that could not reach its source: choco then still lists every package with the installed version as the newest
-    /// and exits with 0 (2.7.4 with the network off, PCO-Test 2026-10-19).
+    /// one that could not reach a source and found no update: choco then still lists every package with the installed
+    /// version as the newest and exits with 0 (2.7.4 with the network off, PCO-Test 2026-10-19). Updates another source
+    /// found are shown even when one source did not answer.
     /// </summary>
-    public static IReadOnlyList<ChocolateyOutdated>? OutdatedResult(int exitCode, string output) =>
-        IsSuccess(exitCode) && !CouldNotReachSource(output) ? ParseOutdated(output) : null;
+    public static IReadOnlyList<ChocolateyOutdated>? OutdatedResult(int exitCode, string output)
+    {
+        if (!IsSuccess(exitCode)) return null;
+        var list = ParseOutdated(output);
+        return list.Count == 0 && CouldNotReachSource(output) ? null : list;
+    }
 
     /// <summary>Chocolatey's messages when a package source does not answer.</summary>
     private static bool CouldNotReachSource(string output) =>

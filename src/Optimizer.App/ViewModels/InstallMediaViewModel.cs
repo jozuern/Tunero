@@ -89,13 +89,16 @@ public sealed record InstallMediaSystem
     /// <summary>
     /// The real cleanup after earlier builds (<see cref="MediaBuild.CleanLeftoversAsync"/>). Without a work folder at a
     /// drive root no build left anything (its mounted image lies inside one), so a start without leftovers runs no DISM.
+    /// It runs on the thread pool, never on the window's thread: it may poll DISM through WMI for minutes (waiting for a
+    /// DISM a killed build left running) and deletes gigabytes, and Core's awaits would come back to the dispatcher.
     /// </summary>
-    public static async Task CleanLeftoversAsync(CancellationToken ct)
+    public static Task CleanLeftoversAsync(CancellationToken ct) => CleanLeftoversAsync(new MediaSteps(), ct);
+
+    internal static Task CleanLeftoversAsync(IMediaSteps steps, CancellationToken ct) => Task.Run(async () =>
     {
-        var steps = new MediaSteps();
-        if (!await Task.Run(() => steps.LocalDrives().Any(d => steps.LeftoverWorkFolders(d).Any()), ct)) return;
+        if (!steps.LocalDrives().Any(d => steps.LeftoverWorkFolders(d).Any())) return;
         await new MediaBuild(steps).CleanLeftoversAsync(ct);
-    }
+    }, ct);
 
     private static long? FreeBytesOf(string path)
     {

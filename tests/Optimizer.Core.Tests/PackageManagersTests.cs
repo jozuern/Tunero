@@ -386,8 +386,11 @@ public sealed class PackageManagersTests : IDisposable
             """;
         Assert.Empty(Chocolatey.ParseOutdated(offline));
         Assert.Null(Chocolatey.OutdatedResult(0, offline));
-        Assert.Null(Chocolatey.OutdatedResult(0, "Unable to load the service index for source https://community.chocolatey.org/api/v2/\ngit|2.47.0|2.47.1|false"));
-        Assert.Null(Chocolatey.OutdatedResult(2, "Unable to connect to source https://community.chocolatey.org/api/v2/\ngit|2.47.0|2.47.1|false"));
+        Assert.Null(Chocolatey.OutdatedResult(2, "Unable to connect to source https://example.invalid/\njq|1.8.2|1.8.2|false"));
+
+        // One source that does not answer (a dead extra one) must not hide the updates another source found.
+        var partly = Chocolatey.OutdatedResult(0, offline + "\ngit|2.40.0|2.41.0|false");
+        Assert.Equal(("git", "2.40.0", "2.41.0"), Assert.Single(partly!) is var p ? (p.Id, p.Current, p.Available) : default);
 
         // A run that reached its source: its list; a failed run: null as before.
         Assert.Equal(["git"], Chocolatey.OutdatedResult(2, "Chocolatey v2.7.4\ngit|2.47.0|2.47.1|false\njq|1.8.2|1.8.2|false")!.Select(p => p.Id));
