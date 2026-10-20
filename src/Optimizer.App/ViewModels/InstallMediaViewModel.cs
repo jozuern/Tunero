@@ -379,7 +379,24 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     }
 
     /// <summary>Why Build is off (the first choice that is missing or wrong), or null when it can start.</summary>
-    public string? BuildNote => Problem() is { } key ? Loc.Instance[key] : null;
+    public string? BuildNote => Problem() is { } key ? Loc.Instance[key] : IsCleaning ? Loc.Instance["Media_CleanupRunning"] : null;
+
+    /// <summary>The start cleanup of earlier builds is still running (a build waits for it).</summary>
+    private bool IsCleaning => _cleanup is { IsCompleted: false };
+
+    /// <summary>The page was shown: the free space may have changed since (one drive query).</summary>
+    public void PageShown()
+    {
+        if (WasLoaded) RefreshBuild();
+    }
+
+    private void RefreshBuild()
+    {
+        OnPropertyChanged(nameof(NeededText));
+        OnPropertyChanged(nameof(BuildNote));
+        OnPropertyChanged(nameof(CanBuild));
+        BuildCommand.NotifyCanExecuteChanged();
+    }
 
     public bool CanBuild => Problem() is null;
 
@@ -443,7 +460,9 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         if (Path.IsPathFullyQualified(output) && !MediaChoices.IsLocalOutput(output)) return "Media_OutputNotLocal";
         if (!ValidOutput(output)) return "Media_OutputInvalid";
         if (!UseDownload && IsoPath is { } source && SamePath(source, output)) return "Media_OutputInvalid";
-        if (Needed() is { } needed && _system.FreeBytes(output) is { } free && free < needed) return "Media_NotEnoughSpace";
+        // While the start cleanup runs, a leftover may hold the space it is about to free; the build waits for the cleanup and
+        // checks the space again (MediaBuild.CheckOutputAndSpace) before it writes anything.
+        if (!IsCleaning && Needed() is { } needed && _system.FreeBytes(output) is { } free && free < needed) return "Media_NotEnoughSpace";
         return null;
     }
 
@@ -995,7 +1014,16 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     public Task CleanLeftoversAsync()
     {
         if (IsBuilding || _cleanLeftovers is null) return Task.CompletedTask;
-        return _cleanup = Clean(_cleanLeftovers);
+        var cleanup = _cleanup = Clean(_cleanLeftovers);
+        RefreshBuild();
+        return Finish(cleanup);
+
+        // Resumes on the window's thread (called from there): the free space and the note are read again.
+        async Task Finish(Task cleanup)
+        {
+            await cleanup;
+            RefreshBuild();
+        }
 
         static async Task Clean(Func<CancellationToken, Task> clean)
         {
@@ -1016,7 +1044,8 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     /// Developer aid: the sample catalog instead of Microsoft's, a sample own ISO, and a build that only shows its stages,
     /// then a sample failure and the next time a sample success. Nothing goes to the network, attaches or runs.
     /// <paramref name="show"/>, comma-separated: "fail" or "done" shows that result at once, "expand" unfolds the change
-    /// cards, "iso" chooses the sample own ISO, "umlaut" types an account name Setup cannot create (for screenshots).
+    /// cards, "iso" chooses the sample own ISO, "umlaut" types an account name Setup cannot create, "cleanup" shows the Build card while the start cleanup
+    /// runs (for screenshots).
     /// </summary>
     public void UseDemo(string? show)
     {
@@ -1039,6 +1068,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
             UseDownload = false;
             IsoPath = Path.Combine(Path.GetTempPath(), "Win11_26H2_German_x64.iso");
         }
+        if (shows.Contains("cleanup")) _cleanup = new TaskCompletionSource().Task;   // never ends: the card shows the running cleanup
         if (shows.Contains("fail")) ShowFailure(InstallMediaDemo.Failure(), window: false);
         else if (shows.Contains("done"))
         {

@@ -361,6 +361,82 @@ public sealed class InstallMediaViewModelTests : IDisposable
         Assert.Equal(Loc.Instance["Media_NotEnoughSpace"], media.BuildNote);
     }
 
+    /// <summary>
+    /// A leftover work folder holds the space the start cleanup is about to free, and the build checks the space again after
+    /// it waited for the cleanup: while the cleanup runs, too little free space does not keep Build off.
+    /// </summary>
+    [Fact]
+    public async Task WhileTheCleanupRunsLittleFreeSpaceDoesNotKeepBuildOff()
+    {
+        var free = 1L << 30;
+        var cleanup = new TaskCompletionSource();
+        var media = await WithCatalog(Media(system: System() with { FreeBytes = _ => free }, cleanup: _ => cleanup.Task));
+        Assert.Equal(Loc.Instance["Media_NotEnoughSpace"], media.BuildNote);
+        var cleaning = media.CleanLeftoversAsync();
+        Assert.True(media.CanBuild);
+        Assert.True(media.BuildCommand.CanExecute(null));
+        Assert.Equal(Loc.Instance["Media_CleanupRunning"], media.BuildNote);
+        cleanup.SetResult();
+        await cleaning;
+    }
+
+    [Fact]
+    public async Task WhenTheCleanupEndsWithLittleSpaceBuildTurnsOff()
+    {
+        var free = 1L << 30;
+        var cleanup = new TaskCompletionSource();
+        var media = await WithCatalog(Media(system: System() with { FreeBytes = _ => free }, cleanup: _ => cleanup.Task));
+        var cleaning = media.CleanLeftoversAsync();
+        var changed = new List<string?>();
+        var canExecute = 0;
+        media.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+        media.BuildCommand.CanExecuteChanged += (_, _) => canExecute++;
+        cleanup.SetResult();
+        await cleaning;
+        Assert.Contains(nameof(InstallMediaViewModel.CanBuild), changed);
+        Assert.Contains(nameof(InstallMediaViewModel.BuildNote), changed);
+        Assert.True(canExecute > 0);
+        Assert.False(media.CanBuild);
+        Assert.Equal(Loc.Instance["Media_NotEnoughSpace"], media.BuildNote);
+    }
+
+    [Fact]
+    public async Task WhenTheCleanupFreedTheSpaceBuildStaysOnWithoutANote()
+    {
+        var free = 1L << 30;
+        var cleanup = new TaskCompletionSource();
+        var media = await WithCatalog(Media(system: System() with { FreeBytes = _ => free }, cleanup: _ => cleanup.Task));
+        var cleaning = media.CleanLeftoversAsync();
+        free = long.MaxValue;
+        cleanup.SetResult();
+        await cleaning;
+        Assert.True(media.CanBuild);
+        Assert.Null(media.BuildNote);
+    }
+
+    [Fact]
+    public async Task AFailedCleanupAlsoEndsTheNote()
+    {
+        var media = await WithCatalog(Media(cleanup: _ => Task.FromException(new IOException("x"))));
+        await media.CleanLeftoversAsync();
+        Assert.Null(media.BuildNote);
+    }
+
+    [Fact]
+    public async Task ShowingThePageAgainReadsTheFreeSpaceAgain()
+    {
+        var free = 1L << 30;
+        var media = await WithCatalog(Media(system: System() with { FreeBytes = _ => free }));
+        Assert.False(media.CanBuild);
+        free = long.MaxValue;
+        var changed = new List<string?>();
+        media.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+        media.PageShown();
+        Assert.Contains(nameof(InstallMediaViewModel.BuildNote), changed);
+        Assert.Contains(nameof(InstallMediaViewModel.CanBuild), changed);
+        Assert.Contains(nameof(InstallMediaViewModel.NeededText), changed);
+    }
+
     [Fact]
     public async Task WithoutAdminRightsNothingIsBuilt()
     {

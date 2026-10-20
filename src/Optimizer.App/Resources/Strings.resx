@@ -1732,6 +1732,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Media_Stage_Iso" xml:space="preserve"><value>Writing the ISO</value></data>
   <data name="Media_Stage_Verify" xml:space="preserve"><value>Checking the ISO</value></data>
   <data name="Media_Stage_Cleanup" xml:space="preserve"><value>Cleaning up</value></data>
+  <data name="Media_CleanupRunning" xml:space="preserve"><value>Cleaning up earlier builds first. Build waits for it.</value></data>
   <data name="Media_OutputInvalid" xml:space="preserve"><value>Choose an .iso file in an existing folder; it cannot be the source ISO.</value></data>
   <data name="Media_OutputLink" xml:space="preserve"><value>The output folder or file points to another location (a link).</value></data>
   <data name="Media_OutputReadOnly" xml:space="preserve"><value>The existing file at the output path is read-only.</value></data>

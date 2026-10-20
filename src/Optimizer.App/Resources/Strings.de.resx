@@ -1732,6 +1732,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Media_Stage_Iso" xml:space="preserve"><value>ISO schreiben</value></data>
   <data name="Media_Stage_Verify" xml:space="preserve"><value>ISO prüfen</value></data>
   <data name="Media_Stage_Cleanup" xml:space="preserve"><value>Aufräumen</value></data>
+  <data name="Media_CleanupRunning" xml:space="preserve"><value>Reste früherer Builds werden zuerst aufgeräumt. Der Build wartet darauf.</value></data>
   <data name="Media_OutputInvalid" xml:space="preserve"><value>Wähle eine .iso-Datei in einem vorhandenen Ordner; sie darf nicht die Quell-ISO sein.</value></data>
   <data name="Media_OutputLink" xml:space="preserve"><value>Der Zielordner oder die Zieldatei verweist auf einen anderen Ort (ein Link).</value></data>
   <data name="Media_OutputReadOnly" xml:space="preserve"><value>Die vorhandene Datei am Zielpfad ist schreibgeschützt.</value></data>
