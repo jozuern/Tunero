@@ -438,7 +438,18 @@ public sealed class MediaBuildTests : IDisposable
         else _steps.OwnBootImages![1] = _steps.OwnBootImages[1] with { Files = pointer };
         await FailsAt(download ? Download() : OwnIso(), MediaStage.Files, "Media_BootImageAnswerFile");
         // The hive is unloaded before the image is discarded.
-        Assert.Equal(["Mount boot.wim 2", "LoadHive", "UnloadHive", "Unmount discard", "DeleteWorkFolder"], _steps.Calls.SkipWhile(c => c != "Mount boot.wim 2"));
+        Assert.Equal(["Mount boot.wim 2", "LoadHive", "UnloadHive", "UnloadLeftoverHives", "Unmount discard", "DeleteWorkFolder"], _steps.Calls.SkipWhile(c => c != "Mount boot.wim 2"));
+        AssertCleanedUp();
+    }
+
+    /// <summary>A hive whose own unload gave up holds a file of the mounted image: the cleanup unloads it before the discard.</summary>
+    [Fact]
+    public async Task HiveLeftLoadedByTheBuildIsUnloadedBeforeTheDiscard()
+    {
+        _steps.HiveUnloadGivesUp = true;
+        await FailsAt(Download(), MediaStage.Files, null);
+        Assert.Equal(["Mount boot.wim 2", "LoadHive", "UnloadHive", "Unmount discard", "UnloadLeftoverHives", "Unmount discard", "DeleteWorkFolder"],
+            _steps.Calls.SkipWhile(c => c != "Mount boot.wim 2"));
         AssertCleanedUp();
     }
 
@@ -485,7 +496,7 @@ public sealed class MediaBuildTests : IDisposable
         _steps.Dism.StopOnMountOf = "boot.wim";
         _steps.Dism.StopOnMount = stop;
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Run(Download(answers: Plain with { SkipSetup = true, AccountName = "Anna" }), stop.Token));
-        Assert.Equal(["Mount boot.wim 2", "Unmount discard", "DeleteWorkFolder"], _steps.Calls.SkipWhile(c => c != "Mount boot.wim 2"));
+        Assert.Equal(["Mount boot.wim 2", "UnloadLeftoverHives", "Unmount discard", "DeleteWorkFolder"], _steps.Calls.SkipWhile(c => c != "Mount boot.wim 2"));
         AssertCleanedUp();
     }
 
@@ -1113,6 +1124,25 @@ public sealed class MediaBuildTests : IDisposable
         Assert.Equal((10 + 1) * gb, MediaBuild.NeededBytes(new MediaSource(null, @"C:\x.iso", null), 4 * gb));
     }
 
+    /// <summary>
+    /// Leftover SYSTEM hives: those of Tuneros no longer running, and this process's own that no build holds any more (an
+    /// unload that gave up after its retries). Another running Tunero's and this process's live ones stay; other keys too.
+    /// </summary>
+    [Fact]
+    public void LeftoverHivesAreThoseNoBuildHolds()
+    {
+        string[] names =
+        [
+            "SOFTWARE", "SYSTEM", "TuneroDefaultProfile-77",
+            "TuneroMediaSystem-100-1", "TuneroMediaSystem-100-2",   // this process: 1 is held, 2 was given up
+            "TuneroMediaSystem-200-1",                              // another Tunero that runs
+            "TuneroMediaSystem-300-4",                              // a Tunero that ended
+            "TuneroMediaSystem-x",
+        ];
+        var leftovers = OfflineSystemHive.LeftoversToUnload(names, 100, ["TuneroMediaSystem-100-1"], pid => pid == 200);
+        Assert.Equal(["TuneroMediaSystem-100-2", "TuneroMediaSystem-300-4", "TuneroMediaSystem-x"], leftovers);
+    }
+
     [Fact]
     public void WorkFolderNamesAreRecognized()
     {
@@ -1488,7 +1518,14 @@ internal sealed class FakeMediaSteps : IMediaSteps
         return new FakeHive(this, file, File.ReadAllText(file));
     }
 
-    public void UnloadLeftoverHives() => Calls.Add("UnloadLeftoverHives");
+    /// <summary>The hive's own unload gives up (a handle stays open) and leaves it loaded; the leftover unload then works.</summary>
+    public bool HiveUnloadGivesUp { get; set; }
+
+    public void UnloadLeftoverHives()
+    {
+        Calls.Add("UnloadLeftoverHives");
+        LoadedHives.Clear();
+    }
 
     public void Log(string line) => LogLines.Add(line);
 
@@ -1507,7 +1544,7 @@ internal sealed class FakeMediaSteps : IMediaSteps
             if (_unloaded) return;
             _unloaded = true;
             steps.Calls.Add("UnloadHive");
-            steps.LoadedHives.Remove(file);
+            if (!steps.HiveUnloadGivesUp) steps.LoadedHives.Remove(file);
         }
     }
 }

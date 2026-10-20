@@ -339,6 +339,9 @@ public sealed class MediaBuild(IMediaSteps steps)
 
     private static bool Same(string? a, string? b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>The names Setup looks for in its implicit search (Autounattend.xml, Unattend.xml), without case.</summary>
+    private static bool IsAnswerFileName(string fileName) => Same(fileName, "autounattend.xml") || Same(fileName, "unattend.xml");
+
     private static void Warn(IMediaSteps steps, string message)
     {
         steps.Log(message);
@@ -663,30 +666,42 @@ public sealed class MediaBuild(IMediaSteps steps)
                     .Select(f => Path.GetRelativePath(_media!, f));
                 steps.Log(@"The ISO carries under sources\$OEM$: " + string.Join(", ", carried));
             }
-            // Setup also picks up answer files that $OEM$ copies into Panther and Sysprep. File names compare without case.
-            string[] answerFiles =
-            [
-                Path.Combine(_media!, "autounattend.xml"),
-                Path.Combine(_media!, "unattend.xml"),
-                Path.Combine(Sources, "autounattend.xml"),
-                Path.Combine(Sources, "unattend.xml"),
-                Path.Combine(oem, "$$", "Panther", "unattend.xml"),
-                Path.Combine(oem, "$$", "Panther", "autounattend.xml"),
-                Path.Combine(oem, "$$", "Panther", "Unattend", "unattend.xml"),
-                Path.Combine(oem, "$$", "System32", "Sysprep", "unattend.xml"),
-            ];
-            foreach (var file in answerFiles.Where(File.Exists))
+            foreach (var file in OldAnswerFiles())
             {
                 steps.Log($"Removing {Path.GetRelativePath(_media!, file)} of the ISO");
-                SafeDelete.DeleteFile(file);
+                try
+                {
+                    SafeDelete.DeleteFile(file);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    throw Fail($"{Path.GetRelativePath(_media!, file)} on the ISO could not be removed: {ex.Message}", "Media_FilesCheckFailed");
+                }
             }
             if (Path.Exists(TuneroFolder))
             {
                 steps.Log($"Removing {TuneroOnMedia} of the ISO");
                 SecureFolder.DeleteTree(TuneroFolder);
             }
-            if (answerFiles.Any(Path.Exists) || Path.Exists(TuneroFolder))
+            if (OldAnswerFiles().Count > 0 || Path.Exists(TuneroFolder))
                 throw Fail("An answer file or Tunero copy on the ISO could not be removed.", "Media_FilesCheckFailed");
+        }
+
+        /// <summary>
+        /// Answer files of the media: at its root and in sources (<see cref="WriteBootWimAsync"/>), and those that $OEM$
+        /// copies into Panther and Sysprep, where Setup also picks them up. Names compare without case.
+        /// </summary>
+        private List<string> OldAnswerFiles()
+        {
+            var windows = Path.Combine(Sources, "$OEM$", "$$");
+            return
+            [
+                .. Named(_media!, IsAnswerFileName),
+                .. Named(Sources, IsAnswerFileName),
+                .. Named(Path.Combine(windows, "Panther"), IsAnswerFileName),
+                .. Named(Path.Combine(windows, @"Panther\Unattend"), IsAnswerFileName),
+                .. Named(Path.Combine(windows, @"System32\Sysprep"), n => Same(n, "unattend.xml")),
+            ];
         }
 
         private void RequireUefiBoot()
@@ -938,12 +953,11 @@ public sealed class MediaBuild(IMediaSteps steps)
         /// </summary>
         private static List<string> BootAnswerFilesIn(string root)
         {
-            string[] both = ["autounattend.xml", "unattend.xml"];
             return
             [
-                .. Named(root, n => both.Contains(n, StringComparer.OrdinalIgnoreCase)),
-                .. Named(Path.Combine(root, "sources"), n => both.Contains(n, StringComparer.OrdinalIgnoreCase)),
-                .. Named(Path.Combine(root, @"Windows\Panther"), n => both.Contains(n, StringComparer.OrdinalIgnoreCase)),
+                .. Named(root, IsAnswerFileName),
+                .. Named(Path.Combine(root, "sources"), IsAnswerFileName),
+                .. Named(Path.Combine(root, @"Windows\Panther"), IsAnswerFileName),
                 .. Named(Path.Combine(root, @"Windows\Panther\Unattend"), n => n.EndsWith(".xml", StringComparison.OrdinalIgnoreCase)),
                 .. Named(Path.Combine(root, @"Windows\System32\Sysprep"), n => Same(n, "unattend.xml")),
             ];
@@ -958,8 +972,7 @@ public sealed class MediaBuild(IMediaSteps steps)
         /// <summary>A setup.exe started inside Windows finds an answer file at the media's root or in sources (<see cref="WriteBootWimAsync"/>): none may be there.</summary>
         private void CheckMediaHasNoAnswerFile()
         {
-            bool IsAnswerFile(string name) => Same(name, "autounattend.xml") || Same(name, "unattend.xml");
-            var found = Named(_media!, IsAnswerFile).Concat(Named(Sources, IsAnswerFile)).ToList();
+            var found = Named(_media!, IsAnswerFileName).Concat(Named(Sources, IsAnswerFileName)).ToList();
             if (found.Count > 0)
                 throw Fail("The media holds an answer file outside boot.wim: " + string.Join(", ", found.Select(f => Path.GetRelativePath(_media!, f))) + ".", "Media_FilesCheckFailed");
         }
@@ -1055,6 +1068,8 @@ public sealed class MediaBuild(IMediaSteps steps)
             Report(MediaStage.Cleanup, null, null);
             if (_mounted is { } mount)
             {
+                // A SYSTEM hive whose own unload gave up holds a file of the mounted boot.wim open: the discard would fail.
+                steps.UnloadLeftoverHives();
                 var none = CancellationToken.None;
                 if (await RetryAsync("Discarding the mounted image",
                         () => Dism(DismArgs.Unmount(mount, commit: false), () => steps.Dism.UnmountAsync(mount, false, null, none)),

@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Runtime.InteropServices;
 using Microsoft.Win32;
 using Optimizer.Core.Platform;
 using AppLog = Optimizer.Core.Logging.Log;
@@ -14,17 +13,20 @@ public interface IOfflineHive : IDisposable
 }
 
 /// <summary>
-/// The SYSTEM hive of a mounted image, loaded under HKLM with RegLoadKey as <see cref="DefaultProfileHive"/> loads the
-/// Default profile (and as `reg load` does) and only read. The name carries the process id: a hive that a killed Tunero
-/// left loaded holds its file open, so its image cannot be unmounted until <see cref="UnloadLeftovers"/> unloads it, and
-/// another running Tunero's hive is never touched. Not covered by unit tests (it loads a hive into the registry); the
-/// VM test drives it.
+/// The SYSTEM hive of a mounted image, loaded under HKLM (<see cref="HiveFile"/>, as <see cref="DefaultProfileHive"/>
+/// loads the Default profile) and only read. The name carries the process id: a hive that a killed Tunero left loaded
+/// holds its file open, so its image cannot be unmounted until <see cref="UnloadLeftovers"/> unloads it, and another
+/// running Tunero's hive is never touched. Not covered by unit tests beyond <see cref="LeftoversToUnload"/> (it loads a
+/// hive into the registry); the VM test drives it.
 /// </summary>
 public sealed class OfflineSystemHive : IOfflineHive
 {
     internal const string MountPrefix = "TuneroMediaSystem-";
-    private static readonly IntPtr HkeyLocalMachine = new(unchecked((int)0x80000002));
     private static int _count;
+
+    /// <summary>This process's hives that a build holds now; any other one of this process is a leftover.</summary>
+    private static readonly HashSet<string> Held = new(StringComparer.OrdinalIgnoreCase);
+
     private readonly string _name;
     private int _unloaded;
 
@@ -34,11 +36,15 @@ public sealed class OfflineSystemHive : IOfflineHive
     public static OfflineSystemHive Load(string file)
     {
         var name = $"{MountPrefix}{Environment.ProcessId}-{Interlocked.Increment(ref _count)}";
-        using var restore = FirmwareExtras.EnablePrivilege("SeRestorePrivilege");
-        using var backup = FirmwareExtras.EnablePrivilege("SeBackupPrivilege");
-        if (restore is null || backup is null) throw new UnauthorizedAccessException("Loading a registry hive needs administrator rights.");
-        var rc = RegLoadKey(HkeyLocalMachine, name, file);
-        if (rc != 0) throw new IOException($"{file} could not be loaded as a registry hive: {new Win32Exception(rc).Message}");
+        // Held before it exists: UnloadLeftovers running meanwhile never takes it for a leftover.
+        lock (Held) Held.Add(name);
+        var rc = HiveFile.Load(HiveFile.LocalMachine, name, file);
+        if (rc != 0)
+        {
+            lock (Held) Held.Remove(name);
+            if (rc is null) throw new UnauthorizedAccessException("Loading a registry hive needs administrator rights.");
+            throw new IOException($"{file} could not be loaded as a registry hive: {new Win32Exception(rc.Value).Message}");
+        }
         AppLog.Info("media", "offline SYSTEM hive loaded", new { file, name });
         return new OfflineSystemHive(name);
     }
@@ -55,14 +61,24 @@ public sealed class OfflineSystemHive : IOfflineHive
         };
     }
 
-    /// <summary>Unloads the hive (tried again for a moment while a handle stays open). Never throws: a hive left loaded is logged.</summary>
+    /// <summary>
+    /// Unloads the hive (tried again for a moment while a handle stays open). Never throws: a hive left loaded is logged,
+    /// and as no build holds it any more, the next <see cref="UnloadLeftovers"/> (also in this process) tries again.
+    /// </summary>
     public void Dispose()
     {
         if (Interlocked.Exchange(ref _unloaded, 1) == 1) return;
-        Unload(_name);
+        try
+        {
+            Unload(_name);
+        }
+        finally
+        {
+            lock (Held) Held.Remove(_name);
+        }
     }
 
-    /// <summary>Unloads hives that Tunero processes no longer running left loaded. Never throws.</summary>
+    /// <summary>Unloads the hives that no build holds: those of Tunero processes no longer running and this process's given-up ones. Never throws.</summary>
     public static void UnloadLeftovers()
     {
         string[] names;
@@ -75,41 +91,38 @@ public sealed class OfflineSystemHive : IOfflineHive
         {
             return;
         }
+        string[] held;
+        lock (Held) held = [.. Held];
+        foreach (var name in LeftoversToUnload(names, Environment.ProcessId, held, DefaultProfileHive.IsTuneroRunning)) Unload(name);
+    }
+
+    /// <summary>
+    /// Of the loaded hive <paramref name="names"/>, this class's ones that no build holds: this process's that are not
+    /// <paramref name="held"/>, and those of processes that are no running Tunero (or whose name has no readable id).
+    /// </summary>
+    internal static List<string> LeftoversToUnload(IEnumerable<string> names, int ownPid, IReadOnlyCollection<string> held, Func<int, bool> isTuneroRunning)
+    {
+        var leftovers = new List<string>();
         foreach (var name in names.Where(n => n.StartsWith(MountPrefix, StringComparison.OrdinalIgnoreCase)))
         {
-            // This process unloads its own hives itself; a running Tunero's hive belongs to its build.
             var pid = name.AsSpan(MountPrefix.Length);
             if (pid.IndexOf('-') is var dash and > 0) pid = pid[..dash];
-            if (int.TryParse(pid, out var id) && (id == Environment.ProcessId || DefaultProfileHive.IsTuneroRunning(id))) continue;
-            Unload(name);
+            if (int.TryParse(pid, out var id) && (id == ownPid ? held.Contains(name, StringComparer.OrdinalIgnoreCase) : isTuneroRunning(id))) continue;
+            leftovers.Add(name);
         }
+        return leftovers;
     }
 
-    // A key handle that is still open (antivirus, a search indexer) makes the unload fail for a moment: try again.
-    private const int UnloadTries = 20;
-
-    private static void Unload(string name)
+    private static void Unload(string name) => HiveFile.Retry(lastTry =>
     {
-        for (var i = 1; ; i++)
+        var rc = HiveFile.TryUnload(HiveFile.LocalMachine, name);
+        if (rc is 0 or 2 /* ERROR_FILE_NOT_FOUND: not loaded */)
         {
-            int rc;
-            using (FirmwareExtras.EnablePrivilege("SeRestorePrivilege"))
-            using (FirmwareExtras.EnablePrivilege("SeBackupPrivilege"))
-                rc = RegUnLoadKey(HkeyLocalMachine, name);
-            if (rc is 0 or 2 /* ERROR_FILE_NOT_FOUND: not loaded */)
-            {
-                if (rc == 0) AppLog.Info("media", "offline SYSTEM hive unloaded", new { name });
-                return;
-            }
-            if (i == UnloadTries)
-            {
-                AppLog.Warn("media", $"offline SYSTEM hive {name} not unloaded: {new Win32Exception(rc).Message}");
-                return;
-            }
-            Thread.Sleep(100);
+            if (rc == 0) AppLog.Info("media", "offline SYSTEM hive unloaded", new { name });
+            return true;
         }
-    }
-
-    [DllImport("advapi32.dll", CharSet = CharSet.Unicode)] private static extern int RegLoadKey(IntPtr hKey, string subKey, string file);
-    [DllImport("advapi32.dll", CharSet = CharSet.Unicode)] private static extern int RegUnLoadKey(IntPtr hKey, string subKey);
+        if (!lastTry) return false;
+        AppLog.Warn("media", $"offline SYSTEM hive {name} not unloaded: {new Win32Exception(rc).Message}");
+        return true;
+    });
 }

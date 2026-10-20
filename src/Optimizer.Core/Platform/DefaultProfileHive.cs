@@ -1,6 +1,5 @@
 using System.ComponentModel;
 using System.IO;
-using System.Runtime.InteropServices;
 using Microsoft.Win32;
 using Optimizer.Core.Logging;
 
@@ -17,7 +16,6 @@ public static class DefaultProfileHive
 {
     private const string MountPrefix = "TuneroDefaultProfile-";
     private static readonly string MountName = MountPrefix + Environment.ProcessId;
-    private static readonly IntPtr HkeyUsers = new(unchecked((int)0x80000003));
     private static readonly object Gate = new();
     private static int _holds;
     private static bool _loaded;
@@ -105,29 +103,19 @@ public static class DefaultProfileHive
     {
         var file = FilePath() ?? throw new InvalidOperationException("The Default profile (NTUSER.DAT) was not found in a folder only administrators can change.");
         UnloadLeftovers();
-        using var restore = FirmwareExtras.EnablePrivilege("SeRestorePrivilege");
-        using var backup = FirmwareExtras.EnablePrivilege("SeBackupPrivilege");
-        if (restore is null || backup is null) throw new InvalidOperationException("Loading the Default profile needs administrator rights.");
-        var rc = RegLoadKey(HkeyUsers, MountName, file);
+        var rc = HiveFile.Load(HiveFile.Users, MountName, file)
+            ?? throw new InvalidOperationException("Loading the Default profile needs administrator rights.");
         if (rc != 0) throw new InvalidOperationException($"The Default profile could not be loaded: {new Win32Exception(rc).Message}");
         _loaded = true;
         Log.Info("registry", "Default profile loaded", new { file });
     }
 
-    // A key handle that is still open (antivirus, a search indexer) makes the unload fail for a moment: try again.
-    private const int UnloadTries = 20;
-
-    private static void Unload(string name)
-    {
-        for (var i = 1; !TryUnload(name, i == UnloadTries); i++) Thread.Sleep(100);
-    }
+    private static void Unload(string name) => HiveFile.Retry(lastTry => TryUnload(name, lastTry));
 
     /// <summary>One unload attempt; false when it failed and more tries are left.</summary>
     private static bool TryUnload(string name, bool lastTry)
     {
-        using var restore = FirmwareExtras.EnablePrivilege("SeRestorePrivilege");
-        using var backup = FirmwareExtras.EnablePrivilege("SeBackupPrivilege");
-        var rc = RegUnLoadKey(HkeyUsers, name);
+        var rc = HiveFile.TryUnload(HiveFile.Users, name);
         if (rc is 0 or 2 /* ERROR_FILE_NOT_FOUND: not loaded */)
         {
             if (rc == 0) Log.Info("registry", "Default profile unloaded", new { name });
@@ -157,7 +145,7 @@ public static class DefaultProfileHive
                 lock (Gate)
                 {
                     if (_holds > 0 || !_loaded) return;
-                    if (TryUnload(MountName, i == UnloadTries))
+                    if (TryUnload(MountName, i == HiveFile.UnloadTries))
                     {
                         if (_loaded) UnloadLater();
                         return;
@@ -184,7 +172,4 @@ public static class DefaultProfileHive
         }
         Log.Warn("registry", "Default profile still loaded; it is unloaded at the next start");
     });
-
-    [DllImport("advapi32.dll", CharSet = CharSet.Unicode)] private static extern int RegLoadKey(IntPtr hKey, string subKey, string file);
-    [DllImport("advapi32.dll", CharSet = CharSet.Unicode)] private static extern int RegUnLoadKey(IntPtr hKey, string subKey);
 }
