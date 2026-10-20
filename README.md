@@ -8,7 +8,7 @@
 
 Tunero finds what really costs your games frame rate, fixes what it can and tells you how to fix the rest. It brings the useful settings of the popular tweak tools, debloat scripts and system utilities into one app (privacy, debloat, cleanup, startup, services, Windows Update) and leaves out the placebo. Every finding and every change comes with an explanation and sources, and every setting it changes is backed up first and can be undone. Gaming first, with profiles for laptops, battery, office, quiet and older PCs. One exe for Windows 11 25H2 or newer (x64), in English and German.
 
-<p align="center"><img src="docs/screenshots/flow.gif" width="800" alt="The scan, the confirmation of the recommended changes with the exact values, the question to turn on System Protection for a restore point, the Changes page, and Undo all"></p>
+<p align="center"><img src="docs/screenshots/flow.gif" width="800" alt="The scan, the confirmation of the recommended changes with the exact values, the progress while a restore point is created, the result, the Changes page, and Undo all"></p>
 
 ## Download
 
