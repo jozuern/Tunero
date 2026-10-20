@@ -46,7 +46,8 @@ public sealed class MediaBuildTests : IDisposable
         return r with { Answers = r.Answers with { FirstSignInTunero = true }, TuneroExe = exe, FirstSignIn = First };
     }
 
-    private MediaBuild Build() => new(_steps) { RetryDelay = TimeSpan.Zero };
+    private MediaBuild Build(TimeSpan? dismWait = null) =>
+        new(_steps) { RetryDelay = TimeSpan.Zero, DismPollDelay = TimeSpan.Zero, DismWaitLimit = dismWait ?? TimeSpan.FromMinutes(15) };
 
     private Task<string> Run(MediaRequest r, CancellationToken ct = default, IProgress<MediaProgress>? progress = null) =>
         Build().RunAsync(r, progress ?? new Collect(_steps.Progress), ct);
@@ -1113,6 +1114,98 @@ public sealed class MediaBuildTests : IDisposable
         Assert.Empty(_steps.LogLines);
     }
 
+    /// <summary>The mount a killed build started: DISM goes on without Tunero (VM 4, 2026-10-19).</summary>
+    private const string MountingDism =
+        @"dism.exe /English /Mount-Image /ImageFile:""D:\TuneroMedia.0000ffff\media\sources\install.wim"" /Index:6 /MountDir:""D:\TuneroMedia.0000ffff\mount""";
+
+    /// <summary>
+    /// A build killed while DISM mounts: DISM is not ended with it and finishes the mount minutes later. The cleanup waits
+    /// for it before it lists the mounted images, so it discards the mount instead of deleting files inside it.
+    /// </summary>
+    [Fact]
+    public async Task LeftoverCleanupWaitsForARunningDism()
+    {
+        _steps.Drives.Add(@"D:\");
+        _steps.Leftovers[@"D:\"] = [@"D:\TuneroMedia.0000ffff"];
+        _steps.DismRunning.Add(MountingDism);
+        _steps.DismEndsAfterLooks = 3;
+        _steps.DismEnded = () => _steps.Dism.Mounted.Add(@"D:\TuneroMedia.0000ffff\mount");
+        await Build().CleanLeftoversAsync(CancellationToken.None);
+        Assert.Equal(["DISM ended", "MountedDirs", "UnloadLeftoverHives", "Unmount discard", "CleanupMountpoints", "MountedDirs", "DeleteWorkFolder"], _steps.Calls);
+        Assert.Equal([@"D:\TuneroMedia.0000ffff\mount"], _steps.Dism.Unmounted);
+        Assert.Equal([@"D:\TuneroMedia.0000ffff"], _steps.DeletedFolders);
+        Assert.Equal(@"Waiting for DISM to finish with D:\TuneroMedia.0000ffff", Assert.Single(_steps.LogLines, l => l.StartsWith("Waiting", StringComparison.Ordinal)));
+    }
+
+    /// <summary>A work folder that only DISM names (it is not at a drive root the cleanup looks at, or is not listed yet) counts too.</summary>
+    [Fact]
+    public async Task LeftoverCleanupWaitsForDismInAnyWorkFolder()
+    {
+        _steps.DismRunning.Add(@"C:\Windows\System32\Dism.exe /Unmount-Image /MountDir:e:\tuneromedia.82FFEBCC\boot /Discard");
+        _steps.DismEndsAfterLooks = 2;
+        await Build().CleanLeftoversAsync(CancellationToken.None);
+        Assert.Equal(["DISM ended", "MountedDirs"], _steps.Calls);
+        Assert.Contains(@"Waiting for DISM to finish with e:\tuneromedia.82FFEBCC", _steps.LogLines);
+    }
+
+    /// <summary>DISM for other folders, and DISM of a build that still runs (its lock is held), is not waited for.</summary>
+    [Fact]
+    public async Task DismForAnotherFolderIsNotWaitedFor()
+    {
+        var drive = Path.Combine(_root, "drive");
+        var live = Path.Combine(drive, "TuneroMedia.11112222");
+        Directory.CreateDirectory(live);
+        using var held = new FileStream(Path.Combine(live, MediaBuild.LockFileName), FileMode.CreateNew, FileAccess.Write, FileShare.None);
+        _steps.Drives.Add(drive);
+        _steps.Drives.Add(@"D:\");
+        _steps.Leftovers[drive] = [live];
+        _steps.Leftovers[@"D:\"] = [@"D:\TuneroMedia.0000ffff"];
+        _steps.DismRunning.AddRange(
+        [
+            @"dism.exe /Mount-Image /ImageFile:C:\images\install.wim /Index:1 /MountDir:C:\Other\mount",
+            @"dism.exe /Mount-Image /ImageFile:D:\TuneroMedia.0000ffff2\install.wim /Index:1 /MountDir:D:\XTuneroMedia.0000ffff\mount",
+            $@"dism.exe /English /Mount-Image /ImageFile:""{live}\media\sources\boot.wim"" /Index:2 /MountDir:""{live}\boot""",
+        ]);
+        await Build(dismWait: TimeSpan.FromSeconds(30)).CleanLeftoversAsync(CancellationToken.None);
+        Assert.Equal(1, _steps.DismLooks);
+        Assert.DoesNotContain(_steps.LogLines, l => l.StartsWith("Waiting", StringComparison.Ordinal));
+        Assert.Equal([@"D:\TuneroMedia.0000ffff"], _steps.DeletedFolders);
+        Assert.True(Directory.Exists(live));
+    }
+
+    /// <summary>A DISM that does not end within the limit: its folder is left alone (and its mount), the next start tries again.</summary>
+    [Fact]
+    public async Task ADismThatDoesNotEndKeepsItsFolder()
+    {
+        _steps.Drives.Add(@"D:\");
+        _steps.Leftovers[@"D:\"] = [@"D:\TuneroMedia.0000ffff", @"D:\TuneroMedia.0000eeee"];
+        _steps.Dism.Mounted.Add(@"D:\TuneroMedia.0000ffff\mount");
+        _steps.DismRunning.Add(MountingDism);
+        await Build(dismWait: TimeSpan.Zero).CleanLeftoversAsync(CancellationToken.None);
+        Assert.Empty(_steps.Dism.Unmounted);
+        Assert.Equal([@"D:\TuneroMedia.0000eeee"], _steps.DeletedFolders);
+        Assert.Contains(_steps.LogLines, l => l.StartsWith(@"D:\TuneroMedia.0000ffff left alone: DISM still works in it", StringComparison.Ordinal));
+        Assert.Equal([@"D:\TuneroMedia.0000ffff\mount"], _steps.Dism.Mounted);
+    }
+
+    /// <summary>Stop (closing the app) while the cleanup waits for DISM ends it quietly: nothing is discarded or deleted.</summary>
+    [Fact]
+    public async Task StopWhileWaitingForDismDeletesNothing()
+    {
+        using var stop = new CancellationTokenSource();
+        _steps.Drives.Add(@"D:\");
+        _steps.Leftovers[@"D:\"] = [@"D:\TuneroMedia.0000ffff"];
+        _steps.DismRunning.Add(MountingDism);
+        _steps.DismLooked = () =>
+        {
+            if (_steps.DismLooks == 2) stop.Cancel();
+        };
+        await Build().CleanLeftoversAsync(stop.Token);
+        Assert.Equal(2, _steps.DismLooks);
+        Assert.Empty(_steps.Calls);
+        Assert.Empty(_steps.DeletedFolders);
+    }
+
     [Fact]
     public async Task LeftoverCleanupNeverThrows()
     {
@@ -1524,6 +1617,29 @@ internal sealed class FakeMediaSteps : IMediaSteps
     public IEnumerable<string> LocalDrives() => Drives;
 
     public IEnumerable<string> LeftoverWorkFolders(string drive) => Leftovers.TryGetValue(drive, out var list) ? list : [];
+
+    /// <summary>The command lines of the running dism.exe processes.</summary>
+    public List<string> DismRunning { get; } = [];
+
+    /// <summary>They end at this look (-1: never); <see cref="DismEnded"/> runs then.</summary>
+    public int DismEndsAfterLooks { get; set; } = -1;
+
+    public Action? DismEnded { get; set; }
+    public Action? DismLooked { get; set; }
+    public int DismLooks { get; private set; }
+
+    public IReadOnlyList<string> DismCommandLines()
+    {
+        DismLooks++;
+        DismLooked?.Invoke();
+        if (DismRunning.Count > 0 && DismEndsAfterLooks >= 0 && DismLooks >= DismEndsAfterLooks)
+        {
+            DismRunning.Clear();
+            Calls.Add("DISM ended");
+            DismEnded?.Invoke();
+        }
+        return DismRunning.ToList();
+    }
 
     public IOfflineHive LoadSystemHive(string file)
     {

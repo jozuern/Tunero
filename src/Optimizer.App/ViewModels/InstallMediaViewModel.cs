@@ -853,10 +853,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         var stopped = false;
         try
         {
-            // A cleanup of earlier builds finishes first: the two never run together. Stop meanwhile ends it here.
-            if (_cleanup is { } cleanup) await cleanup;
-            if (stop.IsCancellationRequested) stopped = true;
-            else await RunWorkAsync("install media", Loc.Instance["Media_Building"], async scope =>
+            await RunWorkAsync("install media", Loc.Instance["Media_Building"], async scope =>
             {
                 // The banner: the stage, its percentage, and the time the build has taken so far (refreshed every second).
                 var clock = Stopwatch.StartNew();
@@ -871,6 +868,17 @@ public sealed partial class InstallMediaViewModel : PageViewModel
                 var ticker = TickAsync(Show, ticking.Token);
                 try
                 {
+                    // A cleanup of earlier builds finishes first: the two never run together. It can wait minutes for a DISM
+                    // that a killed build left running, so the banner says it cleans up; Stop ends the build here and the
+                    // cleanup goes on by itself.
+                    if (_cleanup is { IsCompleted: false } cleanup)
+                    {
+                        last = (null, Loc.Instance["Media_Stage_Cleanup"]);
+                        Show();
+                        await cleanup.WaitAsync(stop.Token);
+                        last = (null, Loc.Instance["Media_Building"]);
+                        clock.Restart();
+                    }
                     iso = await _build(request, progress, stop.Token);
                 }
                 catch (OperationCanceledException) when (stop.IsCancellationRequested)

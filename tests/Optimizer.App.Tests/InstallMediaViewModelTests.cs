@@ -395,6 +395,32 @@ public sealed class InstallMediaViewModelTests : IDisposable
         Assert.Single(_requests);
     }
 
+    /// <summary>
+    /// The cleanup can wait minutes for a DISM a killed build left running: meanwhile the banner says it cleans up, and Stop
+    /// ends the build at once (the cleanup goes on by itself).
+    /// </summary>
+    [Fact]
+    public async Task ABuildWaitingForTheCleanupSaysSoAndStops()
+    {
+        var cleanup = new TaskCompletionSource();
+        var media = await WithCatalog(Media(cleanup: _ => cleanup.Task));
+        var cleaning = media.CleanLeftoversAsync();
+        var build = media.BuildCommand.ExecuteAsync(null);
+        Assert.True(media.IsBuilding);
+        Assert.Equal(Loc.Instance["Media_Building"], _host.Runner.Work.Title);
+        Assert.StartsWith(Loc.Instance["Media_Stage_Cleanup"], _host.Runner.Work.Detail);
+        Assert.True(_host.Runner.Work.CanStop);
+
+        await media.StopAndWaitAsync();
+        await build;
+        Assert.False(media.IsBuilding);
+        Assert.Empty(_requests);
+        Assert.Equal(Loc.Instance["Media_Stopped"], media.ResultText);
+        Assert.False(cleaning.IsCompleted);
+        cleanup.SetResult();
+        await cleaning;
+    }
+
     /// <summary>A default name that is already taken in Downloads is not replaced: the page picks a free one.</summary>
     [Fact]
     public async Task TheDefaultOutputNameIsAFreeOne()

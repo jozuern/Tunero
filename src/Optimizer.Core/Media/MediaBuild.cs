@@ -121,6 +121,12 @@ public interface IMediaSteps
     IEnumerable<string> LeftoverWorkFolders(string drive);
 
     /// <summary>
+    /// The command lines of the dism.exe processes running now (empty when none runs, or when they cannot be read). DISM
+    /// outlives a killed build and goes on mounting or unmounting in its work folder (<see cref="MediaBuild.CleanLeftoversAsync"/>).
+    /// </summary>
+    IReadOnlyList<string> DismCommandLines();
+
+    /// <summary>
     /// Loads the SYSTEM hive file of a mounted image, read only, until the result is disposed (<see cref="OfflineSystemHive"/>).
     /// Throws IOException or UnauthorizedAccessException when it cannot be loaded.
     /// </summary>
@@ -159,8 +165,22 @@ public sealed class MediaBuild(IMediaSteps steps)
     private static readonly Version MinimumVersion = new(10, 0, 22000);
     private static readonly Regex WorkFolderName = new(@"^TuneroMedia\.[0-9a-fA-F]{8}$", RegexOptions.Compiled);
 
+    /// <summary>A work folder at a drive root named in a command line (after a quote, a space, a colon or an equals sign), without case.</summary>
+    private static readonly Regex WorkFolderInCommandLine =
+        new(@"(?<![^\s"":=])[A-Za-z]:\\TuneroMedia\.[0-9a-fA-F]{8}(?![^\\""\s])", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
     /// <summary>The pause before a cleanup step is tried again (a stopped DISM may still hold its files for a moment).</summary>
     internal TimeSpan RetryDelay { get; init; } = TimeSpan.FromSeconds(2);
+
+    /// <summary>
+    /// How long the cleanup waits for a DISM that a killed build left running in its work folder. In PCO-Test such a mount
+    /// ended within about 3 minutes; 15 leaves room for a slow disk and a commit, while a DISM still busy after that is
+    /// more likely hung than slow. Its folder is then left for the next start.
+    /// </summary>
+    internal TimeSpan DismWaitLimit { get; init; } = TimeSpan.FromMinutes(15);
+
+    /// <summary>The pause between two looks at the running DISM processes.</summary>
+    internal TimeSpan DismPollDelay { get; init; } = TimeSpan.FromSeconds(5);
 
     /// <summary>
     /// Free space the build needs on the output drive. Download: the ESD, 2.2 times its size for the media and the ISO, and
@@ -228,6 +248,13 @@ public sealed class MediaBuild(IMediaSteps steps)
     /// runs, in this or another Tunero) is left alone with its mount, and so is a folder whose image stays mounted.
     /// Without leftovers this only lists the mounted images and changes nothing. Never throws: DISM failures are logged
     /// (without the list of mounted images nothing is deleted) and a stop ends it quietly.
+    /// <para>
+    /// DISM is not ended with a killed build: it goes on mounting (or unmounting) in the work folder for minutes, while
+    /// <c>/Get-MountedImageInfo</c> does not list that mount yet, and a delete would then reach into it. So the cleanup
+    /// first waits for every dism.exe whose command line names a work folder no running build holds, up to
+    /// <see cref="DismWaitLimit"/>; a folder whose DISM is still busy after that is left alone for the next start. DISM is
+    /// never ended.
+    /// </para>
     /// </summary>
     public async Task CleanLeftoversAsync(CancellationToken ct)
     {
@@ -247,6 +274,7 @@ public sealed class MediaBuild(IMediaSteps steps)
 
     private async Task CleanLeftoversCoreAsync(CancellationToken ct)
     {
+        var busy = await WaitForDismAsync(ct);
         var mounted = await steps.Dism.MountedDirsAsync(ct);
         var folders = new List<string>();
         void Add(string? folder)
@@ -264,6 +292,11 @@ public sealed class MediaBuild(IMediaSteps steps)
         {
             steps.Log($"{running} belongs to a build that is still running; left alone");
             folders.Remove(running);
+        }
+        foreach (var working in folders.Where(f => busy.Contains(f, StringComparer.OrdinalIgnoreCase)).ToList())
+        {
+            Warn(steps, $"{working} left alone: DISM still works in it after {DismWaitLimit.TotalMinutes:0} minutes; the next start tries again");
+            folders.Remove(working);
         }
         // A SYSTEM hive a killed build left loaded holds a file of its mounted boot.wim open: unloaded first, or the discard fails.
         steps.UnloadLeftoverHives();
@@ -309,6 +342,67 @@ public sealed class MediaBuild(IMediaSteps steps)
                 Warn(steps, $"{folder} left in place: {ex.Message}");
             }
         }
+    }
+
+    /// <summary>
+    /// Waits until no dism.exe works in a leftover work folder any more, or <see cref="DismWaitLimit"/> has passed; returns
+    /// the folders DISM still works in then (empty when it ended). A folder counts when a dism.exe's command line names it:
+    /// one of the work folders at the drive roots, or any work folder at a drive root (one DISM unmounts while the folder
+    /// is not listed, for example), but not one a running build holds (its own DISM).
+    /// </summary>
+    private async Task<IReadOnlyList<string>> WaitForDismAsync(CancellationToken ct)
+    {
+        var leftovers = steps.LocalDrives()
+            .SelectMany(steps.LeftoverWorkFolders)
+            .Select(f => f.TrimEnd('\\'))
+            .Where(f => IsWorkFolderName(Path.GetFileName(f)))
+            .ToList();
+        var clock = Stopwatch.StartNew();
+        var busy = DismBusyFolders(leftovers);
+        if (busy.Count == 0) return [];
+        steps.Log("Waiting for DISM to finish with " + string.Join(", ", busy));
+        while (true)
+        {
+            if (clock.Elapsed >= DismWaitLimit) return busy;
+            ct.ThrowIfCancellationRequested();
+            await Task.Delay(DismPollDelay, ct);
+            busy = DismBusyFolders(leftovers);
+            if (busy.Count == 0)
+            {
+                steps.Log($"DISM finished after {clock.Elapsed.TotalSeconds:0} s");
+                return [];
+            }
+        }
+    }
+
+    /// <summary>The work folders that a running dism.exe names and no running build holds.</summary>
+    private List<string> DismBusyFolders(IReadOnlyList<string> leftovers)
+    {
+        var busy = new List<string>();
+        void Add(string folder)
+        {
+            if (!busy.Contains(folder, StringComparer.OrdinalIgnoreCase)) busy.Add(folder);
+        }
+        foreach (var line in steps.DismCommandLines())
+        {
+            foreach (var folder in leftovers.Where(f => Names(line, f))) Add(folder);
+            foreach (Match m in WorkFolderInCommandLine.Matches(line)) Add(m.Value);
+        }
+        return busy.Where(f => !IsHeldByABuild(f)).ToList();
+    }
+
+    /// <summary>Whether <paramref name="commandLine"/> names <paramref name="folder"/> or a path in it, without case.</summary>
+    private static bool Names(string commandLine, string folder)
+    {
+        for (var at = commandLine.IndexOf(folder, StringComparison.OrdinalIgnoreCase); at >= 0;
+             at = commandLine.IndexOf(folder, at + 1, StringComparison.OrdinalIgnoreCase))
+        {
+            var end = at + folder.Length;
+            var before = at == 0 ? ' ' : commandLine[at - 1];
+            var after = end == commandLine.Length ? ' ' : commandLine[end];
+            if ((char.IsWhiteSpace(before) || before is '"' or ':' or '=') && (char.IsWhiteSpace(after) || after is '\\' or '"')) return true;
+        }
+        return false;
     }
 
     /// <summary>
@@ -1281,6 +1375,29 @@ public sealed class MediaSteps : IMediaSteps
     public IOfflineHive LoadSystemHive(string file) => OfflineSystemHive.Load(file);
 
     public void UnloadLeftoverHives() => OfflineSystemHive.UnloadLeftovers();
+
+    /// <summary>
+    /// Looks for dism.exe by name first (cheap) and reads the command lines from WMI only when one runs. Elevated, WMI
+    /// gives every process's command line; when it cannot be read the cleanup goes on as without a running DISM (logged).
+    /// </summary>
+    public IReadOnlyList<string> DismCommandLines()
+    {
+        var running = Process.GetProcessesByName("dism");
+        foreach (var p in running) p.Dispose();
+        if (running.Length == 0) return [];
+        try
+        {
+            return Hardware.Wmi.Query("SELECT CommandLine FROM Win32_Process WHERE Name = 'dism.exe'")
+                .Select(row => row.GetValueOrDefault("CommandLine") as string)
+                .OfType<string>()
+                .ToList();
+        }
+        catch (Exception ex) when (ex is System.Management.ManagementException or System.Runtime.InteropServices.COMException or TimeoutException or UnauthorizedAccessException)
+        {
+            AppLog.Warn("media", "the command lines of the running DISM processes could not be read: " + ex.Message);
+            return [];
+        }
+    }
 
     public IEnumerable<string> LocalDrives() =>
         DriveInfo.GetDrives().Where(d => d.DriveType == DriveType.Fixed && d.IsReady).Select(d => d.RootDirectory.FullName).ToList();
