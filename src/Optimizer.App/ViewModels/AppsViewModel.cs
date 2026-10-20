@@ -71,6 +71,57 @@ public sealed partial class WingetResultRow(WingetSearchResult package) : Observ
     [ObservableProperty] private string _stateText = "";
 }
 
+/// <summary>A package manager or developer tool on the Package managers card.</summary>
+public sealed partial class ManagerRow(PackageManagerInfo info) : ObservableObject
+{
+    // What screen readers announce for this item in a list.
+    public override string ToString() => Name;
+
+    public PackageManagerInfo Info { get; } = info;
+    public string Name => Info.Name;
+    public string VersionText { get; } = info.Version is { } v ? Loc.Instance.Format("Apps_ManagerVersion", v) : "";
+    public bool Included => Info.InUpdateAll;
+    public string StatusText { get; } = info.InUpdateAll ? Loc.Instance["Apps_ManagerIncluded"] : Loc.Instance["Apps_ManagerExcluded"];
+
+    /// <summary>What Update all does with it, or for a developer tool what its command does.</summary>
+    public string Meta { get; } = (info.Kind, info.Run) switch
+    {
+        (ManagerKind.Winget, ManagerRun.Elevated) => Loc.Instance["Apps_HowWinget"],
+        (ManagerKind.Winget, _) => Loc.Instance["Apps_HowWingetUser"],
+        (ManagerKind.Chocolatey, ManagerRun.Elevated) => Loc.Instance["Apps_HowChoco"],
+        (ManagerKind.Chocolatey, _) => Loc.Instance["Apps_HowChocoUntrusted"],
+        (ManagerKind.Scoop, _) => Loc.Instance["Apps_HowScoop"],
+        (ManagerKind.Store, _) => Loc.Instance["Apps_HowStore"],
+        (ManagerKind.Npm, _) => Loc.Instance["Apps_DevNpm"],
+        (ManagerKind.Pip, _) => Loc.Instance["Apps_DevPip"],
+        (ManagerKind.DotnetTools, _) => Loc.Instance["Apps_DevDotnet"],
+        _ => info.Commands is ["cargo install-update -a"] ? Loc.Instance["Apps_DevCargoUpdate"] : Loc.Instance["Apps_DevCargo"],
+    };
+
+    /// <summary>The developer tool's commands, one per line, as they are copied.</summary>
+    public string CommandText { get; } = string.Join(Environment.NewLine, info.Commands);
+
+    public string CopyLabel => Loc.Instance.Format("Apps_CopyCommandName", Name);
+
+    [ObservableProperty] private string _copyState = "";
+}
+
+/// <summary>A package from Chocolatey's update list.</summary>
+public sealed partial class ChocolateyUpdateRow(ChocolateyOutdated package) : ObservableObject
+{
+    // What screen readers announce for this item in a list.
+    public override string ToString() => Name;
+
+    public ChocolateyOutdated Package { get; } = package;
+    public string Name => Package.Id;
+    public string Meta { get; } = Loc.Instance.Format("Apps_ChocoMeta", package.Current, package.Available);
+    public string UpdateLabel => Loc.Instance.Format("Apps_UpdateName", Name);
+
+    [ObservableProperty] private bool _isUpdating;
+    [ObservableProperty] private bool _updated;
+    [ObservableProperty] private string _stateText = "";
+}
+
 public sealed record DriverItem(string Device, string ClassText, string Provider, string Version, string DateText, string? UpdateUrl, bool Old)
 {
     // What screen readers announce for this item in a list or combo box.
@@ -523,16 +574,23 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
             System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonPrograms), "Contoso Tool.lnk"), 0), "Contoso Tool"));
     }
 
-    /// <summary>winget upgrade --all: every package winget knows an update for, from the winget source.</summary>
+    /// <summary>
+    /// Every package manager Update all may run, one after the other (<see cref="PackageUpdates"/>): winget, Chocolatey from
+    /// its checked folder, Scoop as the signed-in user, then the Store's updates page. One question names them all.
+    /// </summary>
     [RelayCommand]
     private async Task UpdateAllAsync()
     {
-        if (_winget is null)
+        var plan = PackageManagers.UpdateAllPlan(_managers);
+        if (plan.Count == 0)
         {
-            Output = Loc.Instance["Apps_NoWinget"];
+            // No card to show it in: the result line says it.
+            Owner.ShowResult(Loc.Instance["Apps_NoWinget"], Wpf.Ui.Controls.InfoBarSeverity.Warning);
             return;
         }
-        if (!dialogs.Ask(Loc.Instance["Apps_UpdateAllTitle"], Loc.Instance["Apps_UpdateAllText"], Loc.Instance["Apps_UpdateAll"])) return;
+        if (!dialogs.Ask(Loc.Instance["Apps_UpdateAllTitle"], PackageUpdates.ConfirmText(plan), Loc.Instance["Apps_UpdateAll"])) return;
+        // The screenshot demo's managers are not this PC's: nothing runs.
+        if (_managerDemo) return;
         IsUpdatingAll = true;
         var lines = new List<string>();
         WorkProgress.Scope? banner = null;
@@ -540,28 +598,160 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
         {
             lines.Add(l);
             if (lines.Count > 40) lines.RemoveAt(0);
-            Output = string.Join("\n", lines);
+            ManagerOutput = string.Join("\n", lines);
             // "(2/5) Found ..." as winget starts each package; without it the bar keeps moving.
             if (ToolProgress.WingetPackage(l) is var (done, total)) banner?.Step(done, total, l[(l.IndexOf(')') + 1)..].Trim());
         });
         try
         {
-            var winget = _winget;
-            // No Stop: ending winget in the middle of an installer can leave a program half updated.
-            await RunWorkAsync("winget upgrade all", Loc.Instance["Work_UpdateApps"], async work =>
+            // No Stop: ending a package manager in the middle of an installer can leave a program half updated.
+            await RunWorkAsync("update all apps", Loc.Instance["Work_UpdateApps"], async work =>
             {
                 banner = work;
-                var code = await StreamingProcess.RunAsync(winget, Winget.UpgradeAllArguments("machine"), progress);
-                lines.Add(Winget.IsSuccess(code) ? Loc.Instance["Apps_UpdateAllDone"] : Loc.Instance.Format("Apps_UpdateFailed", $"0x{code:X8}"));
-                // Per-user programs update as the signed-in user, in a window of their own.
-                if (_wingetForUser is { } forUser && Winget.UpgradeAllForUser(forUser, services.Elevation) != DeElevatedLauncher.Path.Failed)
-                    lines.Add(Loc.Instance["Apps_UpdateAllUser"]);
-                Output = string.Join("\n", lines);
+                var results = await PackageRuns.RunAllAsync(plan, progress);
+                lines.AddRange(results);
+                ManagerOutput = string.Join("\n", lines);
             });
         }
         finally
         {
             IsUpdatingAll = false;
+        }
+    }
+
+    // ---------------- package managers ----------------
+
+    private IReadOnlyList<PackageManagerInfo> _managers = [];
+    private bool _managerDemo;
+    private PackageUpdates? _packageRuns;
+
+    private PackageUpdates PackageRuns => _packageRuns ??= new PackageUpdates(new Launch(), services.Elevation);
+
+    public ObservableCollection<ManagerRow> Managers { get; } = [];
+    public ObservableCollection<ManagerRow> DeveloperTools { get; } = [];
+    public ObservableCollection<ChocolateyUpdateRow> ChocolateyUpdates { get; } = [];
+
+    /// <summary>What Update all and the Chocolatey updates printed, on the Package managers card.</summary>
+    [ObservableProperty] private string _managerOutput = "";
+    [ObservableProperty] private bool _hasManagers;
+    [ObservableProperty] private bool _hasDeveloperTools;
+    [ObservableProperty] private bool _canCheckChocolatey;
+    [ObservableProperty] private bool _isCheckingChocolatey;
+    [ObservableProperty] private string? _chocolateyNote;
+
+    /// <summary>
+    /// Developer aid for screenshots (--pm-demo): fixed package managers (all found, some developer tools) and a sample
+    /// Chocolatey update list instead of this PC's. Nothing is read or run; Update all only shows its question.
+    /// </summary>
+    public void UseManagerDemo() => _managerDemo = true;
+
+    private void ShowManagers()
+    {
+        Managers.Clear();
+        DeveloperTools.Clear();
+        foreach (var m in _managers) (m.IsDeveloperTool ? DeveloperTools : Managers).Add(new ManagerRow(m));
+        HasManagers = Managers.Count > 0;
+        HasDeveloperTools = DeveloperTools.Count > 0;
+        CanCheckChocolatey = TrustedChocolatey is not null;
+        if (_managerDemo && ChocolateyUpdates.Count == 0)
+        {
+            ChocolateyUpdates.Add(new ChocolateyUpdateRow(new ChocolateyOutdated("git", "2.47.0", "2.47.1")));
+            ChocolateyUpdates.Add(new ChocolateyUpdateRow(new ChocolateyOutdated("7zip", "24.08.0", "24.09.0")));
+        }
+        for (var i = 0; i < ChocolateyUpdates.Count; i++)
+        {
+            var old = ChocolateyUpdates[i];
+            ChocolateyUpdates[i] = new ChocolateyUpdateRow(old.Package) { Updated = old.Updated, StateText = old.Updated ? Loc.Instance["Apps_Updated"] : "" };
+        }
+        if (_managerDemo && _chocolateyNoteText is null) ShowChocolateyNote(() => Loc.Instance.Format("Apps_ChocoCount", ChocolateyUpdates.Count));
+        // A language switch: the note in the new language.
+        else if (_chocolateyNoteText is { } note) ChocolateyNote = note();
+    }
+
+    /// <summary>The note beside Check Chocolatey updates, built again in the new language after a switch.</summary>
+    private Func<string>? _chocolateyNoteText;
+
+    private void ShowChocolateyNote(Func<string> note)
+    {
+        _chocolateyNoteText = note;
+        ChocolateyNote = note();
+    }
+
+    private PackageManagerInfo? TrustedChocolatey => _managers.FirstOrDefault(m => m is { Kind: ManagerKind.Chocolatey, Run: ManagerRun.Elevated });
+
+    /// <summary>choco outdated from the checked folder (a read that asks the package sources; started by the user).</summary>
+    [RelayCommand]
+    private async Task CheckChocolateyAsync()
+    {
+        if (IsCheckingChocolatey || TrustedChocolatey is not { } choco || _managerDemo) return;
+        IsCheckingChocolatey = true;
+        ShowChocolateyNote(() => Loc.Instance["Apps_ChocoChecking"]);
+        ChocolateyUpdates.Clear();
+        try
+        {
+            var found = await PackageRuns.ChocolateyOutdatedAsync(choco);
+            foreach (var p in found ?? []) ChocolateyUpdates.Add(new ChocolateyUpdateRow(p));
+            ShowChocolateyNote(() => found is null ? Loc.Instance["Apps_ChocoCheckFailed"]
+                : found.Count == 0 ? Loc.Instance["Apps_ChocoNone"]
+                : Loc.Instance.Format("Apps_ChocoCount", found.Count));
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or IOException)
+        {
+            ShowChocolateyNote(() => Loc.Instance.Format("Result_Error", ex.Message));
+        }
+        finally
+        {
+            IsCheckingChocolatey = false;
+        }
+    }
+
+    /// <summary>choco upgrade for one package of the update list, elevated from the checked folder.</summary>
+    [RelayCommand]
+    private async Task UpdateChocolateyPackageAsync(ChocolateyUpdateRow? row)
+    {
+        if (row is null || row.IsUpdating || row.Updated || TrustedChocolatey is not { } choco || _managerDemo) return;
+        row.IsUpdating = true;
+        row.StateText = Loc.Instance["Apps_Updating"];
+        var lines = new List<string>();
+        var progress = new Progress<string>(l =>
+        {
+            lines.Add(l);
+            if (lines.Count > 40) lines.RemoveAt(0);
+            ManagerOutput = string.Join("\n", lines);
+        });
+        try
+        {
+            if (!await RunWorkAsync($"choco upgrade {row.Name}", async () =>
+                {
+                    var code = await PackageRuns.ChocolateyUpgradeAsync(choco, row.Package.Id, progress);
+                    row.Updated = Chocolatey.IsSuccess(code);
+                    row.StateText = row.Updated ? Loc.Instance["Apps_Updated"] : Loc.Instance.Format("Apps_ChocoUpdateFailed", code);
+                }))
+                row.StateText = "";
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or IOException or ArgumentException)
+        {
+            row.StateText = Loc.Instance.Format("Result_Error", ex.Message);
+        }
+        finally
+        {
+            row.IsUpdating = false;
+        }
+    }
+
+    /// <summary>Copies a developer tool's commands; Tunero never runs them.</summary>
+    [RelayCommand]
+    private void CopyManagerCommand(ManagerRow? row)
+    {
+        if (row is null || row.CommandText.Length == 0) return;
+        try
+        {
+            System.Windows.Clipboard.SetText(row.CommandText);
+            row.CopyState = Loc.Instance["Apps_Copied"];
+        }
+        catch (System.Runtime.InteropServices.COMException)
+        {
+            // The clipboard is held by another program; nothing to do.
         }
     }
 
@@ -579,8 +769,17 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
 
     protected override async Task LoadAsync()
     {
-        (_winget, _wingetForUser) = await Task.Run(() => (Winget.FindTrusted(), Winget.FindForUser(services.ProfilePath)));
+        (_winget, _wingetForUser, _managers) = await Task.Run(() =>
+        {
+            var trusted = Winget.FindTrusted();
+            var forUser = Winget.FindForUser(services.ProfilePath);
+            // Detection checks files only; nothing it finds is started here.
+            var managers = _managerDemo ? PackageManagers.Demo()
+                : PackageManagers.Detect(ManagerSystem.ForThisPc(services.Context.Registry, services.ProfilePath, trusted, forUser));
+            return (trusted, forUser, managers);
+        });
         WingetMissing = _winget is null && _wingetForUser is null;
+        ShowManagers();
         ShowApps();
         await LoadProgramsAsync();
         _drivers = await Task.Run(DriverInventory.Read);
@@ -591,6 +790,7 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
     protected override Task RelabelAsync()
     {
         if (_drivers is null) return LoadAsync();
+        ShowManagers();
         ShowApps();
         FilterPrograms();
         ShowDrivers(_drivers);

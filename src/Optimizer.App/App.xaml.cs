@@ -201,6 +201,8 @@ public partial class App : Application
         // Developer aid: the install media page with a sample catalog and a build that only shows its stages (no network,
         // nothing runs). --media-demo fail, done or expand (comma separated) shows a result or unfolds the cards.
         if (args.Has("--media-demo")) vm.InstallMedia.UseDemo(args.Value("--media-demo") is { } demo && !demo.StartsWith("--", StringComparison.Ordinal) ? demo : null);
+        // Developer aid: Install and update with fixed package managers and a sample Chocolatey update list (nothing is read or run).
+        if (args.Has("--pm-demo")) vm.Apps.UseManagerDemo();
         Mark("view model ready");
         // The scan starts before the window is built: its probes run on other threads while WPF creates the window and
         // the page (about a third of a second), and the results only reach the view model.

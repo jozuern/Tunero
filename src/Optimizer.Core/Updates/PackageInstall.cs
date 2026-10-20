@@ -92,16 +92,13 @@ public sealed record PackageInstall(PackageManager Manager, string Name, string 
     }
 
     /// <summary>
-    /// The environment of the elevated Chocolatey window (after <see cref="ProcessHardening.Apply"/>): choco.exe takes its
-    /// root, and with it its configuration (package sources), PowerShell helpers and extensions, from ChocolateyInstall
-    /// before its own folder, and a user can set that variable (and the other Chocolatey* ones) for their account. All of
-    /// them are removed, and ChocolateyInstall points to the checked folder.
+    /// The environment of the elevated Chocolatey window (after <see cref="ProcessHardening.Apply"/>): every Chocolatey*
+    /// variable a user could set is removed and ChocolateyInstall points to the checked folder (<see cref="Apps.Chocolatey.HardenEnvironment"/>).
     /// </summary>
     public void HardenChocolateyEnvironment(IDictionary<string, string?> env)
     {
         if (Manager != PackageManager.Chocolatey) return;
-        foreach (var name in env.Keys.Where(k => k.StartsWith("Chocolatey", StringComparison.OrdinalIgnoreCase)).ToList()) env.Remove(name);
-        env["ChocolateyInstall"] = Folder;
+        Apps.Chocolatey.HardenEnvironment(env, Folder);
     }
 
     /// <summary>The package manager can be started from the app (else the app shows the command to type).</summary>

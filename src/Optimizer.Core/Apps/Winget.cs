@@ -91,13 +91,14 @@ public static class Winget
         return Version.TryParse(package[prefix.Length..^suffix.Length], out var v) ? v : null;
     }
 
-    private static List<(string, string)> ReadPackageFolders()
+    /// <summary>Packages registered for the machine whose full name starts with <paramref name="prefix"/>, with their folders.</summary>
+    internal static List<(string Package, string Folder)> ReadPackageFolders(string prefix = "Microsoft.DesktopAppInstaller_")
     {
         var list = new List<(string, string)>();
         try
         {
             using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(PackageRepository);
-            foreach (var name in key?.GetSubKeyNames().Where(n => n.StartsWith("Microsoft.DesktopAppInstaller_", StringComparison.OrdinalIgnoreCase)) ?? [])
+            foreach (var name in key?.GetSubKeyNames().Where(n => n.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) ?? [])
             {
                 using var sub = key!.OpenSubKey(name);
                 if (sub?.GetValue("Path") is string folder) list.Add((name, folder));

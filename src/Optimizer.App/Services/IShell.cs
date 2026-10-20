@@ -60,4 +60,11 @@ public sealed class Launch
     /// <summary>Opens a program as the signed-in user (<see cref="DeElevatedLauncher"/>); false when that failed.</summary>
     public Func<string, string?, ElevationInfo?, bool> OpenAsUser { get; init; } =
         (file, arguments, elevation) => DeElevatedLauncher.Open(file, arguments, elevation) != DeElevatedLauncher.Path.Failed;
+
+    /// <summary>
+    /// Runs a program in this process's rights with its output read line by line (<see cref="StreamingProcess"/>), in the
+    /// given encoding (null: UTF-8) and with the hardened environment changed as the last argument says; returns the exit code.
+    /// </summary>
+    public Func<string, string, IProgress<string>?, System.Text.Encoding?, Action<IDictionary<string, string?>>?, Task<int>> RunStreaming { get; init; } =
+        (file, arguments, lines, encoding, environment) => StreamingProcess.RunAsync(file, arguments, lines, CancellationToken.None, encoding, environment: environment);
 }

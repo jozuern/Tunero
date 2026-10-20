@@ -1258,8 +1258,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Programs_StillThere" xml:space="preserve"><value>Das Programm steht noch in der Liste (Rückgabewert {0}). Die Deinstallation wurde eventuell abgebrochen oder braucht einen Neustart.</value></data>
   <data name="Programs_NoUninstaller" xml:space="preserve"><value>Für dieses Programm gibt es keinen Deinstallationsbefehl, den Windows ausführen kann.</value></data>
   <data name="Apps_UpdateAll" xml:space="preserve"><value>Alle Apps aktualisieren</value></data>
-  <data name="Apps_UpdateAllTitle" xml:space="preserve"><value>Alle Apps mit winget aktualisieren?</value></data>
-  <data name="Apps_UpdateAllText" xml:space="preserve"><value>winget aktualisiert jedes installierte Programm, für das es in seiner Quelle eine neuere Version kennt, ohne einzeln zu fragen. Programme für den ganzen PC werden hier aktualisiert, Programme nur für dein Konto in einem eigenen winget-Fenster. Geöffnete Programme brauchen eventuell einen Neustart.</value></data>
+  <data name="Apps_UpdateAllTitle" xml:space="preserve"><value>Alle Apps aktualisieren?</value></data>
   <data name="Apps_UpdateAllDone" xml:space="preserve"><value>winget ist mit dem Aktualisieren fertig.</value></data>
   <data name="Apps_UpdateAllUser" xml:space="preserve"><value>Programme, die nur für dein Konto installiert sind, werden in einem eigenen winget-Fenster aktualisiert.</value></data>
   <data name="Apps_UpdateFailed" xml:space="preserve"><value>Update fehlgeschlagen (winget-Code {0}).</value></data>
@@ -1762,4 +1761,44 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Media_Off" xml:space="preserve"><value>Aus</value></data>
   <data name="Media_IsoFacts" xml:space="preserve"><value>Windows, Build {0}, {1}, {2}</value></data>
   <data name="Media_SetupSummaryNoName" xml:space="preserve"><value>Noch kein Kontoname, {0}</value></data>
+  <data name="Apps_UpdateAllRuns" xml:space="preserve"><value>Läuft nacheinander: {0}.</value></data>
+  <data name="Apps_UpdateAllWinget" xml:space="preserve"><value>winget aktualisiert jedes Programm, für das es in seiner Quelle eine neuere Version kennt, ohne einzeln zu fragen. Programme für den ganzen PC werden hier aktualisiert, Programme nur für dein Konto in einem eigenen winget-Fenster.</value></data>
+  <data name="Apps_UpdateAllChoco" xml:space="preserve"><value>Chocolatey aktualisiert hier jedes veraltete Paket, mit Administratorrechten. Tunero selbst bleibt außen vor: Es aktualisiert sich über „Jetzt aktualisieren“ in den Einstellungen.</value></data>
+  <data name="Apps_UpdateAllScoop" xml:space="preserve"><value>Scoop aktualisiert sich selbst und danach jede App in einem eigenen Fenster, als dein Konto und ohne Administratorrechte.</value></data>
+  <data name="Apps_UpdateAllStore" xml:space="preserve"><value>Der Microsoft Store öffnet seine Seite für Updates; wähle dort „Updates abrufen“.</value></data>
+  <data name="Apps_UpdateAllRestart" xml:space="preserve"><value>Geöffnete Programme brauchen eventuell einen Neustart.</value></data>
+  <data name="Apps_ChocoDone" xml:space="preserve"><value>Chocolatey ist mit dem Aktualisieren fertig.</value></data>
+  <data name="Apps_ChocoUpdateFailed" xml:space="preserve"><value>Chocolatey-Update fehlgeschlagen (Code {0}).</value></data>
+  <data name="Apps_ScoopStarted" xml:space="preserve"><value>Scoop aktualisiert in einem eigenen Fenster, als dein Konto.</value></data>
+  <data name="Apps_ScoopNotStarted" xml:space="preserve"><value>Scoop konnte nicht gestartet werden. Führe scoop update * in einem Terminal aus.</value></data>
+  <data name="Apps_ScoopWindowDone" xml:space="preserve"><value>Scoop ist fertig. Drücke die Eingabetaste, um dieses Fenster zu schließen.</value></data>
+  <data name="Apps_StoreOpened" xml:space="preserve"><value>Der Microsoft Store zeigt seine Seite für Updates: Wähle dort „Updates abrufen“.</value></data>
+  <data name="Apps_StoreNotOpened" xml:space="preserve"><value>Der Microsoft Store konnte nicht geöffnet werden.</value></data>
+  <data name="Apps_ManagersTitle" xml:space="preserve"><value>Paketmanager</value></data>
+  <data name="Apps_ManagersHint" xml:space="preserve"><value>„Alle Apps aktualisieren“ führt die als enthalten markierten nacheinander aus. Jeder lädt aus seinen eigenen Quellen.</value></data>
+  <data name="Apps_ManagerVersion" xml:space="preserve"><value>Version {0}</value></data>
+  <data name="Apps_ManagerIncluded" xml:space="preserve"><value>Enthalten</value></data>
+  <data name="Apps_ManagerExcluded" xml:space="preserve"><value>Nicht enthalten</value></data>
+  <data name="Apps_HowWinget" xml:space="preserve"><value>Programme für den ganzen PC werden hier aktualisiert, Programme für dein Konto in einem eigenen Fenster.</value></data>
+  <data name="Apps_HowWingetUser" xml:space="preserve"><value>Aktualisiert in einem eigenen Fenster, als dein Konto.</value></data>
+  <data name="Apps_HowChoco" xml:space="preserve"><value>Aktualisiert hier jedes veraltete Paket, mit Administratorrechten.</value></data>
+  <data name="Apps_HowChocoUntrusted" xml:space="preserve"><value>Sein Ordner lässt sich ohne Administratorrechte ändern, deshalb startet Tunero es nicht mit diesen Rechten. Wenn du ihm vertraust, führe choco upgrade all selbst in einem Terminal aus.</value></data>
+  <data name="Apps_HowScoop" xml:space="preserve"><value>Aktualisiert sich selbst und seine Apps in einem eigenen Fenster, als dein Konto.</value></data>
+  <data name="Apps_HowStore" xml:space="preserve"><value>Öffnet die Seite des Stores für Updates; wähle dort „Updates abrufen“.</value></data>
+  <data name="Apps_DevToolsTitle" xml:space="preserve"><value>Entwicklerwerkzeuge</value></data>
+  <data name="Apps_DevToolsHint" xml:space="preserve"><value>Tunero führt diese nicht aus. Kopiere den Befehl und führe ihn in einem eigenen Terminal aus.</value></data>
+  <data name="Apps_DevNpm" xml:space="preserve"><value>Aktualisiert die globalen npm-Pakete innerhalb ihrer Hauptversion. Für eine neue Hauptversion nimm npm install -g mit dem Paketnamen.</value></data>
+  <data name="Apps_DevPip" xml:space="preserve"><value>Listet die Python-Pakete mit einer neueren Version auf. Aktualisiere die gewünschten mit pip install --upgrade und dem Paketnamen.</value></data>
+  <data name="Apps_DevDotnet" xml:space="preserve"><value>Aktualisiert jedes globale .NET-Tool auf seine neueste Version.</value></data>
+  <data name="Apps_DevCargoUpdate" xml:space="preserve"><value>Aktualisiert jedes installierte Crate mit einer neueren Version (cargo-update).</value></data>
+  <data name="Apps_DevCargo" xml:space="preserve"><value>Installiert jedes Crate von crates.io neu, wenn es eine neuere Version gibt; ein aktuelles Crate bleibt, wie es ist.</value></data>
+  <data name="Apps_CopyCommand" xml:space="preserve"><value>Kopieren</value></data>
+  <data name="Apps_CopyCommandName" xml:space="preserve"><value>Befehl für {0} kopieren</value></data>
+  <data name="Apps_Copied" xml:space="preserve"><value>Kopiert</value></data>
+  <data name="Apps_ChocoCheck" xml:space="preserve"><value>Chocolatey-Updates suchen</value></data>
+  <data name="Apps_ChocoChecking" xml:space="preserve"><value>Chocolatey wird nach Updates gefragt</value></data>
+  <data name="Apps_ChocoNone" xml:space="preserve"><value>Chocolatey: Alle Pakete sind aktuell.</value></data>
+  <data name="Apps_ChocoCount" xml:space="preserve"><value>Updates von Chocolatey: {0}</value></data>
+  <data name="Apps_ChocoCheckFailed" xml:space="preserve"><value>Chocolatey konnte nicht nach Updates suchen.</value></data>
+  <data name="Apps_ChocoMeta" xml:space="preserve"><value>Chocolatey, {0} auf {1}</value></data>
 </root>

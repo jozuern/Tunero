@@ -12,10 +12,12 @@ namespace Optimizer.Core.Platform;
 public static class StreamingProcess
 {
     /// <param name="started">Called right after the process has started (for example to release a file held open until then).</param>
+    /// <param name="environment">Changes the hardened environment before the start (Chocolatey's root, <see cref="Apps.Chocolatey.HardenEnvironment"/>).</param>
     public static async Task<int> RunAsync(string file, string arguments, IProgress<string>? lines, CancellationToken ct = default, Encoding? encoding = null,
-        Action? started = null)
+        Action? started = null, Action<IDictionary<string, string?>>? environment = null)
     {
         var psi = ProcessLauncher.Info(file, arguments, capture: encoding ?? Encoding.UTF8);
+        environment?.Invoke(psi.Environment);
         using var p = new Process { StartInfo = psi, EnableRaisingEvents = true };
         var all = new List<string>();
         void OnLine(string? line)
