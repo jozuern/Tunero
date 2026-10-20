@@ -144,9 +144,10 @@ const en: Copy = {
       {
         name: 'Maintain and check',
         items: [
-          ['Install & update', 'Install and update apps with winget, and see how old the drivers are.'],
+          ['Install & update', 'Install and update apps with winget, update Chocolatey and Scoop packages too, and see how old the drivers are.'],
           ['Tools', 'Windows features, network fixes, Windows Update repair, SFC and DISM.'],
-          ['Health', 'A frame time benchmark with PresentMon, a throttle check and drive health.'],
+          ['Windows install media', 'A Windows 11 ISO for a new installation: without the preinstalled apps you tick, without the account questions, and with your profile applied at the first sign-in, if you like.'],
+          ['Health', 'A frame time benchmark with PresentMon, a throttle check, drive health, and live readings that show which programs use each device.'],
         ],
       },
       {
@@ -159,7 +160,7 @@ const en: Copy = {
     title: 'It goes online only when you ask it to',
     body: [
       'No telemetry, no account, no ads, no service and no tray icon: it runs when you start it, or once after you sign in if you turn on applying your changes again in Settings. Installing it in Program Files is optional.',
-      'The update check is off until you turn it on. A VirusTotal lookup needs your own key and sends file hashes, never files. The DNS benchmark and app installs run when you start them.',
+      'The update check is off until you turn it on. A VirusTotal lookup needs your own key and sends file hashes, never files. The DNS benchmark, app installs and the Windows download for install media run when you start them.',
     ],
     link: 'Everything the app sends, and to whom',
   },
@@ -213,7 +214,7 @@ const en: Copy = {
       {
         id: 'remove',
         q: 'Can I remove it completely?',
-        a: 'Settings > Uninstall offers to undo every change first. Then it removes the exe, its data folder and its Start menu entry, and for an installed copy also its Program Files folder and its entry under Installed apps. Uninstall under Windows Settings > Apps does the same. A copy from Scoop is removed with scoop uninstall tunero.',
+        a: 'Settings > Uninstall offers to undo every change first. Then it removes the exe, its data folder and its Start menu entry, and for an installed copy also its Program Files folder and its entry under Installed apps. Uninstall under Windows Settings > Apps does the same. A copy from Chocolatey or Scoop is removed with choco uninstall tunero or scoop uninstall tunero.',
       },
     ],
   },

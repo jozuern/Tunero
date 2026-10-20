@@ -1,11 +1,11 @@
 # Open items
 
-Open items besides the findings of the audit of 2026-10-19 ([audit-2026-10-19.md](audit-2026-10-19.md)): what follows needs a person, a VM image or hardware we do not have, or is planned work.
+What is still open: it needs a person, a VM image or hardware we do not have, or it is planned work.
 
-## Left from the 1.0 list
+## Release channels and the VM plan
 
-- **New VM plan rows** (section 1 and 6 of [vm-test-plan.md](vm-test-plan.md)): a failed start after a self-update (needs a signed release newer than the installed one: the update to 1.0.1).
-- **Code signing:** the Certum open source certificate (SimplySign cloud) is active since 2026-10-15 and 1.2.3 is the first signed release (CONTRIBUTING, Code signing). Left: the code signing rows of the VM test plan with the published 1.2.3. The first winget and Chocolatey versions are in review.
+- **winget:** the first version (pull request #450585, `jozuern.Tunero` 0.8.0) is still in review. Chocolatey offers the current version and Scoop's bucket follows every release.
+- **New VM plan rows** (section 1 and 6 of [vm-test-plan.md](vm-test-plan.md)): a failed start after a self-update (needs a signed release newer than the installed one), and the code signing rows with a signed release.
 
 ## Checks in the VM (from earlier runs)
 
@@ -14,16 +14,18 @@ Open items besides the findings of the audit of 2026-10-19 ([audit-2026-10-19.md
 - **Scroll bar arrows in dialogs:** UI Automation names them "CaretUp24" and "CaretDown24" (WPF-UI's icon names), so a screen reader reads those. Give them real names or hide them from UI Automation.
 - **Need real hardware or traffic capture:** `gpu.windowedOptimizations` (discrete GPU), `display.autoHdrOn` and `display.vrrOn` (HDR or VRR display), `network.dohAutoUpgrade`, the NVIDIA settings, MSI mode and interrupt affinity, the network adapter properties (section 5 of the VM plan).
 - **V-Cache driver:** the service name `amd3dvcacheSvc` needs a check on an X3D PC.
+- **Left out until someone checks them at the console:** Num Lock at sign-in and the startup sound (undocumented values that only show at the sign-in screen or as sound).
 
-## Toward "the only PC optimizer you need"
+## Left from the audit of 2026-10-19
 
-In the order of the audit's promise gaps:
+The audit's other findings are fixed (commits `dde41d6` to `2a931a0`, and `1de6875` for the docs). Left on purpose:
 
-1. Installer: done (91 reviewed apps and a winget search for any package, passed in the VM).
-2. Bulk Crap Uninstaller: done (bulk and quiet uninstall, the leftover check, unused Program Files folders, all passed in the VM).
-3. Process Lasso: done as far as Windows allows without a background program (start priorities for CPU, disk and memory, all proven in the VM); live rules and affinity are on the not-included page.
-4. Autoruns: done (the locations, the CSV export and Delete with a backup for registry values, Startup folder files and tasks of other programs, passed in the VM).
-5. Documented policies: a cross-check of every policy value in the tool reference against the catalog (2026-10-13) left few with an effect. Added: Start without Recommended (checked on Pro), Click to Do off. Already in: quality and feature update deferral, restart scheduling, settings sync, Recall. Left out: sync per category (Settings has its own switches), AllowDeviceNameInDiagnosticData (off by default), the Settings agent and agent policies (Enterprise only), TurnOffWindowsCopilot (deprecated), TargetReleaseVersion (needs the version of the moment, not a fixed value).
-6. Cosmetic tweaks: snapping (Snap Assist, layouts) and taskbar on several displays are in. Menu show delay and mouse hover time are in (a `systemParameter` action, checked in the VM). Drive letters first and the "- Shortcut" suffix are in (proven in the VM without a sign-out). Num Lock at sign-in and the startup sound use undocumented values that only show at the sign-in screen or as sound, which a VM script cannot check: they stay out until someone checks them at the console. Five right-click menu entries are in as Explorer tweaks (Give access to, Restore previous versions, Open in Terminal, Cast to Device, Share; proven in the VM). "Include in library" ignores the block list and stays out. Photo Viewer associations and Send To stay out for now.
-7. Export: done (removed apps, service start types and startup entries as opt-in parts of the changes file, `--include` for `--export`, `--apply-recommended`). `--include-preview` stays out: a preview has not been tested on real Windows and needs its own confirmation in the app.
-8. New accounts: done ("Copy to new accounts" writes the per-user tweaks to the Default profile, VM-tested with a new local account). Also done: the opt-in re-apply task (`--reapply` and the switch in Settings, VM-tested) and the quick fixes (restart pending check, Defender update, winget source reset, icon cache, Advanced startup for Safe Mode; VM-tested).
+- **One process runner in `ActionContext`:** `StreamingProcess` is static and called directly by the winget, SFC/DISM and PresentMon flows, and `IProcessRunner.Run` has a timeout but no cancellation. One `RunAsync(file, args, timeout, CancellationToken, IProgress<string>)` would give those flows fakes and tests, a Stop button for long DISM runs and one timeout policy.
+- **Install, update and setup behind seams:** `UpdateService` and the setup decision in `MainViewModel.Setup.cs` are not injectable, so the setup decision and the update path beyond `Updater.RollBack` have no tests.
+- **One path expander and one CLI verb table, with `ChangeSession` owning the change lock:** per-user strings are expanded four ways (`Programs.Command` and `ProgramLeftovers.CleanPath` use the elevated process's environment), and the cross-process `ChangeLock` is taken by the callers, so a new entry point could skip it.
+- **User-scope writes without a resolved SID** fall back to the elevated account without the "other account" banner (a domain account without a domain controller; cannot be tested here).
+- **Single instance by process name:** `Tunero (1).exe` opens a second window; telling the copies apart needs another way to identify the running one.
+- **Workflows:** the verify logic is copied inline into the workflows, and `pages.yml` does not wait for CI.
+- **Legal notice:** a second contact channel besides email (a phone number or a form) needs the owner's decision.
+- **Dead code:** the unused `Preflight` parameter, the test-only `MftRecord.ExtensionReferences` and `WingetPackage.IsInstalledWithWinget`, the `OptionalFeatures` ids without `TweakIds.Slug` (changing them needs a legacy-id fallback), the split quick fixes and the copied `Text(lang)` helpers.
+- **Test tooling majors** (Test SDK 18, xunit runner 4): left to Dependabot.

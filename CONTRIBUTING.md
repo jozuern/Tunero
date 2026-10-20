@@ -72,7 +72,7 @@ src/Optimizer.App/    WPF UI (WPF-UI 4.3, CommunityToolkit.Mvvm, Markdig): one p
                       Licenses/ holds every license text that ships in the exe (licenses.json lists them)
 tests/                xUnit: rule tests with mocked hardware, engine tests in a registry sandbox, docs lint, read-only hardware checks (Category=Hardware)
                       Optimizer.App.Tests: the app's services (update, uninstall, setup, single instance) and the Storage page's view model with a fake window, dialogs, launches and Recycle Bin
-docs/                 privacy, third-party notices, VM test plan, open items (TODO), the latest audit, explanation style guide, tweaks left out,
+docs/                 privacy, third-party notices, VM test plan, open items (TODO), explanation style guide, tweaks left out,
                       gaming impact research, notes from real hardware, brand (icon, logo, colors)
 website/              tunero.dev (Astro, static): reads the counts, catalog and explanation pages at build time; rules in website/DESIGN.md
 .github/workflows/    CI (build, tests without Category=Hardware, single-exe artifact), the tag-triggered release and the website
@@ -186,6 +186,6 @@ Every release with signing on:
 
 The timestamp keeps a signature valid after the certificate expires. The certificate is valid for one year: renew it with Certum in time (`sign-release.ps1` warns 30 days ahead), and update `CODE_SIGNING_SUBJECT` if the renewed certificate's subject differs; then also add the new subject to `AppInstall.TrustedPublishers` in the first release signed with it, or its first start will not offer the install into Program Files (that check accepts only a copy signed by a subject in the list). SmartScreen builds reputation from the file and from its signing certificate ([SmartScreen reputation for Windows app developers](https://learn.microsoft.com/windows/apps/package-and-deploy/smartscreen-reputation)), so a signed exe can still get the "Windows protected your PC" warning until enough people have run it, and a new certificate affects that publisher reputation. Smart App Control lets an app run that is signed with a certificate from a certificate authority in Microsoft's Trusted Root Program, unless Microsoft rates it unsafe ([Smart App Control overview](https://learn.microsoft.com/windows/apps/develop/smart-app-control/overview)).
 
-With 1.2.3, the README (Download and Code signing), the website (`website/src/i18n/en.ts` and `de.ts`: the hero line and the SmartScreen and Smart App Control answers) and `docs/TODO.md` say that releases from 1.2.3 on are signed and by whom, as Windows shows it; they keep "More info > Run anyway" for SmartScreen. Left: the code signing rows of the VM test plan (section 1) with the published release.
+With 1.2.3, the README (Download and Code signing), the website (`website/src/i18n/en.ts` and `de.ts`: the hero line and the SmartScreen and Smart App Control answers) say that releases from 1.2.3 on are signed and by whom, as Windows shows it; they keep "More info > Run anyway" for SmartScreen. Left: the code signing rows of the VM test plan (section 1) with the published release.
 
 The policy in the README ([Code signing](README.md#code-signing)) names who signs and what; update it when someone joins.

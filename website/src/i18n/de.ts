@@ -144,9 +144,10 @@ const de: Copy = {
       {
         name: 'Pflegen und prüfen',
         items: [
-          ['Installieren & aktualisieren', 'Apps mit winget installieren und aktualisieren, und sehen, wie alt die Treiber sind.'],
+          ['Installieren & aktualisieren', 'Apps mit winget installieren und aktualisieren, dazu Pakete von Chocolatey und Scoop aktualisieren, und sehen, wie alt die Treiber sind.'],
           ['Tools', 'Windows-Features, Netzwerkreparaturen, Windows-Update-Reparatur, SFC und DISM.'],
-          ['Zustand', 'Ein Frametime-Benchmark mit PresentMon, eine Drosselungsprüfung und der Zustand der Laufwerke.'],
+          ['Installationsmedium', 'Eine Windows-11-ISO für eine Neuinstallation: ohne die vorinstallierten Apps, die du abhakst, ohne die Kontofragen und, wenn du willst, mit deinem Profil bei der ersten Anmeldung.'],
+          ['Zustand', 'Ein Frametime-Benchmark mit PresentMon, eine Drosselungsprüfung, der Zustand der Laufwerke und Live-Messwerte, die zeigen, welche Programme jedes Gerät nutzen.'],
         ],
       },
       {
@@ -159,7 +160,7 @@ const de: Copy = {
     title: 'Ins Internet geht es nur, wenn du es willst',
     body: [
       'Keine Telemetrie, kein Konto, keine Werbung, kein Dienst und kein Symbol im Infobereich: Es läuft, wenn du es startest, oder einmal nach der Anmeldung, wenn du in den Einstellungen das erneute Anwenden deiner Änderungen einschaltest. Die Installation im Ordner Programme ist freiwillig.',
-      'Die Update-Prüfung ist aus, bis du sie einschaltest. Eine VirusTotal-Abfrage braucht deinen eigenen Schlüssel und sendet Hashes von Dateien, nie die Dateien. Der DNS-Benchmark und App-Installationen laufen, wenn du sie startest.',
+      'Die Update-Prüfung ist aus, bis du sie einschaltest. Eine VirusTotal-Abfrage braucht deinen eigenen Schlüssel und sendet Hashes von Dateien, nie die Dateien. Der DNS-Benchmark, App-Installationen und der Windows-Download für das Installationsmedium laufen, wenn du sie startest.',
     ],
     link: 'Alles, was die App sendet, und an wen',
   },
@@ -213,7 +214,7 @@ const de: Copy = {
       {
         id: 'entfernen',
         q: 'Kann ich es vollständig entfernen?',
-        a: '„Deinstallieren“ in den Einstellungen bietet an, vorher jede Änderung rückgängig zu machen. Dann entfernt es die exe, seinen Datenordner und seinen Eintrag im Startmenü, bei einer installierten Kopie auch ihren Ordner unter Programme und ihren Eintrag unter Installierte Apps. „Deinstallieren“ in den Windows-Einstellungen unter Apps macht dasselbe. Eine Kopie aus Scoop entfernst du mit scoop uninstall tunero.',
+        a: '„Deinstallieren“ in den Einstellungen bietet an, vorher jede Änderung rückgängig zu machen. Dann entfernt es die exe, seinen Datenordner und seinen Eintrag im Startmenü, bei einer installierten Kopie auch ihren Ordner unter Programme und ihren Eintrag unter Installierte Apps. „Deinstallieren“ in den Windows-Einstellungen unter Apps macht dasselbe. Eine Kopie aus Chocolatey oder Scoop entfernst du mit choco uninstall tunero oder scoop uninstall tunero.',
       },
     ],
   },

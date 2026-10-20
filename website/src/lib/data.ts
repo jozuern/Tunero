@@ -186,7 +186,7 @@ export function registryChanges(id: string, defaults: Record<string, string>): R
  */
 export const packages = {
   winget: { live: false, commands: ['winget install jozuern.Tunero'] },
-  choco: { live: false, commands: ['choco install tunero'] },
+  choco: { live: true, commands: ['choco install tunero'] },
   scoop: { live: true, commands: ['scoop bucket add tunero https://github.com/jozuern/scoop-bucket', 'scoop install tunero/tunero'] },
 };
 
