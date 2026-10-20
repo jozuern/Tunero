@@ -155,12 +155,24 @@ public static class AnswerFile
 public static class AccountName
 {
     private const string InvalidChars = "\"/\\[]:;|=,+*?<>@%&^";
-    // Local user names share one namespace with local groups and built-in accounts, in English and German.
+    // Local user names share one namespace with local groups and built-in accounts. English: every local group and
+    // account of Windows 11 Pro 26H2 in PCO-Test (Get-LocalGroup, Get-LocalUser, 2026-10-20, Hyper-V, IIS and OpenSSH
+    // on), the Builtin groups (S-1-5-32-*) and IUSR of Microsoft's well-known SIDs (learn.microsoft.com/windows-server/
+    // identity/ad-ds/manage/understand-security-identifiers; it calls Replicator "Replicators"). Names over 20 characters
+    // are refused for their length anyway. German: the main groups. Other languages are not covered: the install image's
+    // SAM hive is still empty (8 KB, no keys, in the 26H2 install.wim), Setup creates the groups later.
     // NONE is restricted (Microsoft: LocalAccount Name). defaultuser0 and defaultuser100000 are OOBE's own accounts.
     private static readonly HashSet<string> Reserved = new(StringComparer.OrdinalIgnoreCase)
     {
-        "NONE", "Administrator", "Guest", "DefaultAccount", "WDAGUtilityAccount", "SYSTEM",
-        "Administrators", "Users", "Guests", "Power Users", "Remote Desktop Users", "Backup Operators", "Device Owners",
+        "NONE", "Administrator", "Guest", "DefaultAccount", "WDAGUtilityAccount", "SYSTEM", "IUSR",
+        "Access Control Assistance Operators", "Account Operators", "Administrators", "Backup Operators",
+        "Certificate Service DCOM Access", "Cryptographic Operators", "Device Owners", "Distributed COM Users",
+        "Event Log Readers", "Guests", "Hyper-V Administrators", "IIS_IUSRS", "Incoming Forest Trust Builders",
+        "Network Configuration Operators", "OpenSSH Users", "Performance Log Users", "Performance Monitor Users",
+        "Power Users", "Pre-Windows 2000 Compatible Access", "Print Operators", "RDS Endpoint Servers",
+        "RDS Management Servers", "RDS Remote Access Servers", "Remote Desktop Users", "Remote Management Users",
+        "Replicator", "Replicators", "Server Operators", "System Managed Accounts Group", "Terminal Server License Servers",
+        "User Mode Hardware Operators", "Users", "Windows Authorization Access Group",
         "defaultuser0", "defaultuser100000",
         "Gast", "Administratoren", "Benutzer", "Gäste", "Hauptbenutzer", "Remotedesktopbenutzer", "Sicherungs-Operatoren",
     };

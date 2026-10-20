@@ -186,6 +186,12 @@ public class AnswerFileTests
     [InlineData("Gäste", "Media_NameNotAscii")]
     [InlineData("defaultuser0", "Media_NameReserved")]
     [InlineData("Power Users", "Media_NameReserved")]
+    [InlineData("Replicator", "Media_NameReserved")]
+    [InlineData("IIS_IUSRS", "Media_NameReserved")]
+    [InlineData("event log readers", "Media_NameReserved")]
+    [InlineData("OpenSSH Users", "Media_NameReserved")]
+    [InlineData("Print Operators", "Media_NameReserved")]
+    [InlineData("IUSR", "Media_NameReserved")]
     [InlineData("a%b", "Media_NameInvalid")]
     [InlineData("a&b", "Media_NameInvalid")]
     [InlineData("a^b", "Media_NameInvalid")]
@@ -200,6 +206,26 @@ public class AnswerFileTests
     [InlineData("Josh", null)]
     [InlineData("abcdefghijklmnopqrst", null)]
     public void AccountNameRules(string name, string? key) => Assert.Equal(key, AccountName.Problem(name));
+
+    /// <summary>
+    /// Every local group and account of Windows 11 Pro 26H2 in PCO-Test (Get-LocalGroup and Get-LocalUser, 2026-10-20,
+    /// with Hyper-V, IIS and OpenSSH features on) is refused: a new account cannot share a name with any of them.
+    /// </summary>
+    [Fact]
+    public void EveryGroupAndAccountOfAWindows11PcIsRefused()
+    {
+        string[] names =
+        [
+            "Access Control Assistance Operators", "Administrators", "Backup Operators", "Cryptographic Operators", "Device Owners",
+            "Distributed COM Users", "Event Log Readers", "Guests", "Hyper-V Administrators", "IIS_IUSRS", "Network Configuration Operators",
+            "OpenSSH Users", "Performance Log Users", "Performance Monitor Users", "Power Users", "Remote Desktop Users",
+            "Remote Management Users", "Replicator", "System Managed Accounts Group", "User Mode Hardware Operators", "Users",
+            "Administrator", "DefaultAccount", "Guest", "WDAGUtilityAccount",
+        ];
+        Assert.All(names, n => Assert.NotNull(AccountName.Problem(n)));
+        // The ones short enough for an account name are refused because Windows has them, not for their length.
+        Assert.All(names.Where(n => n.Length <= 20), n => Assert.Equal("Media_NameReserved", AccountName.Problem(n)));
+    }
 
     /// <summary>
     /// Fixtures/media/autounattend-vm1.xml is the Autounattend.xml from boot.wim image 2 of the ISO that installed in the
