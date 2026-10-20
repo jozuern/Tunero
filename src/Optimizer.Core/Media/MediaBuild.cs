@@ -240,8 +240,9 @@ public sealed class MediaBuild(IMediaSteps steps)
     }
 
     /// <summary>
-    /// Removes what killed or crashed builds left: images still mounted in a work folder are discarded, then the work
-    /// folders at the root of every local fixed drive are deleted. A folder whose lock file is held (a build that still
+    /// Removes what killed or crashed builds left: images still mounted in a work folder are discarded (remounted first
+    /// where DISM needs that, also after a restart of the PC: <see cref="DiscardMountsAsync"/>), then the work folders at
+    /// the root of every local fixed drive are deleted. A folder whose lock file is held (a build that still
     /// runs, in this or another Tunero) is left alone with its mount, and so is a folder whose image stays mounted.
     /// Without leftovers this only lists the mounted images and changes nothing. Never throws: DISM failures are logged
     /// (without the list of mounted images nothing is deleted) and a stop ends it quietly.
@@ -272,13 +273,13 @@ public sealed class MediaBuild(IMediaSteps steps)
     private async Task CleanLeftoversCoreAsync(CancellationToken ct)
     {
         if (await WaitForDismAsync(ct) is not { } busy) return;
-        var mounted = await steps.Dism.MountedDirsAsync(ct);
+        var mounted = await steps.Dism.MountedImagesAsync(ct);
         var folders = new List<string>();
         void Add(string? folder)
         {
             if (folder is not null && !folders.Contains(folder, StringComparer.OrdinalIgnoreCase)) folders.Add(folder);
         }
-        foreach (var dir in mounted) Add(WorkFolderOf(dir));
+        foreach (var image in mounted) Add(WorkFolderOf(image.Dir));
         foreach (var drive in steps.LocalDrives())
             foreach (var folder in steps.LeftoverWorkFolders(drive))
                 if (IsWorkFolderName(Path.GetFileName(folder.TrimEnd('\\')))) Add(folder.TrimEnd('\\'));
@@ -297,34 +298,29 @@ public sealed class MediaBuild(IMediaSteps steps)
         }
         // A SYSTEM hive a killed build left loaded holds a file of its mounted boot.wim open: unloaded first, or the discard fails.
         steps.UnloadLeftoverHives();
-        var ours = mounted.Where(d => folders.Any(f => IsInside(d, f))).ToList();
+        var ours = mounted.Where(m => folders.Any(f => IsInside(m.Dir, f))).ToList();
+        LogMounts(steps, ours);
         var still = mounted;
         if (ours.Count > 0)
         {
-            foreach (var dir in ours)
+            still = (await DiscardMountsAsync(steps, ours, async dir =>
             {
                 try
                 {
                     await LoggedAsync(steps, DismArgs.Unmount(dir, commit: false), () => steps.Dism.UnmountAsync(dir, false, null, ct));
+                    return true;
                 }
                 catch (DismException ex)
                 {
                     AppLog.Warn("media", $"leftover image at {dir} could not be discarded: {ex.Message}");
+                    return false;
                 }
-            }
-            try
-            {
-                await LoggedAsync(steps, DismArgs.CleanupMountpoints(), () => steps.Dism.CleanupMountpointsAsync(ct));
-            }
-            catch (DismException ex)
-            {
-                AppLog.Warn("media", $"DISM cleanup of mount points failed: {ex.Message}");
-            }
-            still = await LoggedAsync(steps, DismArgs.MountedImageInfo(), () => steps.Dism.MountedDirsAsync(ct));
+            }, cleanUpAlways: true, ct))!;
+            LogMounts(steps, still.Where(m => folders.Any(f => IsInside(m.Dir, f))));
         }
         foreach (var folder in folders)
         {
-            if (still.Any(d => IsInside(d, folder)))
+            if (still.Any(m => IsInside(m.Dir, folder)))
             {
                 Warn(steps, $"{folder} kept: an image is still mounted in it");
                 continue;
@@ -474,6 +470,67 @@ public sealed class MediaBuild(IMediaSteps steps)
             await call();
             return true;
         });
+
+    private static void LogMounts(IMediaSteps steps, IEnumerable<MountedImage> mounts)
+    {
+        foreach (var m in mounts) steps.Log($"Mounted image {m.Dir}: status {m.Status ?? "not shown"}");
+    }
+
+    /// <summary>
+    /// Discards the mounted images of a work folder (<paramref name="discard"/> logs and never throws), with Microsoft's
+    /// steps for a mount that cannot simply be discarded ("To delete a working directory" in WinPE: Mount and Customize,
+    /// learn.microsoft.com/windows-hardware/manufacture/desktop/winpe-mount-and-customize): /Remount-Image, then
+    /// /Unmount-Image /Discard, then /Cleanup-Mountpoints. An image whose Status is not Ok is remounted first: "Needs
+    /// Remount" follows a restart of the PC while it was mounted (Take Inventory of an Image or Component Using DISM), and
+    /// /Cleanup-Mountpoints does not delete images that /Remount-Image can recover (DISM Image Management Command-Line
+    /// Options, .../dism-image-management-command-line-options-s14). Any other image is remounted only when its discard
+    /// fails, and discarded again. /Cleanup-Mountpoints runs when a discard failed, or always with
+    /// <paramref name="cleanUpAlways"/>; then the images DISM still lists are returned (a DismException of that list goes
+    /// to the caller: without it nothing may be deleted). Null when every image was discarded and nothing more ran.
+    /// </summary>
+    private static async Task<IReadOnlyList<MountedImage>?> DiscardMountsAsync(IMediaSteps steps, IReadOnlyList<MountedImage> mounts,
+        Func<string, Task<bool>> discard, bool cleanUpAlways, CancellationToken ct)
+    {
+        var failed = false;
+        foreach (var mount in mounts)
+        {
+            // Each step is tried even when the one before failed, as Microsoft's list says: "Try each of the following steps".
+            if (mount.NeedsRecovery)
+            {
+                await RemountAsync(steps, mount.Dir, ct);
+                if (!await discard(mount.Dir)) failed = true;
+                continue;
+            }
+            if (await discard(mount.Dir)) continue;
+            if (await RemountAsync(steps, mount.Dir, ct) && await discard(mount.Dir)) continue;
+            failed = true;
+        }
+        if (!failed && !cleanUpAlways) return null;
+        try
+        {
+            await LoggedAsync(steps, DismArgs.CleanupMountpoints(), () => steps.Dism.CleanupMountpointsAsync(ct));
+        }
+        catch (DismException ex)
+        {
+            AppLog.Warn("media", $"DISM cleanup of mount points failed: {ex.Message}");
+        }
+        return await LoggedAsync(steps, DismArgs.MountedImageInfo(), () => steps.Dism.MountedImagesAsync(ct));
+    }
+
+    /// <summary>/Remount-Image for one image, logged; false when DISM fails.</summary>
+    private static async Task<bool> RemountAsync(IMediaSteps steps, string dir, CancellationToken ct)
+    {
+        try
+        {
+            await LoggedAsync(steps, DismArgs.Remount(dir), () => steps.Dism.RemountAsync(dir, ct));
+            return true;
+        }
+        catch (DismException ex)
+        {
+            AppLog.Warn("media", $"image at {dir} could not be remounted: {ex.Message}");
+            return false;
+        }
+    }
 
     /// <summary>The state of one build, so a failure knows what to undo.</summary>
     private sealed class Run(IMediaSteps steps, MediaRequest r, IProgress<MediaProgress>? progress, TimeSpan retryDelay, CancellationToken ct)
@@ -1170,7 +1227,7 @@ public sealed class MediaBuild(IMediaSteps steps)
             if (!inherited) Warn(steps, $"{r.OutputIso} keeps the work folder's permissions (administrators only)");
         }
 
-        /// <summary>Never throws: discards a mounted image and deletes the work folder (each retried), logging what it could not do.</summary>
+        /// <summary>Never throws: discards a mounted image (<see cref="DiscardMountsAsync"/>) and deletes the work folder (each retried), logging what it could not do.</summary>
         private async Task CleanUpAfterFailureAsync()
         {
             Report(MediaStage.Cleanup, null, null);
@@ -1179,24 +1236,18 @@ public sealed class MediaBuild(IMediaSteps steps)
                 // A SYSTEM hive whose own unload gave up holds a file of the mounted boot.wim open: the discard would fail.
                 steps.UnloadLeftoverHives();
                 var none = CancellationToken.None;
-                if (await RetryAsync("Discarding the mounted image",
-                        () => Dism(DismArgs.Unmount(mount, commit: false), () => steps.Dism.UnmountAsync(mount, false, null, none)),
-                        ex => ex is DismException or IOException))
+                try
                 {
-                    _mounted = null;
+                    // This build's own mount: its Status is not read first (it was Ok when mounted), a failing discard leads to the remount.
+                    var still = await DiscardMountsAsync(steps, [new MountedImage(mount, null)], _ => RetryAsync("Discarding the mounted image",
+                            () => Dism(DismArgs.Unmount(mount, commit: false), () => steps.Dism.UnmountAsync(mount, false, null, none)),
+                            ex => ex is DismException or IOException), cleanUpAlways: false, none);
+                    if (still is not null) LogMounts(steps, still.Where(m => IsInside(m.Dir, _work!)));
+                    if (still is null || !still.Any(m => IsInside(m.Dir, mount))) _mounted = null;
                 }
-                else
+                catch (Exception ex)
                 {
-                    try
-                    {
-                        await Dism(DismArgs.CleanupMountpoints(), () => steps.Dism.CleanupMountpointsAsync(none));
-                        var still = await Dism(DismArgs.MountedImageInfo(), () => steps.Dism.MountedDirsAsync(none));
-                        if (!still.Any(d => IsInside(d, mount))) _mounted = null;
-                    }
-                    catch (Exception ex)
-                    {
-                        steps.Log("DISM cleanup failed: " + ex.Message);
-                    }
+                    steps.Log("DISM cleanup failed: " + ex.Message);
                 }
             }
             ReleaseLock();

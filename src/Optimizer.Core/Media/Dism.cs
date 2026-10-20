@@ -12,6 +12,18 @@ namespace Optimizer.Core.Media;
 public sealed record WimImage(int Index, string Name, string? Edition, string? Architecture, string? Version, IReadOnlyList<string> Languages,
     string? DefaultLanguage = null);
 
+/// <summary>
+/// An image that <c>/Get-MountedImageInfo</c> lists: its Mount Dir and its Status, which Microsoft documents as "OK",
+/// "Needs Remount" (for example after the PC restarted while it was mounted) or "Invalid" (Take Inventory of an Image or
+/// Component Using DISM, learn.microsoft.com/windows-hardware/manufacture/desktop/take-inventory-of-an-image-or-component-using-dism).
+/// DISM prints "Ok"; <paramref name="Status"/> is null when the entry has no Status line.
+/// </summary>
+public sealed record MountedImage(string Dir, string? Status)
+{
+    /// <summary>The image is in a state other than Ok and has to be remounted before it can be unmounted.</summary>
+    public bool NeedsRecovery => Status is not null && !string.Equals(Status, "Ok", StringComparison.OrdinalIgnoreCase);
+}
+
 /// <summary>A dism.exe run that ended with a nonzero exit code. The message carries the DISM error code and the end of its output.</summary>
 public sealed class DismException(int exitCode, string output) : Exception(Describe(exitCode, output))
 {
@@ -115,8 +127,19 @@ public static class DismOutput
     /// <summary>The "PackageName :" values of Get-ProvisionedAppxPackages.</summary>
     public static IReadOnlyList<string> ParseProvisioned(string output) => Values(output, "PackageName");
 
-    /// <summary>The "Mount Dir :" values of Get-MountedImageInfo.</summary>
-    public static IReadOnlyList<string> ParseMountedDirs(string output) => Values(output, "Mount Dir");
+    /// <summary>The images of Get-MountedImageInfo: each "Mount Dir :" with the "Status :" line that follows it.</summary>
+    public static IReadOnlyList<MountedImage> ParseMountedImages(string output)
+    {
+        var images = new List<MountedImage>();
+        foreach (var line in Lines(output))
+        {
+            var m = KeyValue.Match(line);
+            if (!m.Success || m.Groups["value"].Value.Trim() is not { Length: > 0 } value) continue;
+            if (m.Groups["key"].Value == "Mount Dir") images.Add(new MountedImage(value, null));
+            else if (m.Groups["key"].Value == "Status" && images.Count > 0 && images[^1].Status is null) images[^1] = images[^1] with { Status = value };
+        }
+        return images;
+    }
 
     private static List<string> Values(string output, string key)
     {
@@ -183,6 +206,8 @@ public static class DismArgs
 
     public static string CleanupMountpoints() => "/English /Cleanup-Mountpoints";
 
+    public static string Remount(string mountDir) => $"/English /Remount-Image /MountDir:{Q(mountDir)}";
+
     /// <summary>A quoted path. A quote or a line break inside it could add switches, so those paths are refused.</summary>
     private static string Q(string path)
     {
@@ -206,8 +231,10 @@ public interface IDism
     /// <summary>Runs /CheckHealth on the mounted image and returns the output (see <see cref="DismOutput.Healthy"/>).</summary>
     Task<string> CheckHealthAsync(string mountDir, CancellationToken ct);
     Task UnmountAsync(string mountDir, bool commit, IProgress<double>? p, CancellationToken ct);
-    Task<IReadOnlyList<string>> MountedDirsAsync(CancellationToken ct);
+    Task<IReadOnlyList<MountedImage>> MountedImagesAsync(CancellationToken ct);
     Task CleanupMountpointsAsync(CancellationToken ct);
+    /// <summary>Makes a mounted image that became unusable (Status "Needs Remount", "Invalid") available again.</summary>
+    Task RemountAsync(string mountDir, CancellationToken ct);
 }
 
 /// <summary>The real dism.exe from System32. Not covered by unit tests (it changes disks and images); the VM test drives it.</summary>
@@ -239,11 +266,14 @@ public sealed class DismTool : IDism
     public async Task UnmountAsync(string mountDir, bool commit, IProgress<double>? p, CancellationToken ct) =>
         await RunAsync(DismArgs.Unmount(mountDir, commit), p, ct);
 
-    public async Task<IReadOnlyList<string>> MountedDirsAsync(CancellationToken ct) =>
-        DismOutput.ParseMountedDirs(await RunAsync(DismArgs.MountedImageInfo(), null, ct));
+    public async Task<IReadOnlyList<MountedImage>> MountedImagesAsync(CancellationToken ct) =>
+        DismOutput.ParseMountedImages(await RunAsync(DismArgs.MountedImageInfo(), null, ct));
 
     public async Task CleanupMountpointsAsync(CancellationToken ct) =>
         await RunAsync(DismArgs.CleanupMountpoints(), null, ct);
+
+    public async Task RemountAsync(string mountDir, CancellationToken ct) =>
+        await RunAsync(DismArgs.Remount(mountDir), null, ct);
 
     private static async Task<string> RunAsync(string arguments, IProgress<double>? percent, CancellationToken ct)
     {

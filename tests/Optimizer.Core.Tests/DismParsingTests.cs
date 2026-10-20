@@ -154,29 +154,47 @@ public class DismParsingTests
     }
 
     [Fact]
-    public void MountedDirsFromMountedImageInfo()
+    public void MountedImagesFromMountedImageInfo()
     {
+        // The first entry as DISM printed it in PCO-Test (2026-10-20); the next two have the other states Microsoft lists
+        // (Take Inventory of an Image or Component Using DISM), the last one has no Status line at all.
         const string text = """
             Deployment Image Servicing and Management tool
             Version: 10.0.26100.9549
 
             Mounted images:
+
             Mount Dir : C:\w\mount
             Image File : C:\w\sources\install.wim
             Image Index : 1
-            Mounted Read/Write : Yes
+            Mounted Read/Write : No
             Status : Ok
 
             Mount Dir : D:\other dir\m
             Image File : D:\x.wim
             Image Index : 2
-            Mounted Read/Write : No
-            Status : Remount
+            Mounted Read/Write : Yes
+            Status : Needs Remount
+
+            Mount Dir : E:\bad
+            Image File : E:\y.wim
+            Image Index : 1
+            Mounted Read/Write : Yes
+            Status : Invalid
+
+            Mount Dir : F:\no status
+            Image File : F:\z.wim
 
             The operation completed successfully.
             """;
-        Assert.Equal(new[] { @"C:\w\mount", @"D:\other dir\m" }, DismOutput.ParseMountedDirs(text));
-        Assert.Empty(DismOutput.ParseMountedDirs("No mounted images found.\nThe operation completed successfully."));
+        var images = DismOutput.ParseMountedImages(text);
+        Assert.Equal(
+        [
+            new MountedImage(@"C:\w\mount", "Ok"), new MountedImage(@"D:\other dir\m", "Needs Remount"),
+            new MountedImage(@"E:\bad", "Invalid"), new MountedImage(@"F:\no status", null),
+        ], images);
+        Assert.Equal([false, true, true, false], images.Select(i => i.NeedsRecovery));
+        Assert.Empty(DismOutput.ParseMountedImages("No mounted images found.\nThe operation completed successfully."));
     }
 
     [Fact] public void ExportArgs() => Assert.Equal("/English /Export-Image /SourceImageFile:\"C:\\w\\a.esd\" /SourceIndex:6 /DestinationImageFile:\"C:\\w\\m\\sources\\install.wim\" /Compress:max", DismArgs.Export(@"C:\w\a.esd", 6, @"C:\w\m\sources\install.wim", bootable: false));
@@ -203,6 +221,7 @@ public class DismParsingTests
     {
         Assert.Equal("/English /Get-MountedImageInfo", DismArgs.MountedImageInfo());
         Assert.Equal("/English /Cleanup-Mountpoints", DismArgs.CleanupMountpoints());
+        Assert.Equal("/English /Remount-Image /MountDir:\"C:\\m\"", DismArgs.Remount(@"C:\m"));
     }
 
     [Fact] public void TrailingBackslashDoesNotEscapeTheClosingQuote() => Assert.Equal("/English /Image:\"D:\\\\\" /Cleanup-Image /CheckHealth", DismArgs.CheckHealth(@"D:\"));

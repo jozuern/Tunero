@@ -541,7 +541,7 @@ public sealed class MediaBuildTests : IDisposable
     {
         _steps.Dism.Mounted.Add(@"X:\TuneroMedia.ab12cd34\bootmount");
         await Build().CleanLeftoversAsync(CancellationToken.None);
-        Assert.Equal(["MountedDirs", "UnloadLeftoverHives", "Unmount discard", "CleanupMountpoints", "MountedDirs", "DeleteWorkFolder"], _steps.Calls);
+        Assert.Equal(["MountedImages", "UnloadLeftoverHives", "Unmount discard", "CleanupMountpoints", "MountedImages", "DeleteWorkFolder"], _steps.Calls);
         Assert.Equal([@"X:\TuneroMedia.ab12cd34"], _steps.DeletedFolders);
     }
 
@@ -610,11 +610,25 @@ public sealed class MediaBuildTests : IDisposable
         _steps.Dism.ProvisionedThrows = true;
         _steps.Dism.UnmountFailures = int.MaxValue;
         await FailsAt(Download(apps: ["Microsoft.BingNews"]), MediaStage.Apps, null);
-        Assert.Equal(3, Count("Unmount discard"));
-        Assert.Contains("CleanupMountpoints", _steps.Calls);
+        // Three discards, Microsoft's recovery order (remount, three more discards, cleanup), then the list.
+        Assert.Equal(["Unmount discard", "Unmount discard", "Unmount discard", "Remount", "Unmount discard", "Unmount discard", "Unmount discard", "CleanupMountpoints", "MountedImages"],
+            _steps.Calls.SkipWhile(c => c != "Unmount discard").ToList());
+        Assert.Contains(_steps.LogLines, l => l.StartsWith("Mounted image ", StringComparison.Ordinal) && l.EndsWith(@"\mount: status Ok", StringComparison.Ordinal));
         // Deleting the folder would delete files inside the mounted image; the next start cleans it up.
         Assert.DoesNotContain("DeleteWorkFolder", _steps.Calls);
         Assert.Contains(_steps.LogLines, l => l.Contains("still mounted", StringComparison.Ordinal));
+    }
+
+    /// <summary>A failed build whose discard keeps failing remounts the image and discards it again (the same steps as at the next start).</summary>
+    [Fact]
+    public async Task DiscardThatKeepsFailingIsRecoveredByARemount()
+    {
+        _steps.Dism.ProvisionedThrows = true;
+        _steps.Dism.UnmountFailures = 3;
+        await FailsAt(Download(apps: ["Microsoft.BingNews"]), MediaStage.Apps, null);
+        Assert.Equal(["Unmount discard", "Unmount discard", "Unmount discard", "Remount", "Unmount discard", "DeleteWorkFolder"],
+            _steps.Calls.SkipWhile(c => c != "Unmount discard").ToList());
+        AssertCleanedUp();
     }
 
     [Fact]
@@ -1046,10 +1060,55 @@ public sealed class MediaBuildTests : IDisposable
     {
         _steps.Dism.Mounted.AddRange([@"X:\TuneroMedia.ab12cd34\mount", @"C:\Other"]);
         await Build().CleanLeftoversAsync(CancellationToken.None);
-        Assert.Equal(["MountedDirs", "UnloadLeftoverHives", "Unmount discard", "CleanupMountpoints", "MountedDirs", "DeleteWorkFolder"], _steps.Calls);
+        Assert.Equal(["MountedImages", "UnloadLeftoverHives", "Unmount discard", "CleanupMountpoints", "MountedImages", "DeleteWorkFolder"], _steps.Calls);
         Assert.Equal([@"X:\TuneroMedia.ab12cd34\mount"], _steps.Dism.Unmounted);
         Assert.Equal([@"X:\TuneroMedia.ab12cd34"], _steps.DeletedFolders);
         Assert.Equal([@"C:\Other"], _steps.Dism.Mounted);
+    }
+
+    /// <summary>
+    /// The PC restarted while a build had install.wim mounted: DISM lists the mount as "Needs Remount", and neither a
+    /// discard nor Cleanup-Mountpoints removes it before a remount. Remount, discard, cleanup, then the folder goes.
+    /// </summary>
+    [Fact]
+    public async Task LeftoverThatNeedsARemountIsRemountedDiscardedAndDeleted()
+    {
+        const string mount = @"X:\TuneroMedia.ab12cd34\mount";
+        _steps.Dism.Mounted.Add(mount);
+        _steps.Dism.Status[mount] = "Needs Remount";
+        await Build().CleanLeftoversAsync(CancellationToken.None);
+        Assert.Equal(["MountedImages", "UnloadLeftoverHives", "Remount", "Unmount discard", "CleanupMountpoints", "MountedImages", "DeleteWorkFolder"], _steps.Calls);
+        Assert.Equal([@"X:\TuneroMedia.ab12cd34"], _steps.DeletedFolders);
+        Assert.Contains(@"Mounted image X:\TuneroMedia.ab12cd34\mount: status Needs Remount", _steps.LogLines);
+        Assert.Contains(@"dism /English /Remount-Image /MountDir:""X:\TuneroMedia.ab12cd34\mount""", _steps.LogLines);
+    }
+
+    [Fact]
+    public async Task LeftoverWhoseDiscardFailsIsRemountedAndDiscardedAgain()
+    {
+        const string mount = @"X:\TuneroMedia.ab12cd34\mount";
+        _steps.Dism.Mounted.Add(mount);
+        _steps.Dism.UnmountFailures = 1;
+        await Build().CleanLeftoversAsync(CancellationToken.None);
+        Assert.Equal(["MountedImages", "UnloadLeftoverHives", "Unmount discard", "Remount", "Unmount discard", "CleanupMountpoints", "MountedImages", "DeleteWorkFolder"], _steps.Calls);
+        Assert.Equal([@"X:\TuneroMedia.ab12cd34"], _steps.DeletedFolders);
+        Assert.Contains(@"Mounted image X:\TuneroMedia.ab12cd34\mount: status Ok", _steps.LogLines);
+    }
+
+    /// <summary>Still fail closed: a mount that cannot be remounted stays listed, so its folder stays, with the reason in the log.</summary>
+    [Fact]
+    public async Task LeftoverWhoseRemountFailsIsKept()
+    {
+        const string mount = @"X:\TuneroMedia.ab12cd34\mount";
+        _steps.Dism.Mounted.Add(mount);
+        _steps.Dism.Status[mount] = "Invalid";
+        _steps.Dism.RemountFails = true;
+        await Build().CleanLeftoversAsync(CancellationToken.None);
+        Assert.Equal(["MountedImages", "UnloadLeftoverHives", "Remount", "Unmount discard", "CleanupMountpoints", "MountedImages"], _steps.Calls);
+        Assert.Empty(_steps.DeletedFolders);
+        Assert.Contains(_steps.LogLines, l => l.StartsWith("dism exit code 5", StringComparison.Ordinal));
+        Assert.Contains(@"X:\TuneroMedia.ab12cd34 kept: an image is still mounted in it", _steps.LogLines);
+        Assert.Equal(2, _steps.LogLines.Count(l => l == @"Mounted image X:\TuneroMedia.ab12cd34\mount: status Invalid"));
     }
 
     [Fact]
@@ -1123,7 +1182,7 @@ public sealed class MediaBuildTests : IDisposable
     {
         _steps.Dism.Mounted.Add(@"C:\Other");
         await Build().CleanLeftoversAsync(CancellationToken.None);
-        Assert.Equal(["MountedDirs"], _steps.Calls);
+        Assert.Equal(["MountedImages"], _steps.Calls);
         Assert.Empty(_steps.LogLines);
     }
 
@@ -1144,7 +1203,7 @@ public sealed class MediaBuildTests : IDisposable
         _steps.DismEndsAfterLooks = 3;
         _steps.DismEnded = () => _steps.Dism.Mounted.Add(@"D:\TuneroMedia.0000ffff\mount");
         await Build().CleanLeftoversAsync(CancellationToken.None);
-        Assert.Equal(["DISM ended", "MountedDirs", "UnloadLeftoverHives", "Unmount discard", "CleanupMountpoints", "MountedDirs", "DeleteWorkFolder"], _steps.Calls);
+        Assert.Equal(["DISM ended", "MountedImages", "UnloadLeftoverHives", "Unmount discard", "CleanupMountpoints", "MountedImages", "DeleteWorkFolder"], _steps.Calls);
         Assert.Equal([@"D:\TuneroMedia.0000ffff\mount"], _steps.Dism.Unmounted);
         Assert.Equal([@"D:\TuneroMedia.0000ffff"], _steps.DeletedFolders);
         Assert.Equal(@"Waiting for DISM to finish with D:\TuneroMedia.0000ffff", Assert.Single(_steps.LogLines, l => l.StartsWith("Waiting", StringComparison.Ordinal)));
@@ -1230,14 +1289,14 @@ public sealed class MediaBuildTests : IDisposable
     [Fact]
     public async Task LeftoverCleanupNeverThrows()
     {
-        _steps.Dism.MountedDirsThrows = true;
+        _steps.Dism.MountedImagesThrows = true;
         _steps.Drives.Add(@"D:\");
         _steps.Leftovers[@"D:\"] = [@"D:\TuneroMedia.0000ffff"];
         await Build().CleanLeftoversAsync(CancellationToken.None);
         // Without the list of mounted images no folder may be deleted: one could hold a mounted image.
         Assert.Empty(_steps.DeletedFolders);
 
-        _steps.Dism.MountedDirsThrows = false;
+        _steps.Dism.MountedImagesThrows = false;
         using var stop = new CancellationTokenSource();
         stop.Cancel();
         await Build().CleanLeftoversAsync(stop.Token);
@@ -1711,7 +1770,7 @@ internal sealed class FakeDism(FakeMediaSteps steps) : IDism
     public List<string> Provisioned { get; set; } = [];
     public bool ProvisionedThrows { get; set; }
     public bool MountThrows { get; set; }
-    public bool MountedDirsThrows { get; set; }
+    public bool MountedImagesThrows { get; set; }
     public bool Healthy { get; set; } = true;
     public int UnmountFailures { get; set; }
     public CancellationTokenSource? StopOnRemove { get; set; }
@@ -1858,6 +1917,9 @@ internal sealed class FakeDism(FakeMediaSteps steps) : IDism
             UnmountFailures--;
             throw new DismException(5, "Error: 5\n\nAccess is denied.");
         }
+        // An image that needs a remount (the PC restarted while it was mounted) cannot be unmounted before it.
+        if (Status.TryGetValue(mountDir, out var status) && status != "Ok")
+            throw new DismException(5, $"Error: 5\n\nThe image is not usable ({status}).");
         // A hive loaded from the image keeps its file open: DISM cannot unmount it.
         if (steps.LoadedHives.Any(h => h.StartsWith(mountDir + @"\", StringComparison.OrdinalIgnoreCase)))
             throw new DismException(5, "Error: 0xc1420117\n\nThe directory could not be completely unmounted.");
@@ -1888,12 +1950,27 @@ internal sealed class FakeDism(FakeMediaSteps steps) : IDism
         return Task.CompletedTask;
     }
 
-    public Task<IReadOnlyList<string>> MountedDirsAsync(CancellationToken ct)
+    public Task<IReadOnlyList<MountedImage>> MountedImagesAsync(CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
-        steps.Calls.Add("MountedDirs");
-        if (MountedDirsThrows) throw new DismException(5, "Error: 5\n\nAccess is denied.");
-        return Task.FromResult<IReadOnlyList<string>>(Mounted.ToList());
+        steps.Calls.Add("MountedImages");
+        if (MountedImagesThrows) throw new DismException(5, "Error: 5\n\nAccess is denied.");
+        return Task.FromResult<IReadOnlyList<MountedImage>>(Mounted.Select(m => new MountedImage(m, Status.GetValueOrDefault(m, "Ok"))).ToList());
+    }
+
+    /// <summary>The Status that Get-MountedImageInfo shows for a mount folder ("Ok" when not set here).</summary>
+    public Dictionary<string, string> Status { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    public bool RemountFails { get; set; }
+
+    public Task RemountAsync(string mountDir, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        Absolute(mountDir);
+        steps.Calls.Add("Remount");
+        if (RemountFails) throw new DismException(5, "Error: 5\n\nAccess is denied.");
+        Status.Remove(mountDir);
+        return Task.CompletedTask;
     }
 
     public Task CleanupMountpointsAsync(CancellationToken ct)
