@@ -1,6 +1,8 @@
 using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.RegularExpressions;
+using Microsoft.Win32;
 
 namespace Optimizer.Core.Media;
 
@@ -8,19 +10,23 @@ namespace Optimizer.Core.Media;
 public sealed record InputProfile(string Code, string Keyboard, string LanguageTag);
 
 /// <summary>
-/// The regions and keyboards the install media page offers. Nothing is typed in: regions are the specific cultures
-/// Windows itself knows (an LCID of their own), keyboards are Windows' default input profiles as Microsoft lists them
-/// (Data/input-profiles.txt), so every value that reaches the answer file is one Windows Setup accepts.
+/// The regions and keyboards the install media page offers. Nothing is typed in, and every list comes from Windows itself:
+/// regions are the specific cultures with a Windows locale id of their own, keyboards are the ones Windows sets up for each
+/// of them (GetLocaleInfoEx LOCALE_SKEYBOARDSTOINSTALL, the same "language:keyboard" pairs the answer file takes), named by
+/// the layout's name in the registry. So every value that reaches the answer file is one Windows Setup knows.
 /// </summary>
-public static class MediaLocales
+public static partial class MediaLocales
 {
     private const int LocaleCustomUnspecified = 0x1000;
     private const uint LocaleIDefaultAnsiCodePage = 0x1004;
+    private const uint LocaleSKeyboardsToInstall = 0x5E;
+    private const string LayoutsKey = @"SYSTEM\CurrentControlSet\Control\Keyboard Layouts";
 
-    private static readonly Lazy<(IReadOnlyList<InputProfile> Profiles, IReadOnlyDictionary<string, string> RegionDefaults)> Data = new(Load);
+    private static readonly Lazy<IReadOnlyList<InputProfile>> AllKeyboards =
+        new(() => ProfilesFrom(Regions().Select(c => (c.Name, KeyboardsToInstall(c.Name))), LayoutName));
 
-    /// <summary>Every input profile of Microsoft's list, once each, in the list's order.</summary>
-    public static IReadOnlyList<InputProfile> Keyboards => Data.Value.Profiles;
+    /// <summary>Every keyboard Windows sets up for one of the <see cref="Regions"/>, once each. Reads the registry once.</summary>
+    public static IReadOnlyList<InputProfile> Keyboards => AllKeyboards.Value;
 
     /// <summary>The specific cultures with a Windows locale id of their own (no custom or ICU-only names).</summary>
     public static IReadOnlyList<CultureInfo> Regions() =>
@@ -28,15 +34,60 @@ public static class MediaLocales
             .Where(c => c.LCID != LocaleCustomUnspecified && c.Name.Length > 0)
             .ToList();
 
-    /// <summary>Microsoft's default input profile for a region (by its English name, as the list names them), or null.</summary>
+    /// <summary>The keyboard Windows sets up first for a region, or null.</summary>
     public static string? DefaultKeyboard(CultureInfo region) =>
-        Data.Value.RegionDefaults.TryGetValue(region.EnglishName, out var code) ? code : null;
+        KeyboardsToInstall(region.Name)?.Split(';').Select(Normalize).FirstOrDefault(c => c is not null);
+
+    /// <summary>
+    /// The input profiles of Windows' per-locale lists ("0407:00000407;0409:00000409"), once each in list order. A keyboard
+    /// layout is named by <paramref name="layoutName"/> (its registry name), an input method (IME, GUIDs instead of a
+    /// layout id) by its language.
+    /// </summary>
+    internal static IReadOnlyList<InputProfile> ProfilesFrom(IEnumerable<(string Locale, string? List)> lists, Func<string, string?> layoutName)
+    {
+        var profiles = new List<InputProfile>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (locale, list) in lists)
+        {
+            if (list is null) continue;
+            foreach (var entry in list.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                if (Normalize(entry) is not { } code || !seen.Add(code)) continue;
+                var culture = Culture(int.Parse(code[..4], NumberStyles.HexNumber, CultureInfo.InvariantCulture));
+                var tag = culture?.Name ?? locale;
+                var keyboard = code[5] == '{'
+                    ? $"{culture?.DisplayName ?? tag} IME"
+                    : layoutName(code[5..]) ?? code[5..];
+                profiles.Add(new InputProfile(code, keyboard, tag));
+            }
+        }
+        return profiles;
+    }
+
+    /// <summary>"0c07:00000407" as "0C07:00000407"; null for anything that is not a language id with a layout id or two GUIDs.</summary>
+    private static string? Normalize(string entry) => InputProfileCode().IsMatch(entry.Trim()) ? entry.Trim().ToUpperInvariant() : null;
+
+    [GeneratedRegex(@"^[0-9A-Fa-f]{4}:([0-9A-Fa-f]{8}|\{[0-9A-Fa-f-]{36}\}\{[0-9A-Fa-f-]{36}\})$")]
+    private static partial Regex InputProfileCode();
+
+    private static CultureInfo? Culture(int lcid)
+    {
+        try
+        {
+            return CultureInfo.GetCultureInfo(lcid);
+        }
+        catch (CultureNotFoundException)
+        {
+            return null;
+        }
+    }
 
     /// <summary>
     /// The system locale for a region: the region itself when Windows has a code page for programs without Unicode, and
     /// en-US for Unicode-only locales, which Windows does not take as the system locale.
     /// </summary>
-    public static string SystemLocale(string region) => AnsiCodePage(region) is > 0 ? region : "en-US";
+    public static string SystemLocale(string region) => int.TryParse(LocaleInfo(region, LocaleIDefaultAnsiCodePage), NumberStyles.None,
+        CultureInfo.InvariantCulture, out var page) && page > 0 ? region : "en-US";
 
     /// <summary>
     /// The signed-in user's region format (Windows' user locale), or null when it cannot be read. Not checked against
@@ -51,7 +102,7 @@ public static class MediaLocales
     /// <summary>
     /// The input profile of the keyboard layout this thread uses now, when it is a plain layout (the layout id is the
     /// handle's high word); null otherwise (variant layouts need the registry to name them). Like the region, the page
-    /// picks it only when <see cref="Keyboards"/> has it.
+    /// picks it only when <see cref="Keyboards"/> has it. Call it on the UI thread: the layout is per thread.
     /// </summary>
     public static string? ThisPcKeyboard() => KeyboardOf(GetKeyboardLayout(0).ToInt64());
 
@@ -63,31 +114,32 @@ public static class MediaLocales
         return $"{language:X4}:0000{layout:X4}";
     }
 
-    private static int? AnsiCodePage(string locale)
+    private static string? KeyboardsToInstall(string locale) => LocaleInfo(locale, LocaleSKeyboardsToInstall);
+
+    private static string? LocaleInfo(string locale, uint type)
     {
-        var buffer = new StringBuilder(8);
-        return GetLocaleInfoEx(locale, LocaleIDefaultAnsiCodePage, buffer, buffer.Capacity) > 0 &&
-               int.TryParse(buffer.ToString(), NumberStyles.None, CultureInfo.InvariantCulture, out var page) ? page : null;
+        var buffer = new StringBuilder(1024);
+        return GetLocaleInfoEx(locale, type, buffer, buffer.Capacity) > 0 ? buffer.ToString() : null;
     }
 
-    private static (IReadOnlyList<InputProfile>, IReadOnlyDictionary<string, string>) Load()
+    /// <summary>The layout's display name in Windows' language (its MUI string), else its English "Layout Text"; null when unknown.</summary>
+    private static string? LayoutName(string klid)
     {
-        var profiles = new List<InputProfile>();
-        var defaults = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var line in Catalog.CatalogData.ReadResourceText("Media.input-profiles.txt").Split('\n'))
+        try
         {
-            var text = line.TrimEnd('\r');
-            if (text.Length == 0 || text.StartsWith('#')) continue;
-            var cells = text.Split('|');
-            if (cells.Length < 4 || (cells.Length - 1) % 3 != 0) throw new InvalidDataException("Bad line in input-profiles.txt: " + text);
-            for (var i = 1; i < cells.Length; i += 3)
+            using var key = Registry.LocalMachine.OpenSubKey($@"{LayoutsKey}\{klid}");
+            if (key is null) return null;
+            if (key.GetValue("Layout Display Name") is string display && display.StartsWith('@'))
             {
-                var profile = new InputProfile(cells[i + 2], cells[i + 1], cells[i]);
-                if (i == 1) defaults.TryAdd(cells[0], profile.Code);
-                if (!profiles.Any(p => p.Code.Equals(profile.Code, StringComparison.OrdinalIgnoreCase))) profiles.Add(profile);
+                var buffer = new StringBuilder(256);
+                if (SHLoadIndirectString(display, buffer, (uint)buffer.Capacity, IntPtr.Zero) == 0 && buffer.Length > 0) return buffer.ToString();
             }
+            return key.GetValue("Layout Text") as string is { Length: > 0 } text ? text : null;
         }
-        return (profiles, defaults);
+        catch (Exception ex) when (ex is System.Security.SecurityException or UnauthorizedAccessException or IOException)
+        {
+            return null;
+        }
     }
 
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
@@ -101,4 +153,8 @@ public static class MediaLocales
     [DllImport("user32.dll")]
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     private static extern IntPtr GetKeyboardLayout(uint thread);
+
+    [DllImport("shlwapi.dll", CharSet = CharSet.Unicode)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    private static extern int SHLoadIndirectString(string source, StringBuilder output, uint length, IntPtr reserved);
 }

@@ -733,15 +733,16 @@ public sealed class MediaBuild(IMediaSteps steps)
         }
 
         /// <summary>
-        /// Setup's language must be one the image has: the page knows the language of a download but not of an own ISO.
-        /// A language the image lacks becomes the first one DISM lists for it (Microsoft's consumer media hold one each).
+        /// Setup's language must be one the image has: the page reads it from the ISO, but this is checked against what DISM
+        /// says. A language the image lacks becomes the one DISM marks as its default (else the first it lists).
         /// </summary>
         private AnswerChoices AnswersFor(WimImage image)
         {
             var a = r.Answers;
             if (image.Languages.Count == 0 || image.Languages.Contains(a.UiLanguage, StringComparer.OrdinalIgnoreCase)) return a;
-            steps.Log($"Setup language {image.Languages[0]} (the image's) instead of {a.UiLanguage}");
-            return a with { UiLanguage = image.Languages[0] };
+            var language = image.DefaultLanguage ?? image.Languages[0];
+            steps.Log($"Setup language {language} (the image's) instead of {a.UiLanguage}");
+            return a with { UiLanguage = language };
         }
 
         private async Task RemoveAppsAsync()

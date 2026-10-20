@@ -28,7 +28,7 @@ is ignored: whoever starts the exe names the paths, and the app writes with admi
 | `--shot-scanning <file.png>` | renders the window while the first scan still runs (the Overview says the scan is reading the PC) |
 | `--pane closed` | collapses the navigation rail before the screenshot |
 | `--width <pixels>` | window width for the screenshot (for example 1040, the minimum, with `--select`) |
-| `--height <pixels>` | window height for the screenshot (below 940 the pane drops its group headings, below 790 it folds to the rail, below 750 the pages in the rail get the compact height; the window is at least 720 high) |
+| `--height <pixels>` | window height for the screenshot (below 940 the pane drops its group headings, below 830 it folds to the rail, below 750 the pages in the rail get the compact height; the window is at least 720 high) |
 | `--search <text>` | types into the search box (Ctrl+F) before the screenshot; the results popup is saved to `<file>-search.png` |
 | `--scroll end` or `--scroll <pixels>` | scrolls the page to the end, or down by that many pixels, before the screenshot (for example Settings > About) |
 | `--select <id>` | opens a finding or tweak in the details pane (e.g. `A.rebar`) |

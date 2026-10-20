@@ -41,6 +41,16 @@ public class DismParsingTests
         Assert.Equal("x64", image.Architecture);
         Assert.Equal("10.0.26300.9711", image.Version);
         Assert.Equal(new[] { "en-US" }, image.Languages);
+        Assert.Equal("en-US", image.DefaultLanguage);
+    }
+
+    /// <summary>The language DISM marks "(Default)" is kept, wherever it stands in the list.</summary>
+    [Fact]
+    public void WimInfoKeepsTheDefaultLanguage()
+    {
+        var image = Assert.Single(DismOutput.ParseWimInfo("Index : 1\nName : X\nLanguages :\n\ten-GB\n\tde-DE (Default)\n"));
+        Assert.Equal(new[] { "en-GB", "de-DE" }, image.Languages);
+        Assert.Equal("de-DE", image.DefaultLanguage);
     }
 
     [Fact]

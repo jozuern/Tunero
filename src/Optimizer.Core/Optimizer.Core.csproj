@@ -21,8 +21,6 @@
     <EmbeddedResource Include="Catalog\Docs\en\*.md" LogicalName="Catalog.Docs.en.%(Filename)%(Extension)" />
     <EmbeddedResource Include="Catalog\Docs\de\*.md" LogicalName="Catalog.Docs.de.%(Filename)%(Extension)" />
     <EmbeddedResource Include="Catalog\Tweaks\*.json" LogicalName="Catalog.Tweaks.%(Filename)%(Extension)" />
-    <!-- Windows' default input profiles, the keyboards the install media page offers (Media/MediaLocales.cs). -->
-    <EmbeddedResource Include="Media\Data\input-profiles.txt" LogicalName="Media.input-profiles.txt" />
     <!-- PresentMon 2.6.0 (MIT, Intel-signed), SHA-256 checked when extracted (Tools/PresentMon.cs). -->
     <EmbeddedResource Include="Tools\Vendor\PresentMon-2.6.0-x64.exe" LogicalName="Tools.PresentMon.exe" />
     <!-- Public key that must have signed a release before self-update installs it (scripts/new-update-key.ps1). -->

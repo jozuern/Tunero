@@ -5,8 +5,12 @@ using Optimizer.Core.Platform;
 
 namespace Optimizer.Core.Media;
 
-/// <summary>One image of a WIM or ESD. The list form of Get-WimInfo gives only Index and Name; the /Index form adds the rest.</summary>
-public sealed record WimImage(int Index, string Name, string? Edition, string? Architecture, string? Version, IReadOnlyList<string> Languages);
+/// <summary>
+/// One image of a WIM or ESD. The list form of Get-WimInfo gives only Index and Name; the /Index form adds the rest.
+/// <paramref name="DefaultLanguage"/> is the language DISM marks "(Default)".
+/// </summary>
+public sealed record WimImage(int Index, string Name, string? Edition, string? Architecture, string? Version, IReadOnlyList<string> Languages,
+    string? DefaultLanguage = null);
 
 /// <summary>A dism.exe run that ended with a nonzero exit code. The message carries the DISM error code and the end of its output.</summary>
 public sealed class DismException(int exitCode, string output) : Exception(Describe(exitCode, output))
@@ -41,18 +45,25 @@ public static class DismOutput
     {
         var images = new List<WimImage>();
         int? index = null;
-        string? name = null, edition = null, arch = null, version = null, build = null;
+        string? name = null, edition = null, arch = null, version = null, build = null, defaultLanguage = null;
         var languages = new List<string>();
         var inLanguages = false;
+
+        void AddLanguage(string line)
+        {
+            var language = StripDefault(line);
+            languages.Add(language);
+            if (line.EndsWith("(Default)", StringComparison.Ordinal)) defaultLanguage = language;
+        }
 
         void Flush()
         {
             if (index is { } i && name is not null)
             {
                 var v = version is not null && build is not null ? $"{version}.{build}" : version;
-                images.Add(new WimImage(i, name, edition, arch, v, languages.ToArray()));
+                images.Add(new WimImage(i, name, edition, arch, v, languages.ToArray(), defaultLanguage));
             }
-            index = null; name = edition = arch = version = build = null;
+            index = null; name = edition = arch = version = build = defaultLanguage = null;
             languages = [];
             inLanguages = false;
         }
@@ -63,7 +74,7 @@ public static class DismOutput
             var m = KeyValue.Match(line);
             if (inLanguages && !m.Success && LanguageLine.IsMatch(line))
             {
-                languages.Add(StripDefault(line));
+                AddLanguage(line);
                 continue;
             }
             inLanguages = false;
@@ -83,7 +94,7 @@ public static class DismOutput
                 case "ServicePack Build": build = value; break;
                 case "Languages":
                     inLanguages = true;
-                    if (LanguageLine.IsMatch(value)) languages.Add(StripDefault(value));
+                    if (LanguageLine.IsMatch(value)) AddLanguage(value);
                     break;
             }
         }

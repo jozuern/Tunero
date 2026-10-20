@@ -85,6 +85,16 @@ public sealed class MediaCatalogSourceTests : IDisposable
         Assert.False(Directory.Exists(_steps.WorkFolder));
     }
 
+    /// <summary>A disk error while the cab is checked is a failure of the cab step, not of unpacking.</summary>
+    [Fact]
+    public async Task AnIoErrorInTheCabStepNamesTheCabStep()
+    {
+        var source = new MediaCatalogSource(_steps, _processes, _root, Microsoft(), _ => throw new IOException("disk"));
+        var ex = await Assert.ThrowsAsync<MediaDownloadException>(() => source.LoadAsync("amd64", null, CancellationToken.None));
+        Assert.Equal("cab", ex.Step);
+        Assert.False(Directory.Exists(_steps.WorkFolder));
+    }
+
     [Fact]
     public async Task ASearchWithoutTheCabFails()
     {
@@ -104,15 +114,39 @@ public sealed class MediaCatalogSourceTests : IDisposable
 /// <summary>The regions and keyboards the page offers come from Windows' own lists.</summary>
 public sealed class MediaLocalesTests
 {
+    /// <summary>
+    /// Windows' keyboards to install per locale (LOCALE_SKEYBOARDSTOINSTALL), once each, named by the layout's name and the
+    /// language; an input method (IME) by its language.
+    /// </summary>
     [Fact]
-    public void KeyboardsAreMicrosoftsInputProfiles()
+    public void KeyboardsComeFromTheLocalesLists()
+    {
+        (string, string?)[] lists =
+        [
+            ("de-DE", "0407:00000407"), ("de-AT", "0c07:00000407"), ("de-CH", "0807:00000807;100C:0000100C"),
+            ("en-US", "0409:00000409"), ("xx-XX", null),
+            ("ja-JP", "0411:{03B5835F-F03C-411B-9CE2-AA23E1171E36}{A76C93D9-5523-4E90-AAFA-4DB112F9AC76}"),
+        ];
+        var names = new Dictionary<string, string> { ["00000407"] = "German", ["00000807"] = "Swiss German", ["0000100C"] = "Swiss French", ["00000409"] = "US" };
+        var keyboards = MediaLocales.ProfilesFrom(lists, klid => names.GetValueOrDefault(klid));
+        Assert.Equal(
+            ["0407:00000407", "0C07:00000407", "0807:00000807", "100C:0000100C", "0409:00000409", "0411:{03B5835F-F03C-411B-9CE2-AA23E1171E36}{A76C93D9-5523-4E90-AAFA-4DB112F9AC76}"],
+            keyboards.Select(k => k.Code));
+        Assert.Equal(("German", "de-AT"), (keyboards[1].Keyboard, keyboards[1].LanguageTag));
+        Assert.Equal("ja-JP", keyboards[^1].LanguageTag);
+        Assert.False(string.IsNullOrEmpty(keyboards[^1].Keyboard));
+    }
+
+    [Fact]
+    [Trait("Category", "Hardware")]
+    public void KeyboardsOfThisWindows()
     {
         var keyboards = MediaLocales.Keyboards;
-        Assert.True(keyboards.Count > 200);
-        Assert.Contains(keyboards, k => k.Code == "0407:00000407" && k.Keyboard == "German keyboard");
-        Assert.Contains(keyboards, k => k.Code == "0C07:00000407" && k.LanguageTag == "de-AT");
+        Assert.True(keyboards.Count > 100);
+        Assert.Contains(keyboards, k => k.Code == "0407:00000407");
         Assert.Equal(keyboards.Count, keyboards.Select(k => k.Code).Distinct(StringComparer.OrdinalIgnoreCase).Count());
         Assert.All(keyboards, k => Assert.Matches(@"^[0-9A-F]{4}:([0-9A-F]{8}|\{[0-9A-F-]{36}\}\{[0-9A-F-]{36}\})$", k.Code));
+        Assert.All(keyboards, k => Assert.False(string.IsNullOrWhiteSpace(k.Keyboard)));
     }
 
     [Fact]

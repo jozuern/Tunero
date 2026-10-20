@@ -18,7 +18,7 @@
             <Setter Property="FontSize" Value="12" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
-            <Setter Property="Margin" Value="4,16,0,4" />
+            <Setter Property="Margin" Value="4,8,0,0" />
             <!-- A label, not a Tab stop; a screen reader reads its text, not the control's type name -->
             <Setter Property="Focusable" Value="False" />
             <Setter Property="AutomationProperties.Name" Value="{Binding Text, RelativeSource={RelativeSource Self}}" />

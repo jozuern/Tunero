@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IO;
 using Optimizer.App.Services;
 using Optimizer.App.ViewModels;
@@ -8,8 +9,9 @@ using Wpf.Ui.Controls;
 namespace Optimizer.App.Tests;
 
 /// <summary>
-/// The install media page without the window: a fake catalog, a build that only records the request (or fails as told),
-/// and a temp folder for the files the page checks. Nothing downloads, runs DISM or writes outside the temp folder.
+/// The install media page without the window: a fake catalog, a fake ISO reader, a build that only records the request
+/// (or fails as told), fixed keyboards, and a temp folder for the files the page checks. Nothing downloads, attaches an
+/// ISO, runs DISM or writes outside the temp folder.
 /// </summary>
 [Collection(nameof(ChangeGateCollection))]
 public sealed class InstallMediaViewModelTests : IDisposable
@@ -22,6 +24,9 @@ public sealed class InstallMediaViewModelTests : IDisposable
 
     /// <summary>What the fake build does with a request; null: records it and returns its output path.</summary>
     private Func<MediaRequest, CancellationToken, Task<string>>? _build;
+
+    /// <summary>What the fake ISO reader finds in an own ISO.</summary>
+    private IsoInfo _iso = Iso(Image(1, "Core", "Windows 11 Home"), Image(2, "Professional", "Windows 11 Pro"));
 
     public InstallMediaViewModelTests() => Directory.CreateDirectory(_root);
 
@@ -41,6 +46,11 @@ public sealed class InstallMediaViewModelTests : IDisposable
         new($"26300.9711.261011-1601.26h2_ge_release_svc_refresh_CLIENTCONSUMER_RET_x64FRE_{code}.esd", code, language, edition, "x64",
             6L << 30, new string('a', 64), new Uri($"http://dl.delivery.mp.microsoft.com/filestreamingservice/files/{code}.esd"));
 
+    private static WimImageInfo Image(int index, string edition, string name, string arch = "x64", int build = 26300, string language = "de-DE") =>
+        new(index, name, edition, arch, $"10.0.{build}.1", build, language, [language]);
+
+    private static IsoInfo Iso(params WimImageInfo[] images) => new("install.wim", images, HasBootWim: true);
+
     private sealed class FakeCatalog : IMediaCatalogSource
     {
         public Task<IReadOnlyList<EsdFile>> LoadAsync(string arch, IProgress<string>? p, CancellationToken ct) => Task.FromResult(Files);
@@ -53,24 +63,33 @@ public sealed class InstallMediaViewModelTests : IDisposable
         return exe;
     }
 
-    private InstallMediaViewModel Media(string? edition = "Professional", bool published = true) => new(_host, _dialogs, new FakeCatalog(),
+    private static readonly IReadOnlyList<InputProfile> Keyboards =
+    [
+        new("0407:00000407", "German", "de-DE"), new("0C07:00000407", "German", "de-AT"), new("0409:00000409", "US", "en-US"),
+    ];
+
+    private InstallMediaSystem System(string? edition = "Professional", bool published = true) => new()
+    {
+        Elevated = true,
+        ExePath = published ? Exe() : null,
+        IsPublishedExe = published,
+        ProfileId = () => "office",
+        FreeBytes = _ => long.MaxValue,
+        ReadPc = () => new ThisPcFacts(edition, false, "Anna", "de-AT", _root),
+        Keyboard = () => null,
+        Keyboards = () => Keyboards,
+        ReadIso = (_, _) => Task.FromResult(_iso),
+    };
+
+    private InstallMediaViewModel Media(string? edition = "Professional", bool published = true, InstallMediaSystem? system = null,
+        Func<CancellationToken, Task>? cleanup = null) => new(_host, _dialogs, new FakeCatalog(),
         (request, progress, ct) =>
         {
             _requests.Add(request);
             progress.Report(new MediaProgress(MediaStage.Unpack, 50, null));
             return _build?.Invoke(request, ct) ?? Task.FromResult(request.OutputIso);
         },
-        new InstallMediaSystem
-        {
-            PcEdition = edition,
-            Elevated = true,
-            ExePath = published ? Exe() : null,
-            IsPublishedExe = published,
-            OutputFolder = _root,
-            ProfileId = () => "office",
-            UserName = "Anna",
-            FreeBytes = _ => long.MaxValue,
-        });
+        system ?? System(edition, published), cleanup);
 
     private static async Task<InstallMediaViewModel> Loaded(InstallMediaViewModel media)
     {
@@ -78,26 +97,47 @@ public sealed class InstallMediaViewModelTests : IDisposable
         return media;
     }
 
+    private async Task<InstallMediaViewModel> WithCatalog(InstallMediaViewModel? media = null)
+    {
+        media = await Loaded(media ?? Media());
+        await media.CheckCatalogCommand.ExecuteAsync(null);
+        return media;
+    }
+
+    /// <summary>An own ISO file in the temp folder, read by the fake reader.</summary>
+    private async Task<InstallMediaViewModel> WithOwnIso(InstallMediaViewModel? media = null)
+    {
+        media = await Loaded(media ?? Media());
+        var iso = Path.Combine(_root, "Win11.iso");
+        File.WriteAllText(iso, "iso");
+        media.UseDownload = false;
+        media.IsoPath = iso;
+        await media.IsoLoading;
+        return media;
+    }
+
     [Fact]
     public async Task DefaultsFollowThisPc()
     {
         Loc.Instance.SetLanguage("de");
-        var media = await Loaded(Media("Core"));
+        var media = await WithCatalog(Media("Core"));
         Assert.Equal("Core", media.Edition?.Key);
         Assert.Equal("office", media.Profile?.Key);
-        await media.CheckCatalogCommand.ExecuteAsync(null);
         Assert.Equal("de-de", media.Language?.Key);
-        Assert.Equal("Core", media.Edition?.Key);
+        Assert.Equal("de-AT", media.Region?.Key);
+        // No keyboard read from this PC: the region's default.
+        Assert.Equal(MediaLocales.DefaultKeyboard(new CultureInfo("de-AT")), media.Keyboard?.Key);
+        Assert.Equal("Anna", media.AccountNameText);
+        Assert.Equal(_root, Path.GetDirectoryName(media.OutputPath));
 
         // An edition the media does not offer (Enterprise): Pro.
-        Assert.Equal("Professional", (await Loaded(Media("Enterprise"))).Edition?.Key);
+        Assert.Equal("Professional", (await WithCatalog(Media("Enterprise"))).Edition?.Key);
     }
 
     [Fact]
     public async Task InvalidAccountNameBlocksBuild()
     {
-        var media = await Loaded(Media());
-        await media.CheckCatalogCommand.ExecuteAsync(null);
+        var media = await WithCatalog();
         media.SkipSetup = true;
         media.AccountNameText = "Anna";
         Assert.Null(media.AccountProblem);
@@ -114,21 +154,67 @@ public sealed class InstallMediaViewModelTests : IDisposable
         media.UseDownload = false;
         Assert.Null(media.IsoPath);
         Assert.False(media.CanBuild);
-        var iso = Path.Combine(_root, "Win11.iso");
-        File.WriteAllText(iso, "iso");
-        media.IsoPath = iso;
+        Assert.Equal(Loc.Instance["Media_NeedsIso"], media.BuildNote);
+        media = await WithOwnIso(media);
         Assert.True(media.CanBuild);
+    }
+
+    /// <summary>The own ISO is read before the build: its editions are offered, with its build, language and architecture.</summary>
+    [Fact]
+    public async Task OwnIsoShowsItsEditionsAndBuildsTheChosenImage()
+    {
+        var media = await WithOwnIso();
+        Assert.Equal(["1", "2"], media.Editions.Select(e => e.Key));
+        Assert.Equal([Loc.Instance["Media_Edition_Core"], Loc.Instance["Media_Edition_Professional"]], media.Editions.Select(e => e.Text));
+        Assert.Equal("2", media.Edition?.Key);
+        Assert.Contains("26300", media.IsoText);
+        Assert.Contains("de-DE", media.IsoText);
+        Assert.Contains("x64", media.IsoText);
+
+        await media.BuildCommand.ExecuteAsync(null);
+        var r = Assert.Single(_requests);
+        Assert.Equal(Path.Combine(_root, "Win11.iso"), r.Source.IsoPath);
+        Assert.Equal(("Professional", 2), (r.Edition, r.IsoIndex));
+        Assert.Equal("de-DE", r.Answers.UiLanguage);
+    }
+
+    [Fact]
+    public async Task OwnIsoThatIsNotWindows11ForX64IsRefused()
+    {
+        _iso = Iso(Image(1, "Professional", "Windows 11 Pro", arch: "ARM64"));
+        var media = await WithOwnIso();
+        Assert.False(media.CanBuild);
+        Assert.Equal(Loc.Instance["Media_NotX64"], media.BuildNote);
+
+        _iso = Iso(Image(1, "Professional", "Windows 10 Pro", build: 19045));
+        media = await WithOwnIso();
+        Assert.Equal(Loc.Instance["Media_NotWindows11"], media.BuildNote);
+
+        _iso = new IsoInfo(null, [], HasBootWim: true);
+        media = await WithOwnIso();
+        Assert.Equal(Loc.Instance["Media_NotWindows11"], media.BuildNote);
+        Assert.Empty(media.Editions);
+    }
+
+    [Fact]
+    public async Task OwnIsoInUseIsSaid()
+    {
+        var system = System() with { ReadIso = (_, _) => throw new IsoAttachException(32, "in use") };
+        var media = await WithOwnIso(Media(system: system));
+        Assert.False(media.CanBuild);
+        Assert.Equal(Loc.Instance["Media_IsoInUse"], media.BuildNote);
     }
 
     [Fact]
     public async Task BuildPassesTheChoices()
     {
-        var media = await Loaded(Media());
-        await media.CheckCatalogCommand.ExecuteAsync(null);
+        var media = await WithCatalog();
         media.Language = media.Languages.Single(l => l.Key == "en-us");
         media.RemoveApps = true;
         media.SkipSetup = true;
         media.AccountNameText = "Anna";
+        media.Region = media.Regions.Single(r => r.Key == "hi-IN");
+        media.Keyboard = media.Keyboards.Single(k => k.Key == "0407:00000407");
         media.AllowUnsupported = true;
         media.ApplyProfile = true;
         media.Profile = media.Profiles.Single(p => p.Key == "gaming");
@@ -139,12 +225,17 @@ public sealed class InstallMediaViewModelTests : IDisposable
         Assert.Equal(consumer, r.RemoveApps.Order());
         Assert.Equal("en-us", r.Source.Download?.LanguageCode);
         Assert.Equal("Professional", r.Edition);
+        Assert.Null(r.IsoIndex);
         Assert.Equal("Professional", r.Source.Download?.Edition);
         Assert.True(r.Answers.AllowUnsupported);
         Assert.True(r.Answers.SkipSetup);
         Assert.Equal("Anna", r.Answers.AccountName);
         Assert.Equal("amd64", r.Answers.Architecture);
         Assert.Equal("en-US", r.Answers.UiLanguage);
+        Assert.Equal("0407:00000407", r.Answers.InputLocale);
+        Assert.Equal("hi-IN", r.Answers.UserLocale);
+        // Hindi is Unicode-only: Windows takes no such system locale.
+        Assert.Equal("en-US", r.Answers.SystemLocale);
         Assert.True(r.Answers.FirstSignInTunero);
         Assert.Equal("gaming", r.FirstSignIn?.Profile);
         Assert.Equal(media.OutputPath, r.OutputIso);
@@ -158,8 +249,7 @@ public sealed class InstallMediaViewModelTests : IDisposable
     {
         var log = Path.Combine(_root, "media.log");
         _build = (_, _) => throw new MediaBuildException(MediaStage.Unpack, "x", 87) { LogPath = log };
-        var media = await Loaded(Media());
-        await media.CheckCatalogCommand.ExecuteAsync(null);
+        var media = await WithCatalog();
         await media.BuildCommand.ExecuteAsync(null);
 
         Assert.Contains(Loc.Instance["Media_Stage_Unpack"], media.ResultText);
@@ -174,8 +264,7 @@ public sealed class InstallMediaViewModelTests : IDisposable
     public async Task AFailureWithAKnownReasonShowsItsText()
     {
         _build = (_, _) => throw new MediaBuildException(MediaStage.Download, "x", key: "Media_NotEnoughSpace");
-        var media = await Loaded(Media());
-        await media.CheckCatalogCommand.ExecuteAsync(null);
+        var media = await WithCatalog();
         await media.BuildCommand.ExecuteAsync(null);
         Assert.Contains(Loc.Instance["Media_NotEnoughSpace"], media.ResultText);
     }
@@ -189,6 +278,10 @@ public sealed class InstallMediaViewModelTests : IDisposable
         Assert.DoesNotContain(media.AppRows, r => appx.IsProtected(r.Entry.Name));
         Assert.All(media.AppRows, r => Assert.Equal(r.Entry.Group == "consumer", r.IsChecked));
         Assert.Equal(appx.Apps.Select(a => a.Group).Distinct().Count(), media.AppGroups.Count);
+        var consumer = appx.Apps.Count(a => a.Group == "consumer");
+        Assert.Equal(Loc.Instance.Format("Media_AppsSummary", consumer), media.AppsSummary);
+        media.AppRows[0].IsChecked = !media.AppRows[0].IsChecked;
+        Assert.NotEqual(Loc.Instance.Format("Media_AppsSummary", consumer), media.AppsSummary);
     }
 
     [Fact]
@@ -204,14 +297,13 @@ public sealed class InstallMediaViewModelTests : IDisposable
     public async Task StopEndsTheBuildAndWaits()
     {
         var started = new TaskCompletionSource();
-        var media = await Loaded(Media());
+        var media = await WithCatalog();
         _build = async (_, ct) =>
         {
             started.SetResult();
             await Task.Delay(Timeout.Infinite, ct);
             return "";
         };
-        await media.CheckCatalogCommand.ExecuteAsync(null);
         var build = media.BuildCommand.ExecuteAsync(null);
         await started.Task;
         Assert.True(media.IsBuilding);
@@ -219,5 +311,132 @@ public sealed class InstallMediaViewModelTests : IDisposable
         Assert.False(media.IsBuilding);
         await build;
         Assert.Equal(Loc.Instance["Media_Stopped"], media.ResultText);
+    }
+
+    // ---- what keeps Build off ----
+
+    [Fact]
+    public async Task OutputProblemsBlockBuild()
+    {
+        var media = await WithCatalog();
+        Assert.True(media.CanBuild);
+        media.OutputPath = Path.Combine(_root, "Win11.txt");
+        Assert.Equal(Loc.Instance["Media_OutputInvalid"], media.BuildNote);
+        media.OutputPath = Path.Combine(_root, "missing", "Win11.iso");
+        Assert.False(media.CanBuild);
+        media.OutputPath = "Win11.iso";
+        Assert.False(media.CanBuild);
+        media.OutputPath = Path.Combine(_root, "Win11.iso");
+        Assert.True(media.CanBuild);
+    }
+
+    [Fact]
+    public async Task OutputCannotBeTheSourceIso()
+    {
+        var media = await WithOwnIso();
+        media.OutputPath = media.IsoPath;
+        Assert.False(media.CanBuild);
+        Assert.Equal(Loc.Instance["Media_OutputInvalid"], media.BuildNote);
+    }
+
+    [Fact]
+    public async Task NotEnoughSpaceBlocksBuild()
+    {
+        var media = await WithCatalog(Media(system: System() with { FreeBytes = _ => 1L << 30 }));
+        Assert.False(media.CanBuild);
+        Assert.Equal(Loc.Instance["Media_NotEnoughSpace"], media.BuildNote);
+    }
+
+    [Fact]
+    public async Task WithoutAdminRightsNothingIsBuilt()
+    {
+        var media = await WithCatalog(Media(system: System() with { Elevated = false }));
+        Assert.False(media.CanBuild);
+        Assert.Equal(Loc.Instance["Media_NeedsAdmin"], media.BuildNote);
+    }
+
+    [Fact]
+    public async Task AMissingRegionBlocksBuild()
+    {
+        var media = await WithCatalog();
+        media.Region = null;
+        Assert.Equal(Loc.Instance["Media_NeedsRegion"], media.BuildNote);
+        media.SkipSetup = false;
+        Assert.True(media.CanBuild);
+    }
+
+    /// <summary>The cleanup after earlier builds at start and a build never run together: the build waits for it.</summary>
+    [Fact]
+    public async Task ABuildWaitsForTheStartupCleanup()
+    {
+        var cleanup = new TaskCompletionSource();
+        var media = await WithCatalog(Media(cleanup: _ => cleanup.Task));
+        var cleaning = media.CleanLeftoversAsync();
+        var build = media.BuildCommand.ExecuteAsync(null);
+        Assert.True(media.IsBuilding);
+        Assert.Empty(_requests);
+        cleanup.SetResult();
+        await cleaning;
+        await build;
+        Assert.Single(_requests);
+    }
+
+    /// <summary>A default name that is already taken in Downloads is not replaced: the page picks a free one.</summary>
+    [Fact]
+    public async Task TheDefaultOutputNameIsAFreeOne()
+    {
+        var media = await WithCatalog();
+        var taken = media.OutputPath!;
+        File.WriteAllText(taken, "an older ISO");
+        media.AllowUnsupported = true;
+        Assert.NotEqual(taken, media.OutputPath);
+        Assert.EndsWith(" (2).iso", media.OutputPath);
+        Assert.True(File.Exists(taken));
+    }
+
+    // ---- languages and summaries ----
+
+    /// <summary>A full reload (after a change elsewhere) keeps the catalog and names its languages in the new language.</summary>
+    [Fact]
+    public async Task AReloadRelabelsTheCatalog()
+    {
+        Loc.Instance.SetLanguage("en");
+        var media = await WithCatalog();
+        Loc.Instance.SetLanguage("de");
+        await media.ReloadCommand.ExecuteAsync(null);
+        Assert.True(media.HasCatalog);
+        Assert.Equal(new CultureInfo("de-DE").DisplayName, media.Languages.Single(l => l.Key == "de-de").Text);
+        Assert.NotNull(media.CatalogText);
+    }
+
+    [Fact]
+    public async Task FoldedCardsSayWhatTheyHold()
+    {
+        var media = await WithCatalog();
+        Assert.Contains("Anna", media.SetupSummary);
+        Assert.Contains(media.Region!.Text, media.SetupSummary);
+        Assert.Equal(media.Profile!.Text, media.ProfileSummary);
+        media.SkipSetup = false;
+        media.ApplyProfile = false;
+        media.RemoveApps = false;
+        Assert.Equal(Loc.Instance["Media_Off"], media.SetupSummary);
+        Assert.Equal(Loc.Instance["Media_Off"], media.ProfileSummary);
+        Assert.Equal(Loc.Instance["Media_Off"], media.AppsSummary);
+    }
+
+    [Fact]
+    public async Task ACatalogErrorThatIsNoDownloadErrorKeepsItsMessageOutOfTheText()
+    {
+        var media = new InstallMediaViewModel(_host, _dialogs, new ThrowingCatalog(), (_, _, _) => Task.FromResult(""), System());
+        await Loaded(media);
+        await media.CheckCatalogCommand.ExecuteAsync(null);
+        Assert.Equal(Loc.Instance.Format("Media_CatalogFailed", Loc.Instance["Media_CatalogStepUnknown"]), media.CatalogError);
+        Assert.DoesNotContain("secret detail", media.CatalogError);
+    }
+
+    private sealed class ThrowingCatalog : IMediaCatalogSource
+    {
+        public Task<IReadOnlyList<EsdFile>> LoadAsync(string arch, IProgress<string>? p, CancellationToken ct) =>
+            throw new InvalidOperationException("secret detail");
     }
 }

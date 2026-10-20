@@ -50,6 +50,14 @@ internal static class InstallMediaDemo
         }
     }
 
+    /// <summary>A German 26H2 ISO with Home, Pro and Education (what the page shows for an own ISO).</summary>
+    public static IsoInfo Iso()
+    {
+        static WimImageInfo Image(int index, string edition, string name) =>
+            new(index, name, edition, "x64", "10.0.26300.9711", 26300, "de-DE", ["de-DE"]);
+        return new IsoInfo("install.wim", [Image(1, "Core", "Windows 11 Home"), Image(2, "Professional", "Windows 11 Pro"), Image(3, "Education", "Windows 11 Education")], HasBootWim: true);
+    }
+
     /// <summary>What a DISM failure looks like on the page: stage, reason, DISM's code and the log.</summary>
     public static MediaBuildException Failure() =>
         new(MediaStage.Unpack, "Demo: DISM failed.", unchecked((int)0x800F081F), "Media_ImageCheckFailed")

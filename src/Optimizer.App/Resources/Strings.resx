@@ -1653,17 +1653,17 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Media_CatalogStep_search" xml:space="preserve"><value>Catalog search</value></data>
   <data name="Media_CatalogStep_cab" xml:space="preserve"><value>Catalog download</value></data>
   <data name="Media_CatalogStep_unpack" xml:space="preserve"><value>Unpacking the catalog</value></data>
-  <data name="Media_CatalogFound" xml:space="preserve"><value>Windows 11, build {0}, download {1}</value></data>
+  <data name="Media_CatalogFound" xml:space="preserve"><value>Windows 11, build {0}, x64, download {1}</value></data>
   <data name="Media_CatalogFailed" xml:space="preserve"><value>Microsoft's catalog could not be read ({0}). Try again later, or use your own ISO file.</value></data>
   <data name="Media_Language" xml:space="preserve"><value>Language</value></data>
   <data name="Media_UseIso" xml:space="preserve"><value>Use my ISO file</value></data>
-  <data name="Media_UseIsoHint" xml:space="preserve"><value>A Windows 11 ISO for x64 PCs that you already have. Tunero copies it and leaves the file as it is. An answer file inside it is removed and replaced by the choices on this page; other files it adds to Windows stay.</value></data>
+  <data name="Media_UseIsoHint" xml:space="preserve"><value>An existing Windows 11 ISO for x64 PCs. Tunero reads it, shows what it holds and copies it; the file stays as it is. An answer file inside it is removed and replaced by the choices on this page; other files your ISO adds to Windows stay.</value></data>
   <data name="Media_PickIso" xml:space="preserve"><value>Choose ISO</value></data>
   <data name="Media_IsoFiles" xml:space="preserve"><value>ISO files</value></data>
   <data name="Media_X64Only" xml:space="preserve"><value>This PC has an ARM processor. Tunero builds x64 media only, for PCs with an Intel or AMD processor.</value></data>
   <data name="Media_EditionTitle" xml:space="preserve"><value>Edition</value></data>
   <data name="Media_Edition" xml:space="preserve"><value>Windows edition</value></data>
-  <data name="Media_EditionHint" xml:space="preserve"><value>The edition your product key or digital license is for. Preselected: this PC's edition. For your own ISO, the build checks that the ISO has it.</value></data>
+  <data name="Media_EditionHint" xml:space="preserve"><value>The edition your product key or digital license is for. Preselected: this PC's edition. For your own ISO, the editions it holds.</value></data>
   <data name="Media_Edition_Core" xml:space="preserve"><value>Windows 11 Home</value></data>
   <data name="Media_Edition_CoreN" xml:space="preserve"><value>Windows 11 Home N</value></data>
   <data name="Media_Edition_Professional" xml:space="preserve"><value>Windows 11 Pro</value></data>
@@ -1685,10 +1685,10 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Media_AccountName" xml:space="preserve"><value>Account name</value></data>
   <data name="Media_Region" xml:space="preserve"><value>Region format</value></data>
   <data name="Media_Keyboard" xml:space="preserve"><value>Keyboard</value></data>
-  <data name="Media_PasswordNote" xml:space="preserve"><value>Region format and keyboard are preselected from this PC.</value></data>
+  <data name="Media_RegionNote" xml:space="preserve"><value>Region format and keyboard are preselected from this PC.</value></data>
   <data name="Media_NameEmpty" xml:space="preserve"><value>Enter a name for the account.</value></data>
   <data name="Media_NameTooLong" xml:space="preserve"><value>The name can have at most 20 characters.</value></data>
-  <data name="Media_NameInvalid" xml:space="preserve"><value>The name cannot contain any of " / \ [ ] : ; | = , + * ? &lt; &gt; @ % &amp; ^ and cannot end with a period.</value></data>
+  <data name="Media_NameInvalid" xml:space="preserve"><value>The name cannot end with a period or contain any of: " / \ [ ] : ; | = , + * ? &lt; &gt; @ % &amp; ^</value></data>
   <data name="Media_NameReserved" xml:space="preserve"><value>Windows already uses this name for an account or group.</value></data>
   <data name="Media_ProfileTitle" xml:space="preserve"><value>Apply a Tunero profile</value></data>
   <data name="Media_ProfileText" xml:space="preserve"><value>Tunero is copied onto the ISO and opens at the first sign-in. It scans that PC and applies the profile's recommendations; every change appears under Changes and can be undone.</value></data>
@@ -1732,7 +1732,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Media_Stage_Verify" xml:space="preserve"><value>Checking the ISO</value></data>
   <data name="Media_Stage_Cleanup" xml:space="preserve"><value>Cleaning up</value></data>
   <data name="Media_OutputInvalid" xml:space="preserve"><value>Choose an .iso file in an existing folder; it cannot be the source ISO.</value></data>
-  <data name="Media_OutputLink" xml:space="preserve"><value>The output folder or file is a link. Choose a regular folder.</value></data>
+  <data name="Media_OutputLink" xml:space="preserve"><value>The output folder or file points to another location (a link).</value></data>
   <data name="Media_OutputReadOnly" xml:space="preserve"><value>The existing file at the output path is read-only.</value></data>
   <data name="Media_OutputInUse" xml:space="preserve"><value>The existing file at the output path is open in another program, for example mounted in Explorer. Eject it there and try again.</value></data>
   <data name="Media_OutputNotLocal" xml:space="preserve"><value>The ISO file must be on a local drive of this PC, not on a network or removable drive.</value></data>
@@ -1752,4 +1752,12 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Media_CloseTitle" xml:space="preserve"><value>Stop the build?</value></data>
   <data name="Media_CloseText" xml:space="preserve"><value>Tunero is building install media. Closing stops the build and removes its work files first; this can take a moment.</value></data>
   <data name="Media_CloseStop" xml:space="preserve"><value>Stop and close</value></data>
+  <data name="Media_IsoFound" xml:space="preserve"><value>Windows 11, build {0}, {1}, {2}</value></data>
+  <data name="Media_ReadingIso" xml:space="preserve"><value>Reading the ISO file.</value></data>
+  <data name="Media_IsoReadFailed" xml:space="preserve"><value>The ISO file could not be opened. Choose another one, or check that it is not damaged.</value></data>
+  <data name="Media_CatalogStepUnknown" xml:space="preserve"><value>unexpected error</value></data>
+  <data name="Media_Progress" xml:space="preserve"><value>{0} ({1} elapsed)</value></data>
+  <data name="Media_AppsSummary" xml:space="preserve"><value>Apps to remove: {0}</value></data>
+  <data name="Media_SetupSummary" xml:space="preserve"><value>Account {0}, {1}</value></data>
+  <data name="Media_Off" xml:space="preserve"><value>Off</value></data>
 </root>

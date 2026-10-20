@@ -14,6 +14,18 @@ namespace Optimizer.Core.Media;
 public sealed record IsoCheck(bool BootCatalogOk, IReadOnlyList<string> Mismatched);
 
 /// <summary>
+/// What an ISO holds for a build: its install image file ("install.wim" or "install.esd"; null when it has neither or both),
+/// that file's images, and whether it has sources\boot.wim. Read before a build so the page can show the editions and
+/// refuse media that is not Windows 11 for x64; the build checks everything again with DISM.
+/// </summary>
+public sealed record IsoInfo(string? ImageFile, IReadOnlyList<WimImageInfo> Images, bool HasBootWim)
+{
+    /// <summary>The Windows images a build can install (the setup files and boot images an ESD also holds left out).</summary>
+    public IReadOnlyList<WimImageInfo> Editions =>
+        Images.Where(i => i.Edition is { } e && !e.Equals("WindowsPE", StringComparison.OrdinalIgnoreCase)).ToList();
+}
+
+/// <summary>
 /// The ISO could not be opened or attached. <see cref="InUse"/> is true for a sharing or lock violation: another program
 /// holds the file, for example Explorer with the ISO mounted. The message is for the log; the page shows its own text.
 /// </summary>
@@ -52,6 +64,12 @@ public interface IIsoReader
     /// efisys.bin. Throws <see cref="IsoAttachException"/> when the ISO cannot be opened or attached.
     /// </summary>
     Task<IsoCheck> VerifyAsync(string isoPath, string mediaFolder, IReadOnlyList<string> relativeFiles, IProgress<double>? p, CancellationToken ct);
+
+    /// <summary>
+    /// Attaches the ISO read-only and reads its install image's metadata (<see cref="WimMetadata"/>), then detaches. Copies
+    /// nothing. Throws <see cref="IsoAttachException"/> when the ISO cannot be opened or attached.
+    /// </summary>
+    Task<IsoInfo> ReadInfoAsync(string isoPath, CancellationToken ct);
 }
 
 /// <summary>
@@ -109,6 +127,41 @@ public sealed class IsoReader : IIsoReader
             copy.Flush(flushToDisk: true);
         }
         progress.Report(1.0);
+    }
+
+    public Task<IsoInfo> ReadInfoAsync(string isoPath, CancellationToken ct) => Task.Run(async () =>
+    {
+        using var iso = AttachedIso.Attach(isoPath);
+        var root = await iso.WaitForVolumeAsync(ct);
+        return ReadInfo(root);
+    }, ct);
+
+    /// <summary>The install image of the media below <paramref name="root"/> and its images. Never throws for a missing or unreadable file.</summary>
+    internal static IsoInfo ReadInfo(string root)
+    {
+        var sources = Path.Combine(root, "sources");
+        var wim = Path.Combine(sources, "install.wim");
+        var esd = Path.Combine(sources, "install.esd");
+        var file = (File.Exists(wim), File.Exists(esd)) switch
+        {
+            (true, false) => wim,
+            (false, true) => esd,
+            _ => null,
+        };
+        IReadOnlyList<WimImageInfo> images = [];
+        if (file is not null)
+        {
+            try
+            {
+                using var stream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read);
+                images = WimMetadata.Read(stream) ?? [];
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                Log.Warn("media", $"{file} could not be read: {ex.Message}");
+            }
+        }
+        return new IsoInfo(file is null ? null : Path.GetFileName(file), images, File.Exists(Path.Combine(sources, "boot.wim")));
     }
 
     public Task<IsoCheck> VerifyAsync(string isoPath, string mediaFolder, IReadOnlyList<string> relativeFiles, IProgress<double>? p, CancellationToken ct) => Task.Run(async () =>

@@ -47,13 +47,16 @@ public sealed class MediaCatalogSource(IMediaSteps steps, IProcessRunner process
             throw new MediaDownloadException("cab", "No work folder for the catalog: " + ex.Message, ex);
         }
         var folder = work.Path;
+        // A disk error names the step it happened in.
+        var step = "cab";
         try
         {
             var cabFile = Path.Combine(folder, "catalog.cab");
             await download.DownloadAsync("cab", cab.Url, cabFile, cab.Size, cab.Sha256, null, ct);
             if (!_signed(cabFile)) throw new MediaDownloadException("cab", "products.cab is not signed by Microsoft.");
 
-            p?.Report("unpack");
+            step = "unpack";
+            p?.Report(step);
             var target = Path.Combine(folder, "catalog");
             Directory.CreateDirectory(target);
             var (code, output) = await Task.Run(() => processes.Run("expand.exe", $"\"{cabFile}\" -F:* \"{target}\"", TimeSpan.FromMinutes(2)), ct);
@@ -74,7 +77,7 @@ public sealed class MediaCatalogSource(IMediaSteps steps, IProcessRunner process
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            throw new MediaDownloadException("unpack", "The catalog could not be unpacked: " + ex.Message, ex);
+            throw new MediaDownloadException(step, $"The catalog {(step == "cab" ? "download could not be checked" : "could not be unpacked")}: {ex.Message}", ex);
         }
         finally
         {

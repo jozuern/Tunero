@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -16,16 +17,16 @@ namespace Optimizer.App.ViewModels;
 /// <summary>Runs one build (<see cref="MediaBuild.RunAsync"/> in the app; a fake in tests and the demo).</summary>
 public delegate Task<string> MediaBuilder(MediaRequest request, IProgress<MediaProgress> progress, CancellationToken ct);
 
+/// <summary>
+/// What the page reads about this PC when it opens (off the UI thread, never at app start): its edition, whether it is
+/// ARM64, the signed-in user's name and region format, and their Downloads folder.
+/// </summary>
+public sealed record ThisPcFacts(string? Edition, bool Arm64, string? UserName, string? Region, string DownloadsFolder);
+
 /// <summary>What the install media page needs to know about this PC and this copy of Tunero. Tests pass their own.</summary>
 public sealed record InstallMediaSystem
 {
-    /// <summary>This PC's EditionID (like "Professional"), the default edition when the media offers it.</summary>
-    public string? PcEdition { get; init; }
-
-    /// <summary>This PC is ARM64: the page says it builds x64 media only.</summary>
-    public bool Arm64 { get; init; }
-
-    /// <summary>DISM and the locked work folder need administrator rights.</summary>
+    /// <summary>DISM, attaching an ISO and the locked work folder need administrator rights.</summary>
     public bool Elevated { get; init; }
 
     /// <summary>The running exe, copied onto the media for the first sign-in.</summary>
@@ -34,20 +35,22 @@ public sealed record InstallMediaSystem
     /// <summary>The running exe is the published single file (a Debug or Release build has Tunero.dll beside it).</summary>
     public bool IsPublishedExe { get; init; }
 
-    /// <summary>Where the ISO goes by default: the signed-in user's Downloads.</summary>
-    public string OutputFolder { get; init; } = "";
-
     public Func<string> ProfileId { get; init; } = () => CatalogData.Current.Profiles.Default.Id;
 
     /// <summary>The app's theme setting (System, Dark or Light), which the copy on the media starts with.</summary>
     public Func<string> Theme { get; init; } = () => "System";
 
-    /// <summary>The signed-in user's name, the default name of the new PC's account.</summary>
-    public string? UserName { get; init; }
+    /// <summary>Reads <see cref="ThisPcFacts"/>; called on a background thread when the page opens.</summary>
+    public Func<ThisPcFacts> ReadPc { get; init; } = () => new ThisPcFacts(null, false, null, null, "");
 
-    /// <summary>This PC's region format and keyboard (input profile), the defaults for the new PC.</summary>
-    public string? Region { get; init; }
-    public string? Keyboard { get; init; }
+    /// <summary>The keyboard this PC uses now (an input profile), read on the UI thread: the layout is per thread.</summary>
+    public Func<string?> Keyboard { get; init; } = () => null;
+
+    /// <summary>The keyboards to offer (Windows' own list, read from the registry on a background thread).</summary>
+    public Func<IReadOnlyList<InputProfile>> Keyboards { get; init; } = () => MediaLocales.Keyboards;
+
+    /// <summary>Reads what an own ISO holds (attaches it read-only); throws <see cref="IsoAttachException"/>.</summary>
+    public Func<string, CancellationToken, Task<IsoInfo>> ReadIso { get; init; } = (_, _) => throw new NotSupportedException();
 
     /// <summary>Free bytes on the drive of a path, or null when that cannot be read.</summary>
     public Func<string, long?> FreeBytes { get; init; } = _ => null;
@@ -55,27 +58,25 @@ public sealed record InstallMediaSystem
     /// <summary>Shows a file selected in Explorer (as the signed-in user).</summary>
     public Action<string> ShowInExplorer { get; init; } = _ => { };
 
-    /// <summary>The real system: this PC's facts, Downloads, the drive's free space.</summary>
-    public static InstallMediaSystem ForThisPc(AppServices services, Func<string> profileId, Func<string> theme, Action<string> showInExplorer, bool isPublishedExe)
+    /// <summary>The real system. Reads nothing now: this runs while the window is built.</summary>
+    public static InstallMediaSystem ForThisPc(AppServices services, Func<string> profileId, Func<string> theme, Action<string> showInExplorer, bool isPublishedExe) => new()
     {
-        var os = BuildInfo.Read();
-        return new InstallMediaSystem
+        Elevated = DataPaths.ProcessIsElevated,
+        ExePath = Environment.ProcessPath,
+        IsPublishedExe = isPublishedExe,
+        ProfileId = profileId,
+        Theme = theme,
+        ReadPc = () =>
         {
-            PcEdition = os.Edition,
-            Arm64 = os.NativeArchitecture == CpuArchitecture.Arm64,
-            Elevated = DataPaths.ProcessIsElevated,
-            ExePath = Environment.ProcessPath,
-            IsPublishedExe = isPublishedExe,
-            OutputFolder = services.SessionDownloadsFolder() ?? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-            ProfileId = profileId,
-            Theme = theme,
-            UserName = services.SessionUserName(),
-            Region = MediaLocales.ThisPcRegion(),
-            Keyboard = MediaLocales.ThisPcKeyboard(),
-            FreeBytes = FreeBytesOf,
-            ShowInExplorer = showInExplorer,
-        };
-    }
+            var os = BuildInfo.Read();
+            return new ThisPcFacts(os.Edition, os.NativeArchitecture == CpuArchitecture.Arm64, services.SessionUserName(), MediaLocales.ThisPcRegion(),
+                services.SessionDownloadsFolder() ?? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments));
+        },
+        Keyboard = MediaLocales.ThisPcKeyboard,
+        ReadIso = new IsoReader().ReadInfoAsync,
+        FreeBytes = FreeBytesOf,
+        ShowInExplorer = showInExplorer,
+    };
 
     /// <summary>
     /// The real cleanup after earlier builds (<see cref="MediaBuild.CleanLeftoversAsync"/>). Without a work folder at a
@@ -143,13 +144,15 @@ public sealed partial class MediaAppGroup : ObservableObject
 
 /// <summary>
 /// The Windows install media page: where the image comes from, the edition, the changes and the output file, then the
-/// build with the banner (stage, percent, Stop). Every choice is picked from a list or checked as typed, and Build stays
-/// off until the choices make a whole request; the engine checks everything again (MediaBuild).
+/// build with the banner (stage, percent, elapsed time, Stop). Every choice is picked from a list or checked as typed, an
+/// own ISO is read before it can be built, and Build stays off until the choices make a whole request; the engine checks
+/// everything again (MediaBuild).
 /// </summary>
 public sealed partial class InstallMediaViewModel : PageViewModel
 {
     private const string Architecture = "amd64";
     private const string CatalogArchitecture = "x64";
+    private const int FirstWindows11Build = 22000;
     private static readonly string[] GroupOrder = ["consumer", "microsoft", "xbox", "media", "legacy", "thirdParty", "oem"];
 
     private readonly IDialogs _dialogs;
@@ -157,8 +160,16 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     private MediaBuilder _build;
     private InstallMediaSystem _system;
     private readonly Func<CancellationToken, Task>? _cleanLeftovers;
+    private ThisPcFacts _pc = new(null, false, null, null, "");
+    private string? _pcKeyboard;
+    private IReadOnlyList<CultureInfo>? _regionCultures;
+    private IReadOnlyList<InputProfile> _keyboardProfiles = [];
     private IReadOnlyList<EsdFile>? _files;
+    private IsoInfo? _isoInfo;
+    private string? _isoProblem;
+    private CancellationTokenSource? _isoRead;
     private bool _outputPicked;
+    private string? _defaultOutput;
     private bool _demo;
     private CancellationTokenSource? _stop;
     private Task? _running;
@@ -174,8 +185,6 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         _cleanLeftovers = cleanLeftovers;
         _canApplyProfile = system.IsPublishedExe && system.ExePath is not null;
         _applyProfile = _canApplyProfile;
-        // A name Windows would refuse is not offered; the field stays empty then.
-        _accountNameText = system.UserName is { } user && AccountName.Problem(user) is null ? user : "";
     }
 
     // ---- source ----
@@ -198,13 +207,13 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     }
 
     /// <summary>On an ARM64 PC: Tunero builds x64 media only.</summary>
-    public string? ArchitectureNote => _system.Arm64 ? Loc.Instance["Media_X64Only"] : null;
+    public string? ArchitectureNote => _pc.Arm64 ? Loc.Instance["Media_X64Only"] : null;
 
     [ObservableProperty] private bool _isCheckingCatalog;
     [ObservableProperty] private string? _catalogStep;
     [ObservableProperty] private string? _catalogError;
 
-    /// <summary>"Windows 11, build 26300.9711, 6.2 GB" for the chosen language and edition.</summary>
+    /// <summary>"Windows 11, build 26300.9711, x64, download 5.9 GB" for the chosen language and edition.</summary>
     [ObservableProperty] private string? _catalogText;
 
     public bool HasCatalog => _files is not null;
@@ -220,7 +229,20 @@ public sealed partial class InstallMediaViewModel : PageViewModel
 
     [ObservableProperty] private string? _isoPath;
 
-    partial void OnIsoPathChanged(string? value) => Changed();
+    /// <summary>The own ISO is being read (attached, its image list read, detached).</summary>
+    [ObservableProperty] private bool _isReadingIso;
+
+    /// <summary>"Windows 11, build 26300.9711, de-DE, x64" for the chosen image of the own ISO.</summary>
+    [ObservableProperty] private string? _isoText;
+
+    /// <summary>The read of the ISO that runs now, or a finished task.</summary>
+    public Task IsoLoading { get; private set; } = Task.CompletedTask;
+
+    partial void OnIsoPathChanged(string? value)
+    {
+        IsoLoading = ReadIsoAsync(value);
+        Changed();
+    }
 
     // ---- edition ----
 
@@ -237,6 +259,9 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     public IReadOnlyList<MediaAppRow> AppRows => AppGroups.SelectMany(g => g.Rows).ToList();
 
     partial void OnRemoveAppsChanged(bool value) => Changed();
+
+    /// <summary>What the folded apps card holds: "18 apps", or off.</summary>
+    public string AppsSummary => RemoveApps ? Loc.Instance.Format("Media_AppsSummary", AppRows.Count(r => r.IsChecked)) : Loc.Instance["Media_Off"];
 
     [ObservableProperty] private bool _skipSetup = true;
     [ObservableProperty] private string _accountNameText = "";
@@ -257,7 +282,11 @@ public sealed partial class InstallMediaViewModel : PageViewModel
 
     partial void OnKeyboardChanged(FilterOption? value) => Changed();
 
+    /// <summary>What the folded setup card holds: "Account Anna, German (Austria)", or off.</summary>
+    public string SetupSummary => SkipSetup ? Loc.Instance.Format("Media_SetupSummary", AccountNameText.Trim(), Region?.Text ?? "") : Loc.Instance["Media_Off"];
+
     [ObservableProperty] private bool _applyProfile;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ProfileNote))]
     private bool _canApplyProfile;
@@ -270,18 +299,28 @@ public sealed partial class InstallMediaViewModel : PageViewModel
 
     partial void OnApplyProfileChanged(bool value) => Changed();
 
+    partial void OnProfileChanged(FilterOption? value) => Changed();
+
+    /// <summary>What the folded profile card holds: the profile's name, or off.</summary>
+    public string ProfileSummary => ApplyProfile && CanApplyProfile ? Profile?.Text ?? "" : Loc.Instance["Media_Off"];
+
     [ObservableProperty] private bool _allowUnsupported;
+
+    partial void OnAllowUnsupportedChanged(bool value) => Changed();
 
     /// <summary>The change cards start folded; the demo can unfold them for screenshots.</summary>
     [ObservableProperty] private bool _expandOptions;
-
-    partial void OnAllowUnsupportedChanged(bool value) => Changed();
 
     // ---- build ----
 
     [ObservableProperty] private string? _outputPath;
 
-    partial void OnOutputPathChanged(string? value) => Changed();
+    /// <summary>A path the page did not choose itself (the save dialog) stays: it is the user's.</summary>
+    partial void OnOutputPathChanged(string? value)
+    {
+        if (value != _defaultOutput) _outputPicked = true;
+        Changed();
+    }
 
     [ObservableProperty] private bool _isBuilding;
 
@@ -304,7 +343,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
 
     public bool CanBuild => Problem() is null;
 
-    // The result of the last build, shown on the Build card (and in the window's result bar).
+    // The result of the last build, shown on the Build card (and in the window's result bar on another page).
     [ObservableProperty] private string? _resultText;
     [ObservableProperty] private InfoBarSeverity _resultSeverity;
     [ObservableProperty] private string? _resultLogPath;
@@ -320,7 +359,11 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         OnPropertyChanged(nameof(NeededText));
         OnPropertyChanged(nameof(BuildNote));
         OnPropertyChanged(nameof(CanBuild));
+        OnPropertyChanged(nameof(AppsSummary));
+        OnPropertyChanged(nameof(SetupSummary));
+        OnPropertyChanged(nameof(ProfileSummary));
         UpdateCatalogText();
+        UpdateIsoText();
         UpdateOutputName();
         BuildCommand.NotifyCanExecuteChanged();
     }
@@ -337,16 +380,23 @@ public sealed partial class InstallMediaViewModel : PageViewModel
             if (_files is null) return "Media_NeedsCatalog";
             if (Download() is null) return "Media_NoImage";
         }
-        else if (IsoPath is not { } iso || !File.Exists(iso))
+        else
         {
-            return "Media_NeedsIso";
+            if (IsoPath is not { } iso || (!_demo && !File.Exists(iso))) return "Media_NeedsIso";
+            if (IsReadingIso) return "Media_ReadingIso";
+            if (_isoProblem is { } problem) return problem;
+            if (_isoInfo is not { ImageFile: not null, HasBootWim: true } info || info.Editions.Count == 0) return "Media_NotWindows11";
         }
         if (Edition is null) return "Media_NoImage";
+        if (!UseDownload && SelectedImage() is { } image)
+        {
+            if (!string.Equals(image.Architecture, CatalogArchitecture, StringComparison.OrdinalIgnoreCase)) return "Media_NotX64";
+            if (image.Build is not >= FirstWindows11Build) return "Media_NotWindows11";
+        }
         if (SkipSetup && AccountName.Problem(AccountNameText.Trim()) is { } name) return name;
         if (SkipSetup && (Region is null || Keyboard is null)) return "Media_NeedsRegion";
         if (OutputPath is not { } output || !ValidOutput(output)) return "Media_OutputInvalid";
-        if (!UseDownload && IsoPath is { } source && string.Equals(Path.GetFullPath(source), Path.GetFullPath(output), StringComparison.OrdinalIgnoreCase))
-            return "Media_OutputInvalid";
+        if (!UseDownload && IsoPath is { } source && SamePath(source, output)) return "Media_OutputInvalid";
         if (Needed() is { } needed && _system.FreeBytes(output) is { } free && free < needed) return "Media_NotEnoughSpace";
         return null;
     }
@@ -364,10 +414,26 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         }
     }
 
+    private static bool SamePath(string a, string b)
+    {
+        try
+        {
+            return string.Equals(Path.GetFullPath(a), Path.GetFullPath(b), StringComparison.OrdinalIgnoreCase);
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return false;
+        }
+    }
+
     private EsdFile? Download() =>
         _files is { } files && Language is { } language && Edition is { } edition
             ? MediaCatalog.Pick(files, language.Key, CatalogArchitecture, edition.Key)
             : null;
+
+    /// <summary>The image of the own ISO the edition list points to (its key is the image index).</summary>
+    private WimImageInfo? SelectedImage() =>
+        _isoInfo is { } info && Edition is { } edition ? info.Editions.FirstOrDefault(i => i.Index.ToString(CultureInfo.InvariantCulture) == edition.Key) : null;
 
     private MediaSource? Source() =>
         UseDownload ? Download() is { } esd ? new MediaSource(esd, null, null) : null
@@ -390,11 +456,20 @@ public sealed partial class InstallMediaViewModel : PageViewModel
 
     // ---- loading and lists ----
 
+    /// <summary>
+    /// Reads this PC's facts, the regions and the keyboards off the UI thread (the current keyboard on it), then builds the
+    /// lists. A catalog or ISO read earlier is shown again in the current language.
+    /// </summary>
     protected override async Task LoadAsync()
     {
-        var lists = await Task.Run(() => (Regions: MediaLocales.Regions(), Keyboards: MediaLocales.Keyboards));
-        _regionCultures = lists.Regions;
+        _pcKeyboard = _system.Keyboard();
+        var system = _system;
+        (_pc, _regionCultures, _keyboardProfiles) = await Task.Run(() => (system.ReadPc(), MediaLocales.Regions(), system.Keyboards()));
+        if (AccountNameText.Length == 0 && _pc.UserName is { } user && AccountName.Problem(user) is null) AccountNameText = user;
         BuildLists();
+        if (_files is not null) ShowCatalog();
+        OnPropertyChanged(nameof(ArchitectureNote));
+        OnPropertyChanged(nameof(ProfileNote));
         if (_demo && _files is null) await CheckCatalogAsync();
     }
 
@@ -408,23 +483,22 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         return Task.CompletedTask;
     }
 
-    private IReadOnlyList<System.Globalization.CultureInfo>? _regionCultures;
-
     /// <summary>The lists in the current language; every choice keeps its key.</summary>
     private void BuildLists()
     {
         var lang = Lang;
-        var regionKey = Region?.Key ?? _system.Region ?? "en-US";
+        var regionKey = Region?.Key ?? _pc.Region ?? "en-US";
         Regions = _regionCultures!.Select(c => new FilterOption(c.Name, c.DisplayName)).OrderBy(o => o.Text, StringComparer.CurrentCulture).ToList();
         Region = Regions.FirstOrDefault(o => o.Key.Equals(regionKey, StringComparison.OrdinalIgnoreCase))
                  ?? Regions.FirstOrDefault(o => o.Key == "en-US");
 
-        var keyboardKey = Keyboard?.Key ?? _system.Keyboard
-            ?? (Region is { } r ? MediaLocales.DefaultKeyboard(new CultureInfo(r.Key)) : null) ?? "0409:00000409";
-        Keyboards = MediaLocales.Keyboards.Select(k => new FilterOption(k.Code, $"{k.Keyboard} ({k.LanguageTag})"))
+        Keyboards = _keyboardProfiles.Select(k => new FilterOption(k.Code, $"{k.Keyboard} ({k.LanguageTag})"))
             .OrderBy(o => o.Text, StringComparer.CurrentCulture).ToList();
-        Keyboard = Keyboards.FirstOrDefault(o => o.Key.Equals(keyboardKey, StringComparison.OrdinalIgnoreCase))
-                   ?? Keyboards.FirstOrDefault(o => o.Key == "0409:00000409");
+        var keyboardKey = Keyboard?.Key ?? _pcKeyboard;
+        Keyboard = Pick(Keyboards, keyboardKey)
+                   ?? Pick(Keyboards, Region is { } r ? DefaultKeyboard(r.Key) : null)
+                   ?? Pick(Keyboards, "0409:00000409")
+                   ?? Keyboards.FirstOrDefault();
 
         var profileKey = Profile?.Key ?? _system.ProfileId();
         Profiles = CatalogData.Current.Profiles.Profiles.Select(p => new FilterOption(p.Id, Loc.Instance[$"Profile_{p.Id}"])).ToList();
@@ -440,24 +514,50 @@ public sealed partial class InstallMediaViewModel : PageViewModel
                 g.OrderBy(a => a.Label(lang), StringComparer.CurrentCulture)
                  .Select(a => new MediaAppRow(a, lang, ticked?.Contains(a.Name) ?? a.Group == "consumer")).ToList()))
             .ToList();
+        foreach (var row in AppRows) row.PropertyChanged += (_, _) => OnPropertyChanged(nameof(AppsSummary));
         OnPropertyChanged(nameof(AppRows));
         ShowEditions();
         Changed();
     }
 
-    /// <summary>The editions of the chosen download, or every offered one for an own ISO (the build checks it is there).</summary>
+    private static FilterOption? Pick(IEnumerable<FilterOption> options, string? key) =>
+        key is null ? null : options.FirstOrDefault(o => o.Key.Equals(key, StringComparison.OrdinalIgnoreCase));
+
+    private static string? DefaultKeyboard(string region)
+    {
+        try
+        {
+            return MediaLocales.DefaultKeyboard(CultureInfo.GetCultureInfo(region));
+        }
+        catch (CultureNotFoundException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// The editions of the chosen download, or the Windows images the own ISO holds (keyed by image index). Default: this
+    /// PC's edition when offered, else Pro.
+    /// </summary>
     private void ShowEditions()
     {
-        var keys = UseDownload && _files is { } files && Language is { } language
-            ? MediaCatalog.Editions(files, language.Key, CatalogArchitecture)
-            : MediaCatalog.OfferedEditions;
         var key = Edition?.Key;
-        Editions = keys.Select(e => new FilterOption(e, Loc.Instance[$"Media_Edition_{e}"])).ToList();
-        Edition = Editions.FirstOrDefault(o => o.Key == key)
-                  ?? Editions.FirstOrDefault(o => o.Key == _system.PcEdition)
-                  ?? Editions.FirstOrDefault(o => o.Key == "Professional")
-                  ?? Editions.FirstOrDefault();
+        if (UseDownload)
+        {
+            var keys = _files is { } files && Language is { } language ? MediaCatalog.Editions(files, language.Key, CatalogArchitecture) : MediaCatalog.OfferedEditions;
+            Editions = keys.Select(e => new FilterOption(e, EditionName(e, e))).ToList();
+            Edition = Pick(Editions, key) ?? Pick(Editions, _pc.Edition) ?? Pick(Editions, "Professional") ?? Editions.FirstOrDefault();
+            return;
+        }
+        var images = _isoInfo?.Editions ?? [];
+        Editions = images.Select(i => new FilterOption(i.Index.ToString(CultureInfo.InvariantCulture), EditionName(i.Edition, i.Name))).ToList();
+        string? IndexOf(string? edition) => images.FirstOrDefault(i => string.Equals(i.Edition, edition, StringComparison.OrdinalIgnoreCase))?.Index.ToString(CultureInfo.InvariantCulture);
+        Edition = Pick(Editions, key) ?? Pick(Editions, IndexOf(_pc.Edition)) ?? Pick(Editions, IndexOf("Professional")) ?? Editions.FirstOrDefault();
     }
+
+    /// <summary>"Windows 11 Pro" for an edition the page knows, else the image's own name.</summary>
+    private static string EditionName(string? edition, string fallback) =>
+        edition is not null && MediaCatalog.OfferedEditions.Contains(edition) ? Loc.Instance[$"Media_Edition_{edition}"] : fallback;
 
     /// <summary>The app language's Windows language: de-de for German, en-us otherwise.</summary>
     private string DefaultLanguage => Lang == "de" ? "de-de" : "en-us";
@@ -470,8 +570,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
             .Select(g => new FilterOption(g.Key, LanguageName(g.Key, g.First().Language)))
             .OrderBy(o => o.Text, StringComparer.CurrentCulture)
             .ToList();
-        Language = Languages.FirstOrDefault(o => o.Key.Equals(key, StringComparison.OrdinalIgnoreCase))
-                   ?? Languages.FirstOrDefault(o => o.Key == "en-us") ?? Languages.FirstOrDefault();
+        Language = Pick(Languages, key) ?? Pick(Languages, "en-us") ?? Languages.FirstOrDefault();
         OnPropertyChanged(nameof(HasCatalog));
         ShowEditions();
         Changed();
@@ -490,20 +589,112 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         }
     }
 
+    /// <summary>A language tag as Windows writes it ("de-DE"), or <paramref name="fallback"/> for one .NET does not know.</summary>
+    private static string CultureName(string? code, string fallback)
+    {
+        if (code is null) return fallback;
+        try
+        {
+            return new CultureInfo(code).Name;
+        }
+        catch (CultureNotFoundException)
+        {
+            return fallback;
+        }
+    }
+
     private void UpdateCatalogText() =>
         CatalogText = Download() is { } esd ? Loc.Instance.Format("Media_CatalogFound", esd.Build, ByteSize.Format(esd.Size)) : null;
 
-    /// <summary>Windows11_26300.9711_de-de_Professional_Tunero.iso in Downloads, until the user picks a file.</summary>
+    private void UpdateIsoText() =>
+        IsoText = !UseDownload && (SelectedImage() ?? _isoInfo?.Editions.FirstOrDefault()) is { } image
+            ? Loc.Instance.Format("Media_IsoFound", BuildText(image), image.DefaultLanguage ?? image.Languages.FirstOrDefault() ?? "?", image.Architecture ?? "?")
+            : null;
+
+    /// <summary>"26300.9711" from the version 10.0.26300.9711, as the catalog names a build.</summary>
+    private static string BuildText(WimImageInfo image) =>
+        image.Version?.Split('.') is { Length: >= 3 } parts ? string.Join('.', parts.Skip(2)) : image.Build?.ToString(CultureInfo.InvariantCulture) ?? "?";
+
+    /// <summary>
+    /// Windows11_26300.9711_de-de_Professional_Tunero.iso in Downloads, until the user picks a file. A name that is taken
+    /// gets " (2)" and so on: only a file the user picked in the save dialog (which asked) may be replaced.
+    /// </summary>
     private void UpdateOutputName()
     {
-        if (_outputPicked || _system.OutputFolder.Length == 0) return;
-        var edition = Edition?.Key ?? "Professional";
-        var name = UseDownload && Download() is { } esd
-            ? $"Windows11_{esd.Build}_{esd.LanguageCode}_{edition}_Tunero.iso"
-            : $"Windows11_{edition}_Tunero.iso";
-        var path = Path.Combine(_system.OutputFolder, name);
-        if (path != OutputPath) OutputPath = path;
+        if (_outputPicked || _pc.DownloadsFolder.Length == 0) return;
+        var edition = UseDownload ? Edition?.Key ?? "Professional" : SelectedImage()?.Edition ?? "Windows";
+        var stem = UseDownload && Download() is { } esd
+            ? $"Windows11_{esd.Build}_{esd.LanguageCode}_{edition}_Tunero"
+            : $"Windows11_{edition}_Tunero";
+        var path = FreeName(_pc.DownloadsFolder, stem);
+        if (path == OutputPath) return;
+        _defaultOutput = path;
+        OutputPath = path;
     }
+
+    private static string FreeName(string folder, string stem)
+    {
+        var path = Path.Combine(folder, stem + ".iso");
+        for (var n = 2; File.Exists(path) && n < 100; n++) path = Path.Combine(folder, $"{stem} ({n}).iso");
+        return path;
+    }
+
+    // ---- own ISO ----
+
+    /// <summary>
+    /// Reads what the own ISO holds (attaches it read-only, reads the install image's list, detaches). Without
+    /// administrator rights nothing is attached: Build says so anyway. A newer pick replaces a read that still runs.
+    /// </summary>
+    private async Task ReadIsoAsync(string? path)
+    {
+        _isoRead?.Cancel();
+        _isoInfo = null;
+        _isoProblem = null;
+        if (path is null || (!_system.Elevated && !_demo))
+        {
+            ShowEditions();
+            return;
+        }
+        using var read = new CancellationTokenSource();
+        _isoRead = read;
+        IsReadingIso = true;
+        Changed();
+        IsoInfo? info = null;
+        string? problem = null;
+        try
+        {
+            info = await _system.ReadIso(path, read.Token);
+        }
+        catch (OperationCanceledException) when (read.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (IsoAttachException ex)
+        {
+            Log.Warn("media", $"own ISO could not be read: {ex.Message}");
+            problem = ex.InUse ? "Media_IsoInUse" : "Media_IsoReadFailed";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Log.Warn("media", $"own ISO could not be read: {ex.Message}");
+            problem = "Media_IsoReadFailed";
+        }
+        finally
+        {
+            if (_isoRead == read)
+            {
+                _isoRead = null;
+                IsReadingIso = false;
+            }
+        }
+        if (read.IsCancellationRequested) return;
+        _isoInfo = info;
+        _isoProblem = problem;
+        ShowEditions();
+        Changed();
+    }
+
+    partial void OnIsReadingIsoChanged(bool value) => Changed();
 
     // ---- commands ----
 
@@ -525,10 +716,11 @@ public sealed partial class InstallMediaViewModel : PageViewModel
             Log.Warn("media", $"catalog: {ex.Step} failed: {ex.Message}");
             CatalogError = Loc.Instance.Format("Media_CatalogFailed", Loc.Instance[$"Media_CatalogStep_{ex.Step}"]);
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or FormatException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or FormatException or System.Net.Http.HttpRequestException)
         {
-            Log.Warn("media", $"catalog failed: {ex.Message}");
-            CatalogError = Loc.Instance.Format("Media_CatalogFailed", ex.Message);
+            // The message is for the log: the page names no step it cannot know.
+            Log.Warn("media", $"catalog failed: {ex.GetType().Name}: {ex.Message}");
+            CatalogError = Loc.Instance.Format("Media_CatalogFailed", Loc.Instance["Media_CatalogStepUnknown"]);
         }
         finally
         {
@@ -541,15 +733,15 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     private void PickIso()
     {
         if (_dialogs.PickOpenFile(Loc.Instance["Media_IsoFiles"], ".iso") is not { } path) return;
-        IsoPath = path;
         UseDownload = false;
+        IsoPath = path;
     }
 
     [RelayCommand]
     private void PickOutput()
     {
         var current = OutputPath;
-        var folder = current is not null && Path.GetDirectoryName(current) is { } f && Directory.Exists(f) ? f : _system.OutputFolder;
+        var folder = current is not null && Path.GetDirectoryName(current) is { } f && Directory.Exists(f) ? f : _pc.DownloadsFolder;
         if (_dialogs.PickSaveFile(Path.GetFileName(current) ?? "Windows11_Tunero.iso", Loc.Instance["Media_IsoFiles"], ".iso", folder) is not { } path) return;
         _outputPicked = true;
         OutputPath = path;
@@ -572,14 +764,18 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     {
         if (Problem() is not null || Source() is not { } source) return null;
         var region = Region?.Key ?? "en-US";
-        // The download's language; for an own ISO the build takes the image's own (the page cannot read it).
-        var uiLanguage = new CultureInfo(source.Download?.LanguageCode ?? DefaultLanguage).Name;
+        var image = UseDownload ? null : SelectedImage();
+        // Setup's language: the download's, or the one the own ISO's image names (the build checks it with DISM).
+        var uiLanguage = source.Download is { } esd
+            ? CultureName(esd.LanguageCode, "en-US")
+            : CultureName(image?.DefaultLanguage ?? image?.Languages.FirstOrDefault(), CultureName(DefaultLanguage, "en-US"));
         var tunero = ApplyProfile && CanApplyProfile;
         var answers = new AnswerChoices(Architecture, uiLanguage, Keyboard?.Key ?? "0409:00000409", MediaLocales.SystemLocale(region), region,
             SkipSetup ? AccountNameText.Trim() : null, SkipSetup, AllowUnsupported, tunero);
         var apps = RemoveApps ? AppRows.Where(r => r.IsChecked).Select(r => r.Entry.Name).ToList() : [];
         var first = tunero ? new FirstSignInFile(Profile?.Key ?? _system.ProfileId(), Lang, _system.Theme()) : null;
-        return new MediaRequest(source, Edition!.Key, null, apps, answers, tunero ? _system.ExePath : null, first, OutputPath!);
+        var edition = image is not null ? image.Edition ?? image.Name : Edition!.Key;
+        return new MediaRequest(source, edition, image?.Index, apps, answers, tunero ? _system.ExePath : null, first, OutputPath!);
     }
 
     [RelayCommand(CanExecute = nameof(CanBuild))]
@@ -607,7 +803,17 @@ public sealed partial class InstallMediaViewModel : PageViewModel
             if (stop.IsCancellationRequested) stopped = true;
             else await RunWorkAsync("install media", Loc.Instance["Media_Building"], async scope =>
             {
-                var progress = new Progress<MediaProgress>(p => scope.Report(p.Percent, StageText(p)));
+                // The banner: the stage, its percentage, and the time the build has taken so far (refreshed every second).
+                var clock = Stopwatch.StartNew();
+                (double? Percent, string Stage) last = (null, Loc.Instance["Media_Building"]);
+                void Show() => scope.Report(last.Percent, Loc.Instance.Format("Media_Progress", last.Stage, Elapsed(clock.Elapsed)));
+                var progress = new Progress<MediaProgress>(p =>
+                {
+                    last = (p.Percent, StageText(p));
+                    Show();
+                });
+                using var ticking = new CancellationTokenSource();
+                var ticker = TickAsync(Show, ticking.Token);
                 try
                 {
                     iso = await _build(request, progress, stop.Token);
@@ -619,6 +825,11 @@ public sealed partial class InstallMediaViewModel : PageViewModel
                 catch (Exception ex) when (ex is MediaBuildException or ArgumentException or IOException or UnauthorizedAccessException)
                 {
                     failure = ex;
+                }
+                finally
+                {
+                    ticking.Cancel();
+                    await ticker;
                 }
             }, stop);
         }
@@ -632,6 +843,25 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         else if (failure is not null) ShowFailure(failure);
         else if (stopped) Show(Loc.Instance["Media_Stopped"], InfoBarSeverity.Informational);
     }
+
+    private static async Task TickAsync(Action show, CancellationToken ct)
+    {
+        try
+        {
+            while (true)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(1), ct);
+                show();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    /// <summary>"12:05" or "1:02:05".</summary>
+    private static string Elapsed(TimeSpan t) =>
+        t.TotalHours >= 1 ? t.ToString(@"h\:mm\:ss", CultureInfo.InvariantCulture) : t.ToString(@"m\:ss", CultureInfo.InvariantCulture);
 
     private static string StageText(MediaProgress p)
     {
@@ -717,9 +947,10 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     // ---- demo (--media-demo) ----
 
     /// <summary>
-    /// Developer aid: the sample catalog instead of Microsoft's and a build that only shows its stages, then a sample
-    /// failure and the next time a sample success. Nothing goes to the network or runs. <paramref name="show"/> "fail" or
-    /// "done" shows that result at once, "expand" unfolds the change cards (for screenshots; combined with a comma).
+    /// Developer aid: the sample catalog instead of Microsoft's, a sample own ISO, and a build that only shows its stages,
+    /// then a sample failure and the next time a sample success. Nothing goes to the network, attaches or runs.
+    /// <paramref name="show"/>, comma-separated: "fail" or "done" shows that result at once, "expand" unfolds the change
+    /// cards, "iso" chooses the sample own ISO (for screenshots).
     /// </summary>
     public void UseDemo(string? show)
     {
@@ -729,14 +960,23 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         _catalog = new InstallMediaDemo.Catalog();
         var demo = new InstallMediaDemo.Build();
         _build = demo.RunAsync;
-        _system = _system with { Elevated = true, ExePath = _system.ExePath ?? "Tunero.exe", IsPublishedExe = true };
+        _system = _system with
+        {
+            Elevated = true, ExePath = _system.ExePath ?? "Tunero.exe", IsPublishedExe = true,
+            ReadIso = (_, _) => Task.FromResult(InstallMediaDemo.Iso()),
+        };
         CanApplyProfile = true;
         ApplyProfile = true;
         AccountNameText = "Anna";
+        if (shows.Contains("iso"))
+        {
+            UseDownload = false;
+            IsoPath = Path.Combine(Path.GetTempPath(), "Win11_26H2_German_x64.iso");
+        }
         if (shows.Contains("fail")) ShowFailure(InstallMediaDemo.Failure(), window: false);
         else if (shows.Contains("done"))
         {
-            ResultIso = Path.Combine(_system.OutputFolder, "Windows11_Tunero.iso");
+            ResultIso = Path.Combine(Path.GetTempPath(), "Windows11_Tunero.iso");
             Show(Loc.Instance.Format("Media_Done", ResultIso, ByteSize.Format(5_712_000_000)), InfoBarSeverity.Success, window: false);
         }
     }

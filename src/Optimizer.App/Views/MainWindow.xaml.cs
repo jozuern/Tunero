@@ -267,8 +267,11 @@ public partial class MainWindow : FluentWindow, IServiceProvider
     /// <summary>Below this height the open pane cannot show the group headings and every page; it drops the headings.</summary>
     private const double HeadingsHeight = 940;
 
-    /// <summary>Below this height even the pane without headings would cut off pages: it folds to the rail, as in WinUI.</summary>
-    private const double RailHeight = 790;
+    /// <summary>
+    /// Below this height even the pane without headings would cut off pages: it folds to the rail, as in WinUI. 830 since
+    /// the sixteenth page (Windows install media): at 790 the last page slid under the footer.
+    /// </summary>
+    private const double RailHeight = 830;
 
     private bool _paneCollapsedForHeight;
 
@@ -292,8 +295,8 @@ public partial class MainWindow : FluentWindow, IServiceProvider
         }
         ShowGroupHeaders();
         // Below this even the rail cut off its last page under the footer (1920 x 1080 at 150 %, VM): the items take a
-        // compact height. 34 rather than the 36 of Windows Settings: with twelve pages, 36 left the last one only 43 px
-        // above the footer at 720 px, and a maximized window at 150 % (672 px) moves the footer up 48 px more.
+        // compact height. 32 rather than the 36 of Windows Settings: with sixteen pages, 34 left the last one 37 px above
+        // the footer at 720 px, and a maximized window at 150 % (672 px) moves the footer up 48 px more.
         var compact = ActualHeight < CompactHeight;
         if (compact == _compactNav) return;
         _compactNav = compact;
@@ -304,7 +307,7 @@ public partial class MainWindow : FluentWindow, IServiceProvider
     /// <summary>Window height below which the pages in the rail get the compact item height.</summary>
     private const double CompactHeight = 750;
 
-    private const double CompactItemHeight = 34;
+    private const double CompactItemHeight = 32;
 
     private bool _compactNav;
 
