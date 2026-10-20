@@ -1662,7 +1662,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Media_X64Only" xml:space="preserve"><value>This PC has an ARM processor. Tunero builds x64 media only, for PCs with an Intel or AMD processor.</value></data>
   <data name="Media_EditionTitle" xml:space="preserve"><value>Edition</value></data>
   <data name="Media_Edition" xml:space="preserve"><value>Windows edition</value></data>
-  <data name="Media_EditionHint" xml:space="preserve"><value>The edition your product key or digital license is for. Preselected: this PC's edition. For your own ISO, the editions it holds.</value></data>
+  <data name="Media_EditionHint" xml:space="preserve"><value>The edition your product key or digital license is for. Preselected: this PC's edition when it is offered, else Pro. For your own ISO, the editions it holds.</value></data>
   <data name="Media_Edition_Core" xml:space="preserve"><value>Windows 11 Home</value></data>
   <data name="Media_Edition_CoreN" xml:space="preserve"><value>Windows 11 Home N</value></data>
   <data name="Media_Edition_Professional" xml:space="preserve"><value>Windows 11 Pro</value></data>

@@ -271,6 +271,20 @@ public sealed class PackageUpdatesTests
         Assert.Contains(Loc.Instance["Apps_DevInCommandPrompt"], page.DeveloperTools[1].Meta);
     }
 
+    /// <summary>Update all writes its output and each manager's result to the card: it unfolds, so a failure is seen.</summary>
+    [Fact]
+    public async Task UpdateAllUnfoldsTheCardWithItsOutput()
+    {
+        _printed["winget.exe"] = ["(1/1) Found Git"];
+        _codes["winget.exe"] = 1;
+        var page = Page(Winget());
+        Assert.False(page.ManagersExpanded);
+        await page.UpdateAllCommand.ExecuteAsync(null);
+        Assert.Single(_runs);
+        Assert.True(page.ManagersExpanded);
+        Assert.Contains("Found Git", page.ManagerOutput);
+    }
+
     /// <summary>The card is folded by default with a one-line summary, and shows for developer tools alone too.</summary>
     [Fact]
     public void TheCardIsFoldedWithASummary()

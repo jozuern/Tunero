@@ -69,8 +69,9 @@ public sealed record InstallMediaSystem
         ReadPc = () =>
         {
             var os = BuildInfo.Read();
+            // The signed-in user's folders, not the elevated account's (over-the-shoulder elevation).
             return new ThisPcFacts(os.Edition, os.NativeArchitecture == CpuArchitecture.Arm64, services.SessionUserName(), MediaLocales.ThisPcRegion(),
-                services.SessionDownloadsFolder() ?? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments));
+                services.SessionDownloadsFolder() ?? services.SessionDocumentsFolder() ?? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments));
         },
         Keyboard = MediaLocales.ThisPcKeyboard,
         ReadIso = new IsoReader().ReadInfoAsync,
@@ -82,9 +83,13 @@ public sealed record InstallMediaSystem
     public static IMediaCatalogSource CatalogSource(AppServices services) =>
         new MediaCatalogSource(new MediaSteps(), services.Context.Processes, Path.GetPathRoot(Environment.SystemDirectory)!);
 
-    /// <summary>The real build (<see cref="MediaBuild.RunAsync"/>), with its own steps and log for each build.</summary>
+    /// <summary>
+    /// The real build (<see cref="MediaBuild.RunAsync"/>), with its own steps and log for each build. It runs on the thread
+    /// pool: Core's awaits would otherwise come back to the window's thread for every block of a 6 GB download and run its
+    /// file copies and deletes there. The page's progress still reports on the window's thread.
+    /// </summary>
     public static Task<string> BuildAsync(MediaRequest request, IProgress<MediaProgress> progress, CancellationToken ct) =>
-        new MediaBuild(new MediaSteps()).RunAsync(request, progress, ct);
+        Task.Run(() => new MediaBuild(new MediaSteps()).RunAsync(request, progress, ct), ct);
 
     /// <summary>
     /// The real cleanup after earlier builds (<see cref="MediaBuild.CleanLeftoversAsync"/>). Without a work folder at a
@@ -260,7 +265,14 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     [ObservableProperty] private IReadOnlyList<FilterOption> _editions = [];
     [ObservableProperty] private FilterOption? _edition;
 
-    partial void OnEditionChanged(FilterOption? value) => Changed();
+    /// <summary>The edition last chosen for the download: a look at the own ISO and back keeps it.</summary>
+    private string? _downloadEdition;
+
+    partial void OnEditionChanged(FilterOption? value)
+    {
+        if (UseDownload && value is not null) _downloadEdition = value.Key;
+        Changed();
+    }
 
     // ---- changes ----
 
@@ -362,9 +374,14 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         Changed();
     }
 
-    [ObservableProperty] private bool _isBuilding;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanEdit))]
+    private bool _isBuilding;
 
     partial void OnIsBuildingChanged(bool value) => Changed();
+
+    /// <summary>The choices stay as they are while a build runs: it uses the ones it started with (and may hold the own ISO).</summary>
+    public bool CanEdit => !IsBuilding;
 
     /// <summary>The space the build needs on the output drive and what is free there.</summary>
     public string? NeededText
@@ -624,7 +641,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         {
             var keys = _files is { } files && Language is { } language ? MediaCatalog.Editions(files, language.Key, CatalogArchitecture) : MediaCatalog.OfferedEditions;
             Editions = keys.Select(e => new FilterOption(e, EditionName(e, e))).ToList();
-            Edition = Pick(Editions, key) ?? Pick(Editions, _pc.Edition) ?? Pick(Editions, "Professional") ?? Editions.FirstOrDefault();
+            Edition = Pick(Editions, key) ?? Pick(Editions, _downloadEdition) ?? Pick(Editions, _pc.Edition) ?? Pick(Editions, "Professional") ?? Editions.FirstOrDefault();
             return;
         }
         var images = _isoInfo?.Editions ?? [];
@@ -691,7 +708,9 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     private void UpdateOutputName()
     {
         if (_outputPicked || _pc.DownloadsFolder.Length == 0) return;
+        // An own ISO's edition comes from its image list, which anyone can write: only letters and digits go into the name.
         var edition = UseDownload ? Edition?.Key ?? "Professional" : SelectedImage()?.Edition ?? "Windows";
+        edition = string.Concat(edition.Where(char.IsAsciiLetterOrDigit)) is { Length: > 0 } clean ? clean : "Windows";
         var stem = UseDownload && Download() is { } esd
             ? $"Windows11_{esd.Build}_{esd.LanguageCode}_{edition}_Tunero"
             : $"Windows11_{edition}_Tunero";

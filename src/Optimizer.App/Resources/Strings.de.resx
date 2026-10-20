@@ -1662,7 +1662,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Media_X64Only" xml:space="preserve"><value>Dieser PC hat einen ARM-Prozessor. Tunero erstellt nur x64-Medien, für PCs mit Intel- oder AMD-Prozessor.</value></data>
   <data name="Media_EditionTitle" xml:space="preserve"><value>Edition</value></data>
   <data name="Media_Edition" xml:space="preserve"><value>Windows-Edition</value></data>
-  <data name="Media_EditionHint" xml:space="preserve"><value>Die Edition, für die dein Produktschlüssel oder deine digitale Lizenz gilt. Vorausgewählt ist die Edition dieses PCs. Bei einer eigenen ISO stehen ihre Editionen zur Wahl.</value></data>
+  <data name="Media_EditionHint" xml:space="preserve"><value>Die Edition, für die dein Produktschlüssel oder deine digitale Lizenz gilt. Vorausgewählt ist die Edition dieses PCs, wenn sie angeboten wird, sonst Pro. Bei einer eigenen ISO stehen ihre Editionen zur Wahl.</value></data>
   <data name="Media_Edition_Core" xml:space="preserve"><value>Windows 11 Home</value></data>
   <data name="Media_Edition_CoreN" xml:space="preserve"><value>Windows 11 Home N</value></data>
   <data name="Media_Edition_Professional" xml:space="preserve"><value>Windows 11 Pro</value></data>

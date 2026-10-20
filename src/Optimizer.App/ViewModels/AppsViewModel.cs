@@ -621,6 +621,8 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
         // The screenshot demo's managers are not this PC's: nothing runs.
         if (_managerDemo) return;
         IsUpdatingAll = true;
+        // The output and each manager's result line go to the Package managers card: unfolded, so a failure is seen.
+        ManagersExpanded = true;
         var lines = new List<string>();
         WorkProgress.Scope? banner = null;
         var progress = new Progress<string>(l =>

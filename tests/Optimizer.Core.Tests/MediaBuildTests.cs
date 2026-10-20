@@ -818,6 +818,7 @@ public sealed class MediaBuildTests : IDisposable
         Assert.DoesNotContain(_steps.IsoContents.Keys, k => k.EndsWith("unattend.xml", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(@"sources\$OEM$\$$\Setup\Scripts\keep.cmd", _steps.IsoContents.Keys);
         Assert.Contains(@"sources\$OEM$\$$\Panther\notes.txt", _steps.IsoContents.Keys);
+        Assert.Contains(@"sources\$OEM$\$1\keep.txt", _steps.IsoContents.Keys);
         // Every file the ISO carries under $OEM$ is named in the log once.
         Assert.Single(_steps.LogLines, l => l.Contains(@"sources\$OEM$\$$\Setup\Scripts\keep.cmd", StringComparison.Ordinal));
         Assert.Contains(_steps.LogLines, l => l.Contains(@"sources\$OEM$\$$\System32\Sysprep\unattend.xml", StringComparison.Ordinal));
@@ -2296,6 +2297,9 @@ internal sealed class FakeIsoReader(FakeMediaSteps steps) : IIsoReader
             FakeMediaSteps.Put(targetFolder, @"sources\$OEM$\$$\Panther\Unattend\AutoUnattend.xml", "<old/>");
             FakeMediaSteps.Put(targetFolder, @"sources\$OEM$\$$\System32\Sysprep\unattend.xml", "<old/>");
             FakeMediaSteps.Put(targetFolder, @"sources\$OEM$\$$\Panther\notes.txt", "keep");
+            // $1 is copied to the root of the Windows drive, where Setup also looks for Unattend.xml and Autounattend.xml.
+            FakeMediaSteps.Put(targetFolder, @"sources\$OEM$\$1\Autounattend.xml", "<old/>");
+            FakeMediaSteps.Put(targetFolder, @"sources\$OEM$\$1\keep.txt", "keep");
         }
         p?.Report(1.0);
         return Task.FromResult(targetFolder);

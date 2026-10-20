@@ -316,6 +316,48 @@ public sealed class InstallMediaViewModelTests : IDisposable
         Assert.Equal(Loc.Instance["Media_Stopped"], media.ResultText);
     }
 
+    /// <summary>A running build uses the choices it started with: the page locks them until it ends.</summary>
+    [Fact]
+    public async Task ChoicesAreLockedWhileABuildRuns()
+    {
+        var started = new TaskCompletionSource();
+        var media = await WithCatalog();
+        _build = async (_, ct) =>
+        {
+            started.SetResult();
+            await Task.Delay(Timeout.Infinite, ct);
+            return "";
+        };
+        Assert.True(media.CanEdit);
+        var build = media.BuildCommand.ExecuteAsync(null);
+        await started.Task;
+        Assert.False(media.CanEdit);
+        await media.StopAndWaitAsync();
+        await build;
+        Assert.True(media.CanEdit);
+    }
+
+    /// <summary>A look at the own ISO and back keeps the edition chosen for the download.</summary>
+    [Fact]
+    public async Task TheDownloadEditionSurvivesALookAtTheOwnIso()
+    {
+        var media = await WithCatalog();
+        media.Edition = media.Editions.Single(e => e.Key == "Core");
+        media.UseDownload = false;
+        media.UseDownload = true;
+        Assert.Equal("Core", media.Edition?.Key);
+    }
+
+    /// <summary>An own ISO's edition name is written by whoever made the ISO: it cannot move the default file out of Downloads.</summary>
+    [Fact]
+    public async Task AnOwnIsoEditionCannotStepOutOfDownloads()
+    {
+        _iso = Iso(Image(1, @"\..\..\Pro:x", "Odd"));
+        var media = await WithOwnIso();
+        Assert.Equal(_root, Path.GetDirectoryName(media.OutputPath));
+        Assert.Equal("Windows11_Prox_Tunero.iso", Path.GetFileName(media.OutputPath));
+    }
+
     // ---- what keeps Build off ----
 
     [Fact]

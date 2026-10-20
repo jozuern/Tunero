@@ -390,7 +390,7 @@ public sealed class MediaBuild(IMediaSteps steps)
             if (!SafeDelete.HasNoLinks(dir)) continue;
             try
             {
-                if (Directory.EnumerateFileSystemEntries(dir, "*", new EnumerationOptions { AttributesToSkip = 0 }).Any()) return true;
+                if (Directory.EnumerateFileSystemEntries(dir, "*", new EnumerationOptions { AttributesToSkip = 0, IgnoreInaccessible = false }).Any()) return true;
             }
             catch (DirectoryNotFoundException)
             {
@@ -921,7 +921,8 @@ public sealed class MediaBuild(IMediaSteps steps)
 
         /// <summary>
         /// Answer files of the media: at its root and in sources (<see cref="WriteBootWimAsync"/>), and those that $OEM$
-        /// copies into Panther and Sysprep, where Setup also picks them up. Names compare without case.
+        /// copies into Panther, Sysprep and the root of the Windows drive ($1), where Setup also picks them up. Names
+        /// compare without case.
         /// </summary>
         private List<string> OldAnswerFiles()
         {
@@ -933,6 +934,7 @@ public sealed class MediaBuild(IMediaSteps steps)
                 .. Named(Path.Combine(windows, "Panther"), IsAnswerFileName),
                 .. Named(Path.Combine(windows, @"Panther\Unattend"), IsAnswerFileName),
                 .. Named(Path.Combine(windows, @"System32\Sysprep"), n => Same(n, "unattend.xml")),
+                .. Named(Path.Combine(Sources, "$OEM$", "$1"), IsAnswerFileName),
             ];
         }
 
@@ -1204,10 +1206,13 @@ public sealed class MediaBuild(IMediaSteps steps)
             ];
         }
 
-        /// <summary>The files and folders directly in <paramref name="folder"/> whose name matches, hidden and system ones included.</summary>
+        /// <summary>
+        /// The files and folders directly in <paramref name="folder"/> whose name matches, hidden and system ones included. A
+        /// folder that cannot be listed throws instead of reading as empty: the checks that use it fail closed.
+        /// </summary>
         private static IEnumerable<string> Named(string folder, Func<string, bool> match) =>
             Directory.Exists(folder)
-                ? Directory.EnumerateFileSystemEntries(folder, "*", new EnumerationOptions { AttributesToSkip = 0 }).Where(e => match(Path.GetFileName(e))).ToList()
+                ? Directory.EnumerateFileSystemEntries(folder, "*", new EnumerationOptions { AttributesToSkip = 0, IgnoreInaccessible = false }).Where(e => match(Path.GetFileName(e))).ToList()
                 : [];
 
         /// <summary>A setup.exe started inside Windows finds an answer file at the media's root or in sources (<see cref="WriteBootWimAsync"/>): none may be there.</summary>
