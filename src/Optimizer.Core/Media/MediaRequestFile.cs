@@ -17,13 +17,15 @@ public sealed class MediaRequestFileException(string field, string reason) : For
 
 /// <summary>
 /// The request file of the developer switch --build-media (the VM tests): the install media page's choices as JSON, in
-/// camelCase, every field given (null where allowed), nothing else. <see cref="Parse"/> checks each value as the page does
+/// camelCase, every field given (null where allowed) except the optional appLanguage and theme, nothing else.
+/// <see cref="Parse"/> checks each value as the page does
 /// (it only offers what passes); <see cref="ToChoices"/> turns it into the page's <see cref="MediaChoices"/>, whose
 /// <see cref="MediaChoices.ToRequest"/> is the page's own mapping.
 /// <code>
 /// { "source": "download" or "C:\\path\\Win11.iso", "language": "de-de" (download only), "edition": "Professional",
 ///   "removeApps": "consumer" or ["Microsoft.BingNews", ...], "skipSetup": { "accountName": "Anna", "region": "de-AT",
-///   "keyboard": "0407:00000407" } or null, "profile": "gaming" or null, "allowUnsupported": false, "output": "C:\\out\\Win11.iso" }
+///   "keyboard": "0407:00000407" } or null, "profile": "gaming" or null, "allowUnsupported": false, "output": "C:\\out\\Win11.iso",
+///   optional: "appLanguage": "en" or "de", "theme": "System", "Light" or "Dark" (absent or null: the app's) }
 /// </code>
 /// </summary>
 public sealed record MediaRequestFile(
@@ -34,14 +36,18 @@ public sealed record MediaRequestFile(
     MediaSetupChoice? SkipSetup,
     string? Profile,
     bool AllowUnsupported,
-    string Output)
+    string Output,
+    string? AppLanguage = null,
+    string? Theme = null)
 {
     public const string Download = "download";
 
     /// <summary>"consumer" in removeApps: the apps the page ticks when it opens.</summary>
     public const string DefaultApps = "consumer";
 
-    private static readonly string[] Fields = ["source", "language", "edition", "removeApps", "skipSetup", "profile", "allowUnsupported", "output"];
+    private static readonly string[] Fields = ["source", "language", "edition", "removeApps", "skipSetup", "profile", "allowUnsupported", "output", "appLanguage", "theme"];
+    private static readonly string[] AppLanguages = ["en", "de"];
+    private static readonly string[] Themes = ["System", "Light", "Dark"];
     private static readonly string[] SetupFields = ["accountName", "region", "keyboard"];
 
     public bool IsDownload => Source == Download;
@@ -105,13 +111,16 @@ public sealed record MediaRequestFile(
         var output = Text(root, "output");
         if (!Path.IsPathFullyQualified(output)) throw new MediaRequestFileException("output", "must be an absolute path");
         if (!Same(Path.GetExtension(output), ".iso")) throw new MediaRequestFileException("output", "must end in .iso");
+        if (!MediaChoices.IsLocalOutput(output))
+            throw new MediaRequestFileException("output", $@"{output} is not on a local fixed drive (no network share, \\?\ path or removable drive): the build works beside it");
         if (Path.GetDirectoryName(output) is not { } folder || !Directory.Exists(folder))
             throw new MediaRequestFileException("output", $"the folder of {output} does not exist");
         if (Directory.Exists(output)) throw new MediaRequestFileException("output", $"{output} is a folder");
         if (!download && Same(Path.GetFullPath(source), Path.GetFullPath(output)))
             throw new MediaRequestFileException("output", "is the source ISO itself");
 
-        return new MediaRequestFile(source, language, edition, apps, setup, profile, unsupported.GetBoolean(), output);
+        return new MediaRequestFile(source, language, edition, apps, setup, profile, unsupported.GetBoolean(), output,
+            Optional(root, "appLanguage", AppLanguages), Optional(root, "theme", Themes));
     }
 
     /// <summary>
@@ -136,8 +145,8 @@ public sealed record MediaRequestFile(
         {
             source = new MediaSource(null, Source, null);
         }
-        return new MediaChoices(source, Edition, null, null, appLanguage, RemoveApps, SkipSetup is not null, SkipSetup?.AccountName,
-            SkipSetup?.Region, SkipSetup?.Keyboard, AllowUnsupported, Profile is { } profile ? new TuneroCopy(tuneroExe!, profile, theme) : null, Output);
+        return new MediaChoices(source, Edition, null, null, AppLanguage ?? appLanguage, RemoveApps, SkipSetup is not null, SkipSetup?.AccountName,
+            SkipSetup?.Region, SkipSetup?.Keyboard, AllowUnsupported, Profile is { } profile ? new TuneroCopy(tuneroExe!, profile, Theme ?? theme) : null, Output);
     }
 
     /// <summary>A profile needs the Tunero copy: <paramref name="tuneroExe"/> is the published exe, or null for any other build.</summary>
@@ -204,6 +213,16 @@ public sealed record MediaRequestFile(
         foreach (var property in obj.EnumerateObject())
             if (!fields.Contains(property.Name, StringComparer.Ordinal))
                 throw new MediaRequestFileException(prefix + property.Name, $"not a field of the request file (fields: {string.Join(", ", fields)})");
+    }
+
+    /// <summary>An optional field: absent or null gives null, else one of <paramref name="allowed"/> (any case, returned as listed).</summary>
+    private static string? Optional(JsonElement obj, string name, string[] allowed)
+    {
+        if (!obj.TryGetProperty(name, out var value) || value.ValueKind == JsonValueKind.Null) return null;
+        if (value.ValueKind != JsonValueKind.String) throw new MediaRequestFileException(name, "must be a string or null");
+        var text = value.GetString()!;
+        return allowed.FirstOrDefault(a => Same(a, text))
+               ?? throw new MediaRequestFileException(name, $"{text} is not {string.Join(", ", allowed[..^1])} or {allowed[^1]} (or null for the app's)");
     }
 
     private static JsonElement Required(JsonElement obj, string name, string prefix) =>

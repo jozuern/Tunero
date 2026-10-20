@@ -1,5 +1,6 @@
 using System.Globalization;
 using Optimizer.Core.Debloat;
+using Optimizer.Core.Platform;
 
 namespace Optimizer.Core.Media;
 
@@ -43,6 +44,24 @@ public sealed record MediaChoices(
 
     /// <summary>Ticked when the page opens (and what a request file's "consumer" means): the consumer group.</summary>
     public static bool ChosenByDefault(AppxEntry app) => app.Group == "consumer";
+
+    /// <summary>
+    /// The output ISO and the build's work folder beside it belong on a local fixed drive: not a network share, a \\?\ or
+    /// \\.\ device path, or a removable drive. Checked by the page and --build-media before anything runs, and by the
+    /// build again (<see cref="MediaSteps.NewWorkFolder(string)"/>). Never touches the network: a UNC path is refused by
+    /// its spelling.
+    /// </summary>
+    public static bool IsLocalOutput(string path)
+    {
+        try
+        {
+            return TrustedPath.IsOnLocalFixedDrive(Path.GetFullPath(path));
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException or IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
 
     /// <summary>The app language's Windows language: de-de for German, en-us otherwise.</summary>
     public static string WindowsLanguage(string appLanguage) => appLanguage == "de" ? "de-de" : "en-us";

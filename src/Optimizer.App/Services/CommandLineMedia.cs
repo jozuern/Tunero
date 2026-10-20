@@ -104,8 +104,12 @@ public static class CommandLineMedia
         MediaRequestFile file;
         try
         {
-            if (new FileInfo(requestPath).Length > MaxRequestBytes) return Invalid(lines, $"request: {requestPath} is larger than {MaxRequestBytes} bytes");
-            file = MediaRequestFile.Parse(await File.ReadAllTextAsync(requestPath), system.Keyboards());
+            // One read through the handle whose path was checked, never through a link, and never more than the cap.
+            if (!SafeDelete.HasNoLinks(requestPath)) return Invalid(lines, $"request: {requestPath} is a link or lies in one");
+            if (SafeDelete.ReadFile(requestPath, MaxRequestBytes) is not { } bytes)
+                return Invalid(lines, $"request: {requestPath} is larger than {MaxRequestBytes} bytes, or its path leads elsewhere");
+            using var reader = new StreamReader(new MemoryStream(bytes), Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
+            file = MediaRequestFile.Parse(await reader.ReadToEndAsync(), system.Keyboards());
         }
         catch (MediaRequestFileException ex)
         {
@@ -138,6 +142,16 @@ public static class CommandLineMedia
                 }
             }
             var request = file.ToChoices(catalog, Loc.Instance.Language, system.TuneroExe, system.Theme).ToRequest();
+            try
+            {
+                // The engine's own check, which its build repeats: an ArgumentException from inside the build is not a
+                // refused request but an unexpected error.
+                MediaBuild.Validate(request);
+            }
+            catch (ArgumentException ex)
+            {
+                return Invalid(lines, "request: " + ex.Message);
+            }
             lines.Write($"Building {(request.Source.Download is { } esd ? esd.FileName : request.Source.IsoPath)}, edition {request.Edition}, {request.RemoveApps.Count} apps removed, " +
                         $"setup {(request.Answers.SkipSetup ? "skipped for " + request.Answers.AccountName : "asked")}, profile {request.FirstSignIn?.Profile ?? "none"}, to {request.OutputIso}");
             var progress = new ProgressLines(lines);
@@ -148,11 +162,6 @@ public static class CommandLineMedia
         catch (MediaRequestFileException ex)
         {
             return Invalid(lines, ex.Message);
-        }
-        catch (ArgumentException ex)
-        {
-            // The engine checks the request again (MediaBuild.Validate) before any step.
-            return Invalid(lines, "request: " + ex.Message);
         }
         catch (MediaBuildException ex)
         {

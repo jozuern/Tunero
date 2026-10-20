@@ -173,7 +173,11 @@ public sealed class MediaBuild(IMediaSteps steps)
         return new Run(steps, r, p, RetryDelay, ct).ExecuteAsync();
     }
 
-    private static void Validate(MediaRequest r)
+    /// <summary>
+    /// The engine's check of a request, which <see cref="RunAsync"/> runs first; --build-media calls it before the build
+    /// to tell a refused request from a failure inside the build. Throws <see cref="ArgumentException"/>.
+    /// </summary>
+    public static void Validate(MediaRequest r)
     {
         ArgumentNullException.ThrowIfNull(r);
         ArgumentNullException.ThrowIfNull(r.Source);

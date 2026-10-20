@@ -330,6 +330,17 @@ public sealed class InstallMediaViewModelTests : IDisposable
         Assert.True(media.CanBuild);
     }
 
+    [Theory]
+    [InlineData(@"\\server\share\Win11.iso")]
+    [InlineData(@"\\?\C:\Win11.iso")]
+    public async Task OutputOffTheLocalDrivesBlocksBuild(string output)
+    {
+        var media = await WithCatalog();
+        media.OutputPath = output;
+        Assert.False(media.CanBuild);
+        Assert.Equal(Loc.Instance["Media_OutputNotLocal"], media.BuildNote);
+    }
+
     [Fact]
     public async Task OutputCannotBeTheSourceIso()
     {

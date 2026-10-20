@@ -369,7 +369,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         get
         {
             if (Needed() is not { } needed) return null;
-            return OutputPath is { } output && _system.FreeBytes(output) is { } free
+            return OutputPath is { } output && MediaChoices.IsLocalOutput(output) && _system.FreeBytes(output) is { } free
                 ? Loc.Instance.Format("Media_Needed", ByteSize.Format(needed), ByteSize.Format(free))
                 : Loc.Instance.Format("Media_NeededOnly", ByteSize.Format(needed));
         }
@@ -434,7 +434,11 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         }
         if (SkipSetup && AccountName.Problem(AccountNameText.Trim()) is { } name) return name;
         if (SkipSetup && (Region is null || Keyboard is null)) return "Media_NeedsRegion";
-        if (OutputPath is not { } output || !ValidOutput(output)) return "Media_OutputInvalid";
+        if (OutputPath is not { } output) return "Media_OutputInvalid";
+        // A network share, a \\?\ path or a removable drive is refused by its spelling and drive type, before anything
+        // asks the share whether the folder exists (the build checks it again).
+        if (Path.IsPathFullyQualified(output) && !MediaChoices.IsLocalOutput(output)) return "Media_OutputNotLocal";
+        if (!ValidOutput(output)) return "Media_OutputInvalid";
         if (!UseDownload && IsoPath is { } source && SamePath(source, output)) return "Media_OutputInvalid";
         if (Needed() is { } needed && _system.FreeBytes(output) is { } free && free < needed) return "Media_NotEnoughSpace";
         return null;

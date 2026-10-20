@@ -2,6 +2,7 @@ using System.IO;
 using System.Text.Json.Nodes;
 using Optimizer.App.Services;
 using Optimizer.App.ViewModels;
+using Optimizer.Core.Logging;
 using Optimizer.Core.Media;
 
 namespace Optimizer.App.Tests;
@@ -23,6 +24,7 @@ public sealed class CommandLineMediaTests : IDisposable
 
     /// <summary>What the fake catalog does; null: returns <see cref="Files"/>.</summary>
     private Func<IReadOnlyList<EsdFile>>? _catalog;
+    private int _catalogLoads;
 
     public CommandLineMediaTests() => Directory.CreateDirectory(_root);
 
@@ -65,7 +67,11 @@ public sealed class CommandLineMediaTests : IDisposable
         Elevated = elevated,
         TuneroExe = published ? Exe() : null,
         Theme = "System",
-        Catalog = new FakeCatalog(() => _catalog?.Invoke() ?? Files),
+        Catalog = new FakeCatalog(() =>
+        {
+            _catalogLoads++;
+            return _catalog?.Invoke() ?? Files;
+        }),
         Build = (request, progress, ct) =>
         {
             _requests.Add(request);
@@ -244,9 +250,54 @@ public sealed class CommandLineMediaTests : IDisposable
     [Fact]
     public async Task ARequestTheEngineRefusesIsInvalid()
     {
-        _build = (_, _) => throw new ArgumentException("Only x64 media can be built.");
-        Assert.Equal(CommandLineApply.InvalidFile, await Run(Request()));
-        Assert.Contains("Only x64 media can be built.", _output.ToString());
+        // The engine's own check (MediaBuild.Validate) runs before the build: here the Tunero copy is missing.
+        var system = System() with { TuneroExe = Path.Combine(_root, "gone", "Tunero.exe") };
+        Assert.Equal(CommandLineApply.InvalidFile, await Run(Request(), system));
+        Assert.Empty(_requests);
+        Assert.Contains("The Tunero exe must be an existing file", _output.ToString());
+    }
+
+    [Fact]
+    public async Task AnArgumentExceptionInsideTheBuildIsUnexpected()
+    {
+        _build = (_, _) => throw new ArgumentException("deep inside the build");
+        Assert.Equal(CommandLineApply.Error, await Run(Request()));
+        Assert.Contains("deep inside the build", _output.ToString());
+        Assert.Contains(Log.Snapshot(Log.MaxEntries), e => e.Level == LogLevel.Error && e.Source == "cli" && e.Message == "build media failed");
+    }
+
+    [Fact]
+    public async Task AnOversizedRequestFileIsNotRead()
+    {
+        var path = Path.Combine(_root, "big.json");
+        await File.WriteAllTextAsync(path, Request().ToJsonString() + new string(' ', 64 * 1024));
+        Assert.Equal(CommandLineApply.InvalidFile, await CommandLineMedia.BuildAsync(path, null, System()));
+        Assert.Empty(_requests);
+        Assert.Equal(0, _cleanups);
+        Assert.Contains("larger than", _output.ToString());
+    }
+
+    [Theory]
+    [InlineData(@"\\server\share\out.iso")]
+    [InlineData(@"\\?\C:\out.iso")]
+    public async Task AnOutputOffTheLocalDrivesIsRefusedBeforeCleanupAndNetwork(string output)
+    {
+        var request = Request();
+        request["output"] = output;
+        Assert.Equal(CommandLineApply.InvalidFile, await Run(request));
+        Assert.Equal((0, 0), (_cleanups, _catalogLoads));
+        Assert.Contains("output: ", _output.ToString());
+        Assert.Contains("local fixed drive", _output.ToString());
+    }
+
+    [Fact]
+    public async Task AppLanguageAndThemeReachTheFirstSignIn()
+    {
+        var request = Request();
+        request["appLanguage"] = "de";
+        request["theme"] = "Dark";
+        Assert.Equal(CommandLineApply.Done, await Run(request));
+        Assert.Equal(new FirstSignInFile("office", "de", "Dark"), Assert.Single(_requests).FirstSignIn);
     }
 
     [Fact]

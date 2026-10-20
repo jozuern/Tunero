@@ -232,6 +232,75 @@ public sealed class MediaRequestFileTests : IDisposable
     }
 
     [Theory]
+    [InlineData(@"\\server\share\out.iso")]
+    [InlineData(@"\\?\C:\out.iso")]
+    public void AnOutputOffTheLocalDrivesIsRefused(string output)
+    {
+        var json = Download();
+        json["output"] = output;
+        var refused = Refused(json);
+        Assert.Equal("output", refused.Field);
+        Assert.Contains("local fixed drive", refused.Message);
+    }
+
+    [Theory]
+    [InlineData(@"\\server\share\out.iso", false)]
+    [InlineData(@"\\?\C:\out.iso", false)]
+    [InlineData(@"\\.\C:\out.iso", false)]
+    public void OnlyLocalFixedDrivesTakeTheOutput(string output, bool local) => Assert.Equal(local, MediaChoices.IsLocalOutput(output));
+
+    [Fact]
+    public void TheTempFolderTakesTheOutput() => Assert.True(MediaChoices.IsLocalOutput(Output));
+
+    [Fact]
+    public void AppLanguageAndThemeAreOptional()
+    {
+        var json = Download();
+        Assert.Null(Parse(json).AppLanguage);
+        Assert.Null(Parse(json).Theme);
+        json["appLanguage"] = null;
+        json["theme"] = null;
+        Assert.Null(Parse(json).AppLanguage);
+        json["appLanguage"] = "DE";
+        json["theme"] = "dark";
+        var file = Parse(json);
+        Assert.Equal(("de", "Dark"), (file.AppLanguage, file.Theme));
+    }
+
+    [Theory]
+    [InlineData("appLanguage", "\"fr\"", "en or de")]
+    [InlineData("appLanguage", "1", "string")]
+    [InlineData("theme", "\"Blue\"", "System, Light or Dark")]
+    public void ABadAppLanguageOrThemeIsRefused(string field, string value, string reason)
+    {
+        var json = Download();
+        json[field] = JsonNode.Parse(value);
+        var refused = Refused(json);
+        Assert.Equal(field, refused.Field);
+        Assert.Contains(reason, refused.Message);
+    }
+
+    [Fact]
+    public void AppLanguageAndThemeGoToTheFirstSignInAndSetup()
+    {
+        var json = Download();
+        json["appLanguage"] = "de";
+        json["theme"] = "Light";
+        var request = Parse(json).ToChoices(Files, "en", Path.Combine(_root, "Tunero.exe"), "Dark").ToRequest();
+        Assert.Equal(new FirstSignInFile("office", "de", "Light"), request.FirstSignIn);
+
+        // An own ISO's Setup language falls back to the app language's Windows language.
+        json["source"] = OwnIso();
+        json.Remove("language");
+        Assert.Equal("de-DE", Parse(json).ToChoices(null, "en", Path.Combine(_root, "Tunero.exe"), "Dark").ToRequest().Answers.UiLanguage);
+        json.Remove("appLanguage");
+        json.Remove("theme");
+        var defaults = Parse(json).ToChoices(null, "en", Path.Combine(_root, "Tunero.exe"), "Dark").ToRequest();
+        Assert.Equal("en-US", defaults.Answers.UiLanguage);
+        Assert.Equal(new FirstSignInFile("office", "en", "Dark"), defaults.FirstSignIn);
+    }
+
+    [Theory]
     [InlineData("")]
     [InlineData("[]")]
     [InlineData("{\"source\":")]
