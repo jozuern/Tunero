@@ -80,10 +80,16 @@ public class PackageInstallTests
         Assert.Equal([@"C:\ProgramData\chocolatey"], checkedFolders);
         var choco = package.TrustedChocolatey(path => path.StartsWith(@"C:\ProgramData\chocolatey\", StringComparison.Ordinal), _ => true);
         Assert.Equal(@"C:\ProgramData\chocolatey\choco.exe", choco);
+        // The update runs with --ignore-http-cache, which Chocolatey has from 2.1.0 on: an older one shows the command instead.
+        static bool AdminOnly(string path) => path.StartsWith(@"C:\ProgramData\chocolatey", StringComparison.Ordinal);
+        Assert.Equal(choco, package.TrustedChocolateyForUpgrade(AdminOnly, AdminOnly, _ => "2.4.1"));
+        Assert.Null(package.TrustedChocolateyForUpgrade(AdminOnly, AdminOnly, _ => "2.0.1"));
+        Assert.Null(package.TrustedChocolateyForUpgrade(AdminOnly, AdminOnly, _ => null));
+        Assert.Null(package.TrustedChocolateyForUpgrade(_ => false, AdminOnly, _ => "2.4.1"));
 
         var args = package.UpdateArguments(7, @"C:\ProgramData\chocolatey\lib\tunero\tools\Tunero.exe", "Updating", "Failed", choco);
         Assert.StartsWith("-NoProfile -Command \"", args); // an exe: no execution policy exception
-        Assert.Contains(@"$global:LASTEXITCODE = 0; & 'C:\ProgramData\chocolatey\choco.exe' upgrade tunero --yes --no-progress; $ok = $? -and $LASTEXITCODE -eq 0;", args);
+        Assert.Contains(@"$global:LASTEXITCODE = 0; & 'C:\ProgramData\chocolatey\choco.exe' upgrade tunero --yes --no-progress --ignore-http-cache; $ok = $? -and $LASTEXITCODE -eq 0;", args);
         Assert.Contains(@"Start-Process -FilePath 'C:\ProgramData\chocolatey\lib\tunero\tools\Tunero.exe'", args);
         Assert.Throws<ArgumentNullException>(() => package.UpdateArguments(7, @"C:\x\Tunero.exe", "a", "b"));
         Assert.Contains(@"& 'C:\ProgramData\chocolatey\choco.exe' uninstall tunero --yes --no-progress", package.UninstallArguments("Tunero", "a", "b", choco));

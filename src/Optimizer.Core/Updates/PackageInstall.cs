@@ -103,6 +103,18 @@ public sealed record PackageInstall(PackageManager Manager, string Name, string 
         Apps.Chocolatey.HardenEnvironment(env, Folder);
     }
 
+    /// <summary>
+    /// <see cref="TrustedChocolatey"/> for the update, which runs with Chocolatey's HTTP cache ignored: only a Chocolatey of
+    /// version 2.1.0 or newer has that option (<see cref="Apps.Chocolatey.IgnoreHttpCache"/>). For an older one the app
+    /// shows the command to type instead.
+    /// </summary>
+    public string? TrustedChocolateyForUpgrade(Func<string, bool>? isAdminOnly = null, Func<string, bool>? isAdminOnlyFolder = null,
+        Func<string, string?>? fileVersion = null)
+    {
+        if (TrustedChocolatey(isAdminOnly, isAdminOnlyFolder) is not { } choco) return null;
+        return Apps.Chocolatey.CanIgnoreHttpCache((fileVersion ?? Apps.ManagerSystem.ReadFileVersion)(choco)) ? choco : null;
+    }
+
     /// <summary>The package manager can be started from the app (else the app shows the command to type).</summary>
     public bool CanRunFromApp(Func<string, bool>? isAdminOnly = null) => Manager switch
     {
@@ -132,7 +144,7 @@ public sealed record PackageInstall(PackageManager Manager, string Name, string 
     {
         if (Manager == PackageManager.Winget) return WingetPackage.UpdateArguments(processId, exePath, runningText, failedText);
         var command = Manager == PackageManager.Chocolatey
-            ? $"& {WingetPackage.Quote(choco ?? throw new ArgumentNullException(nameof(choco)))} upgrade {ChocolateyId} --yes --no-progress"
+            ? $"& {WingetPackage.Quote(choco ?? throw new ArgumentNullException(nameof(choco)))} upgrade {ChocolateyId} --yes --no-progress {Apps.Chocolatey.IgnoreHttpCache}"
             : $"scoop update {ScoopName}";
         var exe = WingetPackage.Quote(ExeAfterUpdate(exePath));
         var versionCheck = expectedVersion is null ? null

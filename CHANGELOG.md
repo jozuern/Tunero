@@ -4,12 +4,13 @@
 
 ### Added
 
-- **More package managers on Install & update:** Update all apps also runs Chocolatey and Scoop (as your account, in its own window) and opens the Microsoft Store's updates page, after one question that names them. A new folded card lists what was found, Chocolatey's outdated packages to update one by one, and developer tools (npm, pip, .NET tools, cargo) with an update command to copy; Tunero does not run those.
+- **More package managers on Install & update:** Update all apps also runs Chocolatey (2.1.0 or newer, with its download cache ignored) and Scoop (as your account, in its own window) and opens the Microsoft Store's updates page, after one question that names them. A new folded card lists what was found, Chocolatey's outdated packages to update one by one, and developer tools (npm, pip, .NET tools, cargo) with an update command to copy; Tunero does not run those.
 - **Windows install media:** a new page builds a Windows 11 ISO (x64) from Microsoft's newest download or your own ISO: without the preinstalled apps you tick, without the account and setup questions, if you like for PCs Windows 11 does not support (Preview), and with Tunero applying your profile at the first sign-in. Downloads are checked against Microsoft's catalog, and the ISO is read back before it is saved.
 - **Live readings show which programs use each device:** every card (processor, memory, graphics card and each drive) names its three busiest programs; folded, a sortable list with totals since the readings were switched on and programs that just ended. Drives are per disk, unlike Task Manager, and data Windows writes later from its cache counts for the program that saved it. A program's details offer Open in Explorer, a start priority rule and End task.
 
 ### Changed
 
+- **Update now for a Chocolatey copy:** Chocolatey runs with its download cache ignored, a folder users can add files to; with Chocolatey older than 2.1.0, which lacks that option, the app shows the command instead.
 - **Navigation:** the group headings sit closer to their pages, so every page still fits at the default window height.
 - **Website and README:** they now say that the opt-in task "Apply my changes again" runs once after sign-in, that installing in Program Files is optional, that only Chocolatey 0.8.0 has passed moderation so far, and that every setting (not every change) can be undone.
 - **Icons:** the app icon, the website icons and the brand files no longer carry embedded content credentials (C2PA metadata); they look the same.

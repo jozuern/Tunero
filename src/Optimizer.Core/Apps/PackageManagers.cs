@@ -48,6 +48,9 @@ public sealed record PackageManagerInfo(ManagerKind Kind, string Name, string Pa
     /// <summary>The commands are written for Command Prompt (a quoted program path, which PowerShell would read as text).</summary>
     public bool CommandPrompt { get; init; }
 
+    /// <summary>Chocolatey in a trusted folder, but older than <see cref="Apps.Chocolatey.MinimumVersion"/>: not run elevated.</summary>
+    public bool TooOld { get; init; }
+
     public bool InUpdateAll => Run is ManagerRun.Elevated or ManagerRun.AsUser or ManagerRun.StorePage;
 
     public bool IsDeveloperTool => Kind >= ManagerKind.Npm;
@@ -88,7 +91,7 @@ public sealed class ManagerSystem
     /// <summary>The product version a file carries in its version resource (read, never started).</summary>
     public Func<string, string?> FileVersion { get; init; } = ReadFileVersion;
 
-    private static string? ReadFileVersion(string path)
+    public static string? ReadFileVersion(string path)
     {
         try
         {
@@ -197,10 +200,14 @@ public static partial class PackageManagers
         var trusted = found.FirstOrDefault(root => Apps.Chocolatey.IsTrustedInstall(root, s.IsAdminOnly, s.IsAdminOnlyFolder));
         var root = trusted ?? found[0];
         var choco = Path.Combine(root, "choco.exe");
-        return new(ManagerKind.Chocolatey, "Chocolatey", choco, trusted is not null ? ManagerRun.Elevated : ManagerRun.NotRun)
+        var version = s.FileVersion(choco);
+        // Every elevated run ignores Chocolatey's HTTP cache, an option that came with 2.1.0 (Apps.Chocolatey.IgnoreHttpCache).
+        var tooOld = trusted is not null && !Apps.Chocolatey.CanIgnoreHttpCache(version);
+        return new(ManagerKind.Chocolatey, "Chocolatey", choco, trusted is not null && !tooOld ? ManagerRun.Elevated : ManagerRun.NotRun)
         {
             Root = root,
-            Version = s.FileVersion(choco),
+            Version = version,
+            TooOld = tooOld,
         };
     }
 

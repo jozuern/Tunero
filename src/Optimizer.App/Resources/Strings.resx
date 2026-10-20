@@ -1775,7 +1775,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Apps_StoreOpened" xml:space="preserve"><value>The Microsoft Store shows its page for updates: select Get updates there.</value></data>
   <data name="Apps_StoreNotOpened" xml:space="preserve"><value>The Microsoft Store could not be opened.</value></data>
   <data name="Apps_ManagersTitle" xml:space="preserve"><value>Package managers</value></data>
-  <data name="Apps_ManagersHint" xml:space="preserve"><value>Update all apps runs the ones marked as included, one after the other. Each one downloads from its own sources.</value></data>
+  <data name="Apps_ManagersHint" xml:space="preserve"><value>Update all apps runs the ones marked as included, one after the other, and then opens the Store's page for updates. Each one downloads from its own sources.</value></data>
   <data name="Apps_ManagerVersion" xml:space="preserve"><value>Version {0}</value></data>
   <data name="Apps_ManagerIncluded" xml:space="preserve"><value>Included</value></data>
   <data name="Apps_ManagerExcluded" xml:space="preserve"><value>Not included</value></data>
@@ -1810,4 +1810,6 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Apps_PythonVersion" xml:space="preserve"><value>Python {0}</value></data>
   <data name="Apps_ManagersSummary" xml:space="preserve"><value>{0}; developer tools: {1}</value></data>
   <data name="Apps_DevToolsSummary" xml:space="preserve"><value>Developer tools: {0}</value></data>
+  <data name="Apps_HowChocoTooOld" xml:space="preserve"><value>This version is older than 2.1.0. Tunero runs Chocolatey only with its download cache ignored, an option that came with 2.1.0, because users can add files to that cache. Update Chocolatey with choco upgrade chocolatey in an administrator terminal.</value></data>
+  <data name="Apps_ManagersHintNoStore" xml:space="preserve"><value>Update all apps runs the ones marked as included, one after the other. Each one downloads from its own sources.</value></data>
 </root>

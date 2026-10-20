@@ -28,7 +28,7 @@ public sealed class PackageManagersTests : IDisposable
 
     private ManagerSystem Pc(Func<string, bool>? adminOnly = null, Dictionary<string, string>? machine = null, Dictionary<string, string>? user = null,
         string? profile = "", string? wingetTrusted = null, string? wingetUser = null, string? store = "22608.1401.7.0",
-        Func<string, bool>? adminOnlyFolder = null) => new()
+        Func<string, bool>? adminOnlyFolder = null, string? chocoVersion = "2.4.1") => new()
     {
         ProgramFiles = ProgramFiles,
         ProgramData = ProgramData,
@@ -43,7 +43,7 @@ public sealed class PackageManagersTests : IDisposable
         IsAdminOnlyFolder = adminOnlyFolder ?? (_ => true),
         FileVersion = path => Path.GetFileName(path) switch
         {
-            "choco.exe" => "2.4.1",
+            "choco.exe" => chocoVersion,
             "dotnet.exe" => "10.0.0",
             "python.exe" => "3.13.1",
             _ => null,
@@ -310,6 +310,38 @@ public sealed class PackageManagersTests : IDisposable
 
     // ---------------- Chocolatey ----------------
 
+    /// <summary>--ignore-http-cache exists from Chocolatey CLI 2.1.0 on (docs.chocolatey.org, upgrade and outdated).</summary>
+    [Theory]
+    [InlineData("2.1.0", true)]
+    [InlineData("2.4.1", true)]
+    [InlineData("3.0.0", true)]
+    [InlineData("2.1.0-beta-20230615", false)]
+    [InlineData("2.0.1", false)]
+    [InlineData("1.4.3", false)]
+    [InlineData("0.10.15", false)]
+    [InlineData("garbage", false)]
+    [InlineData("", false)]
+    [InlineData(null, false)]
+    public void ChocolateyRunsOnlyFromAVersionThatCanIgnoreItsHttpCache(string? version, bool ok) => Assert.Equal(ok, Chocolatey.CanIgnoreHttpCache(version));
+
+    /// <summary>A trusted Chocolatey older than 2.1.0 is found but not included, and says why.</summary>
+    [Fact]
+    public void AnOldChocolateyIsNotIncluded()
+    {
+        File(@"ProgramData\chocolatey\choco.exe");
+        foreach (var version in new[] { "2.0.0", "1.4.0", null })
+        {
+            var choco = Get(PackageManagers.Detect(Pc(chocoVersion: version)), ManagerKind.Chocolatey);
+            Assert.Equal(ManagerRun.NotRun, choco.Run);
+            Assert.True(choco.TooOld);
+        }
+        var current = Get(PackageManagers.Detect(Pc(chocoVersion: "2.1.0")), ManagerKind.Chocolatey);
+        Assert.Equal(ManagerRun.Elevated, current.Run);
+        Assert.False(current.TooOld);
+        // An untrusted folder is the reason when both apply.
+        Assert.False(Get(PackageManagers.Detect(Pc(chocoVersion: "1.4.0", adminOnly: _ => false)), ManagerKind.Chocolatey).TooOld);
+    }
+
     [Fact]
     public void ParsesChocolateysOutdatedList()
     {
@@ -343,10 +375,12 @@ public sealed class PackageManagersTests : IDisposable
     [Fact]
     public void ChocolateyCommandLines()
     {
-        Assert.Equal("outdated --limit-output --ignore-pinned", Chocolatey.OutdatedArguments);
+        // Every run ignores the HTTP cache: an elevated choco keeps it in C:\ProgramData\ChocolateyHttpCache, outside its
+        // checked root, where users can add files.
+        Assert.Equal("outdated --limit-output --ignore-pinned --ignore-http-cache", Chocolatey.OutdatedArguments);
         // Tunero itself updates through Update now (a running exe cannot be replaced).
-        Assert.Equal("upgrade all --yes --no-progress --except=tunero", Chocolatey.UpgradeAllArguments);
-        Assert.Equal("upgrade git --yes --no-progress", Chocolatey.UpgradeArguments("git"));
+        Assert.Equal("upgrade all --yes --no-progress --except=tunero --ignore-http-cache", Chocolatey.UpgradeAllArguments);
+        Assert.Equal("upgrade git --yes --no-progress --ignore-http-cache", Chocolatey.UpgradeArguments("git"));
         Assert.Throws<ArgumentException>(() => Chocolatey.UpgradeArguments("git & calc"));
         Assert.Throws<ArgumentException>(() => Chocolatey.UpgradeArguments("tunero"));
         Assert.True(Chocolatey.IsSuccess(0));

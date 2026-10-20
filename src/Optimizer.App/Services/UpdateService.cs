@@ -190,8 +190,9 @@ public sealed class UpdateService(InstallFacts install, IDialogs dialogs, IShell
             shell.ShowResult(Loc.Instance["Update_Busy"]);
             return;
         }
-        // choco.exe is checked once, before the question: the same path goes into the window's command.
-        var choco = package.TrustedChocolatey();
+        // choco.exe is checked once, before the question: the same path goes into the window's command. The update ignores
+        // Chocolatey's HTTP cache, so an older Chocolatey without that option shows the command instead.
+        var choco = package.TrustedChocolateyForUpgrade();
         if (package.Manager == PackageManager.Chocolatey ? choco is null : !package.CanRunFromApp())
         {
             shell.ShowResult(Loc.Instance.Format("Update_PackageManual", package.DisplayName, package.UpdateCommand), InfoBarSeverity.Warning);

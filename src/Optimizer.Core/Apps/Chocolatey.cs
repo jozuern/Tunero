@@ -15,20 +15,46 @@ public sealed record ChocolateyOutdated(string Id, string Current, string Availa
 public static class Chocolatey
 {
     /// <summary>
+    /// Every run Tunero starts ignores Chocolatey's HTTP cache. Elevated, choco keeps it in C:\ProgramData\ChocolateyHttpCache
+    /// (https://docs.chocolatey.org/en-us/choco/features/http-caching/), outside the root the trust check covers, where
+    /// users can create the folder or add files: cached source answers planted there would steer an elevated run.
+    /// "--ignore-http-cache: Ignore any HTTP caches that have previously been created when querying sources, and create
+    /// new caches. Available in 2.1.0+" (https://docs.chocolatey.org/en-us/choco/commands/upgrade/ and .../outdated/).
+    /// </summary>
+    public const string IgnoreHttpCache = "--ignore-http-cache";
+
+    /// <summary>The first Chocolatey CLI with <see cref="IgnoreHttpCache"/>; an older one is not run elevated.</summary>
+    public static readonly Version MinimumVersion = new(2, 1, 0);
+
+    /// <summary>
     /// The outdated packages, one per line as "id|current|available|pinned" (--limit-output); pinned packages are left
     /// out. A read: nothing is installed.
     /// </summary>
-    public const string OutdatedArguments = "outdated --limit-output --ignore-pinned";
+    public const string OutdatedArguments = "outdated --limit-output --ignore-pinned " + IgnoreHttpCache;
 
     /// <summary>
     /// Every outdated package, without questions or progress percentages. Tunero's own package is left out: its exe is
     /// running and cannot be replaced, and it updates through Update now in Settings.
     /// </summary>
-    public const string UpgradeAllArguments = "upgrade all --yes --no-progress --except=" + Updates.PackageInstall.ChocolateyId;
+    public const string UpgradeAllArguments = "upgrade all --yes --no-progress --except=" + Updates.PackageInstall.ChocolateyId + " " + IgnoreHttpCache;
 
     /// <summary>One package from the update list.</summary>
     public static string UpgradeArguments(string id) =>
-        IsSafeId(id) && !IsTunero(id) ? $"upgrade {id} --yes --no-progress" : throw new ArgumentException($"invalid Chocolatey id {id}");
+        IsSafeId(id) && !IsTunero(id) ? $"upgrade {id} --yes --no-progress {IgnoreHttpCache}" : throw new ArgumentException($"invalid Chocolatey id {id}");
+
+    /// <summary>
+    /// Whether choco.exe's product version has <see cref="IgnoreHttpCache"/>: 2.1.0 or newer. A pre-release of 2.1.0 counts
+    /// as older (semantic versioning); an unknown version is not trusted with it.
+    /// </summary>
+    public static bool CanIgnoreHttpCache(string? productVersion)
+    {
+        var text = productVersion?.Trim().Split(' ', '+')[0] ?? "";
+        var dash = text.IndexOf('-');
+        var prerelease = dash >= 0;
+        if (!Version.TryParse(prerelease ? text[..dash] : text, out var v)) return false;
+        var normalized = new Version(v.Major, v.Minor, Math.Max(v.Build, 0));
+        return normalized > MinimumVersion || (normalized == MinimumVersion && !prerelease);
+    }
 
     /// <summary>
     /// Ids go into a command line: letters, digits and . - _ + only, starting with a letter or digit (so never an option).

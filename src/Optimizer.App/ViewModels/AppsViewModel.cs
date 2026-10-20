@@ -97,6 +97,7 @@ public sealed partial class ManagerRow(PackageManagerInfo info) : ObservableObje
         (ManagerKind.Winget, ManagerRun.Elevated) => Loc.Instance["Apps_HowWinget"],
         (ManagerKind.Winget, _) => Loc.Instance["Apps_HowWingetUser"],
         (ManagerKind.Chocolatey, ManagerRun.Elevated) => Loc.Instance["Apps_HowChoco"],
+        (ManagerKind.Chocolatey, _) when info.TooOld => Loc.Instance["Apps_HowChocoTooOld"],
         (ManagerKind.Chocolatey, _) => Loc.Instance["Apps_HowChocoUntrusted"],
         (ManagerKind.Scoop, _) => Loc.Instance["Apps_HowScoop"],
         (ManagerKind.Store, _) => Loc.Instance["Apps_HowStore"],
@@ -666,6 +667,12 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
     [ObservableProperty] private bool _hasManagerCard;
     [ObservableProperty] private string _managersSummary = "";
 
+    /// <summary>The folded card's name for screen readers: its title and the summary under it.</summary>
+    [ObservableProperty] private string _managersAutomationName = "";
+
+    /// <summary>What Update all does with the listed managers; the Store's page only when the Store is there.</summary>
+    [ObservableProperty] private string _managersHint = "";
+
     /// <summary>The card starts folded; opened or closed, it stays so for the session (the view model lives as long as the window).</summary>
     [ObservableProperty] private bool _managersExpanded;
     [ObservableProperty] private bool _canCheckChocolatey;
@@ -703,6 +710,8 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
         ManagersSummary = !HasDeveloperTools ? names
             : HasManagers ? Loc.Instance.Format("Apps_ManagersSummary", names, DeveloperTools.Count)
             : Loc.Instance.Format("Apps_DevToolsSummary", DeveloperTools.Count);
+        ManagersAutomationName = Loc.Instance["Apps_ManagersTitle"] + ", " + ManagersSummary;
+        ManagersHint = _managers.Any(m => m.Kind == ManagerKind.Store) ? Loc.Instance["Apps_ManagersHint"] : Loc.Instance["Apps_ManagersHintNoStore"];
         CanCheckChocolatey = TrustedChocolatey is not null;
         if (_managerDemo && ChocolateyUpdates.Count == 0)
         {

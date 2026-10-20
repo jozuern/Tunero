@@ -1775,7 +1775,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Apps_StoreOpened" xml:space="preserve"><value>Der Microsoft Store zeigt seine Seite für Updates: Wähle dort „Updates abrufen“.</value></data>
   <data name="Apps_StoreNotOpened" xml:space="preserve"><value>Der Microsoft Store konnte nicht geöffnet werden.</value></data>
   <data name="Apps_ManagersTitle" xml:space="preserve"><value>Paketmanager</value></data>
-  <data name="Apps_ManagersHint" xml:space="preserve"><value>„Alle Apps aktualisieren“ führt die als enthalten markierten nacheinander aus. Jeder lädt aus seinen eigenen Quellen.</value></data>
+  <data name="Apps_ManagersHint" xml:space="preserve"><value>„Alle Apps aktualisieren“ führt die als enthalten markierten nacheinander aus und öffnet danach die Seite des Stores für Updates. Jeder lädt aus seinen eigenen Quellen.</value></data>
   <data name="Apps_ManagerVersion" xml:space="preserve"><value>Version {0}</value></data>
   <data name="Apps_ManagerIncluded" xml:space="preserve"><value>Enthalten</value></data>
   <data name="Apps_ManagerExcluded" xml:space="preserve"><value>Nicht enthalten</value></data>
@@ -1810,4 +1810,6 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Apps_PythonVersion" xml:space="preserve"><value>Python {0}</value></data>
   <data name="Apps_ManagersSummary" xml:space="preserve"><value>{0}; Entwicklerwerkzeuge: {1}</value></data>
   <data name="Apps_DevToolsSummary" xml:space="preserve"><value>Entwicklerwerkzeuge: {0}</value></data>
+  <data name="Apps_HowChocoTooOld" xml:space="preserve"><value>Diese Version ist älter als 2.1.0. Tunero startet Chocolatey nur so, dass es seinen Download-Zwischenspeicher nicht liest; diese Option gibt es seit 2.1.0, und in den Zwischenspeicher können Benutzer Dateien legen. Aktualisiere Chocolatey mit choco upgrade chocolatey in einem Administrator-Terminal.</value></data>
+  <data name="Apps_ManagersHintNoStore" xml:space="preserve"><value>„Alle Apps aktualisieren“ führt die als enthalten markierten nacheinander aus. Jeder lädt aus seinen eigenen Quellen.</value></data>
 </root>

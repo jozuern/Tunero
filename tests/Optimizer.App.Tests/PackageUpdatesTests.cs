@@ -70,6 +70,7 @@ public sealed class PackageUpdatesTests
         Assert.Equal([WingetExe, Path.Combine(ChocoRoot, "choco.exe")], _runs.Select(r => r.File));
         Assert.Equal(Optimizer.Core.Apps.Winget.UpgradeAllArguments("machine"), _runs[0].Arguments);
         Assert.Equal(Chocolatey.UpgradeAllArguments, _runs[1].Arguments);
+        Assert.EndsWith("--ignore-http-cache", _runs[1].Arguments);
         Assert.Equal(ChocoRoot, _runs[1].Env["ChocolateyInstall"]);
         Assert.False(_runs[1].Env.ContainsKey("ChocolateyToolsLocation"));
         Assert.Same(StreamingProcess.Oem, _runs[1].Encoding);
@@ -240,6 +241,15 @@ public sealed class PackageUpdatesTests
     }
 
     [Fact]
+    public void AnOldChocolateySaysWhy()
+    {
+        var page = Page(Choco(ManagerRun.NotRun) with { TooOld = true }, Choco(ManagerRun.NotRun) with { Name = "Chocolatey2" });
+        Assert.Equal(Loc.Instance["Apps_HowChocoTooOld"], page.Managers[0].Meta);
+        Assert.Equal(Loc.Instance["Apps_HowChocoUntrusted"], page.Managers[1].Meta);
+        Assert.False(page.CanCheckChocolatey);
+    }
+
+    [Fact]
     public void RowsSayWhatEachOneDoes()
     {
         var page = Page(Winget(), Winget(user: null) with { Name = "winget2" }, Store, Pip(), Pip(commandPrompt: true) with { Name = "pip2" });
@@ -264,6 +274,12 @@ public sealed class PackageUpdatesTests
         Assert.True(page.HasManagerCard);
         Assert.Equal(Loc.Instance.Format("Apps_ManagersSummary", "winget, Chocolatey, Microsoft Store", 2), page.ManagersSummary);
 
+        // Screen readers hear the summary with the card's name while it is folded.
+        Assert.Equal(Loc.Instance["Apps_ManagersTitle"] + ", " + page.ManagersSummary, page.ManagersAutomationName);
+        // The hint names what Update all does with the Store only when the Store is there.
+        Assert.Equal(Loc.Instance["Apps_ManagersHint"], page.ManagersHint);
+        Assert.Equal(Loc.Instance["Apps_ManagersHintNoStore"], Page(Winget()).ManagersHint);
+
         var toolsOnly = Page(Npm);
         Assert.True(toolsOnly.HasManagerCard);
         Assert.Equal(Loc.Instance.Format("Apps_DevToolsSummary", 1), toolsOnly.ManagersSummary);
@@ -277,7 +293,7 @@ public sealed class PackageUpdatesTests
         Assert.Equal(0, code);
         var run = Assert.Single(_runs);
         Assert.Equal(Path.Combine(ChocoRoot, "choco.exe"), run.File);
-        Assert.Equal("upgrade git --yes --no-progress", run.Arguments);
+        Assert.Equal("upgrade git --yes --no-progress --ignore-http-cache", run.Arguments);
         Assert.Equal(ChocoRoot, run.Env["ChocolateyInstall"]);
         await Assert.ThrowsAsync<ArgumentException>(() => Updates().ChocolateyUpgradeAsync(Choco(), "git & calc", new Lines()));
         await Assert.ThrowsAsync<InvalidOperationException>(() => Updates().ChocolateyUpgradeAsync(Choco(ManagerRun.NotRun), "git", new Lines()));
