@@ -1221,33 +1221,62 @@ public sealed class MediaBuildTests : IDisposable
         Assert.Equal([folder], _steps.DeletedFolders);
     }
 
-    /// <summary>A delete refused inside a mount folder: /Cleanup-Mountpoints, the list again, then one more delete.</summary>
-    [Fact]
-    public async Task DeleteRefusedInsideAMountFolderIsTriedAgainAfterACleanup()
+    /// <summary>A work folder whose mount folder is empty at the start and gets content when the delete begins.</summary>
+    private string MountFilledAtTheDelete(string id, string mountFolder = "mount")
     {
-        _steps.Drives.Add(@"D:\");
-        _steps.Leftovers[@"D:\"] = [@"D:\TuneroMedia.0000ffff"];
-        _steps.DeniedPath = @"D:\TuneroMedia.0000ffff\mount\Windows\bfsvc.exe";
+        var folder = LostMount(id);
+        TestFolders.Delete(Path.Combine(folder, "mount", "Windows"));
+        var filled = false;
+        _steps.Deleting = _ =>
+        {
+            if (filled) return;
+            filled = true;
+            FakeMediaSteps.Put(folder, Path.Combine(mountFolder, "Windows", "bfsvc.exe"), "image file");
+        };
+        return folder;
+    }
+
+    private static string RefusedWithMount(string folder) =>
+        $"Deleting {folder} was refused while its mount folder is not empty: cleaning up DISM mount points";
+
+    /// <summary>
+    /// A delete refused while a mount folder has content, whatever the refusal says: /Cleanup-Mountpoints, the list again,
+    /// then one more delete.
+    /// </summary>
+    [Fact]
+    public async Task DeleteRefusedWhileAMountFolderHasContentIsTriedAgainAfterACleanup()
+    {
+        var folder = MountFilledAtTheDelete("0000ffff");
+        _steps.DeleteFailures = 1;
+        await Build().CleanLeftoversAsync(CancellationToken.None);
+        Assert.Equal(["MountedImages", "UnloadLeftoverHives", "DeleteWorkFolder", "CleanupMountpoints", "MountedImages", "DeleteWorkFolder"], _steps.Calls);
+        Assert.Equal([folder], _steps.DeletedFolders);
+        Assert.Contains(RefusedWithMount(folder), _steps.LogLines);
+
+        // Access denied on a path outside the mount folders: the content of the mount folder decides.
+        _steps.Reset();
+        _steps.Drives.Clear();
+        _steps.Leftovers.Clear();
+        folder = MountFilledAtTheDelete("0000eeee", "bootmount");
+        _steps.DeniedPath = Path.Combine(folder, "media", "sources", "install.wim");
         _steps.DeleteDenials = 1;
         await Build().CleanLeftoversAsync(CancellationToken.None);
         Assert.Equal(["MountedImages", "UnloadLeftoverHives", "DeleteWorkFolder", "CleanupMountpoints", "MountedImages", "DeleteWorkFolder"], _steps.Calls);
-        Assert.Equal([@"D:\TuneroMedia.0000ffff"], _steps.DeletedFolders);
-        Assert.Contains(@"Deleting D:\TuneroMedia.0000ffff was refused inside its mount folder: cleaning up DISM mount points", _steps.LogLines);
+        Assert.Equal([folder], _steps.DeletedFolders);
     }
 
-    /// <summary>The retry happens once per cleanup, only for a refusal inside a mount folder, and never into a listed mount.</summary>
+    /// <summary>No retry when the mount folders are empty or the mount points were cleaned up already; never a delete into a listed mount.</summary>
     [Fact]
-    public async Task DeleteRefusedElsewhereOrAfterTheCleanupIsLeftInPlace()
+    public async Task DeleteRefusedWithEmptyMountFoldersOrAfterACleanupIsLeftInPlace()
     {
         _steps.Drives.Add(@"D:\");
         _steps.Leftovers[@"D:\"] = [@"D:\TuneroMedia.0000ffff"];
-        _steps.DeniedPath = @"D:\TuneroMedia.0000ffff\media\sources\install.wim";
-        _steps.DeleteDenials = 1;
+        _steps.DeleteFailures = 1;
         await Build().CleanLeftoversAsync(CancellationToken.None);
         Assert.Equal(["MountedImages", "UnloadLeftoverHives", "DeleteWorkFolder"], _steps.Calls);
-        Assert.Contains(_steps.LogLines, l => l.StartsWith(@"D:\TuneroMedia.0000ffff left in place: Access to the path", StringComparison.Ordinal));
+        Assert.Contains(@"D:\TuneroMedia.0000ffff left in place: in use", _steps.LogLines);
 
-        // The mount points were cleaned up already for the lost mount: a refusal inside a mount folder is not retried.
+        // The mount points were cleaned up already for the lost mount: the refusal is not retried.
         _steps.Reset();
         _steps.Drives.Clear();
         _steps.Leftovers.Clear();
@@ -1263,15 +1292,46 @@ public sealed class MediaBuildTests : IDisposable
         _steps.Reset();
         _steps.Drives.Clear();
         _steps.Leftovers.Clear();
-        _steps.Drives.Add(@"D:\");
-        _steps.Leftovers[@"D:\"] = [@"D:\TuneroMedia.0000ffff"];
-        _steps.DeniedPath = @"D:\TuneroMedia.0000ffff\bootmount\Windows\System32\config\SYSTEM";
-        _steps.DeleteDenials = 1;
-        _steps.Dism.CleanupDoes = () => _steps.Dism.Mounted.Add(@"D:\TuneroMedia.0000ffff\bootmount");
+        folder = MountFilledAtTheDelete("0000dddd", "bootmount");
+        var boot = Path.Combine(folder, "bootmount");
+        _steps.DeleteFailures = 1;
+        _steps.Dism.CleanupDoes = () => _steps.Dism.Mounted.Add(boot);
         await Build().CleanLeftoversAsync(CancellationToken.None);
         Assert.Equal(["MountedImages", "UnloadLeftoverHives", "DeleteWorkFolder", "CleanupMountpoints", "MountedImages"], _steps.Calls);
         Assert.Empty(_steps.DeletedFolders);
-        Assert.Contains(@"D:\TuneroMedia.0000ffff kept: an image is still mounted in it", _steps.LogLines);
+        Assert.Contains($"{folder} kept: an image is still mounted in it", _steps.LogLines);
+    }
+
+    /// <summary>The discard of a listed mount ran Cleanup-Mountpoints already: a refused delete does not run it again.</summary>
+    [Fact]
+    public async Task RefusedDeleteAfterADiscardRunsNoFurtherCleanup()
+    {
+        var folder = LostMount("a180be9e");
+        _steps.Dism.Mounted.Add(Path.Combine(folder, "mount"));
+        _steps.DeleteFailures = 1;
+        await Build().CleanLeftoversAsync(CancellationToken.None);
+        Assert.Equal(["MountedImages", "UnloadLeftoverHives", "Unmount discard", "CleanupMountpoints", "MountedImages", "DeleteWorkFolder"], _steps.Calls);
+        Assert.Empty(_steps.DeletedFolders);
+        Assert.Contains($"{folder} left in place: in use", _steps.LogLines);
+
+        // A lost mount that the first cleanup brings back into the list: its discard cleans up again, the refusal not a third time.
+        _steps.Reset();
+        _steps.Drives.Clear();
+        _steps.Leftovers.Clear();
+        folder = LostMount("a1740bc3");
+        var mount = Path.Combine(folder, "mount");
+        var listed = false;
+        _steps.Dism.CleanupDoes = () =>
+        {
+            if (listed) return;
+            listed = true;
+            _steps.Dism.Mounted.Add(mount);
+        };
+        _steps.DeleteFailures = 1;
+        await Build().CleanLeftoversAsync(CancellationToken.None);
+        Assert.Equal(2, Count("CleanupMountpoints"));
+        Assert.Equal(1, Count("DeleteWorkFolder"));
+        Assert.Empty(_steps.DeletedFolders);
     }
 
     [Fact]
@@ -1659,6 +1719,9 @@ internal sealed class FakeMediaSteps : IMediaSteps
     /// <summary>The next deletes refused with access denied on <see cref="DeniedPath"/>.</summary>
     public int DeleteDenials { get; set; }
     public string DeniedPath { get; set; } = "";
+
+    /// <summary>Runs when a delete starts, before any refusal.</summary>
+    public Action<string>? Deleting { get; set; }
     public bool ApplyPlantsImage { get; set; }
 
     /// <summary>The image file on the own ISO: "install.wim", "install.esd" or null for none.</summary>
@@ -1699,6 +1762,7 @@ internal sealed class FakeMediaSteps : IMediaSteps
         DeleteThrowsArgument = false;
         DeleteDenials = 0;
         DeniedPath = "";
+        Deleting = null;
         OwnImageFile = "install.wim";
         OwnVersion = "10.0.26300";
         OwnArchitecture = "x64";
@@ -1851,6 +1915,7 @@ internal sealed class FakeMediaSteps : IMediaSteps
     public void DeleteWorkFolder(string folder)
     {
         Calls.Add("DeleteWorkFolder");
+        Deleting?.Invoke(folder);
         if (DeleteThrowsArgument) throw new ArgumentException("refused");
         if (DeleteDenials > 0)
         {

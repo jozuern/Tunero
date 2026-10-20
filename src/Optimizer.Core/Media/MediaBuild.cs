@@ -260,8 +260,9 @@ public sealed class MediaBuild(IMediaSteps steps)
     /// After a hard restart of the PC DISM can list no mount at all while the mount folder still holds the image, and a
     /// delete is then refused inside it (VM 4b, 2026-10-20: "No mounted images found.", /Remount-Image refused, a manual
     /// /Cleanup-Mountpoints unmounted it). So when a leftover's mount folder is not empty although DISM lists no mount in
-    /// the folder, or when a delete is refused inside a mount folder, /Cleanup-Mountpoints runs (once per cleanup) and the
-    /// list is read again before anything is deleted; a folder whose image is listed then is discarded or kept as above.
+    /// the folder, or when a delete is refused while a mount folder is not empty, /Cleanup-Mountpoints runs (unless it ran
+    /// in this cleanup already, also for a discard) and the list is read again before anything is deleted; a folder whose
+    /// image is listed then is discarded or kept as above.
     /// </para>
     /// </summary>
     public async Task CleanLeftoversAsync(CancellationToken ct)
@@ -334,16 +335,17 @@ public sealed class MediaBuild(IMediaSteps steps)
                     return false;
                 }
             }, cleanUpAlways: true, ct))!;
+            cleanedUp = true;
             LogMounts(steps, still.Where(m => folders.Any(f => IsInside(m.Dir, f))));
         }
         foreach (var folder in folders)
         {
             if (StillMounted(folder)) continue;
             var refused = TryDelete(folder);
-            // Refused inside a mount folder: an image that DISM did not list may still be mounted there.
-            if (refused is UnauthorizedAccessException && !cleanedUp && NamesAMountFolder(refused.Message, folder))
+            // Refused while a mount folder has content: an image that DISM did not list may still be mounted there.
+            if (!cleanedUp && (refused is IOException or UnauthorizedAccessException) && HasMountContent(folder))
             {
-                steps.Log($"Deleting {folder} was refused inside its mount folder: cleaning up DISM mount points");
+                steps.Log($"Deleting {folder} was refused while its mount folder is not empty: cleaning up DISM mount points");
                 still = await CleanUpMountPointsAsync(steps, ct);
                 cleanedUp = true;
                 if (StillMounted(folder)) continue;
@@ -401,12 +403,6 @@ public sealed class MediaBuild(IMediaSteps steps)
         }
         return false;
     }
-
-    /// <summary>Whether a refusal's message names a path in a mount folder of <paramref name="folder"/>, or the mount folder itself.</summary>
-    private static bool NamesAMountFolder(string message, string folder) =>
-        new[] { MountFolder, BootMountFolder }.Any(name =>
-            message.Contains(Path.Combine(folder, name) + @"\", StringComparison.OrdinalIgnoreCase) ||
-            message.Contains(Path.Combine(folder, name) + "'", StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
     /// Waits until no dism.exe works in a leftover work folder any more, or <see cref="DismWaitLimit"/> has passed; returns
