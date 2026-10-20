@@ -579,6 +579,19 @@ public sealed class MediaBuildTests : IDisposable
         // The fake honors the token: the discard and the delete ran because the cleanup does not use the stopped one.
         Assert.Contains("Unmount discard", _steps.Calls);
         AssertCleanedUp();
+        // A stop is logged as a stop, not as a failure of the stage.
+        Assert.Single(_steps.LogLines, l => l.StartsWith("Stopped in stage Apps after ", StringComparison.Ordinal));
+        Assert.DoesNotContain(_steps.LogLines, l => l.Contains(" failed after ", StringComparison.Ordinal));
+    }
+
+    /// <summary>A canceled task that is no Stop (the token was not used) stays a failure in the log.</summary>
+    [Fact]
+    public async Task CancellationWithoutStopIsLoggedAsAFailure()
+    {
+        _steps.IsoWriter.BeforeWrite = () => throw new TaskCanceledException("timed out");
+        await FailsAt(Download(), MediaStage.Iso, null);
+        Assert.Contains(_steps.LogLines, l => l.StartsWith("Iso failed after ", StringComparison.Ordinal));
+        Assert.DoesNotContain(_steps.LogLines, l => l.StartsWith("Stopped", StringComparison.Ordinal));
     }
 
     [Fact]

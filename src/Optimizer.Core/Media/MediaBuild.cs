@@ -545,9 +545,12 @@ public sealed class MediaBuild(IMediaSteps steps)
             catch (Exception ex)
             {
                 var failed = _stage;
-                steps.Log($"{failed} failed after {_clock.Elapsed:hh\\:mm\\:ss}: {ex.GetType().Name}: {ex.Message}");
+                var stopped = ex is OperationCanceledException && ct.IsCancellationRequested;
+                steps.Log(stopped
+                    ? $"Stopped in stage {failed} after {_clock.Elapsed:hh\\:mm\\:ss}"
+                    : $"{failed} failed after {_clock.Elapsed:hh\\:mm\\:ss}: {ex.GetType().Name}: {ex.Message}");
                 await CleanUpAfterFailureAsync();
-                if (ex is OperationCanceledException && ct.IsCancellationRequested) throw;
+                if (stopped) throw;
                 throw Wrap(failed, ex);
             }
 
