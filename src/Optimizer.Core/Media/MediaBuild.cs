@@ -924,16 +924,25 @@ public sealed class MediaBuild(IMediaSteps steps)
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
             {
+                steps.Log($@"Registry of image 2 of boot.wim: Setup\UnattendFile could not be read, refused: {ex.Message}");
                 throw Fail($"The registry of image 2 of boot.wim could not be read: {ex.Message}", "Media_ImageCheckFailed");
             }
-            if (!string.IsNullOrWhiteSpace(pointer))
-                throw Fail($@"The registry of image 2 of boot.wim points Setup to the answer file {pointer} (Setup\UnattendFile).", "Media_BootImageAnswerFile");
+            if (string.IsNullOrWhiteSpace(pointer))
+            {
+                steps.Log(@"Registry of image 2 of boot.wim: Setup\UnattendFile is not set");
+                return;
+            }
+            steps.Log($@"Registry of image 2 of boot.wim: Setup\UnattendFile points to {pointer}, refused");
+            throw Fail($@"The registry of image 2 of boot.wim points Setup to the answer file {pointer} (Setup\UnattendFile).", "Media_BootImageAnswerFile");
         }
 
         /// <summary>Removes every answer file of <see cref="BootAnswerFilesIn"/>, checked gone, fail closed. True when there were any.</summary>
         private bool RemoveBootAnswerFiles(string root)
         {
             var found = BootAnswerFilesIn(root);
+            steps.Log(found.Count == 0
+                ? "No answer files found in image 2 of boot.wim"
+                : "Answer files found in image 2 of boot.wim: " + string.Join(", ", found.Select(f => Path.GetRelativePath(root, f))));
             foreach (var file in found)
             {
                 steps.Log($"Removing {Path.GetRelativePath(root, file)} from image 2 of boot.wim");

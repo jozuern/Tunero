@@ -1689,6 +1689,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Media_NameTooLong" xml:space="preserve"><value>The name can have at most 20 characters.</value></data>
   <data name="Media_NameInvalid" xml:space="preserve"><value>The name cannot end with a period or contain any of: " / \ [ ] : ; | = , + * ? &lt; &gt; @ % &amp; ^</value></data>
   <data name="Media_NameReserved" xml:space="preserve"><value>Windows already uses this name for an account or group.</value></data>
+  <data name="Media_NameNotAscii" xml:space="preserve"><value>Windows Setup cannot create an account whose name has umlauts or accents. Write Juergen instead of Jürgen, for example.</value></data>
   <data name="Media_ProfileTitle" xml:space="preserve"><value>Apply a Tunero profile</value></data>
   <data name="Media_ProfileText" xml:space="preserve"><value>Tunero is copied onto the ISO and opens at the first sign-in. It scans that PC and applies the profile's recommendations; every change appears under Changes and can be undone.</value></data>
   <data name="Media_Profile" xml:space="preserve"><value>Profile</value></data>

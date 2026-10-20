@@ -188,6 +188,7 @@ public sealed record MediaRequestFile(
             {
                 "Media_NameEmpty" => "is empty",
                 "Media_NameTooLong" => "is longer than 20 characters",
+                "Media_NameNotAscii" => "has a character outside printable ASCII (no umlauts or accents), which Windows Setup cannot create an account with",
                 "Media_NameReserved" => $"{account} is reserved by Windows (an account or group name)",
                 _ => $"{account} has a character Windows does not allow in a user name",
             });

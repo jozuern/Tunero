@@ -170,6 +170,9 @@ public static class AccountName
     {
         if (string.IsNullOrEmpty(name)) return "Media_NameEmpty";
         if (name.Length > 20) return "Media_NameTooLong";
+        // Setup keeps its own copy of the answer file (Windows\Panther\unattend.xml) with letters outside ASCII turned
+        // into "?", so creating the account fails (VM test with an umlaut: 0x8007089a).
+        if (name.Any(ch => ch > '~')) return "Media_NameNotAscii";
         foreach (var ch in name)
             if (InvalidChars.Contains(ch) || char.IsControl(ch)) return "Media_NameInvalid";
         if (name.All(ch => ch is '.' or ' ') || name.EndsWith('.')) return "Media_NameInvalid";

@@ -145,6 +145,9 @@ public sealed class InstallMediaViewModelTests : IDisposable
         media.AccountNameText = "a/b";
         Assert.Equal(Loc.Instance["Media_NameInvalid"], media.AccountProblem);
         Assert.False(media.CanBuild);
+        media.AccountNameText = "Jürgen";
+        Assert.Equal(Loc.Instance["Media_NameNotAscii"], media.AccountProblem);
+        Assert.False(media.CanBuild);
     }
 
     [Fact]

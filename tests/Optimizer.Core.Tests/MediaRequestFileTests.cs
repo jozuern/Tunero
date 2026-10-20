@@ -175,6 +175,7 @@ public sealed class MediaRequestFileTests : IDisposable
         { "accountName", "Anna/Bert", "character" },
         { "accountName", "ThisNameIsLongerThan20", "20" },
         { "accountName", "   ", "empty" },
+        { "accountName", "Jürgen", "ASCII" },
         { "region", "de", "region" },
         { "region", "xx-YY", "region" },
         { "keyboard", "0407", "input profile" },

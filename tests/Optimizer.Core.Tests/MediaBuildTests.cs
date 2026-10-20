@@ -419,6 +419,22 @@ public sealed class MediaBuildTests : IDisposable
     }
 
     [Fact]
+    public async Task BuildLogShowsTheBootWimAnswerFileAndRegistryChecks()
+    {
+        await Run(OwnIso());
+        Assert.Contains(_steps.LogLines, l => l.Contains(@"Setup\UnattendFile",StringComparison.Ordinal) && l.Contains("not set", StringComparison.Ordinal));
+        Assert.Contains(_steps.LogLines, l => l.Contains("No answer files found in image 2 of boot.wim", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task BuildLogNamesTheBootWimAnswerFilesItFound()
+    {
+        PlantBootAnswerFiles();
+        await Run(OwnIso());
+        Assert.Contains(_steps.LogLines, l => l.StartsWith("Answer files found in image 2 of boot.wim: ", StringComparison.Ordinal) && BootAnswerFiles.All(f => l.Contains(f, StringComparison.Ordinal)));
+    }
+
+    [Fact]
     public async Task CleanIsoWithoutAnswerFileLeavesBootWimUnchanged()
     {
         await Run(OwnIso());

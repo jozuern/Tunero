@@ -1005,7 +1005,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     /// Developer aid: the sample catalog instead of Microsoft's, a sample own ISO, and a build that only shows its stages,
     /// then a sample failure and the next time a sample success. Nothing goes to the network, attaches or runs.
     /// <paramref name="show"/>, comma-separated: "fail" or "done" shows that result at once, "expand" unfolds the change
-    /// cards, "iso" chooses the sample own ISO (for screenshots).
+    /// cards, "iso" chooses the sample own ISO, "umlaut" types an account name Setup cannot create (for screenshots).
     /// </summary>
     public void UseDemo(string? show)
     {
@@ -1022,7 +1022,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         };
         CanApplyProfile = true;
         ApplyProfile = true;
-        AccountNameText = "Anna";
+        AccountNameText = shows.Contains("umlaut") ? "Jürgen" : "Anna";
         if (shows.Contains("iso"))
         {
             UseDownload = false;

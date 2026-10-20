@@ -137,7 +137,7 @@ public class AnswerFileTests
     [Fact]
     public void SpecialCharactersAreEscaped()
     {
-        const string name = "Jürgen O'Neil";
+        const string name = "Juergen O'Neil";
         Assert.Null(AccountName.Problem(name));
         var d = Parse(Choices(skip: true, name: name));
         Assert.Equal(name, (string?)d.Descendants(Ns + "LocalAccount").Single().Element(Ns + "Name"));
@@ -183,12 +183,20 @@ public class AnswerFileTests
     [InlineData("none", "Media_NameReserved")]
     [InlineData("Users", "Media_NameReserved")]
     [InlineData("Benutzer", "Media_NameReserved")]
-    [InlineData("Gäste", "Media_NameReserved")]
+    [InlineData("Gäste", "Media_NameNotAscii")]
     [InlineData("defaultuser0", "Media_NameReserved")]
     [InlineData("Power Users", "Media_NameReserved")]
     [InlineData("a%b", "Media_NameInvalid")]
     [InlineData("a&b", "Media_NameInvalid")]
     [InlineData("a^b", "Media_NameInvalid")]
+    [InlineData("Jürgen", "Media_NameNotAscii")]
+    [InlineData("Zoë", "Media_NameNotAscii")]
+    [InlineData("José", "Media_NameNotAscii")]
+    [InlineData("Anna Maria", "Media_NameNotAscii")]
+    [InlineData("日本", "Media_NameNotAscii")]
+    [InlineData("Juergen", null)]
+    [InlineData("Anna Maria", null)]
+    [InlineData("J.R", null)]
     [InlineData("Josh", null)]
     [InlineData("abcdefghijklmnopqrst", null)]
     public void AccountNameRules(string name, string? key) => Assert.Equal(key, AccountName.Problem(name));
