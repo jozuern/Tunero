@@ -192,7 +192,7 @@ public class AnswerFileTests
     [InlineData("Jürgen", "Media_NameNotAscii")]
     [InlineData("Zoë", "Media_NameNotAscii")]
     [InlineData("José", "Media_NameNotAscii")]
-    [InlineData("Anna Maria", "Media_NameNotAscii")]
+    [InlineData("Anna\u00A0Maria", "Media_NameNotAscii")]
     [InlineData("日本", "Media_NameNotAscii")]
     [InlineData("Juergen", null)]
     [InlineData("Anna Maria", null)]
