@@ -1,0 +1,219 @@
+using Optimizer.App.Services;
+using Optimizer.App.ViewModels;
+using Optimizer.Core.Actions;
+using Optimizer.Core.Startup;
+
+namespace Optimizer.App.Tests;
+
+/// <summary>
+/// The Startup page's tabs without the window or a scan: which entry lands on which tab, the counts in the headers under
+/// the search and filters, and the summary for the open tab. The rows are built from hand-made entries with their
+/// signatures set; nothing is read from or changed on this PC.
+/// </summary>
+public sealed class StartupViewModelTests
+{
+    private static readonly SignatureInfo Microsoft = new(SignatureStatus.Signed, "Microsoft Windows", Catalog: true, MicrosoftRoot: true);
+    private static readonly SignatureInfo Vendor = new(SignatureStatus.Signed, "Valve Corp.", Catalog: false, MicrosoftRoot: false);
+    private static readonly SignatureInfo Unsigned = new(SignatureStatus.Unsigned, null, Catalog: false);
+
+    private static StartupEntry Entry(StartupKind kind, string name, bool? enabled = true, bool startsWithWindows = true) =>
+        new(kind, name, $@"C:\Programs\{name}.exe", $@"C:\Programs\{name}.exe", $@"HKCU\Test\{kind}", Hive.User, enabled, $"{kind}:{name}")
+        {
+            StartsWithWindows = startsWithWindows,
+            // What the scanner stores for the switch: the approved key, the task's path, the service or the CLSID.
+            Target = kind switch
+            {
+                StartupKind.RunKey => @"Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run",
+                StartupKind.StartupFolder => $@"Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\StartupFolder|{name}.lnk",
+                StartupKind.LogonTask => $@"\Vendor\{name}",
+                StartupKind.ShellExtension => "{00000000-0000-0000-0000-000000000001}",
+                _ => name.Replace(" ", "", StringComparison.Ordinal),
+            },
+        };
+
+    private static StartupRow Row(StartupEntry entry, SignatureInfo signature)
+    {
+        var row = new StartupRow(entry, Loc.Instance.Language, null!, null!);
+        row.SetSignature(signature, runsScriptHost: false, Loc.Instance.Language);
+        return row;
+    }
+
+    /// <summary>
+    /// Apps at sign-in: two Run entries (one of Windows, one not signed and turned off), a Startup folder item and a task
+    /// at sign-in. Scheduled tasks: a daily task. Services: one of a vendor, one of Windows. Drivers: one. Advanced: an
+    /// Explorer extension and a Winsock provider.
+    /// </summary>
+    private static StartupViewModel Page()
+    {
+        var vm = new StartupViewModel(new FakePageHost(), null!, null!);
+        vm.ShowRows(
+        [
+            Row(Entry(StartupKind.RunKey, "OneDrive"), Microsoft),
+            Row(Entry(StartupKind.RunKey, "Steam", enabled: false), Unsigned),
+            Row(Entry(StartupKind.StartupFolder, "Discord"), Vendor),
+            Row(Entry(StartupKind.LogonTask, "Vendor Logon Task"), Vendor),
+            Row(Entry(StartupKind.LogonTask, "Daily Updater", startsWithWindows: false), Vendor),
+            Row(Entry(StartupKind.Service, "Vendor Service"), Vendor),
+            Row(Entry(StartupKind.Service, "Windows Service"), Microsoft),
+            Row(Entry(StartupKind.Driver, "Vendor Driver", enabled: null), Vendor),
+            Row(Entry(StartupKind.ShellExtension, "Archive Menu"), Vendor),
+            Row(Entry(StartupKind.WinsockProvider, "Proxy Layer", enabled: null), Unsigned),
+        ]);
+        return vm;
+    }
+
+    private static int[] Counts(StartupViewModel vm) =>
+        [.. vm.Tabs.Select(t => int.Parse(t.Header[(t.Header.LastIndexOf('(') + 1)..^1], System.Globalization.CultureInfo.InvariantCulture))];
+
+    [Fact]
+    public void EveryKindLandsOnItsTab()
+    {
+        StartupTab Tab(StartupKind kind, bool startsWithWindows = true) => StartupViewModel.TabOf(Entry(kind, "x", startsWithWindows: startsWithWindows));
+
+        foreach (var kind in new[] { StartupKind.RunKey, StartupKind.StartupFolder, StartupKind.PolicyRun, StartupKind.RunOnce })
+            Assert.Equal(StartupTab.SignIn, Tab(kind));
+        Assert.Equal(StartupTab.SignIn, Tab(StartupKind.LogonTask));
+        Assert.Equal(StartupTab.Tasks, Tab(StartupKind.LogonTask, startsWithWindows: false));
+        Assert.Equal(StartupTab.Services, Tab(StartupKind.Service));
+        Assert.Equal(StartupTab.Drivers, Tab(StartupKind.Driver));
+        // Every other location Autoruns lists is under Advanced.
+        var named = new[] { StartupKind.RunKey, StartupKind.StartupFolder, StartupKind.PolicyRun, StartupKind.RunOnce, StartupKind.LogonTask, StartupKind.Service, StartupKind.Driver };
+        foreach (var kind in Enum.GetValues<StartupKind>().Except(named))
+            Assert.Equal(StartupTab.Advanced, Tab(kind));
+    }
+
+    [Fact]
+    public void HeadersCountWhatEachTabShowsUnderTheFilters()
+    {
+        var vm = Page();
+        // Hide Windows entries is on: OneDrive and the Windows service are left out.
+        Assert.Equal([3, 1, 1, 1, 2], Counts(vm));
+        Assert.StartsWith(StartupViewModel.TabName(StartupTab.SignIn), vm.Tabs[0].Header, StringComparison.Ordinal);
+
+        vm.HideMicrosoft = false;
+        Assert.Equal([4, 1, 2, 1, 2], Counts(vm));
+
+        vm.OnlyAttention = true;
+        Assert.Equal([1, 0, 0, 0, 1], Counts(vm));
+
+        vm.OnlyAttention = false;
+        vm.Search = "vendor";
+        Assert.Equal([1, 0, 1, 1, 0], Counts(vm));
+    }
+
+    [Fact]
+    public void TheOpenTabListsOnlyItsEntries()
+    {
+        var vm = Page();
+        Assert.Equal(["Steam", "Discord", "Vendor Logon Task"], vm.Rows.Select(r => r.Name));
+        Assert.False(vm.ShowServicesHint);
+
+        vm.SelectedTab = (int)StartupTab.Tasks;
+        Assert.Equal(["Daily Updater"], vm.Rows.Select(r => r.Name));
+        Assert.Equal(1, vm.ServicesHintTab);
+
+        vm.SelectedTab = (int)StartupTab.Services;
+        Assert.Equal(["Vendor Service"], vm.Rows.Select(r => r.Name));
+        Assert.Equal(0, vm.ServicesHintTab);
+
+        vm.SelectedTab = (int)StartupTab.Drivers;
+        Assert.Equal(["Vendor Driver"], vm.Rows.Select(r => r.Name));
+        Assert.False(vm.ShowServicesHint);
+        Assert.False(vm.IsAdvancedTab);
+    }
+
+    [Fact]
+    public void TheAdvancedTabFiltersByTheKindsFound()
+    {
+        var vm = Page();
+        vm.SelectedTab = (int)StartupTab.Advanced;
+        Assert.True(vm.IsAdvancedTab);
+        // All, then only the kinds this PC has.
+        Assert.Equal(["", nameof(StartupKind.ShellExtension), nameof(StartupKind.WinsockProvider)], vm.AdvancedKinds.Select(k => k.Key).OrderBy(k => k));
+        Assert.Equal("", vm.SelectedAdvancedKind?.Key);
+        Assert.Equal(2, vm.Rows.Count);
+
+        vm.SelectedAdvancedKind = vm.AdvancedKinds.Single(k => k.Key == nameof(StartupKind.WinsockProvider));
+        Assert.Equal(["Proxy Layer"], vm.Rows.Select(r => r.Name));
+        // The header counts the whole tab, not the chosen kind.
+        Assert.Equal(2, Counts(vm)[(int)StartupTab.Advanced]);
+
+        // The kind stays chosen when the rows are built again (a reload or a language switch).
+        vm.ShowRows([Row(Entry(StartupKind.WinsockProvider, "Proxy Layer", enabled: null), Unsigned), Row(Entry(StartupKind.Codec, "Codec"), Vendor)]);
+        Assert.Equal(nameof(StartupKind.WinsockProvider), vm.SelectedAdvancedKind?.Key);
+        Assert.Equal(["Proxy Layer"], vm.Rows.Select(r => r.Name));
+    }
+
+    [Fact]
+    public void TheSummarySpeaksForTheOpenTab()
+    {
+        var vm = Page();
+        // Apps at sign-in: four, Steam turned off and not signed, OneDrive hidden as a Windows entry.
+        Assert.Equal(StartupViewModel.Summary(StartupTab.SignIn, 4, 1, 1, 1, checking: false), vm.SummaryText);
+        Assert.Equal(string.Join(" ",
+            Loc.Instance.Format("Startup_SummaryCountSomeOff", Loc.Instance.Format("Startup_CountSignIn", 4), 1),
+            Loc.Instance.Format("Startup_AttentionOne", 1),
+            Loc.Instance.Format("Startup_Hidden", 1)), vm.SummaryText);
+
+        vm.SelectedTab = (int)StartupTab.Drivers;
+        Assert.Equal(Loc.Instance.Format("Startup_SummaryCount", Loc.Instance.Format("Startup_CountDriversOne", 1)), vm.SummaryText);
+    }
+
+    [Fact]
+    public void TheSummaryHasOneAndManyFormsAndWaitsForSignatures()
+    {
+        string Count(string key, int n) => Loc.Instance.Format(key, n);
+
+        Assert.Equal(Loc.Instance.Format("Startup_SummaryCount", Count("Startup_CountServicesOne", 1)),
+            StartupViewModel.Summary(StartupTab.Services, 1, 0, 0, 0, checking: false));
+        Assert.Equal(Loc.Instance.Format("Startup_SummaryCountOff", Count("Startup_CountServicesOne", 1)),
+            StartupViewModel.Summary(StartupTab.Services, 1, 1, 0, 0, checking: false));
+        Assert.Equal(string.Join(" ", Loc.Instance.Format("Startup_SummaryCountSomeOff", Count("Startup_CountTasks", 12), 4), Count("Startup_Attention", 2)),
+            StartupViewModel.Summary(StartupTab.Tasks, 12, 4, 2, 0, checking: false));
+        Assert.Equal(Loc.Instance.Format("Startup_SummaryCount", Count("Startup_CountAdvanced", 0)),
+            StartupViewModel.Summary(StartupTab.Advanced, 0, 0, 0, 0, checking: false));
+        // While the signatures are checked, what needs attention and what is hidden are not counted yet.
+        Assert.Equal(string.Join(" ", Loc.Instance.Format("Startup_SummaryCount", Count("Startup_CountSignIn", 5)), Loc.Instance["Startup_SummaryChecking"]),
+            StartupViewModel.Summary(StartupTab.SignIn, 5, 0, 2, 3, checking: true));
+    }
+
+    [Fact]
+    public void NothingMatchesOnlyWhenTheTabHasEntries()
+    {
+        var vm = Page();
+        vm.Search = "no such entry";
+        Assert.True(vm.NoMatch);
+
+        // A tab without entries says so in its summary, not "nothing matches".
+        vm.Search = "";
+        vm.ShowRows([Row(Entry(StartupKind.RunKey, "Steam"), Vendor)]);
+        vm.SelectedTab = (int)StartupTab.Drivers;
+        Assert.Empty(vm.Rows);
+        Assert.False(vm.NoMatch);
+    }
+
+    [Fact]
+    public void ASearchResultOpensTheTabOfItsEntry()
+    {
+        var vm = Page();
+        vm.OnlyAttention = true;
+        vm.Reveal("Daily Updater");
+        Assert.Equal((int)StartupTab.Tasks, vm.SelectedTab);
+        Assert.False(vm.HideMicrosoft);
+        Assert.False(vm.OnlyAttention);
+        Assert.Equal(["Daily Updater"], vm.Rows.Select(r => r.Name));
+    }
+
+    [Fact]
+    public void TheSimpleViewNamesTheKindInPlainWords()
+    {
+        Assert.Equal(Loc.Instance["Startup_PlainRegistry"], Row(Entry(StartupKind.RunKey, "Steam"), Unsigned).SimpleKindText);
+        Assert.Equal(Loc.Instance["Startup_PlainTask"], Row(Entry(StartupKind.LogonTask, "Updater"), Vendor).SimpleKindText);
+        // A tab of one kind does not repeat it on every card.
+        Assert.Equal("", Row(Entry(StartupKind.LogonTask, "Updater", startsWithWindows: false), Vendor).SimpleKindText);
+        Assert.Equal("", Row(Entry(StartupKind.Service, "Vendor Service"), Vendor).SimpleKindText);
+        var winsock = Row(Entry(StartupKind.WinsockProvider, "Proxy Layer", enabled: null), Vendor);
+        Assert.Equal(winsock.KindText, winsock.SimpleKindText);
+        Assert.StartsWith(winsock.KindText, winsock.MetaText, StringComparison.Ordinal);
+    }
+}

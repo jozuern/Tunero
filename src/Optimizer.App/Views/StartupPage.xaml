@@ -11,6 +11,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
@@ -22,9 +23,25 @@
             </StackPanel>
         </DockPanel>
 
-        <!-- One card above the list, laid out like the Tweaks page: what to look for (search and kind), the filters, then
-             below a line the counts on the left and the actions on the right. -->
-        <ui:Card Grid.Row="1" Padding="16,12" Margin="0,0,0,8">
+        <!-- The selector bar of the other pages with tabs, headers only: every tab shows the card and the list below,
+             filtered to its entries. Each header counts what it shows under the search and filters. -->
+        <TabControl Grid.Row="1" ItemsSource="{Binding Startup.Tabs}" SelectedIndex="{Binding Startup.SelectedTab}" ItemContainerStyle="{StaticResource SelectorTab}"
+                    Margin="0,0,0,8" AutomationProperties.Name="{l:Tr Startup_Groups}">
+            <TabControl.Template>
+                <ControlTemplate TargetType="TabControl">
+                    <TabPanel IsItemsHost="True" Background="Transparent" />
+                </ControlTemplate>
+            </TabControl.Template>
+            <TabControl.ItemTemplate>
+                <DataTemplate>
+                    <TextBlock Text="{Binding Header}" />
+                </DataTemplate>
+            </TabControl.ItemTemplate>
+        </TabControl>
+
+        <!-- One card above the list, laid out like the Tweaks page: what to look for (search, and on Advanced the kind), the
+             filters, then below a line the counts on the left and the actions on the right. -->
+        <ui:Card Grid.Row="2" Padding="16,12" Margin="0,0,0,8">
             <StackPanel>
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -32,9 +49,10 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <ui:TextBox PlaceholderText="{l:Tr Startup_Search}" AutomationProperties.Name="{l:Tr Startup_Search}" Icon="{ui:SymbolIcon Search20}" Text="{Binding Startup.Search, UpdateSourceTrigger=PropertyChanged, Delay=200}"
-                                Margin="0,0,16,0" ClearButtonEnabled="True" />
-                    <ComboBox Grid.Column="1" ItemsSource="{Binding Startup.Kinds}" SelectedItem="{Binding Startup.SelectedKind}" DisplayMemberPath="Text" MinWidth="220"
-                              AutomationProperties.Name="{l:Tr Startup_KindFilter}" />
+                                ClearButtonEnabled="True" />
+                    <ComboBox Grid.Column="1" ItemsSource="{Binding Startup.AdvancedKinds}" SelectedItem="{Binding Startup.SelectedAdvancedKind}" DisplayMemberPath="Text" MinWidth="220"
+                              Margin="16,0,0,0" AutomationProperties.Name="{l:Tr Startup_KindFilter}"
+                              Visibility="{Binding Startup.IsAdvancedTab, Converter={StaticResource BoolToVisibility}}" />
                 </Grid>
                 <WrapPanel Margin="0,8,0,0">
                     <ui:ToggleSwitch Content="{l:Tr Startup_HideMicrosoft}" IsChecked="{Binding Startup.HideMicrosoft}" Margin="0,4,24,4" />
@@ -70,7 +88,7 @@
             </StackPanel>
         </ui:Card>
 
-        <StackPanel Grid.Row="2">
+        <StackPanel Grid.Row="3">
             <!-- Labeled as on Install & update: the list is read, then the signatures are checked and the rows sorted again -->
             <StackPanel Orientation="Horizontal" Margin="0,0,0,8" Visibility="{Binding Startup.IsLoading, Converter={StaticResource BoolToVisibility}}">
                 <ui:ProgressRing IsIndeterminate="True" Width="16" Height="16" Margin="0,0,8,0" />
@@ -85,26 +103,53 @@
                 <ui:HyperlinkButton Content="{l:Tr Startup_ServicesLink}" Padding="0" VerticalAlignment="Center"
                                     Command="{Binding OpenServicesTabCommand}" CommandParameter="{Binding Startup.ServicesHintTab}" />
             </WrapPanel>
+            <!-- Advanced: what these places are, and that most are only listed -->
+            <DockPanel Margin="0,0,0,8" Visibility="{Binding Startup.IsAdvancedTab, Converter={StaticResource BoolToVisibility}}">
+                <ui:SymbolIcon DockPanel.Dock="Left" Symbol="Info16" FontSize="16" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" Margin="0,2,8,0" VerticalAlignment="Top" />
+                <ui:TextBlock FontTypography="Body" Text="{l:Tr Startup_AdvancedHint}" TextWrapping="Wrap" />
+            </DockPanel>
         </StackPanel>
 
-        <v:ItemList Grid.Row="3" ItemsSource="{Binding Startup.Rows}" Style="{StaticResource VirtualCardList}">
+        <v:ItemList Grid.Row="4" ItemsSource="{Binding Startup.Rows}" Style="{StaticResource VirtualCardList}">
             <v:ItemList.ItemTemplate>
                 <DataTemplate>
                     <ui:Card Padding="{StaticResource CardPadding}" Margin="{StaticResource CardRowMargin}">
                         <DockPanel>
-                            <StackPanel DockPanel.Dock="Right" VerticalAlignment="Center" Margin="16,0,0,0">
-                                <ui:ToggleSwitch AutomationProperties.Name="{Binding Name}" IsChecked="{Binding SwitchState, Mode=TwoWay}"
-                                                 OnContent="{l:Tr Startup_Enabled}" OffContent="{l:Tr Startup_Disabled}"
-                                                 Visibility="{Binding CanToggle, Converter={StaticResource BoolToVisibility}}" >
-                                    <ui:ToggleSwitch.IsEnabled>
-                                        <MultiBinding Converter="{StaticResource AllTrue}">
-                                            <Binding Path="CanToggle" />
-                                            <Binding Path="CanChange" Source="{x:Static s:ChangeGate.Instance}" />
-                                        </MultiBinding>
-                                    </ui:ToggleSwitch.IsEnabled>
-                                </ui:ToggleSwitch>
-                                <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Text="{Binding ReadOnlyNote}" MaxWidth="160" TextWrapping="Wrap"
-                                              Visibility="{Binding ReadOnlyNote, Converter={StaticResource NullToVisibility}}" />
+                            <!-- The switch, then More options: the rarer actions, with the destructive one last -->
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
+                                <StackPanel VerticalAlignment="Center">
+                                    <ui:ToggleSwitch AutomationProperties.Name="{Binding Name}" IsChecked="{Binding SwitchState, Mode=TwoWay}"
+                                                     OnContent="{l:Tr Startup_Enabled}" OffContent="{l:Tr Startup_Disabled}"
+                                                     Visibility="{Binding CanToggle, Converter={StaticResource BoolToVisibility}}" >
+                                        <ui:ToggleSwitch.IsEnabled>
+                                            <MultiBinding Converter="{StaticResource AllTrue}">
+                                                <Binding Path="CanToggle" />
+                                                <Binding Path="CanChange" Source="{x:Static s:ChangeGate.Instance}" />
+                                            </MultiBinding>
+                                        </ui:ToggleSwitch.IsEnabled>
+                                    </ui:ToggleSwitch>
+                                    <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Text="{Binding ReadOnlyNote}" MaxWidth="160" TextWrapping="Wrap"
+                                                  Visibility="{Binding ReadOnlyNote, Converter={StaticResource NullToVisibility}}" />
+                                </StackPanel>
+                                <ui:Button Appearance="Transparent" Icon="{ui:SymbolIcon MoreHorizontal20}" Width="32" Height="32" Padding="0" BorderThickness="0" Margin="8,0,0,0" VerticalAlignment="Center"
+                                           ToolTip="{l:Tr Startup_MoreOptions}" AutomationProperties.Name="{Binding MoreOptionsLabel}" Click="OnMoreOptions"
+                                           Tag="{Binding DataContext.Startup, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                                    <ui:Button.ContextMenu>
+                                        <!-- Outside the page's tree: the commands come from the button's Tag (the page's view model) -->
+                                        <ContextMenu>
+                                            <MenuItem Header="{l:Tr Startup_ShowFile}" Icon="{ui:SymbolIcon FolderOpen20}" CommandParameter="{Binding}"
+                                                      Command="{Binding PlacementTarget.Tag.ShowFileCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      Visibility="{Binding Entry.ImagePath, Converter={StaticResource NullToVisibility}}" />
+                                            <MenuItem Header="{l:Tr Startup_CopyLocation}" Icon="{ui:SymbolIcon Copy20}" CommandParameter="{Binding}"
+                                                      Command="{Binding PlacementTarget.Tag.CopyLocationCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                            <Separator Visibility="{Binding CanDelete, Converter={StaticResource BoolToVisibility}}" />
+                                            <MenuItem Header="{l:Tr Startup_Delete}" Icon="{ui:SymbolIcon Delete20}" CommandParameter="{Binding}" AutomationProperties.Name="{Binding DeleteLabel}"
+                                                      ToolTip="{l:Tr Startup_DeleteHint}" Visibility="{Binding CanDelete, Converter={StaticResource BoolToVisibility}}"
+                                                      IsEnabled="{Binding CanChange, Source={x:Static s:ChangeGate.Instance}}"
+                                                      Command="{Binding PlacementTarget.Tag.DeleteEntryCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                        </ContextMenu>
+                                    </ui:Button.ContextMenu>
+                                </ui:Button>
                             </StackPanel>
                             <StackPanel>
                                 <!-- As on the Tweaks page: the warning in front of the name, no icon column that is empty on most rows -->
@@ -131,27 +176,17 @@
                                 </v:ItemList>
                                 <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource SystemFillColorCautionBrush}" Text="{l:Tr Startup_New}" Margin="0,2,0,0"
                                               Visibility="{Binding IsNew, Converter={StaticResource BoolToVisibility}}" />
-                                <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" Margin="0,4,0,0">
-                                    <Run Text="{Binding MetaText, Mode=OneWay}" />
-                                </ui:TextBlock>
+                                <!-- Publisher and signature; the kind in plain words in the simple view, by its technical name in the other -->
+                                <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" Margin="0,4,0,0" Text="{Binding SimpleMetaText}"
+                                              Visibility="{Binding DataContext.ShowTechnical, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource InverseBoolToVisibility}}" />
+                                <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" Margin="0,4,0,0" Text="{Binding MetaText}"
+                                              Visibility="{Binding DataContext.ShowTechnical, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}" />
                                 <TextBlock Style="{StaticResource Mono}" Text="{Binding Command}" Margin="0,4,0,0" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
                                            ToolTip="{Binding Command}" Visibility="{Binding DataContext.ShowTechnical, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}" />
                                 <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource SystemFillColorCautionBrush}" Text="{Binding ScriptHostNote}" TextWrapping="Wrap"
                                               Margin="0,4,0,0" Visibility="{Binding ScriptHostNote, Converter={StaticResource NullToVisibility}}" />
-                                <!-- Where it is registered, with the two links on the same line -->
-                                <WrapPanel Margin="0,4,0,0">
-                                    <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Text="{Binding Location}" TextWrapping="Wrap"
-                                                  VerticalAlignment="Center" Margin="0,0,16,0" Visibility="{Binding DataContext.ShowTechnical, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}" />
-                                    <ui:HyperlinkButton Content="{l:Tr Startup_ShowFile}" Padding="0" Margin="0,0,16,0"
-                                                        Visibility="{Binding Entry.ImagePath, Converter={StaticResource NullToVisibility}}"
-                                                        Command="{Binding DataContext.Startup.ShowFileCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" />
-                                    <ui:HyperlinkButton Content="{l:Tr Startup_CopyLocation}" Padding="0" Margin="0,0,16,0"
-                                                        Command="{Binding DataContext.Startup.CopyLocationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" />
-                                    <ui:HyperlinkButton Content="{l:Tr Startup_Delete}" Padding="0" AutomationProperties.Name="{Binding DeleteLabel}" ToolTip="{l:Tr Startup_DeleteHint}"
-                                                        Visibility="{Binding CanDelete, Converter={StaticResource BoolToVisibility}}"
-                                                        IsEnabled="{Binding CanChange, Source={x:Static s:ChangeGate.Instance}}"
-                                                        Command="{Binding DataContext.Startup.DeleteEntryCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" />
-                                </WrapPanel>
+                                <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Text="{Binding Location}" TextWrapping="Wrap" Margin="0,4,0,0"
+                                              Visibility="{Binding DataContext.ShowTechnical, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}" />
                                 <ui:HyperlinkButton Content="{Binding VirusTotalText}" Padding="0" Margin="0,4,0,0"
                                                     Visibility="{Binding VirusTotalText, Converter={StaticResource NullToVisibility}}"
                                                     Command="{Binding DataContext.Startup.OpenReportCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding VirusTotalUrl}" />

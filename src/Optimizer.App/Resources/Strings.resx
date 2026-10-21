@@ -404,19 +404,14 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Startup_Title" xml:space="preserve">
     <value>Startup</value>
   </data>
-  <data name="Startup_Hint" xml:space="preserve">
-    <value>What starts with Windows or runs on its own: startup programs, scheduled tasks of other programs, services, drivers, Explorer extensions, sign-in entries and the other places Autoruns lists. Switching off works like Task Manager and can be undone.</value>
-  </data>
+  <data name="Startup_Hint" xml:space="preserve"><value>What starts with Windows. Turning an app off works like Task Manager, and every change here can be undone on the Changes page.</value></data>
   <data name="Startup_AllKinds" xml:space="preserve">
     <value>All locations</value>
   </data>
   <data name="Startup_HideMicrosoft" xml:space="preserve">
     <value>Hide Windows entries</value>
   </data>
-  <data name="Startup_Summary" xml:space="preserve">
-    <value>{0} entries, {1} of them programs from other vendors at sign-in. {2} need attention: not signed or unusual.</value>
-  </data>
-  <data name="Startup_SummaryChecking" xml:space="preserve"><value>{0} entries. Checking signatures before counting what comes from other vendors and what needs attention.</value></data>
+  <data name="Startup_SummaryChecking" xml:space="preserve"><value>Checking signatures before hiding Windows entries and counting what needs attention.</value></data>
   <data name="Startup_Loading" xml:space="preserve"><value>Reading the entries and checking their signatures. The list sorts itself again when that is done.</value></data>
   <data name="Startup_NoPublisher" xml:space="preserve">
     <value>No publisher</value>
@@ -1364,7 +1359,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Quick_GroupRestart" xml:space="preserve"><value>Restart a part of Windows</value></data>
   <data name="Quick_GroupRepair" xml:space="preserve"><value>Repair Windows</value></data>
   <data name="Apps_Loading" xml:space="preserve"><value>Checking installed apps and drivers</value></data>
-  <data name="Startup_SignInKinds" xml:space="preserve"><value>Programs at sign-in</value></data>
+  <data name="Startup_SignInKinds" xml:space="preserve"><value>Apps at sign-in</value></data>
   <data name="Cleanup_Nothing" xml:space="preserve"><value>Empty</value></data>
   <data name="Settings_Hint" xml:space="preserve"><value>Language, theme, Expert mode, optional online features and diagnostics.</value></data>
   <data name="Changes_Transfer" xml:space="preserve"><value>Move to another PC</value></data>
@@ -1578,7 +1573,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Feature_Off" xml:space="preserve"><value>Off</value></data>
   <data name="Cleanup_EmptyList" xml:space="preserve"><value>Nothing to clean in: {0}</value></data>
   <data name="Startup_OnlyAttention" xml:space="preserve"><value>Only entries that need attention</value></data>
-  <data name="Startup_KindFilter" xml:space="preserve"><value>Which entries</value></data>
+  <data name="Startup_KindFilter" xml:space="preserve"><value>Kind of location</value></data>
   <data name="Svc_StartTypeName" xml:space="preserve"><value>Start type of {0}</value></data>
   <data name="Net_DnsRouter" xml:space="preserve"><value>Your router ({0})</value></data>
   <data name="Net_FixesLink" xml:space="preserve"><value>Network fixes such as Flush DNS cache are under Tools</value></data>
@@ -1652,6 +1647,35 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Net_ShowAllGames" xml:space="preserve"><value>Show all {0} games</value></data>
   <data name="Startup_ServicesHint" xml:space="preserve"><value>Their start types, with what each service does, and every scheduled task are on their own page.</value></data>
   <data name="Startup_ServicesLink" xml:space="preserve"><value>Open Services &amp; tasks</value></data>
+  <data name="Startup_Groups" xml:space="preserve"><value>Startup groups</value></data>
+  <data name="Startup_TabTasks" xml:space="preserve"><value>Scheduled tasks</value></data>
+  <data name="Startup_TabServices" xml:space="preserve"><value>Services</value></data>
+  <data name="Startup_TabDrivers" xml:space="preserve"><value>Drivers</value></data>
+  <data name="Startup_TabAdvanced" xml:space="preserve"><value>Advanced</value></data>
+  <data name="Startup_AdvancedHint" xml:space="preserve"><value>Other places Windows and programs load code from, as Autoruns lists them. Most entries are here to be checked: the program that owns one changes it.</value></data>
+  <data name="Startup_MoreOptions" xml:space="preserve"><value>More options</value></data>
+  <data name="Startup_MoreOptionsName" xml:space="preserve"><value>More options for {0}</value></data>
+  <data name="Startup_PlainRegistry" xml:space="preserve"><value>Registry</value></data>
+  <data name="Startup_PlainFolder" xml:space="preserve"><value>Startup folder</value></data>
+  <data name="Startup_PlainTask" xml:space="preserve"><value>Scheduled task</value></data>
+  <data name="Startup_PlainPolicy" xml:space="preserve"><value>Set by Group Policy</value></data>
+  <data name="Startup_PlainRunOnce" xml:space="preserve"><value>Runs once</value></data>
+  <data name="Startup_CountSignInOne" xml:space="preserve"><value>1 app starts at sign-in</value></data>
+  <data name="Startup_CountSignIn" xml:space="preserve"><value>{0} apps start at sign-in</value></data>
+  <data name="Startup_CountTasksOne" xml:space="preserve"><value>1 task of another program runs on its own schedule</value></data>
+  <data name="Startup_CountTasks" xml:space="preserve"><value>{0} tasks of other programs run on their own schedule</value></data>
+  <data name="Startup_CountServicesOne" xml:space="preserve"><value>1 service starts with Windows</value></data>
+  <data name="Startup_CountServices" xml:space="preserve"><value>{0} services start with Windows</value></data>
+  <data name="Startup_CountDriversOne" xml:space="preserve"><value>1 driver loads with Windows</value></data>
+  <data name="Startup_CountDrivers" xml:space="preserve"><value>{0} drivers load with Windows</value></data>
+  <data name="Startup_CountAdvancedOne" xml:space="preserve"><value>1 entry in another place code is loaded from</value></data>
+  <data name="Startup_CountAdvanced" xml:space="preserve"><value>{0} entries in other places code is loaded from</value></data>
+  <data name="Startup_SummaryCount" xml:space="preserve"><value>{0}.</value></data>
+  <data name="Startup_SummaryCountOff" xml:space="preserve"><value>{0} (turned off).</value></data>
+  <data name="Startup_SummaryCountSomeOff" xml:space="preserve"><value>{0}, {1} of them turned off.</value></data>
+  <data name="Startup_AttentionOne" xml:space="preserve"><value>1 needs attention.</value></data>
+  <data name="Startup_Attention" xml:space="preserve"><value>{0} need attention.</value></data>
+  <data name="Startup_Hidden" xml:space="preserve"><value>Hidden by the search or filters: {0}.</value></data>
   <data name="Bench_StepOf" xml:space="preserve"><value>Step {0} of 4</value></data>
   <data name="Bench_StepLabelDone" xml:space="preserve"><value>Done</value></data>
   <data name="Bench_PickGame" xml:space="preserve"><value>Pick the game</value></data>

@@ -16,6 +16,7 @@
 
 ### Changed
 
+- **Startup:** tabs for apps at sign-in, scheduled tasks, services, drivers and advanced places, each with its count; a summary for the open tab; plainer cards with Show file, Copy location and Delete entry under More options.
 - **Remove apps:** the Microsoft Edge card says whether Windows lets you remove Edge on this PC (set up with a region in the European Economic Area or Switzerland) and opens Installed apps, where Windows removes it. Apps that show web content keep working: WebView2 is a separate program and stays, unlike what the old note said.
 - **Windows install media:** for the download, the app list shows only the apps that edition of Microsoft's image holds (measured for build 26300: 26 instead of 50 for Pro), so no app you leave unticked looks as if it would be installed. For a build that was not measured the list says that some of its apps may not be in the image.
 - **Windows install media:** the app list shows what the image can actually hold. For your own ISO Tunero reads the chosen edition's apps (a few seconds); for the download it lists only Microsoft's apps, without manufacturer, third-party and Windows 10 apps that a Microsoft image never contains.

@@ -153,9 +153,7 @@ public sealed partial class MainViewModel
                 ServicesPage.TaskSearch = r.Title;
                 break;
             case SearchKind.StartupEntry:
-                Startup.HideMicrosoft = false;
-                Startup.SelectedKind = Startup.Kinds.FirstOrDefault(k => k.Key.Length == 0) ?? Startup.SelectedKind;
-                Startup.Search = r.Title;
+                Startup.Reveal(r.Title);
                 break;
             case SearchKind.InstalledProgram:
                 DebloatTab = 1;

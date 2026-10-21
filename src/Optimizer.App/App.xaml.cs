@@ -195,6 +195,8 @@ public partial class App : Application
         var vm = new MainViewModel(_settings, services, new Dialogs(services.SessionDocumentsFolder)) { ProfileOverride = args.Value("--profile") };
         // Without the confirmation: only for runs without admin rights (Debug), not for whoever starts the elevated exe.
         if (args.Value("--expert") is "on" && !DataPaths.ProcessIsElevated) vm.EnableExpertForSession();
+        // Developer aid for screenshots: the simple or the technical view of the lists for this run (never saved).
+        if (args.Value("--technical") is "on" or "off") vm.ShowTechnicalForSession(args.Value("--technical") == "on");
         // Developer aid: the install media page with a sample catalog and a build that only shows its stages (no network,
         // nothing runs). --media-demo fail, done or expand (comma separated) shows a result or unfolds the cards.
         if (args.Has("--media-demo")) vm.InstallMedia.UseDemo(args.Value("--media-demo") is { } demo && !demo.StartsWith("--", StringComparison.Ordinal) ? demo : null);
@@ -300,10 +302,11 @@ public partial class App : Application
             await vm.InstallMedia.AppsLoading;
         }
         if (args.Value("--pane") is "closed") window.Nav.IsPaneOpen = false;
-        // The tab of a page with tabs (Services & tasks, Remove apps, Install & update, Tools), counted from 0.
+        // The tab of a page with tabs (Startup, Services & tasks, Remove apps, Install & update, Tools), counted from 0.
         if (int.TryParse(args.Value("--page-tab"), CultureInfo.InvariantCulture, out var pageTab))
         {
-            if (vm.CurrentPage == Page.Services) vm.ServicesTab = pageTab;
+            if (vm.CurrentPage == Page.Startup) vm.Startup.SelectedTab = pageTab;
+            else if (vm.CurrentPage == Page.Services) vm.ServicesTab = pageTab;
             else if (vm.CurrentPage == Page.Debloat) vm.DebloatTab = pageTab;
             else if (vm.CurrentPage == Page.Apps) vm.AppsTab = pageTab;
             else if (vm.CurrentPage == Page.Tools) vm.ToolsTab = pageTab;
@@ -423,6 +426,19 @@ public partial class App : Application
         await Task.Delay(400);
         SaveScreenshot(window, shot);
         if (args.Value("--tab-order") is { } tabFile) WriteTabOrder(window, tabFile);
+        // Developer aid: the More options menu of the first row that has one (Startup), saved next to the picture (a popup).
+        if (args.Has("--more-options")
+            && Descendants<System.Windows.Controls.Button>(window).FirstOrDefault(b => b.ContextMenu is not null && b.IsVisible) is { ContextMenu: { } menu } more)
+        {
+            StartupPage.OpenMenu(more);
+            await Task.Delay(600); // the menu's opening animation
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+            // The popup's root: the menu with its border and shadow, as large as it opened.
+            DependencyObject top = menu;
+            while (VisualTreeHelper.GetParent(top) is { } parent) top = parent;
+            SaveVisual(top as FrameworkElement ?? menu, window, System.IO.Path.ChangeExtension(shot, null) + "-menu.png");
+            menu.IsOpen = false;
+        }
 
         // Developer aid: render the confirmation dialog of a tweak without applying anything.
         if (args.Value("--confirm") is { } confirmId && services.Catalog.Get(confirmId) is { } ct && args.Value("--confirm-shot") is { } confirmShot)

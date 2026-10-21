@@ -12,7 +12,7 @@
     <StartupObject>Optimizer.App.Program</StartupObject>
     <!-- DOTNET_STARTUP_HOOKS from the user's environment would run code in the elevated app before Main. -->
     <StartupHookSupport>false</StartupHookSupport>
-    <Version>1.4.37</Version>
+    <Version>1.4.38</Version>
     <Product>Tunero</Product>
     <Authors>Joshua Zürn</Authors>
     <Company>Joshua Zürn</Company>

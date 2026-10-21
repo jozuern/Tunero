@@ -455,14 +455,24 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
     /// </summary>
     public bool ShowTechnical
     {
-        get => _settings.TechnicalDetails;
+        get => _technicalForSession ?? _settings.TechnicalDetails;
         set
         {
-            if (value == _settings.TechnicalDetails) return;
+            if (value == ShowTechnical) return;
+            _technicalForSession = null;
             _settings.TechnicalDetails = value;
             _settings.Save();
             OnPropertyChanged();
         }
+    }
+
+    /// <summary>The view chosen by a developer switch (--technical) for this run; the saved setting stays as it is.</summary>
+    private bool? _technicalForSession;
+
+    internal void ShowTechnicalForSession(bool on)
+    {
+        _technicalForSession = on;
+        OnPropertyChanged(nameof(ShowTechnical));
     }
 
     partial void OnCheckForUpdatesChanged(bool value)
