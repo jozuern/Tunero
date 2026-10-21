@@ -1,7 +1,8 @@
 ---
-// A screenshot of the app as a Windows 11 window: the light one in light mode, the dark one in dark mode, in the page's
-// language when it exists. Files are src/assets/screens/site-{name}-{light|dark}-{en|de}.png (rendered with --screenshot);
-// missing variants fall back to the other language, then the other theme.
+// A screenshot of the app as a Windows 11 window, always the dark one (owner, 2026-10-21: light mode is a live option
+// of the app and the site, never of static content), in the page's language when it exists. Files are
+// src/assets/screens/site-{name}-dark-{en|de}.png (rendered with --screenshot --theme Dark); a missing language falls
+// back to the other one.
 import { getImage } from 'astro:assets';
 import type { ImageMetadata } from 'astro';
 import type { Lang } from '../lib/data';
@@ -17,29 +18,26 @@ interface Props {
 
 const { name, lang, alt, sizes, caption, eager = false } = Astro.props;
 const files = import.meta.glob<{ default: ImageMetadata }>('../assets/screens/*.png', { eager: true });
-const find = (theme: string, l: string) => files[`../assets/screens/site-${name}-${theme}-${l}.png`]?.default;
+const find = (l: string) => files[`../assets/screens/site-${name}-dark-${l}.png`]?.default;
 const other: Lang = lang === 'en' ? 'de' : 'en';
-const light = find('light', lang) ?? find('light', other) ?? find('dark', lang) ?? find('dark', other);
-const dark = find('dark', lang) ?? find('dark', other) ?? light;
-if (!light || !dark) throw new Error(`No screenshot site-${name}-*.png in src/assets/screens`);
+const shot = find(lang) ?? find(other);
+if (!shot) throw new Error(`No screenshot site-${name}-dark-*.png in src/assets/screens`);
 
 // Never upscale: the largest variant is the screenshot's own width (1440 for --screenshot at the default size).
-const widths = [...[640, 1000].filter((w) => w < light.width), Math.min(1440, light.width)];
+const widths = [...[640, 1000].filter((w) => w < shot.width), Math.min(1440, shot.width)];
 const variants = async (src: ImageMetadata, format: 'avif' | 'webp') => {
   const images = await Promise.all(widths.map((width) => getImage({ src, width, format })));
   return images.map((img, i) => `${img.src} ${widths[i]}w`).join(', ');
 };
 const sources = [];
-for (const [img, media] of [[dark, '(prefers-color-scheme: dark)'], [light, undefined]] as const) {
-  for (const format of ['avif', 'webp'] as const) sources.push({ srcset: await variants(img, format), type: `image/${format}`, media });
-}
-const fallback = await getImage({ src: light, width: Math.min(1440, light.width), format: 'png' });
+for (const format of ['avif', 'webp'] as const) sources.push({ srcset: await variants(shot, format), type: `image/${format}` });
+const fallback = await getImage({ src: shot, width: Math.min(1440, shot.width), format: 'png' });
 ---
 
 <figure class="shot">
   <picture>
-    {sources.map((s) => <source srcset={s.srcset} type={s.type} media={s.media} sizes={sizes} />)}
-    <img src={fallback.src} alt={alt} width={light.width} height={light.height} loading={eager ? 'eager' : 'lazy'} decoding="async" fetchpriority={eager ? 'high' : 'auto'} />
+    {sources.map((s) => <source srcset={s.srcset} type={s.type} sizes={sizes} />)}
+    <img src={fallback.src} alt={alt} width={shot.width} height={shot.height} loading={eager ? 'eager' : 'lazy'} decoding="async" fetchpriority={eager ? 'high' : 'auto'} />
   </picture>
   {caption && <figcaption>{caption}</figcaption>}
 </figure>

@@ -90,7 +90,8 @@ the left-out list, the reference rows).
 ## Images
 
 - Only real screenshots of the app, rendered with `--screenshot` (see CONTRIBUTING), never mockups or illustrations.
-- Light screenshots in light mode and dark ones in dark mode (`<picture>` with `prefers-color-scheme`), alt text on each.
+- Screenshots are always the dark ones, in light mode too (owner, 2026-10-21: light mode is a live option of the app and the
+  site, never of static content), alt text on each.
 
 ## Motion and script
 

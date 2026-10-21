@@ -14,7 +14,7 @@ What is still open: it needs a person, a VM image or hardware we do not have, or
 - **Scroll bar arrows in dialogs:** UI Automation names them "CaretUp24" and "CaretDown24" (WPF-UI's icon names), so a screen reader reads those. Give them real names or hide them from UI Automation.
 - **Need real hardware or traffic capture:** `gpu.windowedOptimizations` (discrete GPU), `display.autoHdrOn` and `display.vrrOn` (HDR or VRR display), `network.dohAutoUpgrade`, the NVIDIA settings, MSI mode and interrupt affinity, the network adapter properties (section 5 of the VM plan).
 - **V-Cache driver:** the service name `amd3dvcacheSvc` needs a check on an X3D PC.
-- **Left out until someone checks them at the console:** Num Lock at sign-in and the startup sound (undocumented values that only show at the sign-in screen or as sound).
+- **Num Lock at sign-in:** left out until a VM run checks it at the sign-in screen (an undocumented value that only shows there).
 
 ## Left from the audit of 2026-10-19
 
@@ -26,6 +26,5 @@ The audit's other findings are fixed (commits `dde41d6` to `2a931a0`, and `1de68
 - **User-scope writes without a resolved SID** fall back to the elevated account without the "other account" banner (a domain account without a domain controller; cannot be tested here).
 - **Single instance by process name:** `Tunero (1).exe` opens a second window; telling the copies apart needs another way to identify the running one.
 - **Workflows:** the verify logic is copied inline into the workflows, and `pages.yml` does not wait for CI.
-- **Legal notice:** a second contact channel besides email (a phone number or a form) needs the owner's decision.
 - **Dead code:** the unused `Preflight` parameter, the test-only `MftRecord.ExtensionReferences` and `WingetPackage.IsInstalledWithWinget`, the `OptionalFeatures` ids without `TweakIds.Slug` (changing them needs a legacy-id fallback), the split quick fixes and the copied `Text(lang)` helpers.
 - **Test tooling majors** (Test SDK 18, xunit runner 4): left to Dependabot.
