@@ -127,9 +127,7 @@
     transform: translateY(-50%) rotate(45deg);
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .hint .glyph {
-      animation: none;
-    }
+  :global([data-motion='reduce']) .hint .glyph {
+    animation: none;
   }
 </style>

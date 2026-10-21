@@ -45,7 +45,7 @@
     <button type="button" class:current={page === 'changes'} aria-current={page === 'changes' ? 'page' : undefined} onclick={() => go('changes')}>
       <Icon name="history" size={16} />
       <span>{app.Nav_Changes}</span>
-      {#if store.state.applied.length > 0}<span class="count">{store.state.applied.length}</span>{/if}
+      {#if store.undoable.length > 0}<span class="count">{store.undoable.length}</span>{/if}
     </button>
   </nav>
 

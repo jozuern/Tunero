@@ -65,6 +65,7 @@
 <section
   bind:this={element}
   class="window"
+  data-window={id}
   class:maximized={frame.maximized}
   class:minimized={frame.minimized}
   class:focused={store.focused === id}
@@ -152,10 +153,8 @@
     }
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .window {
-      animation: none;
-    }
+  :global([data-motion='reduce']) .window {
+    animation: none;
   }
 
   .titlebar {

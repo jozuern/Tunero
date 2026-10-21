@@ -16,7 +16,7 @@
     { id: 'notepad', icon: 'notepad', label: copy.icons.notepad },
     { id: 'settings', icon: 'settings', label: copy.icons.settings },
   ]);
-  const appIcons: IconName[] = ['news', 'weather', 'lightbulbBig', 'grid', 'video', 'globe'];
+  const appIcons: IconName[] = ['news', 'weather', 'grid', 'star', 'video', 'globe'];
   const apps = $derived(store.demo.apps.map((app, i) => ({ ...app, icon: appIcons[i % appIcons.length] })));
   const recommendedIcons: IconName[] = ['lightbulbBig', 'star', 'notepad', 'folder'];
 

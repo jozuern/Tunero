@@ -73,7 +73,7 @@ export const scenario = {
   apps: [
     'Microsoft.BingNews',
     'Microsoft.BingWeather',
-    'Microsoft.Getstarted',
+    'Microsoft.MicrosoftOfficeHub',
     'Microsoft.MicrosoftSolitaireCollection',
     'Clipchamp.Clipchamp',
     'Microsoft.BingSearch',

@@ -30,6 +30,7 @@ export const appKeys = [
   'Debloat_RemoveName',
   'Debloat_RemovedTitle',
   'Debloat_RemovedEmpty',
+  'Debloat_Reinstall',
   'Changes_Title',
   'Changes_Backups',
   'Changes_UndoAll',

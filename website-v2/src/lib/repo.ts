@@ -218,6 +218,14 @@ export function inboxApp(name: string, lang: Lang): string {
   return lang === 'de' ? (app.titleDe ?? app.title) : app.title;
 }
 
+/** How a removed inbox app comes back (appx.json): store = from the Microsoft Store, none = not offered there. */
+export function inboxAppReinstall(name: string): string {
+  const apps = JSON.parse(read('src/Optimizer.Core/Catalog/Data/appx.json')).apps as { name: string; reinstall: string }[];
+  const app = apps.find((a) => a.name === name);
+  if (!app) throw new Error(`Inbox app ${name} not found in appx.json`);
+  return app.reinstall;
+}
+
 /** The newest `versions` sections of CHANGELOG.md (English only), as written there. */
 export function changelog(versions: number): { version: string; body: string }[] {
   return read('CHANGELOG.md')

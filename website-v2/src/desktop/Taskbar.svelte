@@ -2,7 +2,8 @@
   import { onMount } from 'svelte';
   import type { WindowId } from '../lib/demo-state.ts';
   import type { DesktopStrings } from '../i18n/desktop-en.ts';
-  import { useStore } from './store.svelte.ts';
+  import { scale } from 'svelte/transition';
+  import { useStore, reducedMotion } from './store.svelte.ts';
   import Icon from './Icon.svelte';
   import TuneroMark from './TuneroMark.svelte';
   import { startupIcons } from './startup.ts';
@@ -33,6 +34,7 @@
   const time = $derived(now.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }));
   const date = $derived(now.toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' }));
 
+  const pop = (node: Element) => scale(node, { start: 0.2, duration: reducedMotion() ? 0 : 280, opacity: 0 });
   const trayItems = $derived(store.demo.startup.filter((item) => !store.applied({ kind: 'startup', id: item.id })));
 </script>
 
@@ -46,6 +48,7 @@
     <button
       type="button"
       class="tb start"
+      data-anchor="start"
       class:pressed={store.startOpen}
       aria-label={copy.start}
       aria-expanded={store.startOpen}
@@ -60,6 +63,7 @@
     <button
       type="button"
       class="search"
+      data-anchor="search"
       onclick={(event) => {
         event.stopPropagation();
         store.startOpen = true;
@@ -76,6 +80,7 @@
       <button
         type="button"
         class="tb"
+        data-anchor={app.id === 'trust' ? 'explorer' : app.id}
         class:running={frame.open}
         class:active={frame.open && !frame.minimized && store.focused === app.id}
         aria-label={app.label}
@@ -92,10 +97,10 @@
       <Icon name="download" size={16} />
       <span>{copy.install}</span>
     </a>
-    <span class="tray">
+    <span class="tray" data-anchor="tray">
       <span class="tray-icon" title={copy.trayMore}><Icon name="chevronUp" size={16} /></span>
       {#each trayItems as item (item.id)}
-        <span class="tray-icon app" title={item.title}>
+        <span class="tray-icon app" title={item.title} in:pop out:pop>
           <Icon name={startupIcons[store.demo.startup.indexOf(item)]} size={16} />
         </span>
       {/each}
@@ -264,17 +269,6 @@
     border-radius: var(--radius-sm);
   }
 
-  .tray-icon.app {
-    animation: tray-in 300ms ease-out;
-  }
-
-  @keyframes tray-in {
-    from {
-      opacity: 0;
-      transform: translateY(8px);
-    }
-  }
-
   .clock {
     display: flex;
     flex-direction: column;
@@ -302,9 +296,4 @@
     }
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .tray-icon.app {
-      animation: none;
-    }
-  }
 </style>

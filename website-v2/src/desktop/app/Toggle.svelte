@@ -65,10 +65,8 @@
     font-size: 14px;
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .track,
-    .thumb {
-      transition: none;
-    }
+  :global([data-motion='reduce']) .track,
+  :global([data-motion='reduce']) .thumb {
+    transition: none;
   }
 </style>

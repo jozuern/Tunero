@@ -2,11 +2,14 @@
 // The demo state survives a language switch through sessionStorage; blocked storage just starts fresh.
 import { getContext, setContext } from 'svelte';
 import type { Demo, Effect } from '../lib/demo.ts';
+import { trail } from './effects.ts';
 import {
   initial,
   apply,
   undo,
   undoAll,
+  undoable,
+  allChanges,
   clutter,
   isActive,
   isApplied,
@@ -47,7 +50,8 @@ function readSaved(): DemoState {
   }
 }
 
-export const reducedMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+export { reducedMotion } from './motion.ts';
+import { reducedMotion } from './motion.ts';
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export class DesktopStore {
@@ -103,17 +107,34 @@ export class DesktopStore {
     return isApplied(this.state, change);
   }
 
+  /** What the Changes page can undo (removed apps come back from the Microsoft Store instead). */
+  get undoable() {
+    return undoable(this.state);
+  }
+
+  /** Shows each change travelling to its place on the desktop, a little apart when several go at once. */
+  private show(changes: Change[], direction: 'apply' | 'undo') {
+    const effects = allChanges(this.demo);
+    changes.forEach((change, i) => {
+      const effect = effects.find((c) => c.kind === change.kind && c.id === change.id)?.effect;
+      if (effect) setTimeout(() => trail(effect, direction), i * 90);
+    });
+  }
+
   /** Applies changes; a running rewind is cut short at its end state first. */
   apply(changes: Change[]) {
     this.stopRewind();
+    const fresh = changes.filter((change) => !isApplied(this.state, change));
     this.state = apply(this.state, changes);
     this.save();
+    this.show(fresh, 'apply');
   }
 
   undo(change: Change) {
     this.stopRewind();
     this.state = undo(this.state, change);
     this.save();
+    this.show([change], 'undo');
   }
 
   /** Undoes everything one step at a time, newest first; instant under reduced motion. */
@@ -131,6 +152,7 @@ export class DesktopStore {
       if (run !== this.rewindRun) return;
       this.state = undo(this.state, step);
       this.save();
+      this.show([step], 'undo');
       await wait(rewindStep);
     }
     if (run === this.rewindRun) this.rewinding = false;

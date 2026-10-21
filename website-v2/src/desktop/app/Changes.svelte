@@ -17,12 +17,12 @@
     const list = { finding: demo.findings, tweak: demo.tweaks, app: demo.apps, startup: demo.startup }[change.kind];
     return list.find((item) => item.id === change.id)!;
   };
-  const entries = $derived([...store.state.applied].reverse());
+  const entries = $derived([...store.undoable].reverse());
 
   let undone = $state<number | null>(null);
 
   async function undoAll() {
-    const count = store.state.applied.length;
+    const count = store.undoable.length;
     await store.undoAll();
     undone = count;
   }

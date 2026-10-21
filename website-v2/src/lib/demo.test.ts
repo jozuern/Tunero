@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildDemo, scenario } from './demo.ts';
-import { checkImpacts, tweak } from './repo.ts';
+import { checkImpacts, inboxAppReinstall, tweak } from './repo.ts';
 
 for (const lang of ['en', 'de'] as const) {
   test(`the scenario resolves in ${lang}`, () => {
@@ -46,4 +46,8 @@ test('an unknown id fails the build', () => {
 test('tweaks carry their category label', () => {
   const suggestions = buildDemo('de').tweaks.find((t) => t.id === 'privacy.suggestionsOff')!;
   assert.equal(suggestions.category, 'Datenschutz');
+});
+
+test('every demo app can be installed again from the Microsoft Store', () => {
+  for (const id of scenario.apps) assert.equal(inboxAppReinstall(id), 'store', id);
 });

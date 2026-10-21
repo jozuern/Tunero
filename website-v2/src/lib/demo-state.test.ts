@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { initial, apply, undo, undoAll, clutter, isActive, serialize, deserialize, allChanges, type Change } from './demo-state.ts';
+import { initial, apply, undo, undoAll, undoable, clutter, isActive, serialize, deserialize, allChanges, type Change } from './demo-state.ts';
 import type { Demo } from './demo.ts';
 
 const item = (id: string, effect: string) => ({ id, title: id, summary: '', impact: 0, basis: 'situational', writes: [], effect });
@@ -69,4 +69,16 @@ test('deserialize falls back to the initial state', () => {
 test('serialize round trip keeps applied, scanned, bootSeen and window', () => {
   const state = { ...apply(initial(), [tweakA]), scanned: true, bootSeen: true, window: 'settings' as const };
   assert.deepEqual(deserialize(serialize(state)), state);
+});
+
+test('undoAll leaves removed apps removed: the app cannot undo a removal, the Store reinstalls', () => {
+  const app: Change = { kind: 'app', id: 'app1' };
+  const result = undoAll(apply(initial(), [tweakA, app, tweakB]));
+  assert.deepEqual(result.steps, [tweakB, tweakA]);
+  assert.deepEqual(result.state.applied, [app]);
+});
+
+test('undoable lists what the Changes page can undo, without removed apps', () => {
+  const app: Change = { kind: 'app', id: 'app1' };
+  assert.deepEqual(undoable(apply(initial(), [tweakA, app])), [tweakA]);
 });

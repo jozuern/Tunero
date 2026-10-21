@@ -57,7 +57,7 @@
   const motion = (node: Element) => fly(node, { x: reducedMotion() ? 0 : 360, duration: reducedMotion() ? 0 : 260, opacity: 0 });
 </script>
 
-<div class="toasts" aria-live="polite">
+<div class="toasts" aria-live="polite" data-anchor="toasts">
   {#each visible as key (key)}
     {@const toast = copy.toasts[key]}
     {@const source = sources.find((s) => s.key === key)!}

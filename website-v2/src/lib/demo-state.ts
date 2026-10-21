@@ -44,9 +44,12 @@ export function apply(state: DemoState, changes: Change[]): DemoState {
 
 export const undo = (state: DemoState, change: Change): DemoState => ({ ...state, applied: state.applied.filter((a) => !same(a, change)) });
 
-/** Undo everything: the end state, and the changes in the order the rewind shows them (newest first). */
+/** What the Changes page can undo: everything but removed apps, which only the Microsoft Store brings back. */
+export const undoable = (state: DemoState) => state.applied.filter((c) => c.kind !== 'app');
+
+/** Undo all: the end state, and the changes in the order the rewind shows them (newest first). Removed apps stay. */
 export function undoAll(state: DemoState): { state: DemoState; steps: Change[] } {
-  return { state: { ...state, applied: [] }, steps: [...state.applied].reverse() };
+  return { state: { ...state, applied: state.applied.filter((c) => c.kind === 'app') }, steps: undoable(state).reverse() };
 }
 
 /** How cluttered the demo PC is: 1 with nothing applied, 0 with everything applied. */

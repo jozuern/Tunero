@@ -36,6 +36,7 @@
         <Icon name="check" size={20} />
         <strong>{item.title}</strong>
         <span>{copy.removed}</span>
+        <button type="button" class="btn" onclick={() => store.undo({ kind: 'app', id: item.id })}>{app.Debloat_Reinstall}</button>
       </li>
     {/each}
   </ul>
