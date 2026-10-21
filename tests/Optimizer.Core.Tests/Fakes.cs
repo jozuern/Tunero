@@ -18,11 +18,11 @@ internal sealed class SandboxRegistry : IRegistryRoots, IDisposable
     {
         // As on a real PC: the Default profile is there only inside a hold.
         if (hive == Hive.DefaultUser && _holds == 0) throw new InvalidOperationException("The Default profile is opened outside a hold.");
-        var full = $@"{_root}\{hive switch { Hive.Machine => "HKLM", Hive.User => "HKU", _ => "HKDEF" }}\{path}";
+        var full = $@"{_root}\{hive switch { Hive.Machine => "HKLM", Hive.User => "HKU", Hive.SignInScreen => "HKUDOT", _ => "HKDEF" }}\{path}";
         return create ? Registry.CurrentUser.CreateSubKey(full, writable) : Registry.CurrentUser.OpenSubKey(full, writable);
     }
 
-    public string DisplayRoot(Hive hive) => hive switch { Hive.Machine => "HKLM", Hive.User => "HKU\\TEST", _ => @"Default\NTUSER.DAT" };
+    public string DisplayRoot(Hive hive) => hive switch { Hive.Machine => "HKLM", Hive.User => "HKU\\TEST", Hive.SignInScreen => @"HKU\.DEFAULT", _ => @"Default\NTUSER.DAT" };
 
     /// <summary>Set to make loading the Default profile fail with this message (regedit has it loaded, the file is missing).</summary>
     public string? LoadFails { get; set; }

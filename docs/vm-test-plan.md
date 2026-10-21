@@ -79,7 +79,7 @@ Add-LocalGroupMember -SID 'S-1-5-32-578' -Member ([Security.Principal.WindowsIde
 
 <!-- Generated from the tweak catalog by DocsConsistencyTests. Do not edit by hand. -->
 
-The tables below cover all 235 catalog tweaks. Preview tweaks are the risky ones; test each of them on its own.
+The tables below cover all 236 catalog tweaks. Preview tweaks are the risky ones; test each of them on its own.
 
 ## 2. Expert and boot-critical tweaks
 
@@ -124,6 +124,7 @@ Preconditions, or there is nothing to change on a clean install: turn on memory 
 | `system.longPaths` | Long file paths | safe | restart | registry | |
 | `security.lsaProtection` | LSA protection on | moderate | restart | registry | |
 | `security.defenderSandbox` | Microsoft Defender in a sandbox | safe | restart | registry | |
+| `personalize.numLockAtSignIn` | Num Lock on at the sign-in screen | safe | restart | registry | |
 | `personalize.desktopThisPc` | This PC icon on the desktop | safe | sign out | registry | |
 | `personalize.titleBarShakeOff` | No minimizing by shaking a window | safe | sign out | registry | |
 | `input.printScreenSnippingOff` | Print Screen copies the screen again | safe | sign out | registry | |

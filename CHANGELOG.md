@@ -4,6 +4,7 @@
 
 ### Added
 
+- **Tweaks:** Num Lock on at the sign-in screen, so a PIN can be typed on the numeric keypad right away (checked at the sign-in screen in the test VM).
 - **Tweaks:** an impact filter (1 or more up to 5, for your profile) and a Select mode: tick several tweaks, then turn them on or undo them with one confirmation each.
 - **Windows install media:** a check box per app group ticks or clears the whole group.
 - **Install & update:** Check for updates asks winget which installed apps have a newer version; Update then shows only where there is one.

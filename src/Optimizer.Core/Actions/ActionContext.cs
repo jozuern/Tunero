@@ -4,9 +4,10 @@ namespace Optimizer.Core.Actions;
 
 /// <summary>
 /// Which registry root an action targets. <see cref="User"/> = the signed-in session user's hive; <see cref="DefaultUser"/> =
-/// the Default profile (C:\Users\Default\NTUSER.DAT), the template Windows copies for every account created later.
+/// the Default profile (C:\Users\Default\NTUSER.DAT), the template Windows copies for every account created later;
+/// <see cref="SignInScreen"/> = HKU\.DEFAULT, the settings Windows uses before anyone signs in (the sign-in screen).
 /// </summary>
-public enum Hive { Machine, User, DefaultUser }
+public enum Hive { Machine, User, DefaultUser, SignInScreen }
 
 /// <summary>Registry roots. Real: HKLM (64-bit view) and HKU\&lt;session SID&gt;. Tests: a sandbox under HKCU.</summary>
 public interface IRegistryRoots

@@ -7,6 +7,3 @@ What is still open for the project. What needs real hardware or another Windows 
 - **winget:** the first version (pull request #450585, `jozuern.Tunero` 0.8.0) is still in review. Chocolatey offers the current version and Scoop's bucket follows every release.
 - **New VM plan rows** (section 1 and 6 of [vm-test-plan.md](vm-test-plan.md)): a failed start after a self-update (needs a signed release newer than the installed one), and the code signing rows with a signed release.
 
-## Checks in the VM
-
-- **Num Lock at sign-in:** left out until a VM run checks it at the sign-in screen (an undocumented value that only shows there).

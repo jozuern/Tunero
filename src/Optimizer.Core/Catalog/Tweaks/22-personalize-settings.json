@@ -39,6 +39,35 @@
       ]
     },
     {
+      "id": "personalize.numLockAtSignIn",
+      "undocumented": true,
+      "category": "Personalize",
+      "impact": {
+        "gaming": 0,
+        "basis": "situational",
+        "effect": [
+          "none"
+        ]
+      },
+      "risk": "safe",
+      "proof": [ "PCO-Test 2026-10-21 (26H2 Pro 26300.9711), checked at the sign-in screen after a restart with keys sent from the host: with 2147483650 the numpad typed three characters into the password box, with the default 2147483648 none, and none again after the value was put back", "winaero.com (Enable NumLock on Logon Screen): 2147483650 for Windows 11 and 10, 2147483648 to undo" ],
+      "restart": true,
+      "actions": [
+        {
+          "type": "registry",
+          "hive": "signInScreen",
+          "path": "Control Panel\\Keyboard",
+          "name": "InitialKeyboardIndicators",
+          "kind": "string",
+          "value": "2147483650"
+        }
+      ],
+      "sources": [
+        "https://winaero.com/enable-numlock-logon-screen-windows-10",
+        "https://learn.microsoft.com/en-us/answers/a/7567804"
+      ]
+    },
+    {
       "id": "personalize.accentTitleBars",
       "undocumented": true,
       "category": "Personalize",

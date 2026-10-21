@@ -28,6 +28,11 @@ public sealed class SystemRegistryRoots(string? userSid) : IRegistryRoots
         {
             root = DefaultProfileHive.OpenRoot(writable);
         }
+        else if (hive == Hive.SignInScreen)
+        {
+            root = RegistryKey.OpenBaseKey(RegistryHive.Users, RegistryView.Registry64).OpenSubKey(".DEFAULT", writable)
+                   ?? throw new InvalidOperationException(@"HKU\.DEFAULT is not loaded.");
+        }
         else
         {
             if (UserSid is null) throw new InvalidOperationException("The signed-in user could not be determined; user settings are not changed.");
@@ -44,6 +49,7 @@ public sealed class SystemRegistryRoots(string? userSid) : IRegistryRoots
     {
         Hive.Machine => "HKLM",
         Hive.DefaultUser => DefaultProfileHive.FilePath() ?? @"Default\NTUSER.DAT",
+        Hive.SignInScreen => @"HKU\.DEFAULT",
         _ => $"HKU\\{UserSid}",
     };
 
