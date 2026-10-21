@@ -52,7 +52,7 @@ public sealed record MediaCommandLineSystem
     /// </summary>
     private static Task CleanLeftoversAsOnlyCopy(CancellationToken ct) => Task.Run(() =>
     {
-        using var instance = SingleInstance.TryAcquire(TimeSpan.Zero, out var heldByOther);
+        using var instance = SingleInstance.TryAcquire(TimeSpan.Zero, out var heldByOther, window: false);
         if (instance is null)
         {
             Log.Info("cli", heldByOther ? "media cleanup left to the open Tunero window" : "media cleanup skipped: no single-instance lock");
@@ -64,7 +64,7 @@ public sealed record MediaCommandLineSystem
         }
         finally
         {
-            instance.ReleaseMutex();
+            instance.Release();
         }
     }, ct);
 }

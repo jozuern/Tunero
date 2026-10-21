@@ -233,6 +233,8 @@ public partial class App : Application
         var scan = vm.ScanAsync();
         var window = new MainWindow(vm);
         MainWindow = window;
+        // A second start of this session finds this window through the single-instance record, whatever the exe is called.
+        window.SourceInitialized += (_, _) => Program.Instance?.ShowsWindow(new System.Windows.Interop.WindowInteropHelper(window).Handle);
         Mark("window built");
         window.ContentRendered += (_, _) => Mark("window drawn");
         ApplyTheme(args.Value("--theme") ?? _settings.Theme, save: false);

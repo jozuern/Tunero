@@ -216,11 +216,24 @@ public sealed class ChangeGateCollection;
 
 internal sealed class FakeShell : IShell
 {
-    public List<(string Text, InfoBarSeverity Severity)> Results { get; } = [];
+    private readonly List<(string Text, InfoBarSeverity Severity)> _results = [];
+
+    /// <summary>What was shown so far (a copy: the update's download progress arrives from other threads).</summary>
+    public List<(string Text, InfoBarSeverity Severity)> Results
+    {
+        get
+        {
+            lock (_results) return [.. _results];
+        }
+    }
+
     public List<string> Links { get; } = [];
     public bool ShutDown { get; private set; }
 
-    public void ShowResult(string text, InfoBarSeverity severity = InfoBarSeverity.Informational) => Results.Add((text, severity));
+    public void ShowResult(string text, InfoBarSeverity severity = InfoBarSeverity.Informational)
+    {
+        lock (_results) _results.Add((text, severity));
+    }
     public void OpenLink(string url) => Links.Add(url);
     public void Shutdown() => ShutDown = true;
 }

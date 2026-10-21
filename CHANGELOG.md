@@ -27,6 +27,8 @@
 - **Startup:** Tunero's own "Apply changes again" task no longer counts as a program that starts with Windows; the counts wait until the signatures are checked.
 - **Lists:** a search that matches nothing says so, Installed programs counts "12 of 134", and Services and Startup name what they are loading.
 - **Settings:** the Start menu switch says why it is off for a Scoop install or a build.
+- **One window, any file name:** starting a copy saved as "Tunero (1).exe" or renamed brings the open Tunero window to the front instead of opening a second one.
+- **Tools' temporary folder:** a renamed copy no longer empties it while another Tunero still uses it.
 
 ## 1.4.0
 

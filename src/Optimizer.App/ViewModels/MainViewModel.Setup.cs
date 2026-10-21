@@ -43,10 +43,8 @@ public sealed partial class MainViewModel
     public string SetupLocationText => Loc.Instance.Format("Setup_Location", SetupFolder);
     public string SetupProgramFilesHint => Loc.Instance.Format("Setup_ProgramFilesHint", SetupFolder);
 
-    private static string InstalledPath => Path.Combine(AppInstall.DefaultFolder, AppInstall.ExeName);
-
     /// <summary>This process runs the copy the setup installed into Program Files.</summary>
-    private static bool RunsInstalled(string? exe) => exe is not null && string.Equals(Path.GetFullPath(exe), InstalledPath, StringComparison.OrdinalIgnoreCase);
+    private static bool RunsInstalled(string? exe) => SetupChecks.IsInstalledCopy(exe, SetupChecks.DefaultInstalledExe);
 
     /// <summary>What the uninstall removes besides the exe when this is the installed copy.</summary>
     private static UninstallService.InstalledCopy? InstalledCopyOf(string? exe) =>
@@ -57,55 +55,20 @@ public sealed partial class MainViewModel
 
     /// <summary>
     /// At start, over the first results: the setup screen for a signed copy run from where it was downloaded, else the
-    /// Start menu question as before. The installed copy refreshes its Installed apps entry (the version after an update).
+    /// Start menu question as before (<see cref="SetupDecision"/>).
     /// </summary>
     public async Task OfferSetupAsync(bool plainStart)
     {
-        var exe = Install.ExePath;
-        if (exe is null || !Install.IsPublishedExe || !Install.Elevated)
+        var choice = await _setup.DecideAsync(plainStart);
+        if (choice.CanInstall is { } canInstall) CanInstall = canInstall;
+        switch (choice.Offer)
         {
-            OfferStartMenuEntry();
-            return;
-        }
-        if (RunsInstalled(exe))
-        {
-            await Task.Run(() => RefreshEntry(exe));
-            OfferStartMenuEntry();
-            return;
-        }
-        // The signature check reads the whole exe (about 70 MB): off the UI thread, and only when the rest allows the install.
-        var (installable, installedHere) = await Task.Run(() =>
-        {
-            var here = TrustedPath.IsAdminOnlyBelowSharedFolders(exe);
-            var packaged = Install.Package is not null;
-            // An older download does not replace a newer installed copy.
-            var downgrade = InstallService.NewerInstalledCopy(MachineRegistry) is not null;
-            return (!here && !packaged && !downgrade && AppInstall.IsTrustedFile(exe), here);
-        });
-        CanInstall = installable;
-        if (AppInstall.ShouldOffer(true, true, plainStart, false, _settings.SetupDeclined, installedHere, installable))
-        {
-            // A change started while the signature was checked: the screen would cover its progress and Stop. It is
-            // offered again at the next start (nothing was declined), and Settings offers it meanwhile.
-            if (ChangeGate.Instance.CanChange) SetupShown = true;
-        }
-        else
-        {
-            OfferStartMenuEntry();
-        }
-    }
-
-    private static void RefreshEntry(string exe)
-    {
-        // The entry's uninstall command runs with administrator rights: only for an exe users cannot replace.
-        if (!TrustedPath.IsAdminOnlyBelowSharedFolders(exe)) return;
-        try
-        {
-            AppInstall.WriteEntry(MachineRegistry, exe, AppInfo.Text, new FileInfo(exe).Length / 1024);
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
-        {
-            Log.Warn("install", $"Installed apps entry not refreshed: {ex.Message}");
+            case SetupOffer.SetupScreen:
+                SetupShown = true;
+                break;
+            case SetupOffer.StartMenuQuestion:
+                OfferStartMenuEntry();
+                break;
         }
     }
 

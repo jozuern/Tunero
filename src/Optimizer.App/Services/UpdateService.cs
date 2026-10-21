@@ -10,9 +10,13 @@ namespace Optimizer.App.Services;
 /// after its signature and SHA-256 are checked, or hands the update to winget, Chocolatey or Scoop. It reaches the
 /// window only through <see cref="IShell"/> and the dialogs; the view model shows its state.
 /// </summary>
-public sealed class UpdateService(InstallFacts install, IDialogs dialogs, IShell shell, Launch? launch = null, Func<Task<ReleaseCheckResult>>? check = null)
+/// <param name="steps">The self-update's download, swap, restart and rollback (tests: a fake server, a test key and a temp folder).</param>
+public sealed class UpdateService(InstallFacts install, IDialogs dialogs, IShell shell, Launch? launch = null, Func<Task<ReleaseCheckResult>>? check = null,
+    UpdateSteps? steps = null)
 {
     private readonly Launch _launch = launch ?? new Launch();
+
+    private readonly UpdateSteps _steps = steps ?? new UpdateSteps();
 
     private readonly Func<Task<ReleaseCheckResult>> _check = check ?? (async () =>
     {
@@ -35,7 +39,7 @@ public sealed class UpdateService(InstallFacts install, IDialogs dialogs, IShell
     /// Self-update only replaces the published single-file exe running elevated, and not a package manager's copy. The
     /// exe's own name does not matter: browsers save a second download as "Tunero (1).exe".
     /// </summary>
-    public bool CanSelfUpdate => UpdateAvailable && Release?.Assets is not null && UpdateSignature.IsConfigured && install.Elevated &&
+    public bool CanSelfUpdate => UpdateAvailable && Release?.Assets is not null && _steps.SignatureConfigured && install.Elevated &&
         install.IsPublishedExe && install.Package is null;
 
     /// <summary>"Update now" is offered: the app replaces its exe, or hands the update to the package manager.</summary>
@@ -108,10 +112,9 @@ public sealed class UpdateService(InstallFacts install, IDialogs dialogs, IShell
         Updating = true;
         try
         {
-            using var updater = new Updater();
             shell.ShowResult(Loc.Instance.Format("Update_Downloading", version, 0));
             var progress = new Progress<int>(p => shell.ShowResult(Loc.Instance.Format("Update_Downloading", version, p)));
-            var download = await updater.DownloadAsync(release, DataPaths.Updates, progress);
+            var download = await _steps.Download(release, progress);
             Log.Info("update", "download", new { download.Outcome, version });
             if (download.Outcome != UpdateOutcome.Ready)
             {
@@ -131,7 +134,7 @@ public sealed class UpdateService(InstallFacts install, IDialogs dialogs, IShell
             }
             try
             {
-                Updater.Install(download.FilePath!, exe);
+                _steps.Install(download.FilePath!, exe);
             }
             catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
             {
@@ -143,7 +146,7 @@ public sealed class UpdateService(InstallFacts install, IDialogs dialogs, IShell
             bool started;
             try
             {
-                started = Updater.StartVerified(exe, download.Sha256!, path =>
+                started = _steps.StartVerified(exe, download.Sha256!, path =>
                 {
                     // Like the start's own restart: no profiler or startup hook from the user's environment in the new process.
                     var start = new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = false };
@@ -157,7 +160,7 @@ public sealed class UpdateService(InstallFacts install, IDialogs dialogs, IShell
             {
                 // The new exe is in place but did not start: antivirus took it away or blocked it (an unsigned exe), or a
                 // program holds it. The running version goes back in its place, so the shortcut still starts something.
-                var rolledBack = Updater.RollBack(exe);
+                var rolledBack = _steps.RollBack(exe);
                 Log.Error("update", $"installed, but the restart failed (previous exe put back: {rolledBack})", ex);
                 shell.ShowResult(Loc.Instance.Format(rolledBack ? "Update_RestartFailedRolledBack" : "Update_RestartFailed", version), InfoBarSeverity.Warning);
                 return;
@@ -165,7 +168,7 @@ public sealed class UpdateService(InstallFacts install, IDialogs dialogs, IShell
             if (!started)
             {
                 // The running version stays in use: it goes back in place of the file that was swapped.
-                var rolledBack = Updater.RollBack(exe);
+                var rolledBack = _steps.RollBack(exe);
                 Log.Error("update", $"the installed exe changed before the restart; not started (previous exe put back: {rolledBack})");
                 shell.ShowResult(Loc.Instance["Update_BadChecksum"], InfoBarSeverity.Warning);
                 return;
@@ -233,4 +236,44 @@ public sealed class UpdateService(InstallFacts install, IDialogs dialogs, IShell
             return false;
         }
     }
+}
+
+/// <summary>
+/// The self-update's steps that reach the network and replace the exe, each one <see cref="Updater"/>'s own: the app uses
+/// these, tests pass a fake server, a test key and a temp folder, or replace a step to make it fail. Nothing here decides
+/// anything; <see cref="UpdateService"/> keeps the order and the messages.
+/// </summary>
+public sealed class UpdateSteps
+{
+    /// <summary>The app's steps: GitHub, the keys built into the app and the data folder's updates folder.</summary>
+    public UpdateSteps() : this(null, null, null)
+    {
+    }
+
+    /// <param name="handler">The HTTP handler the download goes through; null: the real one.</param>
+    /// <param name="publicKeyPem">The key that must have signed the release; null: the keys built into the app.</param>
+    /// <param name="folder">Where the download goes; null: <see cref="DataPaths.Updates"/>, read when the download starts.</param>
+    public UpdateSteps(System.Net.Http.HttpMessageHandler? handler, string? publicKeyPem, string? folder)
+    {
+        Download = async (release, progress) =>
+        {
+            using var updater = new Updater(handler, publicKeyPem);
+            return await updater.DownloadAsync(release, folder ?? DataPaths.Updates, progress);
+        };
+    }
+
+    /// <summary>The app carries a key that releases are signed with (<see cref="UpdateSignature.IsConfigured"/>).</summary>
+    public bool SignatureConfigured { get; init; } = UpdateSignature.IsConfigured;
+
+    /// <summary>Downloads the release exe, its SHA-256 file and signature and checks both (<see cref="Updater.DownloadAsync"/>).</summary>
+    public Func<ReleaseCheckResult, IProgress<int>, Task<UpdateDownload>> Download { get; init; }
+
+    /// <summary>Puts the downloaded exe in place of the running one (<see cref="Updater.Install"/>).</summary>
+    public Action<string, string> Install { get; init; } = Updater.Install;
+
+    /// <summary>Starts the installed exe only with the checked hash (<see cref="Updater.StartVerified"/>).</summary>
+    public Func<string, string, Action<string>, bool> StartVerified { get; init; } = Updater.StartVerified;
+
+    /// <summary>Puts the previous exe back (<see cref="Updater.RollBack"/>).</summary>
+    public Func<string, bool> RollBack { get; init; } = Updater.RollBack;
 }

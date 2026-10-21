@@ -36,7 +36,11 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
     private UsageProfile? _suggested;
     private bool _profileAutoSet;
 
-    public MainViewModel(AppSettings settings, AppServices services, IDialogs dialogs)
+    private readonly SetupDecision _setup;
+
+    /// <param name="setupChecks">What the first start's setup decides by; null: this PC's (<see cref="SetupChecks.ForThisPc"/>).</param>
+    /// <param name="updateSteps">The self-update's download, swap and restart; null: the real ones (<see cref="UpdateSteps"/>).</param>
+    public MainViewModel(AppSettings settings, AppServices services, IDialogs dialogs, SetupChecks? setupChecks = null, UpdateSteps? updateSteps = null)
     {
         _settings = settings;
         _services = services;
@@ -45,7 +49,8 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
         _checkForUpdates = settings.CheckForUpdates;
         Runner = new ChangeRunner(services, dialogs, () => _facts, AppliedIds, () => ExpertMode) { ScanInProgress = () => ScanInProgress };
         Install = InstallFacts.ForThisProcess(services);
-        Updates = new UpdateService(Install, dialogs, this);
+        Updates = new UpdateService(Install, dialogs, this, steps: updateSteps);
+        _setup = new SetupDecision(Install, settings, setupChecks ?? SetupChecks.ForThisPc(MachineRegistry));
         Updates.StateChanged += (_, _) => OnUpdateStateChanged();
         Uninstalls = new UninstallService(Install, dialogs, this, Updates, () => services.Store.All().Count,
             note => Runner.UndoAllAsync(confirm: false, incompleteNote: note), () => StartMenuFolder, DataPaths.Root,

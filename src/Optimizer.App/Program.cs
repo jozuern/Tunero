@@ -57,7 +57,13 @@ public static class Program
         if (DataPaths.MovedFrom is { } oldFolder) Log.Info("app", "data folder moved to the new name", new { from = oldFolder, to = DataPaths.Root });
         // Tools started elevated get an admin-only TEMP instead of the user's (DISM, installers and uninstallers run
         // code from their TEMP).
-        if (DataPaths.ProcessIsElevated) ProcessHardening.UseTempFolder(DataPaths.Temp, empty: !OtherCopyRuns());
+        if (DataPaths.ProcessIsElevated)
+        {
+            // Every elevated copy holds the running copies file (RunningCopies), whatever its exe is called; versions from
+            // before it are still found by this exe's process name.
+            _runningCopies = RunningCopies.Join(out var othersRun);
+            ProcessHardening.UseTempFolder(DataPaths.Temp, empty: !othersRun && !OtherCopyRuns());
+        }
 
         // The handoff from the first process is read once and then cleared: every program this process starts inherits
         // its environment, and a new Tunero (the one an update starts) would take itself for the restarted one and refuse.
@@ -81,7 +87,7 @@ public static class Program
 
         // One window per session: a second plain start shows the open window and ends. After a self-update the new exe
         // waits for the old one to close.
-        Mutex? instance = null;
+        InstanceLock? instance = null;
         if (SingleInstance.Applies(args))
         {
             instance = SingleInstance.TryAcquire(SingleInstance.WaitsForOther(args) ? SingleInstance.UpdateWait : TimeSpan.Zero, out var heldByOther);
@@ -97,7 +103,7 @@ public static class Program
                 Log.Info("app", "the single-instance lock is taken but no other copy runs in this session; starting without it");
             }
         }
-        HoldsInstanceLock = instance is not null;
+        Instance = instance;
         try
         {
             // The embedded catalogs take about 200 ms to read (JSON, and the serializer's first use): read beside WPF's
@@ -110,8 +116,9 @@ public static class Program
         }
         finally
         {
-            instance?.ReleaseMutex();
+            instance?.Release();
             instance?.Dispose();
+            GC.KeepAlive(_runningCopies);
         }
     }
 
@@ -120,7 +127,13 @@ public static class Program
     /// earlier install media builds at start (a second process never does; --build-media takes the lock for its cleanup
     /// alone, so it cleans only while no window of this session runs).
     /// </summary>
-    public static bool HoldsInstanceLock { get; private set; }
+    public static bool HoldsInstanceLock => Instance is not null;
+
+    /// <summary>This process's single-instance lock; the window says through it that it is shown (<see cref="InstanceLock.ShowsWindow"/>).</summary>
+    public static InstanceLock? Instance { get; private set; }
+
+    /// <summary>Held open until the process ends (<see cref="RunningCopies"/>).</summary>
+    private static FileStream? _runningCopies;
 
     /// <summary>The first process's start (UTC) when this one is its restart for the protected runtime folder; for --perf.</summary>
     public static DateTime? LaunchedAt { get; private set; }
@@ -173,7 +186,10 @@ public static class Program
         }
     }
 
-    /// <summary>Another process of this exe's name runs (a second window, a command line run, another account's copy).</summary>
+    /// <summary>
+    /// Another process of this exe's name runs (a second window, a command line run, another account's copy). Only for
+    /// versions from before <see cref="RunningCopies"/>, which finds copies under any name.
+    /// </summary>
     private static bool OtherCopyRuns()
     {
         try
