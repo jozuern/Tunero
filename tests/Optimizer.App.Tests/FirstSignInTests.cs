@@ -234,6 +234,24 @@ public sealed class FirstSignInTests : IDisposable
         Assert.True(Markers.Done);
     }
 
+    /// <summary>The media's apps go with the pending marker to the started copy, which installs them after the profile.</summary>
+    [Fact]
+    public void TheAppsToInstallTravelWithTheMarker()
+    {
+        RunWith(new FirstSignInFile("gaming", "en", "System") { Apps = ["Valve.Steam", "Mozilla.Firefox"] });
+        Assert.True(Markers.TakePending("gaming", Now.AddMinutes(1), out var apps));
+        Assert.Equal(["Valve.Steam", "Mozilla.Firefox"], apps);
+    }
+
+    /// <summary>A list the media page could not have made (edited in the data folder) installs nothing; the profile still applies.</summary>
+    [Fact]
+    public void AppsThePageDoesNotOfferAreNotInstalled()
+    {
+        Assert.True(Markers.SetPending("gaming", Now, ["Contoso.Tool"]));
+        Assert.True(Markers.TakePending("gaming", Now.AddMinutes(1), out var apps));
+        Assert.Empty(apps);
+    }
+
     /// <summary>A start with --first-sign-in-apply but no pending marker (typed by hand, a shortcut) opens normally and applies nothing.</summary>
     [Fact]
     public void WithoutAPendingMarkerNothingIsApplied()

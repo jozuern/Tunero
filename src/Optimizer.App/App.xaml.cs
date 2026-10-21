@@ -279,11 +279,12 @@ public partial class App : Application
             // The first sign-in after an install from Tunero's media (FirstSignInStart): no setup screen or Start menu question;
             // the profile's recommendations are applied and Changes shows them. Only once, and only when --first-sign-in left
             // its pending marker: any other start with the switch opens normally and applies nothing.
-            var firstSignIn = args.Value(FirstSignInStart.ApplySwitch) is { } pending && FirstSignInStart.TakePending(pending) ? pending : null;
+            IReadOnlyList<string> firstSignInApps = [];
+            var firstSignIn = args.Value(FirstSignInStart.ApplySwitch) is { } pending && FirstSignInStart.TakePending(pending, out firstSignInApps) ? pending : null;
             if (args.Has(SingleInstance.Uninstall)) vm.UninstallCommand.Execute(null);
             else if (args.Value(InstallService.InstalledFrom) is { } oldExe) vm.FinishInstallAsync(oldExe, report: firstSignIn is null).Forget("finish install");
             else if (firstSignIn is null) vm.OfferSetupAsync(SingleInstance.Applies(e.Args)).Forget("setup");
-            if (firstSignIn is not null) vm.FirstSignInApplyAsync(firstSignIn).Forget("first sign-in");
+            if (firstSignIn is not null) vm.FirstSignInApplyAsync(firstSignIn, firstSignInApps).Forget("first sign-in");
             OfferErrorReport(lastSession: true);
             vm.CheckForUpdatesAsync(atStart: true).Forget("update check");
             // What killed or crashed install media builds left (work folders at drive roots, mounted images): only the

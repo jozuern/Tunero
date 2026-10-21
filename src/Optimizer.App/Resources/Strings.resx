@@ -1889,4 +1889,49 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Apps_DevToolsSummary" xml:space="preserve"><value>Developer tools: {0}</value></data>
   <data name="Apps_HowChocoTooOld" xml:space="preserve"><value>This version is older than 2.1.0. Tunero runs Chocolatey only with its download cache ignored, an option that came with 2.1.0, because users can add files to that cache. Update Chocolatey with choco upgrade chocolatey in an administrator terminal.</value></data>
   <data name="Apps_ManagersHintNoStore" xml:space="preserve"><value>Update all apps runs the ones marked as included, one after the other. Each one downloads from its own sources.</value></data>
+  <data name="Media_InstallTitle" xml:space="preserve">
+    <value>Install apps</value>
+  </data>
+  <data name="Media_InstallText" xml:space="preserve">
+    <value>At the first sign-in, after the profile, Tunero installs the apps you tick with winget, from the same list as Install &amp; update. The new PC needs the internet then; apps it cannot install are named in the result and can be installed on Install &amp; update later. Apps that install for one user only (such as Discord or Spotify) are not listed: install them on Install &amp; update.</value>
+  </data>
+  <data name="Media_InstallNeedsProfile" xml:space="preserve">
+    <value>Needs Tunero on the ISO: turn on the profile above.</value>
+  </data>
+  <data name="Media_InstallSummary" xml:space="preserve">
+    <value>Apps to install: {0}</value>
+  </data>
+  <data name="Media_ExpertTitle" xml:space="preserve">
+    <value>Expert options</value>
+  </data>
+  <data name="Media_ExpertText" xml:space="preserve">
+    <value>Changes for people who know what they do. Each one can leave the new PC without something it needs.</value>
+  </data>
+  <data name="Media_UnreviewedTitle" xml:space="preserve">
+    <value>Remove apps that were not reviewed</value>
+  </data>
+  <data name="Media_UnreviewedText" xml:space="preserve">
+    <value>Other apps your ISO's edition holds, beyond the reviewed list. Nobody checked what they do: remove only apps you know, because a program or a device may need one. Parts of Windows and what games and the Store need are never listed.</value>
+  </data>
+  <data name="Media_UnreviewedRow" xml:space="preserve">
+    <value>Not reviewed: nobody checked what this app does.</value>
+  </data>
+  <data name="Media_UnreviewedDownload" xml:space="preserve">
+    <value>Only for your own ISO: Tunero reads the download's apps only while it builds.</value>
+  </data>
+  <data name="Media_UnreviewedNone" xml:space="preserve">
+    <value>Your ISO's edition holds no apps beyond the reviewed list.</value>
+  </data>
+  <data name="Media_UnreviewedFound" xml:space="preserve">
+    <value>Apps beyond the reviewed list in your ISO's edition: {0}</value>
+  </data>
+  <data name="Media_FirstSignInInstalling" xml:space="preserve">
+    <value>Installing {0}</value>
+  </data>
+  <data name="Media_FirstSignInAppsDone" xml:space="preserve">
+    <value>Apps installed: {0}.</value>
+  </data>
+  <data name="Media_FirstSignInAppsMissing" xml:space="preserve">
+    <value>Not installed: {0}. Install them on Install &amp; update once the PC is online.</value>
+  </data>
 </root>

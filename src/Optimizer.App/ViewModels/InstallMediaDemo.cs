@@ -35,7 +35,7 @@ internal static class InstallMediaDemo
             var fail = _runs++ == 0;
             foreach (var stage in new[] { MediaStage.Download, MediaStage.Check, MediaStage.Unpack, MediaStage.Apps, MediaStage.Files, MediaStage.Iso, MediaStage.Verify })
             {
-                if (stage == MediaStage.Apps && request.RemoveApps.Count == 0) continue;
+                if (stage == MediaStage.Apps && request.RemoveApps.Count == 0 && request.RemoveUnreviewed.Count == 0) continue;
                 progress.Report(new MediaProgress(stage, null, null));
                 for (var percent = 0; percent <= 100; percent += 25)
                 {

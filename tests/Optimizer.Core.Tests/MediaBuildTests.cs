@@ -288,6 +288,42 @@ public sealed class MediaBuildTests : IDisposable
     }
 
     [Fact]
+    public async Task UnreviewedAppsAreRemovedByTheirExactName()
+    {
+        _steps.Dism.Provisioned =
+        [
+            "Contoso.Notes_1.2.0.0_x64__abcdefghijklm",
+            "Contoso.NotesHelper_1.0.0.0_x64__abcdefghijklm",
+            "Microsoft.WindowsStore_22510.1401.5.0_neutral_~_8wekyb3d8bbwe",
+        ];
+        await Run(Download() with { RemoveUnreviewed = ["Contoso.Notes"] });
+        Assert.Equal(["Remove Contoso.Notes_1.2.0.0_x64__abcdefghijklm"], _steps.Calls.Where(c => c.StartsWith("Remove", StringComparison.Ordinal)));
+        Assert.Contains("Unmount commit", _steps.Calls);
+    }
+
+    [Theory]
+    [InlineData("Microsoft.BingNews")]
+    [InlineData("Microsoft.WindowsStore")]
+    [InlineData("MicrosoftWindows.Client.CBS")]
+    [InlineData("x'; Remove-Item C:\\")]
+    public async Task UnreviewedAppsFollowTheRulesOfRemoveApps(string name)
+    {
+        // The reviewed list, protected apps, parts of Windows and anything but a package name are refused.
+        await Assert.ThrowsAsync<ArgumentException>(() => Run(Download() with { RemoveUnreviewed = [name] }));
+        Assert.Empty(_steps.Calls);
+    }
+
+    [Fact]
+    public async Task AppsToInstallReachTheFirstSignInFile()
+    {
+        var id = MediaChoices.InstallableApps(CatalogData.Current.Apps).First().Id;
+        var request = WithTunero(Download()) with { FirstSignIn = First with { Apps = [id] } };
+        await Run(request);
+        var written = Encoding.UTF8.GetString(_steps.IsoContents[@"sources\$OEM$\$$\Setup\Tunero\first-sign-in.json"]);
+        Assert.Contains(id, written, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task NoAppsMeansNoInstallWimMount()
     {
         await Run(Download());

@@ -11,6 +11,9 @@
 - **Services & tasks:** scheduled tasks have a search box.
 - **Ignore a recommendation:** a recommended tweak, or one flagged as working against your profile, can be ignored in its details or with the eye on its Overview line. It is then neither recommended nor applied in any profile, also not by `--apply-recommended`, and waits under "Ignored recommendations" on the Tweaks page with Stop ignoring.
 
+- **Windows install media:** Install apps: tick apps from the Install & update list, and the copied Tunero installs them with winget at the first sign-in, after the profile (the new PC needs the internet then; the result names any that were not installed).
+- **Windows install media:** an Expert options section with Allow unsupported PCs and, for your own ISO, the apps of its edition beyond the reviewed list, to remove with a warning as on Remove apps.
+
 ### Changed
 
 - **Remove apps:** the Microsoft Edge card says whether Windows lets you remove Edge on this PC (set up with a region in the European Economic Area or Switzerland) and opens Installed apps, where Windows removes it. Apps that show web content keep working: WebView2 is a separate program and stays, unlike what the old note said.

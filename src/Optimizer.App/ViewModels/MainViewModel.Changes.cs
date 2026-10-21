@@ -81,13 +81,16 @@ public sealed partial class MainViewModel
     /// was made, the pages read the PC again and Changes opens with the result (also after an error, with what was applied
     /// listed there), and each change can be undone there. Without a scan, with a profile this PC does not offer (a laptop
     /// profile on a desktop) or while another change runs, nothing is applied and the message says so.
+    /// After the profile, in the same run, the <paramref name="apps"/> the media named are installed with winget one after
+    /// the other (<see cref="InstallFirstSignInAppsAsync"/>); the result names those that were not.
     /// </summary>
-    public async Task FirstSignInApplyAsync(string profileId)
+    public async Task FirstSignInApplyAsync(string profileId, IReadOnlyList<string>? apps = null)
     {
+        apps ??= [];
         if (ScanFailed || Profile is null)
         {
             Log.Warn("firstsignin", "the first scan failed: nothing applied");
-            ShowResult(Loc.Instance["Media_FirstSignInScanFailed"], InfoBarSeverity.Error);
+            ShowResult(WithApps(Loc.Instance["Media_FirstSignInScanFailed"], [], apps), InfoBarSeverity.Error);
             return;
         }
         var known = _catalog.Profiles.Profiles.FirstOrDefault(p => p.Id == profileId);
@@ -95,6 +98,7 @@ public sealed partial class MainViewModel
         RecommendedSelection? plan = null;
         BatchOutcome? outcome = null;
         Exception? error = null;
+        IReadOnlyList<string> installed = [];
         var ran = await Runner.RunExclusiveAsync("first sign-in", Loc.Instance.Format("Media_FirstSignInTitle", name), async work =>
         {
             try
@@ -114,19 +118,23 @@ public sealed partial class MainViewModel
                 Log.Error("firstsignin", "the first sign-in stopped with an error", ex);
                 error = ex;
             }
+            // The apps do not depend on the profile: they are installed also when it was not offered or stopped.
+            if (apps.Count > 0) installed = await InstallFirstSignInAppsAsync(apps, work);
         });
         if (!ran)
         {
             // Another change or an update ran (the runner said so): nothing was applied.
             Log.Warn("firstsignin", "another change was running: nothing applied", new { profileId });
-            ShowResult(Loc.Instance["Media_FirstSignInBusy"], InfoBarSeverity.Warning);
+            ShowResult(WithApps(Loc.Instance["Media_FirstSignInBusy"], [], apps), InfoBarSeverity.Warning);
             return;
         }
+        var appsMissing = installed.Count < apps.Count;
         if (plan is null)
         {
             Log.Warn("firstsignin", error is null ? "the profile is not offered on this PC: nothing applied" : "the scan failed: nothing applied", new { profileId });
-            ShowResult(error is null ? Loc.Instance.Format("Media_FirstSignInNoProfile", name) : Loc.Instance["Media_FirstSignInScanFailed"],
+            ShowResult(WithApps(error is null ? Loc.Instance.Format("Media_FirstSignInNoProfile", name) : Loc.Instance["Media_FirstSignInScanFailed"], installed, apps),
                 error is null ? InfoBarSeverity.Warning : InfoBarSeverity.Error);
+            if (installed.Count > 0) Runner.NotifyChanged(null);
             return;
         }
         string text;
@@ -142,14 +150,60 @@ public sealed partial class MainViewModel
             Log.Info("firstsignin", "profile applied", new { profileId, done.Applied, done.Failed, done.Skipped, inApp = plan.InApp.Count });
             text = Loc.Instance.Format("Media_FirstSignInDone", ProfileName(plan.Profile), done.Applied, done.Failed, done.Skipped + plan.InApp.Count);
             if (done.BackupsNotUpdated) text = $"{text} {Loc.Instance["Result_BackupsNotUpdated"]}";
-            severity = done.Failed > 0 || done.BackupsNotUpdated ? InfoBarSeverity.Warning : InfoBarSeverity.Success;
+            severity = done.Failed > 0 || done.BackupsNotUpdated || appsMissing ? InfoBarSeverity.Warning : InfoBarSeverity.Success;
         }
+        text = WithApps(text, installed, apps);
         // Changes shows what was applied; the result stays open (also when the rescan after the change shows it again), and
         // the change event lets every page read the PC again, as after Apply recommended.
         CurrentPage = Page.Changes;
         _stickyResult = text;
         ShowResult(text, severity);
         Runner.NotifyChanged(null);
+    }
+
+    /// <summary>
+    /// Installs the media's apps with the trusted winget (<see cref="Optimizer.Core.Apps.Winget.FindTrusted()"/>), machine-wide and one after the
+    /// other, with the banner naming each. Returns the ids winget installed; the others are logged with winget's code. Needs
+    /// the internet: offline every one fails, and the result says where to install them later.
+    /// </summary>
+    private async Task<IReadOnlyList<string>> InstallFirstSignInAppsAsync(IReadOnlyList<string> apps, WorkProgress.Scope work)
+    {
+        var done = new List<string>();
+        var winget = await Task.Run(Optimizer.Core.Apps.Winget.FindTrusted);
+        if (winget is null)
+        {
+            Log.Warn("firstsignin", "winget was not found: no app installed", new { apps });
+            return done;
+        }
+        var offered = Optimizer.Core.Media.MediaChoices.InstallableApps(_catalog.Apps).ToList();
+        for (var i = 0; i < apps.Count; i++)
+        {
+            if (offered.FirstOrDefault(a => a.Id == apps[i]) is not { } app) continue;
+            work.Step(i, apps.Count, Loc.Instance.Format("Media_FirstSignInInstalling", app.Name));
+            try
+            {
+                var code = await Optimizer.Core.Apps.Winget.InstallAsync(winget, app, null, CancellationToken.None);
+                if (Optimizer.Core.Apps.Winget.IsSuccess(code)) done.Add(app.Id);
+                else Log.Warn("firstsignin", $"{app.Id} not installed: winget 0x{code:X8}");
+            }
+            catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or System.IO.IOException or InvalidOperationException)
+            {
+                Log.Warn("firstsignin", $"{app.Id} not installed: {ex.Message}");
+            }
+        }
+        Log.Info("firstsignin", "apps installed", new { installed = done, asked = apps });
+        return done;
+    }
+
+    /// <summary>The first sign-in's result with what became of the media's apps: those installed, and those that were not.</summary>
+    private string WithApps(string text, IReadOnlyList<string> installed, IReadOnlyList<string> apps)
+    {
+        if (apps.Count == 0) return text;
+        string Names(IEnumerable<string> ids) => string.Join(", ", ids.Select(id => _catalog.Apps.Apps.FirstOrDefault(a => a.Id == id)?.Name ?? id));
+        if (installed.Count > 0) text = $"{text} {Loc.Instance.Format("Media_FirstSignInAppsDone", Names(installed))}";
+        var missing = apps.Where(a => !installed.Contains(a)).ToList();
+        if (missing.Count > 0) text = $"{text} {Loc.Instance.Format("Media_FirstSignInAppsMissing", Names(missing))}";
+        return text;
     }
 
     [RelayCommand(CanExecute = nameof(CanChange))]

@@ -1,4 +1,5 @@
 using System.Globalization;
+using Optimizer.Core.Apps;
 using Optimizer.Core.Debloat;
 using Optimizer.Core.Platform;
 
@@ -30,6 +31,15 @@ public sealed record MediaChoices(
     TuneroCopy? Tunero,
     string OutputIso)
 {
+    /// <summary>
+    /// Expert: apps of the own ISO's image that the reviewed list does not cover (<see cref="UnreviewedApps"/>), by package
+    /// name, removed like the ticked ones.
+    /// </summary>
+    public IReadOnlyList<string> RemoveUnreviewed { get; init; } = [];
+
+    /// <summary>Apps of the app catalog (ids) the copied Tunero installs with winget at the first sign-in; needs <see cref="Tunero"/>.</summary>
+    public IReadOnlyList<string> InstallApps { get; init; } = [];
+
     /// <summary>The answer file's architecture: x64 media only in this version.</summary>
     public const string Architecture = "amd64";
 
@@ -60,6 +70,20 @@ public sealed record MediaChoices(
         var names = imageApps.Select(p => p.Split('_')[0]).ToList();
         return OfferedApps(appx).Where(a => names.Any(a.Matches));
     }
+
+    /// <summary>
+    /// The apps of an own ISO's image (full package names) that the reviewed list does not cover, as on Remove apps
+    /// (<see cref="DebloatService.Unreviewed"/>): not protected, not a part of Windows or of what games need. By package name.
+    /// </summary>
+    public static IReadOnlyList<string> UnreviewedApps(AppxCatalog appx, IReadOnlyCollection<string> imageApps) =>
+        DebloatService.Unreviewed(appx, imageApps.Select(p => p.Split('_')[0]).Distinct(StringComparer.OrdinalIgnoreCase)
+            .Select(name => new InstalledAppx(name, "", "", false))).Select(a => a.Name).ToList();
+
+    /// <summary>
+    /// The apps the first sign-in can install: the app catalog's machine-wide ones. Per-user installers run as the signed-in
+    /// user in a window of their own, and nothing can wait for them there; they stay on Install &amp; update.
+    /// </summary>
+    public static IEnumerable<AppEntry> InstallableApps(AppCatalog apps) => apps.Apps.Where(a => a.Scope == "machine" && Winget.IsSafeId(a.Id));
 
     /// <summary>Ticked when the page opens (and what a request file's "consumer" means): the consumer group.</summary>
     public static bool ChosenByDefault(AppxEntry app) => app.Group == "consumer";
@@ -94,8 +118,8 @@ public sealed record MediaChoices(
             : CultureName(IsoLanguage, CultureName(WindowsLanguage(AppLanguage), FallbackRegion));
         var answers = new AnswerChoices(Architecture, uiLanguage, Keyboard ?? FallbackKeyboard, MediaLocales.SystemLocale(region), region,
             SkipSetup ? AccountName?.Trim() : null, SkipSetup, AllowUnsupported, Tunero is not null);
-        var first = Tunero is { } copy ? new FirstSignInFile(copy.Profile, AppLanguage, copy.Theme) : null;
-        return new MediaRequest(Source, Edition, IsoIndex, RemoveApps, answers, Tunero?.Exe, first, OutputIso);
+        var first = Tunero is { } copy ? new FirstSignInFile(copy.Profile, AppLanguage, copy.Theme) { Apps = InstallApps.Count > 0 ? InstallApps : null } : null;
+        return new MediaRequest(Source, Edition, IsoIndex, RemoveApps, answers, Tunero?.Exe, first, OutputIso) { RemoveUnreviewed = RemoveUnreviewed };
     }
 
     /// <summary>A language tag as Windows writes it ("de-DE"), or <paramref name="fallback"/> for one .NET does not know.</summary>

@@ -25,7 +25,8 @@ public sealed class MediaRequestFileException(string field, string reason) : For
 /// { "source": "download" or "C:\\path\\Win11.iso", "language": "de-de" (download only), "edition": "Professional",
 ///   "removeApps": "consumer" or ["Microsoft.BingNews", ...], "skipSetup": { "accountName": "Anna", "region": "de-AT",
 ///   "keyboard": "0407:00000407" } or null, "profile": "gaming" or null, "allowUnsupported": false, "output": "C:\\out\\Win11.iso",
-///   optional: "appLanguage": "en" or "de", "theme": "System", "Light" or "Dark" (absent or null: the app's) }
+///   optional: "appLanguage": "en" or "de", "theme": "System", "Light" or "Dark" (absent or null: the app's),
+///   "installApps": ["Mozilla.Firefox", ...] (app catalog ids, needs a profile), "removeUnreviewed": ["Contoso.App", ...] }
 /// </code>
 /// </summary>
 public sealed record MediaRequestFile(
@@ -40,12 +41,18 @@ public sealed record MediaRequestFile(
     string? AppLanguage = null,
     string? Theme = null)
 {
+    /// <summary>App catalog ids the first sign-in installs (<see cref="MediaChoices.InstallApps"/>).</summary>
+    public IReadOnlyList<string> InstallApps { get; init; } = [];
+
+    /// <summary>Package names outside the reviewed list (<see cref="MediaChoices.RemoveUnreviewed"/>).</summary>
+    public IReadOnlyList<string> RemoveUnreviewed { get; init; } = [];
+
     public const string Download = "download";
 
     /// <summary>"consumer" in removeApps: the apps the page ticks when it opens.</summary>
     public const string DefaultApps = "consumer";
 
-    private static readonly string[] Fields = ["source", "language", "edition", "removeApps", "skipSetup", "profile", "allowUnsupported", "output", "appLanguage", "theme"];
+    private static readonly string[] Fields = ["source", "language", "edition", "removeApps", "skipSetup", "profile", "allowUnsupported", "output", "appLanguage", "theme", "installApps", "removeUnreviewed"];
     private static readonly string[] AppLanguages = ["en", "de"];
     private static readonly string[] Themes = ["System", "Light", "Dark"];
     private static readonly string[] SetupFields = ["accountName", "region", "keyboard"];
@@ -119,8 +126,16 @@ public sealed record MediaRequestFile(
         if (!download && Same(Path.GetFullPath(source), Path.GetFullPath(output)))
             throw new MediaRequestFileException("output", "is the source ISO itself");
 
+        var install = Names(root, "installApps", id => MediaChoices.InstallableApps(CatalogData.Current.Apps).FirstOrDefault(a => a.Id == id)?.Id,
+            "is not a machine-wide app of the app catalog (apps.json)");
+        if (install.Count > 0 && profile is null) throw new MediaRequestFileException("installApps", "needs a profile: the copied Tunero installs them at the first sign-in");
+        var appx = CatalogData.Current.Appx;
+        var unreviewed = Names(root, "removeUnreviewed",
+            name => Debloat.DebloatService.IsSafeName(name) && !appx.Apps.Any(a => a.Matches(name)) && !appx.IsProtected(name) && !appx.IsUnreviewedExcluded(name) ? name : null,
+            "is in the reviewed list, protected, a part of Windows or not a package name");
+
         return new MediaRequestFile(source, language, edition, apps, setup, profile, unsupported.GetBoolean(), output,
-            Optional(root, "appLanguage", AppLanguages), Optional(root, "theme", Themes));
+            Optional(root, "appLanguage", AppLanguages), Optional(root, "theme", Themes)) { InstallApps = install, RemoveUnreviewed = unreviewed };
     }
 
     /// <summary>
@@ -146,7 +161,11 @@ public sealed record MediaRequestFile(
             source = new MediaSource(null, Source, null);
         }
         return new MediaChoices(source, Edition, null, null, AppLanguage ?? appLanguage, RemoveApps, SkipSetup is not null, SkipSetup?.AccountName,
-            SkipSetup?.Region, SkipSetup?.Keyboard, AllowUnsupported, Profile is { } profile ? new TuneroCopy(tuneroExe!, profile, Theme ?? theme) : null, Output);
+            SkipSetup?.Region, SkipSetup?.Keyboard, AllowUnsupported, Profile is { } profile ? new TuneroCopy(tuneroExe!, profile, Theme ?? theme) : null, Output)
+        {
+            InstallApps = InstallApps,
+            RemoveUnreviewed = RemoveUnreviewed,
+        };
     }
 
     /// <summary>A profile needs the Tunero copy: <paramref name="tuneroExe"/> is the published exe, or null for any other build.</summary>
@@ -171,6 +190,22 @@ public sealed record MediaRequestFile(
             var app = offered.FirstOrDefault(a => Same(a.Name, name))
                       ?? throw new MediaRequestFileException("removeApps", $"{name} is not in the app list the page offers (appx.json, without protected apps)");
             if (!names.Contains(app.Name)) names.Add(app.Name);
+        }
+        return names;
+    }
+
+    /// <summary>An optional list of names: absent or null gives none; <paramref name="check"/> returns the name to keep, or null to refuse it.</summary>
+    private static IReadOnlyList<string> Names(JsonElement obj, string field, Func<string, string?> check, string refused)
+    {
+        if (!obj.TryGetProperty(field, out var value) || value.ValueKind == JsonValueKind.Null) return [];
+        if (value.ValueKind != JsonValueKind.Array) throw new MediaRequestFileException(field, "must be a list of strings ([] for none) or null");
+        var names = new List<string>();
+        foreach (var item in value.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.String) throw new MediaRequestFileException(field, "every entry must be a string");
+            var name = item.GetString()!;
+            var kept = check(name) ?? throw new MediaRequestFileException(field, $"{name} {refused}");
+            if (!names.Contains(kept, StringComparer.OrdinalIgnoreCase)) names.Add(kept);
         }
         return names;
     }

@@ -192,6 +192,90 @@
                 </WrapPanel>
             </ui:CardExpander>
 
+            <!-- Apps the copied Tunero installs with winget at the first sign-in: needs the profile card's Tunero copy -->
+            <ui:CardExpander Margin="{StaticResource CardRowMargin}" HorizontalContentAlignment="Stretch" IsExpanded="{Binding InstallMedia.ExpandOptions, Mode=OneWay}" IsEnabled="{Binding InstallMedia.CanEdit}">
+                <ui:CardExpander.Header>
+                    <DockPanel Margin="0,4">
+                        <ui:ToggleSwitch DockPanel.Dock="Right" IsChecked="{Binding InstallMedia.InstallApps}" IsEnabled="{Binding InstallMedia.CanInstallApps}"
+                                         AutomationProperties.Name="{l:Tr Media_InstallTitle}" Margin="16,0,12,0" />
+                        <ui:TextBlock DockPanel.Dock="Right" Style="{StaticResource Caption}" Text="{Binding InstallMedia.InstallSummary}" VerticalAlignment="Center" Margin="16,0,0,0" />
+                        <StackPanel>
+                            <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Media_InstallTitle}" />
+                            <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Media_InstallText}" Margin="0,4,0,0" />
+                            <ui:TextBlock FontTypography="Caption" Text="{Binding InstallMedia.InstallNote}" TextWrapping="Wrap" Margin="0,4,0,0"
+                                          Foreground="{DynamicResource SystemFillColorCautionBrush}" Visibility="{Binding InstallMedia.InstallNote, Converter={StaticResource NullToVisibility}}" />
+                        </StackPanel>
+                    </DockPanel>
+                </ui:CardExpander.Header>
+                <v:ItemList ItemsSource="{Binding InstallMedia.InstallGroups}">
+                    <v:ItemList.IsEnabled>
+                        <MultiBinding Converter="{StaticResource AllTrue}">
+                            <Binding Path="InstallMedia.InstallApps" />
+                            <Binding Path="InstallMedia.CanInstallApps" />
+                        </MultiBinding>
+                    </v:ItemList.IsEnabled>
+                    <v:ItemList.ItemTemplate>
+                        <DataTemplate>
+                            <Expander IsExpanded="{Binding IsExpanded}" Margin="0,0,0,4" HorizontalContentAlignment="Stretch" AutomationProperties.Name="{Binding Title}">
+                                <Expander.Header>
+                                    <DockPanel>
+                                        <CheckBox DockPanel.Dock="Left" IsChecked="{Binding AllChecked}" MinWidth="0" Margin="0,0,8,0" VerticalAlignment="Center"
+                                                  AutomationProperties.Name="{Binding AllCheckedLabel}" ToolTip="{Binding AllCheckedLabel}" />
+                                        <ui:TextBlock DockPanel.Dock="Right" Style="{StaticResource Caption}" Text="{Binding Summary}" VerticalAlignment="Center" Margin="16,0,8,0" />
+                                        <ui:TextBlock FontTypography="BodyStrong" Text="{Binding Title}" VerticalAlignment="Center" />
+                                    </DockPanel>
+                                </Expander.Header>
+                                <v:ItemList ItemsSource="{Binding Rows}">
+                                    <v:ItemList.ItemTemplate>
+                                        <DataTemplate>
+                                            <CheckBox IsChecked="{Binding IsChecked}" Margin="0,4" AutomationProperties.Name="{Binding Title}" ToolTip="{Binding Note}">
+                                                <StackPanel>
+                                                    <ui:TextBlock FontTypography="Body" Text="{Binding Title}" />
+                                                    <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding Text}" />
+                                                </StackPanel>
+                                            </CheckBox>
+                                        </DataTemplate>
+                                    </v:ItemList.ItemTemplate>
+                                </v:ItemList>
+                            </Expander>
+                        </DataTemplate>
+                    </v:ItemList.ItemTemplate>
+                </v:ItemList>
+            </ui:CardExpander>
+
+            <!-- Expert: changes that need knowing what they do -->
+            <ui:TextBlock Style="{StaticResource SectionHeader}" Text="{l:Tr Media_ExpertTitle}" />
+            <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Media_ExpertText}" Margin="0,0,0,8" />
+            <ui:CardExpander Margin="{StaticResource CardRowMargin}" HorizontalContentAlignment="Stretch" IsExpanded="{Binding InstallMedia.ExpandOptions, Mode=OneWay}" IsEnabled="{Binding InstallMedia.CanEdit}">
+                <ui:CardExpander.Header>
+                    <DockPanel Margin="0,4">
+                        <ui:ToggleSwitch DockPanel.Dock="Right" IsChecked="{Binding InstallMedia.RemoveUnreviewed}" IsEnabled="{Binding InstallMedia.UseIso}"
+                                         AutomationProperties.Name="{l:Tr Media_UnreviewedTitle}" Margin="16,0,12,0" />
+                        <ui:TextBlock DockPanel.Dock="Right" Style="{StaticResource Caption}" Text="{Binding InstallMedia.UnreviewedSummary}" VerticalAlignment="Center" Margin="16,0,0,0" />
+                        <ui:SymbolIcon DockPanel.Dock="Left" Symbol="Warning24" Foreground="{DynamicResource SystemFillColorCautionBrush}" Margin="0,0,16,0" VerticalAlignment="Center" />
+                        <StackPanel>
+                            <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Media_UnreviewedTitle}" />
+                            <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Media_UnreviewedText}" Margin="0,4,0,0" />
+                        </StackPanel>
+                    </DockPanel>
+                </ui:CardExpander.Header>
+                <StackPanel>
+                    <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding InstallMedia.UnreviewedSourceText}" TextWrapping="Wrap" Margin="0,0,0,8" />
+                    <v:ItemList ItemsSource="{Binding InstallMedia.UnreviewedRows}" IsEnabled="{Binding InstallMedia.RemoveUnreviewed}">
+                        <v:ItemList.ItemTemplate>
+                            <DataTemplate>
+                                <CheckBox IsChecked="{Binding IsChecked}" Margin="0,4" AutomationProperties.Name="{Binding Title}">
+                                    <StackPanel>
+                                        <ui:TextBlock FontTypography="Body" Text="{Binding Title}" />
+                                        <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding Text}" />
+                                    </StackPanel>
+                                </CheckBox>
+                            </DataTemplate>
+                        </v:ItemList.ItemTemplate>
+                    </v:ItemList>
+                </StackPanel>
+            </ui:CardExpander>
+
             <ui:CardControl Padding="{StaticResource CardPadding}" Margin="{StaticResource CardRowMargin}" IsEnabled="{Binding InstallMedia.CanEdit}">
                 <ui:CardControl.Header>
                     <StackPanel>

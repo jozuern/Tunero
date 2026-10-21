@@ -34,8 +34,9 @@ public enum FirstSignInOutcome
 /// this start shows nothing and ends quickly: it saves the language, theme and profile chosen on the media, leaves a
 /// pending marker (<see cref="FirstSignInMarkers"/>), installs the exe into Program Files with its Start menu entry
 /// (<see cref="AppInstall"/>, as the first start's setup does; a newer installed copy is kept), and starts the installed
-/// copy with <see cref="ApplySwitch"/> and <see cref="InstallService.InstalledFrom"/>. That copy takes the marker, opens its
-/// window, applies the profile's recommendations and removes the setup folder
+/// copy with <see cref="ApplySwitch"/> and <see cref="InstallService.InstalledFrom"/>. That copy takes the marker (with the
+/// apps to install, if the media named any), opens its window, applies the profile's recommendations, installs those apps
+/// and removes the setup folder
 /// (<see cref="InstallService.RemoveOldCopy(string, string)"/>). When the copy cannot be installed, this exe is started
 /// again with the profile from where it is. It runs once: after the apply, a later --first-sign-in does nothing. Every
 /// failure is logged and ends the run: Windows always goes on to the desktop.
@@ -61,7 +62,8 @@ public static class FirstSignInStart
     /// --first-sign-in-apply in the started copy: true when the pending marker for <paramref name="profileId"/> was there
     /// (it is used up now, so the apply runs once); false for any other start, which opens normally and applies nothing.
     /// </summary>
-    public static bool TakePending(string profileId) => new FirstSignInMarkers(DataPaths.Root).TakePending(profileId, DateTime.UtcNow);
+    public static bool TakePending(string profileId, out IReadOnlyList<string> apps) =>
+        new FirstSignInMarkers(DataPaths.Root).TakePending(profileId, DateTime.UtcNow, out apps);
 
     /// <summary>The run for a file already read and trusted (tests pass one, their own markers, and no <paramref name="useLanguage"/>).</summary>
     /// <param name="useLanguage">Switches the app's language to the file's (the Start menu entry's description is in it).</param>
@@ -73,9 +75,9 @@ public static class FirstSignInStart
             Log.Info("firstsignin", "this PC was set up at its first sign-in already: nothing done", new { exe });
             return FirstSignInOutcome.AlreadyDone;
         }
-        Log.Info("firstsignin", "setting up this PC", new { exe, file.Profile, file.Language, file.Theme });
+        Log.Info("firstsignin", "setting up this PC", new { exe, file.Profile, file.Language, file.Theme, file.Apps });
         // Without the marker the started copy would apply nothing: then nothing is started either.
-        if (!markers.SetPending(file.Profile, now)) return FirstSignInOutcome.Failed;
+        if (!markers.SetPending(file.Profile, now, file.Apps)) return FirstSignInOutcome.Failed;
         // The choices on the media are the app's settings from now on: the installed copy reads them at its start, and later
         // starts keep them. The setup screen and the Start menu question are answered by this run.
         settings.Language = file.Language;
@@ -176,7 +178,7 @@ public static class FirstSignInStart
 
 /// <summary>
 /// Run-once markers in Tunero's data folder (admin-only when elevated, <see cref="SecureFolder"/>): --first-sign-in writes
-/// "pending" with the profile and the time; the started copy applies only while that marker is there, for that profile and
+/// "pending" with the profile, the time and the apps to install; the started copy applies only while that marker is there, for that profile and
 /// within a day, and replaces it with "done" before it applies anything. With "done", a later --first-sign-in (a setup
 /// folder that stayed, a reinstall that kept the data folder) does nothing, and no start applies without a confirmation.
 /// </summary>
@@ -188,7 +190,7 @@ public sealed class FirstSignInMarkers(string folder)
     /// <summary>How long after --first-sign-in its pending marker still counts.</summary>
     public static readonly TimeSpan MaxAge = TimeSpan.FromHours(24);
 
-    private sealed record Marker(string Profile, DateTime At);
+    private sealed record Marker(string Profile, DateTime At, IReadOnlyList<string>? Apps = null);
 
     private string Pending => Path.Combine(folder, PendingName);
 
@@ -210,14 +212,18 @@ public sealed class FirstSignInMarkers(string folder)
     }
 
     /// <summary>Writes the pending marker; false (logged) when it cannot be written.</summary>
-    public bool SetPending(string profile, DateTime nowUtc) => Write(PendingName, profile, nowUtc);
+    public bool SetPending(string profile, DateTime nowUtc, IReadOnlyList<string>? apps = null) => Write(PendingName, new Marker(profile, nowUtc, apps));
+
+    public bool TakePending(string profile, DateTime nowUtc) => TakePending(profile, nowUtc, out _);
 
     /// <summary>
     /// Uses up the pending marker: true when it was there, for <paramref name="profile"/>, and less than <see cref="MaxAge"/>
     /// off <paramref name="nowUtc"/>, and the done marker is written. The pending marker is gone afterwards in any case.
+    /// <paramref name="apps"/>: the apps to install with it; none when the list is not one the media page could make.
     /// </summary>
-    public bool TakePending(string profile, DateTime nowUtc)
+    public bool TakePending(string profile, DateTime nowUtc, out IReadOnlyList<string> apps)
     {
+        apps = [];
         // Applied once already: a pending marker beside the done one (left when its delete failed) never applies again.
         if (Done)
         {
@@ -242,17 +248,22 @@ public sealed class FirstSignInMarkers(string folder)
         }
         var valid = marker is not null && marker.Profile == profile && (nowUtc - marker.At).Duration() <= MaxAge;
         if (!valid) Log.Warn("firstsignin", "the pending first sign-in is for another profile or too old: nothing applied", new { profile, marker });
-        var taken = valid && Write(DoneName, profile, nowUtc);
+        var taken = valid && Write(DoneName, new Marker(profile, nowUtc));
         ClearPending();
+        if (taken && marker!.Apps is { Count: > 0 } list)
+        {
+            if (FirstSignIn.ValidApps(list)) apps = list;
+            else Log.Warn("firstsignin", "the apps of the pending first sign-in are not ones the media offers: none installed", new { list });
+        }
         return taken;
     }
 
-    private bool Write(string name, string profile, DateTime nowUtc)
+    private bool Write(string name, Marker marker)
     {
         try
         {
             Directory.CreateDirectory(folder);
-            DurableFile.WriteAllText(Path.Combine(folder, name), JsonSerializer.Serialize(new Marker(profile, nowUtc)));
+            DurableFile.WriteAllText(Path.Combine(folder, name), JsonSerializer.Serialize(marker));
             return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)

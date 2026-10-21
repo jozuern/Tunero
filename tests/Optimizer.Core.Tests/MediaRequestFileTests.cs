@@ -301,6 +301,45 @@ public sealed class MediaRequestFileTests : IDisposable
         Assert.Equal(new FirstSignInFile("office", "en", "Dark"), defaults.FirstSignIn);
     }
 
+    [Fact]
+    public void AppsToInstallAndUnreviewedAppsAreOptional()
+    {
+        var json = Download();
+        var plain = Parse(json).ToChoices(Files, "en", Path.Combine(_root, "Tunero.exe"), "Dark").ToRequest();
+        Assert.Null(plain.FirstSignIn!.Apps);
+        Assert.Empty(plain.RemoveUnreviewed);
+
+        json["installApps"] = new JsonArray("Valve.Steam", "Mozilla.Firefox", "Valve.Steam");
+        json["removeUnreviewed"] = new JsonArray("Contoso.Notes");
+        var request = Parse(json).ToChoices(Files, "en", Path.Combine(_root, "Tunero.exe"), "Dark").ToRequest();
+        Assert.Equal(["Valve.Steam", "Mozilla.Firefox"], request.FirstSignIn!.Apps);
+        Assert.Equal(["Contoso.Notes"], request.RemoveUnreviewed);
+    }
+
+    [Theory]
+    [InlineData("installApps", "[\"Contoso.NotAnApp\"]", "Contoso.NotAnApp")]
+    [InlineData("installApps", "[\"Playnite.Playnite\"]", "machine-wide")]
+    [InlineData("installApps", "\"Valve.Steam\"", "list")]
+    [InlineData("removeUnreviewed", "[\"Microsoft.BingNews\"]", "reviewed list")]
+    [InlineData("removeUnreviewed", "[\"Microsoft.WindowsStore\"]", "protected")]
+    public void BadAppListsAreRefused(string field, string value, string reason)
+    {
+        var json = Download();
+        json[field] = JsonNode.Parse(value);
+        var refused = Refused(json);
+        Assert.Equal(field, refused.Field);
+        Assert.Contains(reason, refused.Message);
+    }
+
+    [Fact]
+    public void AppsToInstallNeedTheProfile()
+    {
+        var json = Download();
+        json["profile"] = null;
+        json["installApps"] = new JsonArray("Valve.Steam");
+        Assert.Equal("installApps", Refused(json).Field);
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("[]")]

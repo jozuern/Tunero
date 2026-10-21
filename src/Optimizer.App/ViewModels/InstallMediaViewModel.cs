@@ -122,15 +122,14 @@ public sealed record InstallMediaSystem
     }
 }
 
-/// <summary>An app of the reviewed list (appx.json) with its tick for the media.</summary>
-public sealed partial class MediaAppRow(AppxEntry entry, string lang, bool isChecked) : ObservableObject
+/// <summary>A row with a tick on the page: an app to remove, an app nobody reviewed, or an app to install.</summary>
+public abstract partial class MediaPickRow(string key, string title, string text, string? note, bool isChecked) : ObservableObject
 {
-    public AppxEntry Entry { get; } = entry;
-    public string Title { get; } = entry.Label(lang);
-    public string Text { get; } = entry.Text(lang);
-
-    /// <summary>Whether the Microsoft Store still offers the app (as on Debloat).</summary>
-    public string Note { get; } = Loc.Instance[entry.CanReinstall ? "Media_AppStore" : "Media_AppNoStore"];
+    /// <summary>The package name or the app catalog id.</summary>
+    public string Key { get; } = key;
+    public string Title { get; } = title;
+    public string Text { get; } = text;
+    public string? Note { get; } = note;
 
     [ObservableProperty] private bool _isChecked = isChecked;
 
@@ -138,10 +137,27 @@ public sealed partial class MediaAppRow(AppxEntry entry, string lang, bool isChe
     public override string ToString() => Title;
 }
 
-/// <summary>One group of the reviewed list, as on Debloat.</summary>
+/// <summary>An app of the reviewed list (appx.json) with its tick for the media.</summary>
+public sealed class MediaAppRow(AppxEntry entry, string lang, bool isChecked)
+    // Whether the Microsoft Store still offers the app (as on Debloat).
+    : MediaPickRow(entry.Name, entry.Label(lang), entry.Text(lang), Loc.Instance[entry.CanReinstall ? "Media_AppStore" : "Media_AppNoStore"], isChecked)
+{
+    public AppxEntry Entry { get; } = entry;
+}
+
+/// <summary>An app of the own ISO's image that the reviewed list does not cover (Expert): only its package name is known.</summary>
+public sealed class MediaUnreviewedRow(string name, bool isChecked) : MediaPickRow(name, name, Loc.Instance["Media_UnreviewedRow"], null, isChecked);
+
+/// <summary>A machine-wide app of the app catalog that the first sign-in installs.</summary>
+public sealed class MediaInstallRow(Optimizer.Core.Apps.AppEntry app, string lang, bool isChecked) : MediaPickRow(app.Id, app.Name, app.Text(lang), app.Id, isChecked)
+{
+    public Optimizer.Core.Apps.AppEntry App { get; } = app;
+}
+
+/// <summary>One group of a list of rows (the reviewed list as on Debloat, the app catalog by category).</summary>
 public sealed partial class MediaAppGroup : ObservableObject
 {
-    public MediaAppGroup(string key, string title, IReadOnlyList<MediaAppRow> rows)
+    public MediaAppGroup(string key, string title, IReadOnlyList<MediaPickRow> rows)
     {
         Key = key;
         Title = title;
@@ -157,7 +173,7 @@ public sealed partial class MediaAppGroup : ObservableObject
 
     public string Key { get; }
     public string Title { get; }
-    public IReadOnlyList<MediaAppRow> Rows { get; }
+    public IReadOnlyList<MediaPickRow> Rows { get; }
 
     [ObservableProperty] private bool _isExpanded;
 
@@ -311,7 +327,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     [ObservableProperty] private bool _removeApps = true;
     [ObservableProperty] private IReadOnlyList<MediaAppGroup> _appGroups = [];
 
-    public IReadOnlyList<MediaAppRow> AppRows => AppGroups.SelectMany(g => g.Rows).ToList();
+    public IReadOnlyList<MediaAppRow> AppRows => AppGroups.SelectMany(g => g.Rows).OfType<MediaAppRow>().ToList();
 
     partial void OnRemoveAppsChanged(bool value) => Changed();
 
@@ -403,9 +419,90 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     /// <summary>What the folded profile card holds: the profile's name, or off.</summary>
     public string ProfileSummary => ApplyProfile && CanApplyProfile ? Profile?.Text ?? "" : Loc.Instance["Media_Off"];
 
+    // ---- apps to install ----
+
+    /// <summary>The copied Tunero installs the ticked apps with winget at the first sign-in (off when the page opens).</summary>
+    [ObservableProperty] private bool _installApps;
+
+    /// <summary>The app catalog's machine-wide apps by category, none ticked when the page opens.</summary>
+    [ObservableProperty] private IReadOnlyList<MediaAppGroup> _installGroups = [];
+
+    public IReadOnlyList<MediaInstallRow> InstallRows => InstallGroups.SelectMany(g => g.Rows).OfType<MediaInstallRow>().ToList();
+
+    private readonly HashSet<string> _installTicks = new(StringComparer.Ordinal);
+
+    partial void OnInstallAppsChanged(bool value) => Changed();
+
+    /// <summary>The apps need the Tunero copy, which goes on the media with the profile.</summary>
+    public bool CanInstallApps => ApplyProfile && CanApplyProfile;
+
+    public string? InstallNote => CanInstallApps ? null : Loc.Instance["Media_InstallNeedsProfile"];
+
+    /// <summary>What the folded install card holds: "5 apps", or off.</summary>
+    public string InstallSummary => InstallApps && CanInstallApps ? Loc.Instance.Format("Media_InstallSummary", InstallRows.Count(r => r.IsChecked)) : Loc.Instance["Media_Off"];
+
+    private void BuildInstallGroups()
+    {
+        var lang = Lang;
+        var open = InstallGroups.Where(g => g.IsExpanded).Select(g => g.Key).ToHashSet(StringComparer.Ordinal);
+        // The catalog lists its apps grouped, in the order the Install page shows them.
+        InstallGroups = MediaChoices.InstallableApps(CatalogData.Current.Apps)
+            .GroupBy(a => a.Category)
+            .Select(g => new MediaAppGroup(g.Key, Labels.Current.Get(lang, $"appCategory.{g.Key}"),
+                g.Select(a => new MediaInstallRow(a, lang, _installTicks.Contains(a.Id))).ToList())
+            {
+                IsExpanded = open.Contains(g.Key),
+            })
+            .ToList();
+        foreach (var row in InstallRows)
+            row.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName != nameof(MediaPickRow.IsChecked)) return;
+                if (row.IsChecked) _installTicks.Add(row.Key);
+                else _installTicks.Remove(row.Key);
+                OnPropertyChanged(nameof(InstallSummary));
+            };
+        OnPropertyChanged(nameof(InstallRows));
+    }
+
+    // ---- expert ----
+
     [ObservableProperty] private bool _allowUnsupported;
 
     partial void OnAllowUnsupportedChanged(bool value) => Changed();
+
+    /// <summary>Expert: also remove apps of the own ISO's image that the reviewed list does not cover (off, none ticked).</summary>
+    [ObservableProperty] private bool _removeUnreviewed;
+
+    partial void OnRemoveUnreviewedChanged(bool value) => Changed();
+
+    [ObservableProperty] private IReadOnlyList<MediaUnreviewedRow> _unreviewedRows = [];
+
+    private readonly HashSet<string> _unreviewedTicks = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Only an own ISO's image is read before the build: the download's apps are known only while it builds.</summary>
+    public string UnreviewedSourceText =>
+        UseDownload ? Loc.Instance["Media_UnreviewedDownload"]
+        : IsReadingIso || IsReadingApps ? Loc.Instance["Media_AppsReading"]
+        : ImageAppsRead(out var read) ? read is null ? Loc.Instance["Media_AppsIsoFailed"]
+            : UnreviewedRows.Count == 0 ? Loc.Instance["Media_UnreviewedNone"] : Loc.Instance.Format("Media_UnreviewedFound", UnreviewedRows.Count)
+        : Loc.Instance["Media_AppsIsoNotRead"];
+
+    public string UnreviewedSummary => RemoveUnreviewed && !UseDownload ? Loc.Instance.Format("Media_AppsSummary", UnreviewedRows.Count(r => r.IsChecked)) : Loc.Instance["Media_Off"];
+
+    private void BuildUnreviewedRows()
+    {
+        var apps = !UseDownload && ImageAppsRead(out var read) && read is not null ? MediaChoices.UnreviewedApps(CatalogData.Current.Appx, read) : [];
+        UnreviewedRows = apps.Order(StringComparer.OrdinalIgnoreCase).Select(name => new MediaUnreviewedRow(name, _unreviewedTicks.Contains(name))).ToList();
+        foreach (var row in UnreviewedRows)
+            row.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName != nameof(MediaPickRow.IsChecked)) return;
+                if (row.IsChecked) _unreviewedTicks.Add(row.Key);
+                else _unreviewedTicks.Remove(row.Key);
+                OnPropertyChanged(nameof(UnreviewedSummary));
+            };
+    }
 
     /// <summary>The change cards start folded; the demo can unfold them for screenshots.</summary>
     [ObservableProperty] private bool _expandOptions;
@@ -484,6 +581,11 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         OnPropertyChanged(nameof(AppsSourceText));
         OnPropertyChanged(nameof(SetupSummary));
         OnPropertyChanged(nameof(ProfileSummary));
+        OnPropertyChanged(nameof(CanInstallApps));
+        OnPropertyChanged(nameof(InstallNote));
+        OnPropertyChanged(nameof(InstallSummary));
+        OnPropertyChanged(nameof(UnreviewedSourceText));
+        OnPropertyChanged(nameof(UnreviewedSummary));
         UpdateCatalogText();
         UpdateIsoText();
         UpdateOutputName();
@@ -650,6 +752,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
 
         ShowEditions();
         UpdateImageApps();
+        BuildInstallGroups();
     }
 
     /// <summary>
@@ -681,6 +784,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
                 OnPropertyChanged(nameof(AppsSummary));
             };
         OnPropertyChanged(nameof(AppRows));
+        BuildUnreviewedRows();
         Changed();
     }
 
@@ -1005,7 +1109,11 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         return new MediaChoices(source, image is not null ? image.Edition ?? image.Name : Edition!.Key, image?.Index,
             image?.DefaultLanguage ?? image?.Languages.FirstOrDefault(), Lang,
             RemoveApps ? AppRows.Where(r => r.IsChecked).Select(r => r.Entry.Name).ToList() : [],
-            SkipSetup, AccountNameText, Region?.Key, Keyboard?.Key, AllowUnsupported, tunero, OutputPath!).ToRequest();
+            SkipSetup, AccountNameText, Region?.Key, Keyboard?.Key, AllowUnsupported, tunero, OutputPath!)
+        {
+            RemoveUnreviewed = RemoveUnreviewed && !UseDownload ? UnreviewedRows.Where(r => r.IsChecked).Select(r => r.Key).ToList() : [],
+            InstallApps = InstallApps && tunero is not null ? InstallRows.Where(r => r.IsChecked).Select(r => r.Key).ToList() : [],
+        }.ToRequest();
     }
 
     [RelayCommand(CanExecute = nameof(CanBuild))]
@@ -1204,6 +1312,12 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     {
         var shows = (show ?? "").Split(',', StringSplitOptions.TrimEntries);
         ExpandOptions = shows.Contains("expand");
+        if (ExpandOptions)
+        {
+            // The install card with two apps ticked, as a filled-in example (the lists are built when the page loads).
+            InstallApps = true;
+            _installTicks.UnionWith(["Valve.Steam", "Mozilla.Firefox"]);
+        }
         _demo = true;
         _catalog = new InstallMediaDemo.Catalog();
         var demo = new InstallMediaDemo.Build();

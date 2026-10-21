@@ -5,6 +5,7 @@ using System.Xml;
 using System.Xml.Linq;
 using Optimizer.Core.Backup;
 using Optimizer.Core.Catalog;
+using Optimizer.Core.Debloat;
 using Optimizer.Core.Platform;
 using AppLog = Optimizer.Core.Logging.Log;
 
@@ -19,7 +20,8 @@ public sealed record MediaSource(EsdFile? Download, string? IsoPath, CabLocation
 /// <summary>
 /// One build. <paramref name="Edition"/> is the EditionID (like "Professional"); for an own ISO it may also be the image
 /// name. <paramref name="IsoIndex"/> picks the image of an own ISO (null: found by <paramref name="Edition"/>).
-/// <paramref name="RemoveApps"/> are names from the appx.json allowlist. <paramref name="TuneroExe"/>,
+/// <paramref name="RemoveApps"/> are names from the appx.json allowlist, <see cref="RemoveUnreviewed"/> package names the
+/// list does not cover (Expert, own ISO). <paramref name="TuneroExe"/>,
 /// <paramref name="FirstSignIn"/> and <c>Answers.FirstSignInTunero</c> are given together or not at all.
 /// </summary>
 public sealed record MediaRequest(
@@ -30,7 +32,11 @@ public sealed record MediaRequest(
     AnswerChoices Answers,
     string? TuneroExe,
     FirstSignInFile? FirstSignIn,
-    string OutputIso);
+    string OutputIso)
+{
+    /// <summary>Package names outside the allowlist, removed only when the image holds exactly that name (<see cref="MediaChoices.UnreviewedApps"/>).</summary>
+    public IReadOnlyList<string> RemoveUnreviewed { get; init; } = [];
+}
 
 /// <summary>A stage started (Percent null) or moved on (0 to 100). Detail names the file or package being worked on, or is null.</summary>
 public sealed record MediaProgress(MediaStage Stage, double? Percent, string? Detail);
@@ -228,6 +234,12 @@ public sealed class MediaBuild(IMediaSteps steps)
         var apps = CatalogData.Current.Appx.Apps;
         foreach (var name in r.RemoveApps)
             if (!apps.Any(a => Same(a.Name, name))) throw new ArgumentException($"{name} is not in the app list.", nameof(r));
+        ArgumentNullException.ThrowIfNull(r.RemoveUnreviewed);
+        // The same rules as Remove apps for apps nobody reviewed: never protected, a part of Windows or what games need.
+        var appx = CatalogData.Current.Appx;
+        foreach (var name in r.RemoveUnreviewed)
+            if (!DebloatService.IsSafeName(name) || apps.Any(a => a.Matches(name)) || appx.IsProtected(name) || appx.IsUnreviewedExcluded(name))
+                throw new ArgumentException($"{name} cannot be removed as an app nobody reviewed.", nameof(r));
         // Only keyboards and locales Windows knows reach the answer file (Setup ignores or stops at others).
         if (!MediaLocales.IsInputLocale(r.Answers.InputLocale)) throw new ArgumentException($"{r.Answers.InputLocale} is not an input profile.", nameof(r));
         foreach (var locale in new[] { r.Answers.UiLanguage, r.Answers.SystemLocale, r.Answers.UserLocale })
@@ -662,7 +674,7 @@ public sealed class MediaBuild(IMediaSteps steps)
                 }
                 var build = await CheckImagesAsync(edition);
 
-                if (r.RemoveApps.Count > 0)
+                if (r.RemoveApps.Count > 0 || r.RemoveUnreviewed.Count > 0)
                 {
                     Begin(MediaStage.Apps);
                     await RemoveAppsAsync();
@@ -1033,7 +1045,8 @@ public sealed class MediaBuild(IMediaSteps steps)
             await MountAsync(InstallWim, 1, _mount!, readOnly: false, "install.wim");
             var provisioned = await Dism(DismArgs.Provisioned(_mount!), () => steps.Dism.ProvisionedAsync(_mount!, ct));
             // Provisioned names are full package names (Name_Version_Arch_ResourceId_PublisherId); the allowlist has the Name.
-            var remove = provisioned.Where(p => PackageName(p) is var name && !catalog.IsProtected(name) && entries.Any(e => e.Matches(name))).ToList();
+            var remove = provisioned.Where(p => PackageName(p) is var name && !catalog.IsProtected(name)
+                && (entries.Any(e => e.Matches(name)) || r.RemoveUnreviewed.Contains(name, StringComparer.OrdinalIgnoreCase))).ToList();
             steps.Log($"{provisioned.Count} provisioned apps, {remove.Count} to remove");
             for (var i = 0; i < remove.Count; i++)
             {

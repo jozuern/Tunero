@@ -1889,4 +1889,49 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Apps_DevToolsSummary" xml:space="preserve"><value>Entwicklerwerkzeuge: {0}</value></data>
   <data name="Apps_HowChocoTooOld" xml:space="preserve"><value>Diese Version ist älter als 2.1.0. Tunero startet Chocolatey nur so, dass es seinen Download-Zwischenspeicher nicht liest; diese Option gibt es seit 2.1.0, und in den Zwischenspeicher können Benutzer Dateien legen. Aktualisiere Chocolatey mit choco upgrade chocolatey in einem Administrator-Terminal.</value></data>
   <data name="Apps_ManagersHintNoStore" xml:space="preserve"><value>„Alle Apps aktualisieren“ führt die als enthalten markierten nacheinander aus. Jeder lädt aus seinen eigenen Quellen.</value></data>
+  <data name="Media_InstallTitle" xml:space="preserve">
+    <value>Apps installieren</value>
+  </data>
+  <data name="Media_InstallText" xml:space="preserve">
+    <value>Bei der ersten Anmeldung installiert Tunero nach dem Profil die angehakten Apps mit winget, aus derselben Liste wie Installieren &amp; aktualisieren. Der neue PC braucht dann Internet; Apps, die sich nicht installieren lassen, nennt das Ergebnis, und du kannst sie später unter Installieren &amp; aktualisieren installieren. Apps, die sich nur für einen Benutzer installieren (etwa Discord oder Spotify), stehen nicht in der Liste: Installiere sie unter Installieren &amp; aktualisieren.</value>
+  </data>
+  <data name="Media_InstallNeedsProfile" xml:space="preserve">
+    <value>Braucht Tunero auf der ISO: Schalte oben das Profil ein.</value>
+  </data>
+  <data name="Media_InstallSummary" xml:space="preserve">
+    <value>Zu installierende Apps: {0}</value>
+  </data>
+  <data name="Media_ExpertTitle" xml:space="preserve">
+    <value>Expertenoptionen</value>
+  </data>
+  <data name="Media_ExpertText" xml:space="preserve">
+    <value>Änderungen für alle, die wissen, was sie tun. Jede kann dem neuen PC etwas nehmen, das er braucht.</value>
+  </data>
+  <data name="Media_UnreviewedTitle" xml:space="preserve">
+    <value>Nicht geprüfte Apps entfernen</value>
+  </data>
+  <data name="Media_UnreviewedText" xml:space="preserve">
+    <value>Weitere Apps der Edition deiner ISO, über die geprüfte Liste hinaus. Niemand hat geprüft, was sie tun: Entferne nur Apps, die du kennst, denn ein Programm oder Gerät könnte eine davon brauchen. Teile von Windows und was Spiele und der Store brauchen, stehen nie in der Liste.</value>
+  </data>
+  <data name="Media_UnreviewedRow" xml:space="preserve">
+    <value>Nicht geprüft: Niemand hat geprüft, was diese App tut.</value>
+  </data>
+  <data name="Media_UnreviewedDownload" xml:space="preserve">
+    <value>Nur für deine eigene ISO: Die Apps des Downloads liest Tunero erst beim Erstellen.</value>
+  </data>
+  <data name="Media_UnreviewedNone" xml:space="preserve">
+    <value>Die Edition deiner ISO enthält keine Apps über die geprüfte Liste hinaus.</value>
+  </data>
+  <data name="Media_UnreviewedFound" xml:space="preserve">
+    <value>Apps über die geprüfte Liste hinaus in der Edition deiner ISO: {0}</value>
+  </data>
+  <data name="Media_FirstSignInInstalling" xml:space="preserve">
+    <value>{0} wird installiert</value>
+  </data>
+  <data name="Media_FirstSignInAppsDone" xml:space="preserve">
+    <value>Installierte Apps: {0}.</value>
+  </data>
+  <data name="Media_FirstSignInAppsMissing" xml:space="preserve">
+    <value>Nicht installiert: {0}. Installiere sie unter Installieren &amp; aktualisieren, sobald der PC online ist.</value>
+  </data>
 </root>

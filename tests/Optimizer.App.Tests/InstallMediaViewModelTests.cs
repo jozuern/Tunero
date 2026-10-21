@@ -371,6 +371,67 @@ public sealed class InstallMediaViewModelTests : IDisposable
         Assert.False(media.CanApplyProfile);
         Assert.False(media.ApplyProfile);
         Assert.Equal(Loc.Instance["Media_ProfileNeedsRelease"], media.ProfileNote);
+        // The apps to install need the Tunero copy too.
+        Assert.False(media.CanInstallApps);
+        Assert.Equal(Loc.Instance["Media_InstallNeedsProfile"], media.InstallNote);
+    }
+
+    /// <summary>The app catalog's machine-wide apps, none ticked; the ticked ones go to the first sign-in with the profile.</summary>
+    [Fact]
+    public async Task TickedAppsGoToTheFirstSignIn()
+    {
+        var media = await WithCatalog();
+        Assert.Equal(MediaChoices.InstallableApps(CatalogData.Current.Apps).Count(), media.InstallRows.Count);
+        Assert.DoesNotContain(media.InstallRows, r => r.App.Scope != "machine");
+        Assert.All(media.InstallRows, r => Assert.False(r.IsChecked));
+        Assert.Equal(Loc.Instance["Media_Off"], media.InstallSummary);
+
+        media.InstallRows.Single(r => r.Key == "Valve.Steam").IsChecked = true;
+        // Ticked while the card is off: nothing is installed.
+        await media.BuildCommand.ExecuteAsync(null);
+        Assert.Null(Assert.Single(_requests).FirstSignIn!.Apps);
+
+        media.InstallApps = true;
+        Assert.Equal(Loc.Instance.Format("Media_InstallSummary", 1), media.InstallSummary);
+        await media.BuildCommand.ExecuteAsync(null);
+        Assert.Equal(["Valve.Steam"], _requests[^1].FirstSignIn!.Apps);
+
+        // Without the profile there is no Tunero copy to install them.
+        media.ApplyProfile = false;
+        Assert.False(media.CanInstallApps);
+        await media.BuildCommand.ExecuteAsync(null);
+        Assert.Null(_requests[^1].FirstSignIn);
+    }
+
+    /// <summary>Expert: the own ISO's apps beyond the reviewed list, unticked; only ticked ones are removed, never for the download.</summary>
+    [Fact]
+    public async Task UnreviewedAppsOfTheOwnIsoCanBeRemoved()
+    {
+        var system = System() with
+        {
+            ReadIsoApps = (_, _, _) => Task.FromResult<IReadOnlyList<string>>(
+            [
+                "Microsoft.BingNews_4.1.0.0_x64__8wekyb3d8bbwe", "Microsoft.WindowsStore_1.0.0.0_x64__8wekyb3d8bbwe",
+                "MicrosoftWindows.Client.CBS_1.0.0.0_x64__cw5n1h2txyewy", "Contoso.Notes_1.0.0.0_x64__abcdefghijklm",
+            ]),
+        };
+        var media = await WithOwnIso(Media(system: system));
+        await media.AppsLoading;
+        // The reviewed, protected and Windows parts are not listed.
+        Assert.Equal(["Contoso.Notes"], media.UnreviewedRows.Select(r => r.Key));
+        Assert.False(media.UnreviewedRows[0].IsChecked);
+        Assert.Equal(Loc.Instance.Format("Media_UnreviewedFound", 1), media.UnreviewedSourceText);
+
+        media.UnreviewedRows[0].IsChecked = true;
+        await media.BuildCommand.ExecuteAsync(null);
+        Assert.Empty(_requests[^1].RemoveUnreviewed);
+        media.RemoveUnreviewed = true;
+        await media.BuildCommand.ExecuteAsync(null);
+        Assert.Equal(["Contoso.Notes"], _requests[^1].RemoveUnreviewed);
+
+        media.UseDownload = true;
+        Assert.Equal(Loc.Instance["Media_UnreviewedDownload"], media.UnreviewedSourceText);
+        Assert.Empty(media.UnreviewedRows);
     }
 
     [Fact]

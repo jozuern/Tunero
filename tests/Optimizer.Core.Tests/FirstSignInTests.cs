@@ -65,6 +65,27 @@ public sealed class FirstSignInTests : IDisposable
     }
 
     [Fact]
+    public void AppsToInstallRoundTrip()
+    {
+        var file = new FirstSignInFile(ProfileId, "en", "System") { Apps = ["Valve.Steam", "EpicGames.EpicGamesLauncher"] };
+        Write(FirstSignIn.Serialize(file));
+        Assert.Equal(file, FirstSignIn.Read(Exe, _ => true, _folder));
+        // Without apps the file stays as before: no "apps" field.
+        Assert.DoesNotContain("apps", FirstSignIn.Serialize(new FirstSignInFile(ProfileId, "en", "System")), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("Contoso.NotInTheCatalog")]
+    [InlineData("Playnite.Playnite")]
+    [InlineData("Valve.Steam", "Valve.Steam")]
+    public void AppsThePageDoesNotOfferAreIgnored(params string[] apps)
+    {
+        // Unknown ids, per-user apps (the first sign-in cannot wait for them) and an id twice: the whole file is refused.
+        Write(FirstSignIn.Serialize(new FirstSignInFile(ProfileId, "en", "System") { Apps = apps }));
+        Assert.Null(FirstSignIn.Read(Exe, _ => true, _folder));
+    }
+
+    [Fact]
     public void InvalidJsonIsIgnored()
     {
         Write("{ not json");
@@ -77,7 +98,7 @@ public sealed class FirstSignInTests : IDisposable
     public void OversizedFileIsIgnored()
     {
         var json = FirstSignIn.Serialize(new FirstSignInFile(ProfileId, "en", "System"));
-        Write(json + new string(' ', 5000));
+        Write(json + new string(' ', 20000));
         Assert.Null(FirstSignIn.Read(Exe, _ => true, _folder));
     }
 
