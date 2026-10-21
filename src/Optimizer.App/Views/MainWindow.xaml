@@ -223,11 +223,12 @@
                                           Visibility="{Binding Note, Converter={StaticResource NullToVisibility}}" />
                         </StackPanel>
                     </DockPanel>
-                    <!-- A scan result kept on purpose (a game library on a hard disk): ignored, or back again -->
+                    <!-- A scan result kept on purpose (a game library on a hard disk) or a recommendation that does not fit this
+                         PC (clipboard history next to another clipboard manager): ignored, or back again -->
                     <WrapPanel DockPanel.Dock="Top" Margin="0,0,16,8" DataContext="{Binding SelectedItem}">
-                        <ui:Button Content="{l:Tr Findings_Ignore}" Icon="{ui:SymbolIcon EyeOff20}" Appearance="Secondary"
+                        <ui:Button Content="{Binding IgnoreText, FallbackValue={x:Null}}" Icon="{ui:SymbolIcon EyeOff20}" Appearance="Secondary"
                                    Visibility="{Binding OffersIgnore, Converter={StaticResource BoolToVisibility}, FallbackValue=Collapsed}"
-                                   Command="{Binding DataContext.IgnoreFindingCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" />
+                                   Command="{Binding DataContext.IgnoreCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" />
                         <ui:Button Content="{l:Tr Findings_StopIgnoring}" Icon="{ui:SymbolIcon Eye20}" Appearance="Secondary"
                                    Visibility="{Binding IsIgnored, Converter={StaticResource BoolToVisibility}, FallbackValue=Collapsed}"
                                    Command="{Binding DataContext.StopIgnoringCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" />

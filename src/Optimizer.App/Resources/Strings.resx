@@ -1121,6 +1121,11 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Findings_IgnoredCount" xml:space="preserve"><value>Ignored results: {0}. Show or hide them</value></data>
   <data name="Findings_IgnoredResult" xml:space="preserve"><value>Ignored: {0}. It no longer counts in the score; Stop ignoring brings it back.</value></data>
   <data name="Findings_UnignoredResult" xml:space="preserve"><value>Shown again: {0}.</value></data>
+  <data name="Tweaks_Ignore" xml:space="preserve"><value>Ignore this recommendation</value></data>
+  <data name="Tweaks_GroupIgnored" xml:space="preserve"><value>Ignored recommendations</value></data>
+  <data name="Tweaks_IgnoredCount" xml:space="preserve"><value>Ignored recommendations: {0}. Show them</value></data>
+  <data name="Tweaks_IgnoredResult" xml:space="preserve"><value>Ignored: {0}. It is no longer recommended or flagged in any profile; Stop ignoring in its details brings it back.</value></data>
+  <data name="Tweaks_UnignoredResult" xml:space="preserve"><value>Recommended again where it fits: {0}.</value></data>
   <data name="Impact_TooltipGoal" xml:space="preserve">
     <value>Impact on {0}: {1} of 5</value>
   </data>

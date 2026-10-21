@@ -9,6 +9,7 @@
 - **Install & update:** Check for updates asks winget which installed apps have a newer version; Update then shows only where there is one.
 - **Remove apps:** tick several preinstalled apps and remove them with one confirmation; installed programs sort by name, size or install date.
 - **Services & tasks:** scheduled tasks have a search box.
+- **Ignore a recommendation:** a recommended tweak, or one flagged as working against your profile, can be ignored in its details or with the eye on its Overview line. It is then neither recommended nor applied in any profile, also not by `--apply-recommended`, and waits under "Ignored recommendations" on the Tweaks page with Stop ignoring.
 
 ### Changed
 

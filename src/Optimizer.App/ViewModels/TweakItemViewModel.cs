@@ -82,6 +82,7 @@ public sealed class TweakItemViewModel : InspectorItem
         Badges = badges;
         BadgesText = string.Join(", ", badges.Select(b => b.Text));
         IsRecommended = profiled?.Recommended ?? status.Recommended;
+        IsIgnored = profiled?.Ignored == true;
         var recReason = profiled is null ? t.RecommendReasonKey : profiled.ReasonKey;
         RecommendedText = IsRecommended
             ? labels.Get(lang, "badge.recommended") + (recReason is { } rk ? ": " + labels.Get(lang, rk) : "")
@@ -210,6 +211,14 @@ public sealed class TweakItemViewModel : InspectorItem
     public string BadgesText { get; }
     public bool IsRecommended { get; }
     public string? RecommendedText { get; }
+
+    /// <summary>Its recommendation is ignored: the details pane offers Stop ignoring.</summary>
+    public bool IsIgnored { get; }
+
+    /// <summary>Recommended, in the Overview's plan or flagged against the profile: the details pane offers to ignore that.</summary>
+    public bool OffersIgnore { get; init; }
+
+    public string IgnoreText => Loc.Instance["Tweaks_Ignore"];
     public string? BlockText { get; }
     public bool IsOn { get; }
     public bool HasBackup { get; }

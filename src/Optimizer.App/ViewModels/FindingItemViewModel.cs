@@ -53,5 +53,7 @@ public sealed class FindingItemViewModel : InspectorItem
     public bool IsIgnored { get; init; }
 
     public bool OffersIgnore => CanIgnore && !IsIgnored;
+
+    public string IgnoreText => Loc.Instance["Findings_Ignore"];
     public override string Key => "finding:" + Finding.Key;
 }

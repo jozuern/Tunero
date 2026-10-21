@@ -49,14 +49,15 @@ public static class Recommendations
             }
             // The plan applies without asking per item, so nothing may block it here (not even missing admin rights). A fix
             // that is blocked is listed as left out, with the block as the reason: the overview must not say "nothing to
-            // recommend" while a problem with a fix is shown below it.
-            var catalogFix = list.FirstOrDefault(p => p.CanFix(f.Id) && p.Status.Blocks.Count == 0);
+            // recommend" while a problem with a fix is shown below it. A tweak the user ignores is not offered here (its
+            // result still offers it in its details).
+            var catalogFix = list.FirstOrDefault(p => !p.Ignored && p.CanFix(f.Id) && p.Status.Blocks.Count == 0);
             if (catalogFix is not null)
             {
                 Add(new RecommendedItem(catalogFix.Tweak, catalogFix.ReasonKey ?? catalogFix.Tweak.RecommendReasonKey, f, f.Impact ?? catalogFix.Impact));
                 continue;
             }
-            var blockedFix = list.FirstOrDefault(p => p.CanFix(f.Id));
+            var blockedFix = list.FirstOrDefault(p => !p.Ignored && p.CanFix(f.Id));
             if (blockedFix is not null && seen.Add(blockedFix.Tweak.Id))
                 excluded.Add(new RecommendedItem(blockedFix.Tweak, blockedFix.ReasonKey, f, f.Impact ?? blockedFix.Impact) { Blocked = blockedFix.Status.Blocks[0] });
         }

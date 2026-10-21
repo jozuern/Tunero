@@ -164,6 +164,45 @@ public class ProfileTests
     }
 
     [Fact]
+    public void IgnoredTweakIsNeitherRecommendedNorFlagged()
+    {
+        // Office recommends clipboard history and flags memory compression off (set outside this app counts too); a user
+        // with another clipboard manager and plenty of memory ignores both.
+        var office = Profiles.Get("office");
+        var compression = TweakCatalog.Current.Get("memory.compressionOff")!;
+        var compressionOff = new TweakStatus(compression, TweakState.Applied, 0, ["stutter"], null, false, [], false);
+        Assert.True(ProfileView.For(office, S("office.clipboardHistoryOn"), new Facts()).Recommended);
+        Assert.True(ProfileView.For(office, compressionOff, new Facts()).Flagged);
+
+        var ignored = new HashSet<string> { "office.clipboardHistoryOn", "memory.compressionOff" };
+        var clipboard = ProfileView.For(office, S("office.clipboardHistoryOn"), new Facts(), ignored);
+        Assert.True(clipboard.Ignored);
+        Assert.False(clipboard.Recommended);
+        var against = ProfileView.For(office, compressionOff, new Facts(), ignored);
+        Assert.True(against.Ignored);
+        Assert.False(against.Flagged);
+        // The rating stays what the profile says: only the app's urging is gone.
+        Assert.True(against.WorksAgainst);
+        Assert.Empty(Recommendations.Build(ProfileView.For(office, [S("office.clipboardHistoryOn")], new Facts(), ignored), []).Items);
+        // In every profile, also one that does not rate the tweak.
+        Assert.True(ProfileView.For(Profiles.Get("quiet"), S("office.clipboardHistoryOn"), new Facts(), ignored).Ignored);
+    }
+
+    [Fact]
+    public void IgnoredTweakIsNotThePlansFix()
+    {
+        // Restore processor turbo fixes F6 in Gaming; ignored, the plan leaves the problem without a one-click fix, while
+        // the tweak itself can still say it fixes it (the result's details offer it).
+        var gaming = Profiles.Default;
+        var ignored = new HashSet<string> { "power.turboRestore" };
+        var profiled = ProfileView.For(gaming, [S("power.turboRestore")], new Facts(), ignored);
+        Assert.True(profiled.Single().CanFix("F6.turbo"));
+        var plan = Recommendations.Build(profiled, ProfileView.Findings(gaming, [F("F6.turbo", impact: 3)]));
+        Assert.Empty(plan.Items);
+        Assert.Empty(plan.Excluded);
+    }
+
+    [Fact]
     public void FixesNeverOverwriteAConflictingChange()
     {
         // Quiet power mode applied, profile Gaming: F8 (power mode) is a problem, but its fix would overwrite the quiet

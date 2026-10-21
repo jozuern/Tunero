@@ -85,7 +85,11 @@ public sealed class ProfileTweak
 
 /// <summary>A tweak's status seen through a profile.</summary>
 /// <param name="Flagged">On, works against the profile, and is a real change on this PC (shown as a warning).</param>
-public sealed record ProfiledTweak(TweakStatus Status, int Impact, bool Relevant, bool Recommended, string? ReasonKey, bool Flagged = false)
+/// <param name="Ignored">
+/// The user ignores what the app says about it (a recommendation that does not fit how this PC is used): it is neither
+/// recommended nor flagged, in any profile, and can still be turned on or off by hand.
+/// </param>
+public sealed record ProfiledTweak(TweakStatus Status, int Impact, bool Relevant, bool Recommended, string? ReasonKey, bool Flagged = false, bool Ignored = false)
 {
     public TweakDefinition Tweak => Status.Tweak;
 
@@ -104,11 +108,13 @@ public sealed record ProfiledTweak(TweakStatus Status, int Impact, bool Relevant
 
 public static class ProfileView
 {
-    public static ProfiledTweak For(UsageProfile profile, TweakStatus s, Facts facts)
+    /// <param name="ignored">Ids of the tweaks the user ignores (<see cref="ProfiledTweak.Ignored"/>).</param>
+    public static ProfiledTweak For(UsageProfile profile, TweakStatus s, Facts facts, IReadOnlySet<string>? ignored = null)
     {
         var entry = profile.Entry(s.Tweak.Id);
         var catalog = profile.UsesCatalog && !profile.ExcludeCategories.Contains(s.Tweak.Category);
-        if (entry is null && !catalog) return new ProfiledTweak(s, 0, false, false, null);
+        var isIgnored = ignored?.Contains(s.Tweak.Id) == true;
+        if (entry is null && !catalog) return new ProfiledTweak(s, 0, false, false, null, Ignored: isIgnored);
 
         var impact = entry?.Impact ?? (catalog ? s.Impact : 0);
         bool recommended;
@@ -116,11 +122,11 @@ public static class ProfileView
         else recommended = entry?.Impact is null && catalog && s.Recommended;
         var reason = entry?.ReasonKey ?? (recommended && catalog ? s.Tweak.RecommendReasonKey : null);
         var flagged = impact < 0 && s.IsOn && (entry?.OnlyIfChanged != true || s.HasBackup);
-        return new ProfiledTweak(s, impact, true, recommended, reason, flagged);
+        return new ProfiledTweak(s, impact, true, recommended && !isIgnored, reason, flagged && !isIgnored, isIgnored);
     }
 
-    public static IReadOnlyList<ProfiledTweak> For(UsageProfile profile, IEnumerable<TweakStatus> statuses, Facts facts) =>
-        statuses.Select(s => For(profile, s, facts)).ToList();
+    public static IReadOnlyList<ProfiledTweak> For(UsageProfile profile, IEnumerable<TweakStatus> statuses, Facts facts, IReadOnlySet<string>? ignored = null) =>
+        statuses.Select(s => For(profile, s, facts, ignored)).ToList();
 
     /// <summary>A fix built for this PC (runtime) is not offered while a tweak it conflicts with is on.</summary>
     public static bool RuntimeFixAllowed(TweakDefinition fix, IEnumerable<ProfiledTweak> tweaks) =>

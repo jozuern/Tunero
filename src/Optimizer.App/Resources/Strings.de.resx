@@ -1121,6 +1121,11 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Findings_IgnoredCount" xml:space="preserve"><value>Ignorierte Ergebnisse: {0}. Anzeigen oder ausblenden</value></data>
   <data name="Findings_IgnoredResult" xml:space="preserve"><value>Ignoriert: {0}. Es zählt nicht mehr in die Bewertung; „Nicht mehr ignorieren“ holt es zurück.</value></data>
   <data name="Findings_UnignoredResult" xml:space="preserve"><value>Wieder angezeigt: {0}.</value></data>
+  <data name="Tweaks_Ignore" xml:space="preserve"><value>Diese Empfehlung ignorieren</value></data>
+  <data name="Tweaks_GroupIgnored" xml:space="preserve"><value>Ignorierte Empfehlungen</value></data>
+  <data name="Tweaks_IgnoredCount" xml:space="preserve"><value>Ignorierte Empfehlungen: {0}. Anzeigen</value></data>
+  <data name="Tweaks_IgnoredResult" xml:space="preserve"><value>Ignoriert: {0}. Es wird in keinem Profil mehr empfohlen oder markiert; „Nicht mehr ignorieren“ in den Details holt es zurück.</value></data>
+  <data name="Tweaks_UnignoredResult" xml:space="preserve"><value>Wieder empfohlen, wo es passt: {0}.</value></data>
   <data name="Impact_TooltipGoal" xml:space="preserve">
     <value>Wirkung auf {0}: {1} von 5</value>
   </data>

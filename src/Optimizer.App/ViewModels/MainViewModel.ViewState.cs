@@ -140,6 +140,7 @@ public sealed partial class MainViewModel
 
     private const string RecommendedGroup = "recommended";
     private const string AgainstGroup = "against";
+    private const string IgnoredGroup = "ignored";
 
     private readonly List<TweakGroupRow> _tweakGroups = [];
 
@@ -167,9 +168,9 @@ public sealed partial class MainViewModel
     private Dictionary<string, int>? _categoryOrder;
 
     /// <summary>
-    /// Fills the Tweaks page: recommended first, then applied changes that work against the profile, then the sections.
-    /// In a group the larger impact first, then by category in catalog order, so related tweaks stay together. A search
-    /// opens every group with a match.
+    /// Fills the Tweaks page: recommended first, then applied changes that work against the profile, then the sections,
+    /// then the ignored recommendations (closed). In a group the larger impact first, then by category in catalog order,
+    /// so related tweaks stay together. A search opens every group with a match.
     /// </summary>
     private void FillTweaks()
     {
@@ -184,6 +185,7 @@ public sealed partial class MainViewModel
         {
             RecommendedGroup => -2,
             AgainstGroup => -1,
+            IgnoredGroup => int.MaxValue,
             _ => Array.FindIndex(TweakSections, s => s.Key == key),
         };
 
@@ -197,13 +199,14 @@ public sealed partial class MainViewModel
             // DNS servers are one choice, made on Graphics & DNS: not a second list of tweaks here.
             .Where(p => !p.Tweak.Id.StartsWith("network.dns.", StringComparison.Ordinal))
             .Where(Matches)
-            .GroupBy(p => p.Recommended ? RecommendedGroup : p.Flagged ? AgainstGroup : TweakSections[SectionIndex(p.Tweak.Category)].Key)
+            .GroupBy(p => p.Ignored ? IgnoredGroup : p.Recommended ? RecommendedGroup : p.Flagged ? AgainstGroup : TweakSections[SectionIndex(p.Tweak.Category)].Key)
             .OrderBy(g => Order(g.Key));
+        var inPlan = PlanTweakIds();
         foreach (var g in groups)
         {
             var items = g.OrderByDescending(p => p.Impact)
                 .ThenBy(p => CategoryOrder(p.Tweak.Category))
-                .Select(p => new TweakItemViewModel(p.Status, lang, _services.Engine, this, profiled: p, profile: _usage))
+                .Select(p => new TweakItemViewModel(p.Status, lang, _services.Engine, this, profiled: p, profile: _usage) { OffersIgnore = OffersIgnore(p, inPlan) })
                 .ToList();
             foreach (var item in items)
             {
@@ -234,10 +237,18 @@ public sealed partial class MainViewModel
         TweaksSummary = parts.Count == 0 ? total : $"{total}: {string.Join(", ", parts)}";
     }
 
+    /// <summary>The tweaks of the Overview's plan, fixes and what it leaves out included.</summary>
+    private HashSet<string> PlanTweakIds() => _plan.Items.Concat(_plan.Excluded).Select(i => i.Tweak.Id).ToHashSet(StringComparer.Ordinal);
+
+    /// <summary>What the app urges for this PC (recommended, in the plan, flagged against the profile) can be ignored.</summary>
+    private static bool OffersIgnore(ProfiledTweak p, HashSet<string> inPlan) =>
+        !p.Ignored && (p.Recommended || p.Flagged || inPlan.Contains(p.Tweak.Id));
+
     private static string GroupTitle(string key) => key switch
     {
         RecommendedGroup => Loc.Instance["Tweaks_GroupRecommended"],
         AgainstGroup => Loc.Instance["Tweaks_GroupAgainstOn"],
+        IgnoredGroup => Loc.Instance["Tweaks_GroupIgnored"],
         "performance" => Loc.Instance["Tweaks_SectionPerformance"],
         "network" => Loc.Instance["Tweaks_SectionNetwork"],
         "background" => Loc.Instance["Tweaks_SectionBackground"],
@@ -251,6 +262,7 @@ public sealed partial class MainViewModel
     {
         RecommendedGroup => SymbolRegular.ThumbLike24,
         AgainstGroup => SymbolRegular.Warning24,
+        IgnoredGroup => SymbolRegular.EyeOff24,
         _ => TweakSections.First(s => s.Key == key).Icon,
     };
 
@@ -343,9 +355,13 @@ public sealed partial class MainViewModel
     }
 
     /// <summary>Rows for catalog tweaks shown on other pages (GPU settings, DNS), with the same Expert filter as the Tweaks page.</summary>
-    public IEnumerable<TweakItemViewModel> CatalogItems(Func<TweakDefinition, bool> filter) =>
-        VisibleTweaks(profileFilter: false).Where(p => filter(p.Tweak) && p.Status.State != TweakState.NotApplicable)
-            .Select(p => new TweakItemViewModel(p.Status, Loc.Instance.Language, _services.Engine, this, profiled: p, profile: _usage)).ToList();
+    public IEnumerable<TweakItemViewModel> CatalogItems(Func<TweakDefinition, bool> filter)
+    {
+        var inPlan = PlanTweakIds();
+        return VisibleTweaks(profileFilter: false).Where(p => filter(p.Tweak) && p.Status.State != TweakState.NotApplicable)
+            .Select(p => new TweakItemViewModel(p.Status, Loc.Instance.Language, _services.Engine, this, profiled: p, profile: _usage) { OffersIgnore = OffersIgnore(p, inPlan) })
+            .ToList();
+    }
 
     /// <summary>The button counts the ticked lines of the plan.</summary>
     private void UpdateRecommendedButton() =>
@@ -362,12 +378,22 @@ public sealed partial class MainViewModel
             : i.Tweak.EffectiveRisk == Risk.Expert ? Labels.Current.Get(lang, "risk.Expert")
             : i.Tweak.AntiCheatSensitive ? Labels.Current.Get(lang, "badge.antiCheat")
             : Labels.Current.Get(lang, $"reversibility.{i.Tweak.Reversibility}");
+        // The eye ignores the line's tweak only, a fix's too: the problem it fixes stays listed and counted (its details can
+        // ignore it). A fix built for this PC has no button: it is no catalog tweak the Tweaks page could list again.
+        RecommendationLine WithIgnore(RecommendationLine line, RecommendedItem i)
+        {
+            if (_profiled.Any(p => p.Tweak.Id == i.Tweak.Id)) line.IgnoreTweakId = i.Tweak.Id;
+            return line;
+        }
         Recommendations.Clear();
         foreach (var i in _plan.Items)
-            Recommendations.Add(new RecommendationLine(Runner.Title(i.Tweak), Reason(i), i.Impact, i.Tweak, UpdateRecommendedButton));
+            Recommendations.Add(WithIgnore(new RecommendationLine(Runner.Title(i.Tweak), Reason(i), i.Impact, i.Tweak, UpdateRecommendedButton), i));
         RecommendationsExcluded.Clear();
         foreach (var i in _plan.Excluded)
-            RecommendationsExcluded.Add(new RecommendationLine(Runner.Title(i.Tweak), Excluded(i), i.Impact, i.Tweak));
+            RecommendationsExcluded.Add(WithIgnore(new RecommendationLine(Runner.Title(i.Tweak), Excluded(i), i.Impact, i.Tweak), i));
+        // As many as the Tweaks page lists in the view the link opens.
+        var ignoredTweaks = VisibleTweaks(profileFilter: false).Count(p => p.Ignored);
+        IgnoredTweaksText = ignoredTweaks > 0 ? Loc.Instance.Format("Tweaks_IgnoredCount", ignoredTweaks) : null;
         HasRecommendations = _plan.Items.Count > 0;
         // Nothing to apply in one click, but fixes that need something first: say so instead of "nothing to recommend".
         RecommendationsEmptyText = _plan.Excluded.Count > 0 ? Loc.Instance["Rec_EmptyButExcluded"] : Loc.Instance["Rec_Empty"];

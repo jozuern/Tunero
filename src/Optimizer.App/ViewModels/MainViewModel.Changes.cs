@@ -100,7 +100,7 @@ public sealed partial class MainViewModel
             try
             {
                 work.Indeterminate(Loc.Instance["Scan_Running"]);
-                (var pc, plan) = await CommandLineApply.RecommendedPlanAsync(_services, profileId, null, IgnoredKeys());
+                (var pc, plan) = await CommandLineApply.RecommendedPlanAsync(_services, profileId, null, IgnoredKeys(), IgnoredTweakIds());
                 if (plan is null) return;
                 foreach (var t in plan.Together) ChangeLogText.Remember(t);
                 // No Stop: each change applies whole; the banner counts them.

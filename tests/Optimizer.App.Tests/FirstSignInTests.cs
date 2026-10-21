@@ -109,6 +109,29 @@ public sealed class FirstSignInTests : IDisposable
         Assert.Equal(window.InApp.Count, lines.Count(l => l.StartsWith(Loc.Instance.Format("Cli_NeedsApp", ""), StringComparison.Ordinal)));
     }
 
+    /// <summary>A recommendation ignored in the app is neither applied by --apply-recommended nor listed for the app.</summary>
+    [Fact]
+    public async Task IgnoredRecommendationIsLeftOut()
+    {
+        var pc = Pc();
+        var all = CommandLineApply.RecommendedPlan(pc, "gaming", null)!;
+        var together = all.Together[0].Id;
+        var inApp = all.InApp[0].Id;
+        var applied = new List<TweakDefinition>();
+        var lines = new List<string>();
+        var code = await CommandLineApply.ApplyRecommendedPlanAsync(pc, "gaming", null, t =>
+        {
+            applied.AddRange(t);
+            return Task.FromResult(AllApplied(t));
+        }, lines, [together, inApp]);
+        Assert.Equal(CommandLineApply.Done, code);
+        Assert.DoesNotContain(applied, t => t.Id == together);
+        Assert.Equal(all.Together.Count - 1, applied.Count);
+        var plan = CommandLineApply.RecommendedPlan(pc, "gaming", null, [together, inApp])!;
+        Assert.DoesNotContain(plan.InApp, t => t.Id == inApp);
+        Assert.Equal(all.InApp.Count - 1, plan.InApp.Count);
+    }
+
     /// <summary>A laptop profile on a desktop PC: neither path picks anything.</summary>
     [Fact]
     public async Task AProfileThisPcDoesNotOfferAppliesNothing()

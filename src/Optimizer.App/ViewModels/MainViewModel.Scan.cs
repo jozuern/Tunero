@@ -252,7 +252,7 @@ public sealed partial class MainViewModel
     /// <summary>Rates tweaks and findings through the active profile and rebuilds the recommendation plan.</summary>
     private void ApplyProfile()
     {
-        _profiled = ProfileView.For(_usage, _tweakStates, _facts);
+        _profiled = ProfileView.For(_usage, _tweakStates, _facts, IgnoredTweakIds());
         _profiledFindings = WithoutIgnored(ProfileView.Findings(_usage, _findings));
         _plan = Optimizer.Core.Tweaks.Recommendations.Build(_profiled, _profiledFindings);
     }

@@ -210,7 +210,7 @@ public partial class App : Application
             var log = args.Value("--log");
             Shutdown(args.Value(CommandLineMedia.Switch) is { } mediaRequest ? await CommandLineMedia.BuildAsync(mediaRequest, log, MediaCommandLineSystem.ForThisPc(services, _settings.Theme))
                 : args.Value("--apply") is { } changes ? await CommandLineApply.ApplyAsync(changes, services, log, args.Has("--no-restore-point"))
-                : args.Has("--apply-recommended") ? await CommandLineApply.ApplyRecommendedAsync(services, args.Value("--profile"), _settings.Profile, _settings.IgnoredFindings, log, args.Has("--no-restore-point"))
+                : args.Has("--apply-recommended") ? await CommandLineApply.ApplyRecommendedAsync(services, args.Value("--profile"), _settings.Profile, _settings.IgnoredFindings, _settings.IgnoredTweaks, log, args.Has("--no-restore-point"))
                 : args.Value("--export") is { } exportPath ? await CommandLineApply.ExportAsync(exportPath, services, log, args.Value("--include"))
                 : args.Has(Optimizer.Core.Tweaks.ReapplyTask.Argument) ? await CommandLineApply.ReapplyAsync(services, log)
                 : await CommandLineApply.UndoAllAsync(services, log));

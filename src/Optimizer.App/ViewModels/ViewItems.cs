@@ -144,6 +144,9 @@ public sealed partial class RecommendationLine(string title, string reason, int 
 
     partial void OnIsSelectedChanged(bool value) => selectionChanged?.Invoke();
 
+    /// <summary>The catalog tweak the line's ignore button ignores; null = no button.</summary>
+    public string? IgnoreTweakId { get; set; }
+
     // What screen readers announce for this item in a list or combo box.
     public override string ToString() => Title;
 }

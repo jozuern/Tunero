@@ -42,6 +42,9 @@ public sealed class AppSettings
     /// <summary>Scan results the user ignores (<see cref="Optimizer.Core.Findings.IgnoredResults.Key"/>): left out of the lists, the score and the facts.</summary>
     public List<string> IgnoredFindings { get; set; } = [];
 
+    /// <summary>Tweak ids whose recommendation the user ignores (<see cref="Optimizer.Core.Profiles.ProfiledTweak.Ignored"/>): never recommended or flagged.</summary>
+    public List<string> IgnoredTweaks { get; set; } = [];
+
     /// <summary>The opt-in sections of an export on the Changes page (removed apps, service start types, startup entries turned off).</summary>
     public bool ExportApps { get; set; }
     public bool ExportServices { get; set; }
