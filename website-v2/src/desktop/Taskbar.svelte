@@ -8,6 +8,7 @@
   import TuneroMark from './TuneroMark.svelte';
   import { startupIcons } from './startup.ts';
   import Watermark from './Watermark.svelte';
+  import { onSoundChange, setSound, soundOn } from './sound.ts';
   import type { IconName } from './icons.ts';
 
   let {
@@ -32,6 +33,11 @@
   }
 
   const store = useStore();
+  let sound = $state(false);
+  onMount(() => {
+    sound = soundOn();
+    return onSoundChange(() => (sound = soundOn()));
+  });
   const pinned: { id: WindowId; icon: IconName | 'tunero'; label: string }[] = $derived([
     { id: 'trust', icon: 'folder', label: copy.icons.explorer },
     { id: 'tunero', icon: 'tunero', label: copy.icons.tunero },
@@ -90,7 +96,7 @@
       <Icon name="search" size={16} />
       <span class="search-text">{copy.searchShort}</span>
       {#if store.active('search-highlights')}
-        <span class="highlight" title={copy.searchHighlight}><Icon name="star" size={16} /></span>
+        <span class="highlight" data-effect="search-highlights" title={copy.searchHighlight}><Icon name="star" size={16} /></span>
       {/if}
     </button>
     {#each pinned as app (app.id)}
@@ -127,12 +133,21 @@
     <span class="tray" data-anchor="tray" style:--tray-slots={store.demo.startup.length + 3}>
       <span class="tray-icon" title={copy.trayMore}><Icon name="chevronUp" size={16} /></span>
       {#each trayItems as item (item.id)}
-        <span class="tray-icon app" title={item.title} in:pop out:pop>
+        <span class="tray-icon app" data-change="startup:{item.id}" title={item.title} in:pop out:pop>
           <Icon name={startupIcons[store.demo.startup.indexOf(item)]} size={16} />
         </span>
       {/each}
       <span class="tray-icon" title={copy.network}><Icon name="wifi" size={16} /></span>
-      <span class="tray-icon" title={copy.volume}><Icon name="speaker" size={16} /></span>
+      <button
+        type="button"
+        class="tray-icon sound"
+        aria-pressed={sound}
+        title={sound ? copy.soundOff : copy.soundOn}
+        aria-label={sound ? copy.soundOff : copy.soundOn}
+        onclick={() => setSound(!sound)}
+      >
+        <Icon name={sound ? 'speaker' : 'speakerMute'} size={16} />
+      </button>
     </span>
     <span class="clock" aria-label={copy.clockLabel}>
       <span>{time}</span>
@@ -315,6 +330,13 @@
     align-items: center;
     justify-content: flex-end;
     min-width: calc(var(--tray-slots) * 28px);
+  }
+
+  button.tray-icon {
+    border: none;
+    background: transparent;
+    color: inherit;
+    padding: 0;
   }
 
   .tray-icon {

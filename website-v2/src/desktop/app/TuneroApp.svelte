@@ -14,14 +14,15 @@
   let { app, copy, tweakCount, download }: { app: AppStrings; copy: DesktopStrings['app']; tweakCount: number; download: string } = $props();
   const store = useStore();
 
-  let page = $state<Page>('overview');
+  // The page lives in the store, so the guided fix can turn it.
+  const page = $derived(store.appPage);
   let content: HTMLElement;
   $effect(() => {
     if (store.showTweak) go('tweaks');
   });
 
   function go(next: Page) {
-    page = next;
+    store.appPage = next;
     content?.scrollTo({ top: 0 });
   }
 
@@ -39,13 +40,13 @@
       {#if item.group}
         <span class="group">{app[item.group === 'optimize' ? 'Nav_GroupOptimize' : 'Nav_GroupCleanUp']}</span>
       {/if}
-      <button type="button" class:current={page === item.page} aria-current={page === item.page ? 'page' : undefined} onclick={() => go(item.page)}>
+      <button type="button" data-nav={item.page} class:current={page === item.page} aria-current={page === item.page ? 'page' : undefined} onclick={() => go(item.page)}>
         <Icon name={item.icon} size={16} />
         <span>{app[item.label]}</span>
       </button>
     {/each}
     <span class="spacer"></span>
-    <button type="button" class:current={page === 'changes'} aria-current={page === 'changes' ? 'page' : undefined} onclick={() => go('changes')}>
+    <button type="button" data-changes data-nav="changes" class:current={page === 'changes'} aria-current={page === 'changes' ? 'page' : undefined} onclick={() => go('changes')}>
       <Icon name="history" size={16} />
       <span>{app.Nav_Changes}</span>
       {#if store.undoable.length > 0}<span class="count">{store.undoable.length}</span>{/if}

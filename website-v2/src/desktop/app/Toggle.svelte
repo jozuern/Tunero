@@ -7,10 +7,20 @@
     off,
     onchange,
     stateFirst = false,
-  }: { checked: boolean; label: string; on: string; off: string; onchange: (value: boolean) => void; stateFirst?: boolean } = $props();
+    auto,
+  }: {
+    checked: boolean;
+    label: string;
+    on: string;
+    off: string;
+    onchange: (value: boolean) => void;
+    stateFirst?: boolean;
+    /** The guided fix's target (lib/autoplay.ts). */
+    auto?: string;
+  } = $props();
 </script>
 
-<label class="toggle" class:state-first={stateFirst}>
+<label class="toggle" class:state-first={stateFirst} data-auto={auto}>
   <input type="checkbox" role="switch" {checked} aria-label={label} onchange={(event) => onchange((event.currentTarget as HTMLInputElement).checked)} />
   <span class="track" aria-hidden="true"><span class="thumb"></span></span>
   <span class="state">{checked ? on : off}</span>

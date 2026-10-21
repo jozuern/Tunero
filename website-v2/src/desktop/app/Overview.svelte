@@ -105,7 +105,7 @@
         {#if done}
           <button type="button" class="btn" onclick={single(() => store.undo(change(finding)))}>{app.Tweak_Undo}</button>
         {:else}
-          <button type="button" class="btn primary" onclick={single(() => store.apply([change(finding)]))}>{app.Fix_Apply}</button>
+          <button type="button" class="btn primary" data-auto="finding:{finding.id}" onclick={single(() => store.apply([change(finding)]))}>{app.Fix_Apply}</button>
         {/if}
       </li>
     {/each}

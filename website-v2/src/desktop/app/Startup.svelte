@@ -22,6 +22,7 @@
       <Toggle
         checked={!off}
         label={item.title}
+        auto="startup:{item.id}"
         on={app.Startup_Enabled}
         off={app.Startup_Disabled}
         onchange={(value) => (value ? store.undo({ kind: 'startup', id: item.id }) : store.apply([{ kind: 'startup', id: item.id }]))}

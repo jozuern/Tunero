@@ -2,7 +2,11 @@
 // The demo state survives a language switch through sessionStorage; blocked storage just starts fresh.
 import { getContext, setContext } from 'svelte';
 import type { Demo, Effect, Write } from '../lib/demo.ts';
+import type { Page } from './app/appKeys.ts';
 import { trail } from './effects.ts';
+import { shatter } from './particles.ts';
+import { ripple, bloom } from './wallpaper/wallpaper.ts';
+import { pop, chord } from './sound.ts';
 import {
   initial,
   apply,
@@ -13,6 +17,7 @@ import {
   clutter,
   isActive,
   isApplied,
+  turnedOff,
   serialize,
   deserialize,
   type Change,
@@ -66,10 +71,18 @@ export class DesktopStore {
   startOpen = $state(false);
   /** The change the dive is showing, or null. */
   dive = $state<{ title: string; write: Write } | null>(null);
+  /** The page the Tunero window shows. */
+  appPage = $state<Page>('overview');
   /** A tweak the Tunero window should show next: its Tweaks page opens with it selected. */
   showTweak = $state<string | null>(null);
   /** True while Undo all plays its steps. */
   rewinding = $state(false);
+  /** True from the moment everything is fixed until the visitor moves on; the end card shows. */
+  finale = $state(false);
+  /** True while the guided fix (guide.ts) clicks through the plan. */
+  guiding = $state(false);
+  /** True while the before/after comparison covers the desktop (Compare.svelte). */
+  compare = $state(false);
   get clutter() {
     return clutter(this.state, this.demo);
   }
@@ -119,26 +132,63 @@ export class DesktopStore {
   }
 
   /** Shows each change travelling to its place on the desktop, a little apart when several go at once. */
-  private show(changes: Change[], direction: 'apply' | 'undo') {
+  private show(changes: Change[], direction: 'apply' | 'undo', skip = new Set<Effect>()) {
     const effects = allChanges(this.demo);
     changes.forEach((change, i) => {
       const effect = effects.find((c) => c.kind === change.kind && c.id === change.id)?.effect;
-      if (effect) setTimeout(() => trail(effect, direction), i * 90);
+      if (effect && !skip.has(effect)) setTimeout(() => trail(effect, direction), i * 90);
     });
+  }
+
+  /**
+   * Bursts what a step removes from the desktop (marked data-effect or data-change) into specks that fly to Tunero,
+   * with a ripple in the wallpaper under it. Returns the effects that burst, which need no trail.
+   */
+  private shatterGone(before: DemoState, after: DemoState, fresh: Change[]): Set<Effect> {
+    const gone = turnedOff(before, after, this.demo);
+    const selectors = [...gone.map((e) => `[data-effect~="${e}"]`), ...fresh.map((c) => `[data-change="${c.kind}:${c.id}"]`)];
+    const burst = new Set<Effect>();
+    if (selectors.length === 0 || reducedMotion()) return burst;
+    for (const element of document.querySelectorAll(selectors.join(','))) {
+      if (element.getClientRects().length === 0 || element.closest('.minimized')) continue;
+      const rect = element.getBoundingClientRect();
+      shatter(element);
+      element.classList.add('shattered');
+      ripple(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      for (const effect of gone) if (element.matches(`[data-effect~="${effect}"]`)) burst.add(effect);
+      for (const c of fresh) if (element.matches(`[data-change="${c.kind}:${c.id}"]`)) {
+        const effect = allChanges(this.demo).find((x) => x.kind === c.kind && x.id === c.id)?.effect;
+        if (effect) burst.add(effect);
+      }
+    }
+    if (burst.size > 0) pop();
+    return burst;
   }
 
   /** Applies changes; a running rewind is cut short at its end state first. */
   apply(changes: Change[]) {
     this.stopRewind();
     const fresh = changes.filter((change) => !isApplied(this.state, change));
-    this.state = apply(this.state, changes);
+    const before = this.state;
+    const after = apply(this.state, changes);
+    const burst = this.shatterGone(before, after, fresh);
+    this.state = after;
     this.save();
-    this.show(fresh, 'apply');
+    this.show(fresh, 'apply', burst);
+    if (fresh.length > 0 && clutter(after, this.demo) === 0) this.finished();
+  }
+
+  /** Everything is fixed: the wallpaper blooms, the chord plays, the end card shows. */
+  private finished() {
+    if (!reducedMotion()) bloom();
+    chord();
+    this.finale = true;
   }
 
   undo(change: Change) {
     if (!isApplied(this.state, change)) return;
     this.stopRewind();
+    this.finale = false;
     this.state = undo(this.state, change);
     this.save();
     this.show([change], 'undo');
@@ -148,6 +198,7 @@ export class DesktopStore {
   async undoAll() {
     this.stopRewind();
     const run = ++this.rewindRun;
+    this.finale = false;
     const { steps } = undoAll(this.state);
     if (reducedMotion()) {
       this.state = undoAll(this.state).state;
@@ -254,3 +305,20 @@ export class DesktopStore {
 const key = Symbol('desktop');
 export const provideStore = (store: DesktopStore) => setContext(key, store);
 export const useStore = () => getContext<DesktopStore>(key);
+
+/**
+ * The store as the before/after comparison shows it: the neglected PC (nothing applied) or the fixed one (everything
+ * applied), with Start open. Reads go to the real store, writes are dropped: the comparison only shows.
+ */
+export function comparisonView(store: DesktopStore, side: 'before' | 'after'): DesktopStore {
+  return new Proxy(store, {
+    get(target, prop) {
+      if (prop === 'active') return () => side === 'before';
+      if (prop === 'applied') return () => side === 'after';
+      if (prop === 'startOpen') return true;
+      const value = Reflect.get(target, prop, target);
+      return typeof value === 'function' ? value.bind(target) : value;
+    },
+    set: () => true,
+  });
+}

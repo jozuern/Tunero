@@ -82,6 +82,7 @@
             <button
               type="button"
               class="btn"
+              data-auto="group:{group.category}"
               title={app.Tweaks_GroupApplyTip}
               onclick={() => store.apply(group.items.map((item) => ({ kind: 'tweak' as const, id: item.id })))}
             >

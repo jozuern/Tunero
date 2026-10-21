@@ -14,6 +14,7 @@ export type Effect =
   | 'tray'
   | 'start-app'
   | 'refresh-rate'
+  | 'turbo'
   | 'none';
 
 export interface Write {
@@ -67,11 +68,11 @@ export interface Demo {
 export const scenario = {
   findings: [
     { id: 'F1.refresh', status: 'Problem' as CheckStatus, impact: 5, fix: 'apply' as const, effect: 'refresh-rate' as Effect },
-    { id: 'F6.turbo', status: 'Problem' as CheckStatus, impact: 5, fix: 'tweak' as const, tweak: 'power.turboRestore', effect: 'none' as Effect },
+    { id: 'F6.turbo', status: 'Problem' as CheckStatus, impact: 5, fix: 'tweak' as const, tweak: 'power.turboRestore', effect: 'turbo' as Effect },
     { id: 'F16.startupPrograms', status: 'Info' as CheckStatus, impact: 1, fix: 'startup' as const, effect: 'tray' as Effect },
   ],
   tweaks: [
-    { id: 'power.turboRestore', effect: 'none', ratedFor: 'finding.F6.turbo.problem' },
+    { id: 'power.turboRestore', effect: 'turbo', ratedFor: 'finding.F6.turbo.problem' },
     { id: 'privacy.suggestionsOff', effect: 'tips-toasts' },
     { id: 'personalize.startRecommendedOff', effect: 'start-recommended' },
     { id: 'privacy.searchHighlightsOff', effect: 'search-highlights' },

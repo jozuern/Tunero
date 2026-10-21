@@ -14,6 +14,9 @@
   import Dive from './Dive.svelte';
   import Boot from './Boot.svelte';
   import PhoneStrip from './PhoneStrip.svelte';
+  import Hero from './Hero.svelte';
+  import Widget from './Widget.svelte';
+  import Compare from './Compare.svelte';
   import { reducedMotion } from './motion.ts';
   import Trust from './windows/Trust.svelte';
   import Notepad from './windows/Notepad.svelte';
@@ -78,9 +81,11 @@
   });
 </script>
 
-<div class="desktop" class:ready>
+<div class="desktop" class:ready class:comparing={store.compare}>
   <Wallpaper clutter={store.clutter} {theme} />
   <DesktopIcons {copy} />
+  <Widget copy={copy.widget} />
+  <Hero {copy} checks={facts.checkCount} tweaks={facts.tweakCount} download={facts.download} ready={ready && !booting && !phone} />
 
   {#if store.windows.tunero.open}
     <Window id="tunero" title="Tunero" icon="tunero" labels={copy.window}>
@@ -113,6 +118,9 @@
   {/if}
   <StartMenu {copy} {links} />
   <Taskbar {copy} {lang} download={facts.download} version={facts.version} classicHref={facts.classicHref} {phone} />
+  {#if store.compare}
+    <Compare {copy} {lang} download={facts.download} version={facts.version} classicHref={facts.classicHref} {links} />
+  {/if}
   {#if booting}
     <Boot copy={copy.boot} version={facts.version} checks={facts.checkCount} tweaks={facts.tweakCount} ondone={endBoot} />
   {/if}
@@ -124,6 +132,16 @@
     inset: 0;
     overflow: hidden;
     user-select: none;
+  }
+
+  /* The comparison draws its own taskbar, Start and notifications on both sides of its line. */
+  .comparing > :global(.taskbar),
+  .comparing > :global(.start),
+  .comparing > :global(.toasts),
+  .comparing > :global(.window),
+  .comparing > :global(.hero),
+  .comparing > :global(.widget) {
+    visibility: hidden;
   }
 
 </style>

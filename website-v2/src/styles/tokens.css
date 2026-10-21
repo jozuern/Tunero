@@ -19,6 +19,9 @@
   --shadow-window: 0 32px 64px rgba(0, 0, 0, 0.19), 0 2px 21px rgba(0, 0, 0, 0.15);
   --acrylic: rgba(243, 243, 243, 0.82);
   --acrylic-strong: rgba(243, 243, 243, 0.96);
+  /* The headline on the wallpaper (desktop/Hero.svelte). */
+  --hero-ink: #0d1726;
+  --hero-shadow: 0 1px 18px rgba(255, 255, 255, 0.6);
 }
 
 :root[data-theme='dark'] {
@@ -39,6 +42,8 @@
   --shadow-window: 0 32px 64px rgba(0, 0, 0, 0.56), 0 2px 21px rgba(0, 0, 0, 0.55);
   --acrylic: rgba(32, 32, 32, 0.8);
   --acrylic-strong: rgba(36, 36, 36, 0.95);
+  --hero-ink: #ffffff;
+  --hero-shadow: 0 2px 24px rgba(0, 0, 0, 0.45);
 }
 
 /* Without JavaScript nothing sets data-theme: follow the system then. */
@@ -59,7 +64,8 @@
     --ok: #6ccb5f;
     --shadow: 0 8px 32px rgba(0, 0, 0, 0.42), 0 2px 8px rgba(0, 0, 0, 0.3);
     --shadow-window: 0 32px 64px rgba(0, 0, 0, 0.56), 0 2px 21px rgba(0, 0, 0, 0.55);
-  --shadow-window: 0 32px 64px rgba(0, 0, 0, 0.56), 0 2px 21px rgba(0, 0, 0, 0.55);
+    --hero-ink: #ffffff;
+    --hero-shadow: 0 2px 24px rgba(0, 0, 0, 0.45);
     --acrylic: rgba(32, 32, 32, 0.8);
     --acrylic-strong: rgba(36, 36, 36, 0.95);
   }
@@ -175,4 +181,42 @@ html[data-boot='pending'] .desktop {
   color: var(--ink);
   box-shadow: var(--shadow);
   transform: translateX(-50%);
+}
+
+/* Shatter (desktop/particles.ts): the specks fly over everything but the dive and the boot. */
+.shatter {
+  position: fixed;
+  inset: 0;
+  z-index: 9600;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* What just shattered: gone at once, its specks carry on. Beats the out transition still running on it. */
+.shattered {
+  opacity: 0 !important;
+  pointer-events: none;
+}
+
+/* The guided fix's cursor and its click ring (desktop/guide.ts). */
+.guide-cursor {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 9700;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45));
+}
+
+.guide-click {
+  position: fixed;
+  left: -18px;
+  top: -18px;
+  z-index: 9690;
+  width: 36px;
+  height: 36px;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  pointer-events: none;
 }

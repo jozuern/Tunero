@@ -13,7 +13,8 @@ const anchors: Record<Effect, string> = {
   'start-app': 'start',
   'explorer-sync-ad': 'explorer',
   tray: 'tray',
-  'refresh-rate': 'settings',
+  'refresh-rate': 'refresh',
+  turbo: 'turbo',
   none: '',
 };
 

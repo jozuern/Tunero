@@ -34,6 +34,27 @@ const stillPhase = 14;
 
 type Theme = 'light' | 'dark';
 
+// Moments the desktop asks for; the running wallpaper reads them every frame.
+const ripples: { x: number; y: number; start: number }[] = [];
+let bloomStart = -1;
+let split = -1;
+
+/** A ring of light at (x, y) in CSS pixels, where something was just fixed. */
+export function ripple(x: number, y: number) {
+  ripples.push({ x: x / innerWidth, y: y / innerHeight, start: performance.now() });
+  if (ripples.length > 4) ripples.shift();
+}
+
+/** The PC is fixed: a bloom of colour and a sweep of light. */
+export function bloom() {
+  bloomStart = performance.now();
+}
+
+/** Before/after: the divider in CSS pixels from the left, or null to end it. */
+export function setSplit(x: number | null) {
+  split = x === null ? -1 : x / innerWidth;
+}
+
 export function startWallpaper(
   canvas: HTMLCanvasElement,
   getClutter: () => number,
@@ -91,6 +112,10 @@ export function startWallpaper(
     const uClutter = uniform('uClutter');
     const uTheme = uniform('uTheme');
     const uSeed = uniform('uSeed');
+    const uRipples = uniform('uRipples');
+    const uBloom = uniform('uBloom');
+    const uSplit = uniform('uSplit');
+    const rippleData = new Float32Array(16);
 
     const motionQuery = matchMedia('(prefers-reduced-motion: reduce)');
     let reduced = reducedMotion();
@@ -117,6 +142,7 @@ export function startWallpaper(
     let drewFirst = false;
     let stillClutter = -1;
     let stillTheme = -1;
+    let stillSplit = -2;
 
     function resizeBuffer(context: WebGL2RenderingContext) {
       const ratio = Math.min(window.devicePixelRatio || 1, maxPixelRatio) * qualityScale;
@@ -144,6 +170,16 @@ export function startWallpaper(
       gl.uniform1f(uClutter, clutter);
       gl.uniform1f(uTheme, theme);
       gl.uniform1f(uSeed, seed);
+      const now = performance.now();
+      rippleData.fill(0);
+      ripples.forEach((r, i) => {
+        const age = (now - r.start) / 1000;
+        if (age < 2.5 && !reduced) rippleData.set([r.x, r.y, age, 1], i * 4);
+      });
+      gl.uniform4fv(uRipples, rippleData);
+      const bloomAge = bloomStart < 0 || reduced ? -1 : (now - bloomStart) / 1000;
+      gl.uniform1f(uBloom, bloomAge > 4 ? -1 : bloomAge);
+      gl.uniform1f(uSplit, split);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
       if (!drewFirst) {
         drewFirst = true;
@@ -160,6 +196,7 @@ export function startWallpaper(
       seed = 1;
       stillClutter = clutter;
       stillTheme = theme;
+      stillSplit = split;
       draw();
     }
 
@@ -191,7 +228,7 @@ export function startWallpaper(
       frameId = requestAnimationFrame(frame);
       if (reduced) {
         // Still: draw again only when what the picture shows has changed.
-        if (clamp01(getClutter()) !== stillClutter || themeTarget() !== stillTheme) drawStill();
+        if (clamp01(getClutter()) !== stillClutter || themeTarget() !== stillTheme || split !== stillSplit) drawStill();
         return;
       }
       const seconds = lastNow === null ? 0 : Math.min((now - lastNow) / 1000, 0.1);

@@ -63,6 +63,21 @@ export function isActive(state: DemoState, demo: Demo, effect: Effect): boolean 
   return allChanges(demo).some((c) => c.effect === effect && !isApplied(state, c));
 }
 
+/** The effects one step ends: shown before it, gone after it. */
+export function turnedOff(before: DemoState, after: DemoState, demo: Demo): Effect[] {
+  const effects = [...new Set(allChanges(demo).map((c) => c.effect))].filter((e) => e !== 'none');
+  return effects.filter((e) => isActive(before, demo, e) && !isActive(after, demo, e));
+}
+
+/** What is applied, by kind, for the end card. A problem counts as fixed by its own Fix or by the tweak that fixes it. */
+export function tally(state: DemoState, demo: Demo) {
+  const count = (kind: ChangeKind) => state.applied.filter((c) => c.kind === kind).length;
+  const problems = demo.findings.filter((f) =>
+    f.fix === 'apply' ? isApplied(state, { kind: 'finding', id: f.id }) : f.fix === 'tweak' && isApplied(state, { kind: 'tweak', id: f.tweak! }),
+  ).length;
+  return { problems, tweaks: count('tweak'), startup: count('startup'), apps: count('app') };
+}
+
 export const serialize = (state: DemoState) => JSON.stringify(state);
 
 /** The saved state, or the initial one when there is none or it is not one this code wrote. */

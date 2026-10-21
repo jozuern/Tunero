@@ -23,7 +23,7 @@
   <div class="main">
     <p class="crumbs">{copy.thisPc} &gt; {copy.folder}</p>
     {#if store.active('explorer-sync-ad')}
-      <div class="ad" transition:motion>
+      <div class="ad" data-effect="explorer-sync-ad" transition:motion>
         <Icon name="cloud" size={20} />
         <span><strong>{copy.syncAd.title}</strong> {copy.syncAd.body}</span>
         <button type="button" class="fake-btn" title={copy.syncAd.hint} onclick={() => store.openTweakFor('explorer-sync-ad')}>{copy.syncAd.action}</button>

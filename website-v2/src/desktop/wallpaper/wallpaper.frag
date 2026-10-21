@@ -9,6 +9,9 @@ uniform float uPhase;   // animation time in seconds; the CPU speeds it up with 
 uniform float uClutter; // eased, 0 to 1
 uniform float uTheme;   // 0 dark, 1 light; eased so a theme switch cross-fades
 uniform float uSeed;    // grain seed, a new one per frame
+uniform vec4 uRipples[4]; // x, y (0 to 1 from the top left), age in seconds, strength (0 = none)
+uniform float uBloom;   // seconds since the PC was fully fixed, or -1
+uniform float uSplit;   // before/after: the divider as a fraction of the width, or -1
 
 out vec4 outColor;
 
@@ -129,6 +132,23 @@ vec3 scene(vec2 point, vec2 flow, float time, float clutter, float pixel) {
 
 void main() {
   float clutter = clamp(uClutter, 0.0, 1.0);
+  vec2 uvTop = gl_FragCoord.xy / uRes;
+  // Before/after: the neglected PC left of the divider, the fixed one right of it.
+  if (uSplit >= 0.0) clutter = 1.0 - smoothstep(uSplit - 0.002, uSplit + 0.002, uvTop.x);
+  // Ripples where something was fixed: a ring of light, and the picture inside it clean for a moment.
+  vec2 here = (gl_FragCoord.xy - 0.5 * uRes) / uRes.y;
+  float ring = 0.0;
+  float clean = 0.0;
+  for (int i = 0; i < 4; i++) {
+    vec4 r = uRipples[i];
+    if (r.w <= 0.0) continue;
+    vec2 centre = vec2((r.x - 0.5) * uRes.x / uRes.y, 0.5 - r.y);
+    float d = length(here - centre);
+    float radius = r.z * 0.85;
+    ring += r.w * exp(-pow((d - radius) / 0.03, 2.0)) * exp(-r.z * 1.8);
+    clean = max(clean, r.w * smoothstep(radius, radius - 0.2, d) * exp(-r.z * 0.7));
+  }
+  clutter *= 1.0 - 0.85 * clamp(clean, 0.0, 1.0);
   float light = clamp(uTheme, 0.0, 1.0);
   gBgTop = mix(vec3(0.010, 0.016, 0.042), vec3(0.968, 0.975, 0.996), light);
   gBgBottom = mix(vec3(0.014, 0.026, 0.070), vec3(0.885, 0.915, 0.985), light);
@@ -174,6 +194,18 @@ void main() {
   uvec2 cell = uvec2(frag);
   float grain = float(hashUint(cell.x + hashUint(cell.y + hashUint(uint(uSeed)))) & 0xffffu) / 65535.0 - 0.5;
   color += grain * (0.010 + 0.06 * clutter);
+
+  color += ring * mix(vec3(0.35, 0.65, 1.0), vec3(0.15, 0.4, 0.95), light) * 0.45;
+
+  // Fixed: the colour blooms for a moment and a band of light sweeps across.
+  if (uBloom >= 0.0) {
+    float boost = smoothstep(0.0, 0.35, uBloom) * exp(-uBloom * 0.7);
+    float l = dot(color, vec3(0.299, 0.587, 0.114));
+    color = mix(vec3(l), color, 1.0 + 0.6 * boost) * (1.0 + 0.18 * boost);
+    float along = here.x * 0.8 + here.y * 0.6;
+    float sweep = exp(-pow((along - (-1.3 + uBloom * 1.5)) / 0.09, 2.0)) * step(uBloom, 2.4);
+    color += sweep * mix(vec3(0.55, 0.8, 1.0), vec3(1.0), light) * 0.28;
+  }
 
   outColor = vec4(clamp(color, 0.0, 1.0), 1.0);
 }

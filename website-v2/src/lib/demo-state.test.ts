@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { initial, apply, undo, undoAll, undoable, clutter, isActive, serialize, deserialize, allChanges, type Change } from './demo-state.ts';
+import { initial, apply, undo, undoAll, undoable, clutter, isActive, serialize, deserialize, allChanges, turnedOff, tally, type Change } from './demo-state.ts';
 import type { Demo } from './demo.ts';
 
 const item = (id: string, effect: string) => ({ id, title: id, summary: '', impact: 0, basis: 'situational', writes: [], effect });
@@ -81,4 +81,23 @@ test('undoAll leaves removed apps removed: the app cannot undo a removal, the St
 test('undoable lists what the Changes page can undo, without removed apps', () => {
   const app: Change = { kind: 'app', id: 'app1' };
   assert.deepEqual(undoable(apply(initial(), [tweakA, app])), [tweakA]);
+});
+
+test('turnedOff lists the effects a step ends, not those another change still keeps up', () => {
+  const before = initial();
+  assert.deepEqual(turnedOff(before, apply(before, [tweakA]), demo), ['tips-toasts']);
+  // One of two startup entries off: the tray still shows the other.
+  assert.deepEqual(turnedOff(before, apply(before, [{ kind: 'startup', id: 's1' }]), demo), []);
+  const one = apply(before, [{ kind: 'startup', id: 's1' }]);
+  assert.deepEqual(turnedOff(one, apply(one, [{ kind: 'startup', id: 's2' }]), demo), ['tray']);
+});
+
+test('tally counts what is applied, by kind', () => {
+  const state = apply(initial(), [tweakA, { kind: 'finding', id: 'F1.refresh' }, { kind: 'app', id: 'app1' }, { kind: 'startup', id: 's2' }]);
+  assert.deepEqual(tally(state, demo), { problems: 1, tweaks: 1, startup: 1, apps: 1 });
+});
+
+test('tally counts a problem fixed by its tweak', () => {
+  const withTurbo = { ...demo, findings: [...demo.findings, { ...item('F6.turbo', 'none'), fix: 'tweak', tweak: 'b' }] } as unknown as Demo;
+  assert.equal(tally(apply(initial(), [tweakB]), withTurbo).problems, 1);
 });

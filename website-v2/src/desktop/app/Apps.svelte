@@ -21,7 +21,7 @@
     <li class="card">
       <Icon name={appIcons[store.demo.apps.indexOf(item)]} size={20} />
       <strong>{item.title}</strong>
-      <button type="button" class="btn" aria-label={fill(app.Debloat_RemoveName, item.title)} onclick={single(() => store.apply([{ kind: 'app', id: item.id }]))}>
+      <button type="button" class="btn" data-auto="app:{item.id}" aria-label={fill(app.Debloat_RemoveName, item.title)} onclick={single(() => store.apply([{ kind: 'app', id: item.id }]))}>
         {app.Debloat_Remove}
       </button>
     </li>

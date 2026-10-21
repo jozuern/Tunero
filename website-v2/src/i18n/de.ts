@@ -184,7 +184,7 @@ const de: Strings = {
         heading: 'Kurz gesagt',
         paragraphs: [
           ['Diese Website setzt keine Cookies, nutzt keine Analyse und keine Werbung und lädt keine Schriften, Skripte oder Bilder von anderen Servern. Sie besteht aus statischen Dateien.'],
-          ['Der Demo-PC auf der Startseite merkt sich den Farbmodus, den du wählst, ob du seine Animationseffekte ein- oder ausgeschaltet hast, ob du seine Startanimation schon gesehen hast, und was du an ihm geändert hast, im Speicher deines Browsers. Das bleibt in deinem Browser und wird nirgendwohin gesendet. Dafür ist nach § 25 Abs. 2 Nr. 2 TDDDG keine Einwilligung nötig, weil die Demo diese Angaben braucht, um so zu funktionieren, wie du sie eingestellt hast; du kannst sie jederzeit in den Websitedaten deines Browsers löschen.'],
+          ['Der Demo-PC auf der Startseite merkt sich den Farbmodus, den du wählst, ob du seine Animationseffekte und seinen Ton ein- oder ausgeschaltet hast, ob du seine Startanimation schon gesehen hast, und was du an ihm geändert hast, im Speicher deines Browsers. Das bleibt in deinem Browser und wird nirgendwohin gesendet. Dafür ist nach § 25 Abs. 2 Nr. 2 TDDDG keine Einwilligung nötig, weil die Demo diese Angaben braucht, um so zu funktionieren, wie du sie eingestellt hast; du kannst sie jederzeit in den Websitedaten deines Browsers löschen.'],
         ],
       },
       {

@@ -1,7 +1,8 @@
 <script lang="ts">
   // Notifications of the demo PC. Each comes from something Tunero can turn off (a tweak or a startup program), so
   // it stops the moment that change is applied and comes back with Undo.
-  import { onMount } from 'svelte';
+  import { untrack } from 'svelte';
+  import { chime } from './sound.ts';
   import { fly } from 'svelte/transition';
   import { flip } from 'svelte/animate';
   import type { DesktopStrings } from '../i18n/desktop-en.ts';
@@ -13,31 +14,33 @@
 
   type Key = keyof DesktopStrings['toasts'];
 
-  let { copy, running }: { copy: DesktopStrings; running: boolean } = $props();
+  let { copy, running, still = false }: { copy: DesktopStrings; running: boolean; /** The comparison: the first three that are live, standing still. */ still?: boolean } = $props();
   const store = useStore();
 
-  const sources: { key: Key; icon: IconName; live: () => boolean }[] = [
-    { key: 'tips', icon: 'lightbulbBig', live: () => store.active('tips-toasts') },
-    { key: 'cloud', icon: 'cloud', live: () => !store.applied({ kind: 'startup', id: toastingStartup.cloud }) },
-    { key: 'feedback', icon: 'star', live: () => store.active('feedback-toast') },
-    { key: 'launcher', icon: 'games', live: () => !store.applied({ kind: 'startup', id: toastingStartup.launcher }) },
-    { key: 'updater', icon: 'sync', live: () => !store.applied({ kind: 'startup', id: toastingStartup.updater }) },
+  // mark: what the shatter looks for when the change behind a toast is applied (store.svelte.ts).
+  const sources: { key: Key; icon: IconName; live: () => boolean; mark: Record<string, string> }[] = [
+    { key: 'tips', icon: 'lightbulbBig', live: () => store.active('tips-toasts'), mark: { 'data-effect': 'tips-toasts' } },
+    { key: 'cloud', icon: 'cloud', live: () => !store.applied({ kind: 'startup', id: toastingStartup.cloud }), mark: { 'data-change': `startup:${toastingStartup.cloud}` } },
+    { key: 'feedback', icon: 'star', live: () => store.active('feedback-toast'), mark: { 'data-effect': 'feedback-toast' } },
+    { key: 'launcher', icon: 'games', live: () => !store.applied({ kind: 'startup', id: toastingStartup.launcher }), mark: { 'data-change': `startup:${toastingStartup.launcher}` } },
+    { key: 'updater', icon: 'sync', live: () => !store.applied({ kind: 'startup', id: toastingStartup.updater }), mark: { 'data-change': `startup:${toastingStartup.updater}` } },
   ];
 
   let shown = $state<Key[]>([]);
-  const visible = $derived(shown.filter((key) => sources.find((s) => s.key === key)!.live()));
+  const visible = $derived(still ? sources.filter((s) => s.live()).slice(0, 3).map((s) => s.key) : shown.filter((key) => sources.find((s) => s.key === key)!.live()));
   const quietUntil = new Map<Key, number>();
   let next = 0;
 
-  function showNext() {
+  /** Shows the next live toast; `stack` is how many may stand at once. */
+  function showNext(stack = innerWidth >= 1500 && innerHeight >= 960 ? 2 : 1) {
     if (!running || document.hidden) return;
     for (let i = 0; i < sources.length; i++) {
       const source = sources[(next + i) % sources.length];
       if (!source.live() || shown.includes(source.key) || (quietUntil.get(source.key) ?? 0) > Date.now()) continue;
       next = (sources.indexOf(source) + 1) % sources.length;
-      // Two at once only where they stay clear of the windows' buttons.
-      const room = innerWidth >= 1500 && innerHeight >= 960;
-      shown = [...(room ? shown.slice(-1) : []), source.key];
+      // More than one at once only where they stay clear of the windows' buttons.
+      shown = [...(stack > 1 ? shown.slice(-(stack - 1)) : []), source.key];
+      chime();
       setTimeout(() => hide(source.key, 12000), 7000);
       return;
     }
@@ -48,13 +51,24 @@
     quietUntil.set(key, Date.now() + quiet);
   }
 
-  onMount(() => {
-    const first = setTimeout(showNext, 1200);
-    const timer = setInterval(showNext, 4500);
-    return () => {
-      clearTimeout(first);
-      clearInterval(timer);
-    };
+  // A window opened: the pile from the arrival shrinks to the newest one where it would cover the window's buttons.
+  $effect(() => {
+    const windowOpen = Object.values(store.windows).some((w) => w.open && !w.minimized);
+    if (windowOpen && !(innerWidth >= 1500 && innerHeight >= 960)) untrack(() => shown.length > 1 && (shown = shown.slice(-1)));
+  });
+
+  // The arrival: on an untouched demo PC the nags pile up at once, three in a row, then come one at a time.
+  $effect(() => {
+    if (!running || still) return;
+    return untrack(() => {
+      const untouched = store.state.applied.length === 0;
+      const timers = untouched ? [700, 1150, 1600].map((at) => setTimeout(() => showNext(3), at)) : [setTimeout(() => showNext(), 1200)];
+      const interval = setInterval(() => showNext(), 4500);
+      return () => {
+        timers.forEach(clearTimeout);
+        clearInterval(interval);
+      };
+    });
   });
 
   const motion = (node: Element) => fly(node, { x: reducedMotion() ? 0 : 360, duration: reducedMotion() ? 0 : 260, opacity: 0 });
@@ -65,7 +79,7 @@
   {#each visible as key (key)}
     {@const toast = copy.toasts[key]}
     {@const source = sources.find((s) => s.key === key)!}
-    <div class="toast" in:motion out:motion animate:flip={{ duration: reducedMotion() ? 0 : 220 }}>
+    <div class="toast" {...source.mark} in:motion out:motion animate:flip={{ duration: reducedMotion() ? 0 : 220 }}>
       <div class="head">
         <Icon name={source.icon} size={16} />
         <span>{toast.app}</span>

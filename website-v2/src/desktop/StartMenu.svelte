@@ -69,7 +69,7 @@
       <Icon name="search" size={16} />
       <input type="search" bind:value={query} placeholder={copy.searchPlaceholder} aria-label={copy.searchPlaceholder} use:focusNow />
       {#if store.active('search-highlights')}
-        <span class="trend" title={copy.searchHighlight} transition:appMotion><Icon name="star" size={16} /><span class="trend-text">{copy.searchHighlight}</span></span>
+        <span class="trend" data-effect="search-highlights" title={copy.searchHighlight} transition:appMotion><Icon name="star" size={16} /><span class="trend-text">{copy.searchHighlight}</span></span>
       {/if}
     </label>
 
@@ -94,7 +94,7 @@
       </section>
     {:else}
     {#if store.active('search-highlights')}
-      <section class="trending" transition:appMotion>
+      <section class="trending" data-effect="search-highlights" transition:appMotion>
         <h2>{copy.search.trending}</h2>
         <ul>
           {#each copy.search.trendingItems as item (item)}<li><Icon name="star" size={16} />{item}</li>{/each}
@@ -111,7 +111,7 @@
       {/each}
       {#each apps as app (app.id)}
         {#if !store.applied({ kind: 'app', id: app.id })}
-          <span class="tile static" out:appMotion in:appMotion>
+          <span class="tile static" data-change="app:{app.id}" out:appMotion in:appMotion>
             <Icon name={app.icon} size={32} />
             <span>{app.title}</span>
           </span>
@@ -120,7 +120,7 @@
     </div>
 
     {#if store.active('start-recommended')}
-      <section class="recommended" transition:appMotion>
+      <section class="recommended" data-effect="start-recommended" transition:appMotion>
         <h2>{copy.recommended}</h2>
         <ul>
           {#each copy.recommendedItems as item, i (item)}
@@ -134,11 +134,11 @@
 
     <footer>
       <span class="user">
-        <span class="avatar"><Icon name="person" size={20} />{#if store.active('start-account')}<span class="badge"></span>{/if}</span>
+        <span class="avatar"><Icon name="person" size={20} />{#if store.active('start-account')}<span class="badge" data-effect="start-account"></span>{/if}</span>
         {copy.user}
       </span>
       {#if store.active('start-account')}
-        <span class="nag" transition:appMotion>{copy.accountNag}</span>
+        <span class="nag" data-effect="start-account" transition:appMotion>{copy.accountNag}</span>
       {/if}
       <span class="power" title={copy.power}><Icon name="power" size={20} /></span>
     </footer>
