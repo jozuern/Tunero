@@ -50,7 +50,7 @@ public static class CommandLineApply
     public static async Task<int> ApplyAsync(string path, AppServices services, string? logPath, bool withoutRestorePoint)
     {
         var lines = new List<string>();
-        var code = await Locked(lines, () => ApplyCoreAsync(path, services, withoutRestorePoint, lines));
+        var code = await Locked(services, lines, () => ApplyCoreAsync(path, services, withoutRestorePoint, lines));
         Finish("apply", lines, code, logPath);
         return code;
     }
@@ -62,7 +62,7 @@ public static class CommandLineApply
         IReadOnlyCollection<string> ignoredTweaks, string? logPath, bool withoutRestorePoint)
     {
         var lines = new List<string>();
-        var code = await Locked(lines, () => ApplyRecommendedCoreAsync(services, profileId, savedProfileId, ignored, ignoredTweaks, withoutRestorePoint, lines));
+        var code = await Locked(services, lines, () => ApplyRecommendedCoreAsync(services, profileId, savedProfileId, ignored, ignoredTweaks, withoutRestorePoint, lines));
         Finish("apply recommended", lines, code, logPath);
         return code;
     }
@@ -74,7 +74,7 @@ public static class CommandLineApply
         var parts = (include ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         var code = parts.FirstOrDefault(p => !Sections.Contains(p, StringComparer.OrdinalIgnoreCase)) is { } unknown
             ? Unknown(lines, unknown)
-            : await Locked(lines, () => ExportCoreAsync(path, services, parts.ToHashSet(StringComparer.OrdinalIgnoreCase), lines));
+            : await Locked(services, lines, () => ExportCoreAsync(path, services, parts.ToHashSet(StringComparer.OrdinalIgnoreCase), lines));
         Finish("export", lines, code, logPath);
         return code;
     }
@@ -83,7 +83,7 @@ public static class CommandLineApply
     public static async Task<int> ReapplyAsync(AppServices services, string? logPath)
     {
         var lines = new List<string>();
-        var code = await Locked(lines, () => ReapplyCoreAsync(services, lines));
+        var code = await Locked(services, lines, () => ReapplyCoreAsync(services, lines));
         Finish("reapply", lines, code, logPath);
         return code;
     }
@@ -116,25 +116,30 @@ public static class CommandLineApply
     public static async Task<int> UndoAllAsync(AppServices services, string? logPath)
     {
         var lines = new List<string>();
-        var code = await Locked(lines, () => UndoCoreAsync(services, lines));
+        var code = await Locked(services, lines, () => UndoCoreAsync(services, lines));
         Finish("undo all", lines, code, logPath);
         return code;
     }
 
-    /// <summary>Runs <paramref name="work"/> as the only change on this PC (<see cref="ChangeLock"/>), or returns <see cref="Busy"/>.</summary>
-    private static async Task<int> Locked(List<string> lines, Func<Task<int>> work)
+    /// <summary>
+    /// Runs <paramref name="work"/> as the only change on this PC (the session's lock, <see cref="ChangeSession.ExclusiveAsync"/>),
+    /// or returns <see cref="Busy"/>.
+    /// </summary>
+    private static async Task<int> Locked(AppServices services, List<string> lines, Func<Task<int>> work)
     {
-        using var crossProcess = await Task.Run(() => ChangeLock.TryAcquire(LockWait));
-        if (crossProcess is null)
-        {
-            lines.Add(Loc.Instance["Cli_Busy"]);
-            return Busy;
-        }
         // An unexpected error ends the run with its own exit code and a line in the log file; a run without a window
         // must never wait on an error dialog.
         try
         {
-            return await work();
+            var code = Busy;
+            if (await services.Session.ExclusiveAsync(async () => code = await work(), LockWait)) return code;
+            lines.Add(Loc.Instance["Cli_Busy"]);
+            return Busy;
+        }
+        catch (ChangeBusyException)
+        {
+            lines.Add(Loc.Instance["Cli_Busy"]);
+            return Busy;
         }
         catch (Exception ex)
         {

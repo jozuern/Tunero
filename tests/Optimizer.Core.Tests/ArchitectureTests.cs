@@ -67,6 +67,34 @@ public partial class ArchitectureTests
         Assert.Empty(problems);
     }
 
+    /// <summary>
+    /// Every change goes through <see cref="Tweaks.ChangeSession"/>, which takes the cross-process change lock itself: no
+    /// other code takes the lock or calls the engine's apply and undo, so a new entry point cannot skip the lock. And
+    /// %variables% are expanded only by <see cref="Platform.PathExpander"/>, never with this elevated process's own
+    /// environment (another account's folders under a separate administrator account).
+    /// </summary>
+    [Fact]
+    public void ChangesGoThroughTheSessionAndPathsThroughTheExpander()
+    {
+        var problems = new List<string>();
+        foreach (var file in Directory.EnumerateFiles(Path.Combine(RepoPaths.Root, "src"), "*.cs", SearchOption.AllDirectories))
+        {
+            if (file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)) continue;
+            var name = Path.GetFileName(file);
+            var text = File.ReadAllText(file);
+            if (name is not ("ChangeLock.cs" or "ChangeSession.cs") && LockTaken().IsMatch(text)) problems.Add($"{name}: takes the change lock (use ChangeSession.ExclusiveAsync)");
+            if (name is not ("ChangeSession.cs" or "TweakEngine.cs") && EngineChange().Match(text) is { Success: true } m) problems.Add($"{name}: {m.Value} (use ChangeSession)");
+            if (text.Contains("ExpandEnvironmentVariables", StringComparison.Ordinal)) problems.Add($"{name}: ExpandEnvironmentVariables (use PathExpander)");
+        }
+        Assert.Empty(problems);
+    }
+
+    [GeneratedRegex(@"\b(ChangeLock|changeLock|IChangeLock)\.TryAcquire\(|ChangeLock\.DataFolder\.TryAcquire\(")]
+    private static partial Regex LockTaken();
+
+    [GeneratedRegex(@"\b[Ee]ngine\.(ApplyAsync|ApplyBatchAsync|Revert|RevertAll)\(")]
+    private static partial Regex EngineChange();
+
     [Fact]
     public void PowerShellCommandLines()
     {

@@ -185,6 +185,8 @@ public sealed partial class ServicesViewModel(IPageHost owner, AppServices servi
         var lang = Lang;
         var showMs = ShowMicrosoftTasks;
         var q = TaskSearch.Trim();
+        // A task's program as the signed-in user's sign-in would start it (as the Startup page reads it).
+        var userPaths = services.UserPaths;
         Tasks.Clear();
         foreach (var t in _taskList.Where(t => (showMs || !t.Path.StartsWith(@"\Microsoft\", StringComparison.OrdinalIgnoreCase))
                                                && (q.Length == 0 || t.Path.Contains(q, StringComparison.OrdinalIgnoreCase) || t.Command?.Contains(q, StringComparison.OrdinalIgnoreCase) == true))
@@ -192,7 +194,7 @@ public sealed partial class ServicesViewModel(IPageHost owner, AppServices servi
         {
             // Full command with arguments: rundll32 resolves to its DLL, and script hosts are judged by what they run.
             var command = t.Command is null ? null : $"\"{t.Command}\" {t.Arguments}".Trim();
-            var entry = new StartupEntry(StartupKind.LogonTask, t.Path.TrimStart('\\'), command, CommandLine.ImagePath(command),
+            var entry = new StartupEntry(StartupKind.LogonTask, t.Path.TrimStart('\\'), command, CommandLine.ImagePath(command, userPaths.Expand),
                 t.AtLogon ? Loc.Instance["Task_AtLogon"] : t.AtBoot ? Loc.Instance["Task_AtBoot"] : Loc.Instance["Task_Other"], Hive.Machine, t.Enabled, $"task:{t.Path}")
             {
                 Target = t.Path,

@@ -11,7 +11,22 @@ namespace Optimizer.App.Tests;
 /// <summary>The window as the Storage page sees it: a finished PC scan without game libraries, and the banner.</summary>
 internal sealed class FakePageHost : IPageHost
 {
-    public FakePageHost() => Runner = new ChangeRunner(null!, new FakeDialogs(), () => throw new NotSupportedException(), () => new HashSet<string>(), () => false);
+    // The page operations under test run through the runner's lock (RunExclusiveAsync), never the engine: a session with
+    // a lock that lives in memory, so no test takes the real changes.lock in the data folder.
+    public FakePageHost() => Runner = new ChangeRunner(null!, new FakeDialogs(), () => throw new NotSupportedException(), () => new HashSet<string>(), () => false,
+        new ChangeSession(null!, null!, new MemoryChangeLock()));
+
+    private sealed class MemoryChangeLock : IChangeLock
+    {
+        private int _held;
+
+        public IDisposable? TryAcquire(TimeSpan wait) => Interlocked.CompareExchange(ref _held, 1, 0) == 0 ? new Release(this) : null;
+
+        private sealed class Release(MemoryChangeLock owner) : IDisposable
+        {
+            public void Dispose() => Volatile.Write(ref owner._held, 0);
+        }
+    }
 
     public List<(string Text, InfoBarSeverity Severity)> Results { get; } = [];
 

@@ -34,6 +34,8 @@
 - **Screen readers:** scroll bar arrows are read as "Scroll up" and "Scroll down" instead of icon names.
 - **Windows features:** a switch made by an earlier version is still found, so switching back undoes it.
 - **Tools:** Flush DNS cache and Reset Winsock work like the other quick fixes; the Winsock confirmation carries the card's title.
+- **Installed programs:** a program installed for your account alone runs your own uninstaller and its leftovers are looked for in your profile, also when Tunero runs as a separate administrator account.
+- **Other account:** when Windows cannot look up the signed-in account (a domain account while the domain cannot be reached), a banner says that user settings go to the account Tunero runs as.
 
 ## 1.4.0
 

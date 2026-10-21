@@ -53,7 +53,7 @@ public static class RecycleRules
         foreach (var d in DriveInfo.GetDrives().Where(d => d.DriveType == DriveType.Fixed)) Add(d.RootDirectory.FullName);
 
         var profiles = Reg.HklmUnexpanded(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList", "ProfilesDirectory") is { Length: > 0 } configured
-            ? MachineEnvironment.Expand(configured)
+            ? PathExpander.Machine.Expand(configured)
             : Path.GetDirectoryName(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile).TrimEnd('\\'));
         Add(profiles);
         if (!string.IsNullOrEmpty(profiles) && Directory.Exists(profiles))

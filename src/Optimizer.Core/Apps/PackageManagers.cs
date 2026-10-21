@@ -117,8 +117,8 @@ public sealed class ManagerSystem
         WingetTrusted = wingetTrusted,
         WingetForUser = wingetForUser,
         StoreVersion = () => PackageManagers.InstalledStoreVersion()?.ToString(),
-        MachineVariable = name => Variable(registry, Hive.Machine, @"SYSTEM\CurrentControlSet\Control\Session Manager\Environment", name, MachineEnvironment.Expand),
-        UserVariable = name => Variable(registry, Hive.User, "Environment", name, MachineEnvironment.ForUser(profilePath)),
+        MachineVariable = name => Variable(registry, Hive.Machine, @"SYSTEM\CurrentControlSet\Control\Session Manager\Environment", name, PathExpander.Machine.Expand),
+        UserVariable = name => Variable(registry, Hive.User, "Environment", name, PathExpander.ForUser(profilePath, registry).Expand),
     };
 
     private static string? Variable(IRegistryRoots registry, Hive hive, string path, string name, Func<string, string> expand)

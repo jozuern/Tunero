@@ -27,7 +27,7 @@ public sealed class AppServices
         if (Elevation.IsElevated) DefaultProfileHive.UnloadLeftovers();
         RestorePoints = new RestorePointService(Context.Processes);
         Engine = new TweakEngine(Context, Store, RestorePoints, Optimizer.Core.Platform.AppInfo.Text, Os.Build, Os.BuildString);
-        Session = new ChangeSession(Engine, RestorePoints);
+        Session = new ChangeSession(Engine, RestorePoints, ChangeLock.DataFolder);
 
         // bcdedit needs admin rights; without them the BCD part of F21 is reported as unknown.
         BcdValues = Elevation.IsElevated ? () => Context.Bcd.CurrentValues() : () => null;
@@ -95,6 +95,12 @@ public sealed class AppServices
         : null;
 
     /// <summary>
+    /// Expands per-user paths and command lines for the signed-in user (<see cref="UserSid"/>, <see cref="ProfilePath"/>),
+    /// not for the account this app runs as. Read anew each time: the user's own variables can change while the app runs.
+    /// </summary>
+    public PathExpander UserPaths => PathExpander.ForUser(ProfilePath, Context.Registry);
+
+    /// <summary>
     /// The signed-in user's Documents folder (also when moved, to OneDrive for example), for the file dialogs: under a
     /// separate admin account this process's own Documents would be that account's. Null when it cannot be found.
     /// </summary>
@@ -126,7 +132,7 @@ public sealed class AppServices
         {
             using var key = Context.Registry.Open(Hive.User, @"Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders", writable: false);
             var raw = key?.GetValue(value, null, Microsoft.Win32.RegistryValueOptions.DoNotExpandEnvironmentNames) as string;
-            var folder = raw is { Length: > 0 } ? MachineEnvironment.ForUser(profile)(raw) : Path.Combine(profile, fallback);
+            var folder = raw is { Length: > 0 } ? UserPaths.Expand(raw) : Path.Combine(profile, fallback);
             return Directory.Exists(folder) ? folder : null;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException or ArgumentException)

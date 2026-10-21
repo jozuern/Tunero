@@ -22,7 +22,7 @@ public sealed partial class StartupScanner
     {
         if (string.IsNullOrWhiteSpace(name)) return null;
         // These files are loaded by Windows itself (boot, LSA, spooler, Winsock): the machine's variables, not the user's.
-        var expanded = Platform.MachineEnvironment.Expand(name.Trim().Trim('"'));
+        var expanded = Platform.PathExpander.Machine.Expand(name.Trim().Trim('"'));
         var system32 = Environment.SystemDirectory;
         var syswow64 = Environment.GetFolderPath(Environment.SpecialFolder.SystemX86);
         if (Path.IsPathRooted(expanded))
@@ -65,7 +65,7 @@ public sealed partial class StartupScanner
             using var s = exKey!.OpenSubKey(sub);
             foreach (var name in s?.GetValueNames().Where(n => n.Length > 0) ?? [])
             {
-                var command = s!.GetValue(name)?.ToString();
+                var command = s!.GetValue(name, null, Microsoft.Win32.RegistryValueOptions.DoNotExpandEnvironmentNames)?.ToString();
                 yield return new StartupEntry(StartupKind.RunOnce, $@"{sub}\{name}", command, CommandLine.ImagePath(command?.Split('|')[0]), $@"HKLM\{ex}\{sub}", Hive.Machine, null, $"runonceex:{sub}:{name}");
             }
         }
@@ -83,7 +83,7 @@ public sealed partial class StartupScanner
                 if (c?.GetValue("StubPath", null, Microsoft.Win32.RegistryValueOptions.DoNotExpandEnvironmentNames)?.ToString() is not { Length: > 0 } stub) continue;
                 if (c.GetValue("IsInstalled") is int installed && installed == 0) continue;
                 var name = c.GetValue("")?.ToString() is { Length: > 0 } n ? ResolveIndirect(n) ?? n : id;
-                yield return new StartupEntry(StartupKind.ActiveSetup, name, stub, CommandLine.ImagePath(stub), $@"HKLM\{path}\{id}", Hive.Machine, null, $"activesetup:{path}:{id}");
+                yield return new StartupEntry(StartupKind.ActiveSetup, name, stub, CommandLine.ImagePath(stub, _userExpand), $@"HKLM\{path}\{id}", Hive.Machine, null, $"activesetup:{path}:{id}");
             }
         }
     }
@@ -258,7 +258,7 @@ public sealed partial class StartupScanner
                     : o["ScriptFileName"]?.ToString() is { Length: > 0 } file ? file
                     : o["ScriptText"]?.ToString() is { Length: > 0 } text ? "(script) " + text.ReplaceLineEndings(" ")[..Math.Min(120, text.ReplaceLineEndings(" ").Length)]
                     : "(script)";
-                list.Add(new StartupEntry(StartupKind.WmiConsumer, name, command, CommandLine.ImagePath(command, Platform.MachineEnvironment.Expand), $@"WMI root\subscription\{cls}", Hive.Machine, null, $"wmi:{cls}:{name}")
+                list.Add(new StartupEntry(StartupKind.WmiConsumer, name, command, CommandLine.ImagePath(command, Platform.PathExpander.Machine.Expand), $@"WMI root\subscription\{cls}", Hive.Machine, null, $"wmi:{cls}:{name}")
                 {
                     Suspicious = true,
                 });
@@ -281,7 +281,7 @@ public sealed partial class StartupScanner
         {
             using var key = Open(hive, path);
             if (key?.GetValue("AutoRun", null, Microsoft.Win32.RegistryValueOptions.DoNotExpandEnvironmentNames)?.ToString() is not { Length: > 0 } command) continue;
-            yield return new StartupEntry(StartupKind.CommandAutoRun, "cmd.exe AutoRun", command, CommandLine.ImagePath(command, hive == Hive.User ? _userExpand : Platform.MachineEnvironment.Expand),
+            yield return new StartupEntry(StartupKind.CommandAutoRun, "cmd.exe AutoRun", command, CommandLine.ImagePath(command, hive == Hive.User ? _userExpand : Platform.PathExpander.Machine.Expand),
                 $@"{Root(hive)}\{path}\AutoRun", hive, null, $"cmdautorun:{hive}:{path}")
             {
                 Suspicious = true,
@@ -384,7 +384,7 @@ public sealed partial class StartupScanner
                 using var key = Open(hive, path);
                 if (key?.GetValue("", null, Microsoft.Win32.RegistryValueOptions.DoNotExpandEnvironmentNames)?.ToString() is not { Length: > 0 } command) continue;
                 if (hive == Hive.Machine && string.Equals(command.Trim(), expected, StringComparison.OrdinalIgnoreCase)) continue;
-                yield return new StartupEntry(StartupKind.FileTypeHijack, $"{type} open", command, CommandLine.ImagePath(command, hive == Hive.User ? _userExpand : Platform.MachineEnvironment.Expand),
+                yield return new StartupEntry(StartupKind.FileTypeHijack, $"{type} open", command, CommandLine.ImagePath(command, hive == Hive.User ? _userExpand : Platform.PathExpander.Machine.Expand),
                     $@"{Root(hive)}\{path}", hive, null, $"filetype:{hive}:{type}")
                 {
                     Suspicious = true,
@@ -405,7 +405,7 @@ public sealed partial class StartupScanner
         {
             using var sub = key!.OpenSubKey(exe);
             if (sub?.GetValue("MonitorProcess")?.ToString() is not { Length: > 0 } monitor) continue;
-            yield return new StartupEntry(StartupKind.SilentProcessExit, exe, monitor, CommandLine.ImagePath(monitor, Platform.MachineEnvironment.Expand), $@"HKLM\{path}\{exe}", Hive.Machine, null, $"silentexit:{exe}")
+            yield return new StartupEntry(StartupKind.SilentProcessExit, exe, monitor, CommandLine.ImagePath(monitor, Platform.PathExpander.Machine.Expand), $@"HKLM\{path}\{exe}", Hive.Machine, null, $"silentexit:{exe}")
             {
                 Suspicious = true,
             };

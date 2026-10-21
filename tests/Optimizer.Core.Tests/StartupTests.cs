@@ -402,11 +402,11 @@ public class StartupTests
     public void SystemEntriesExpandWithTheMachineEnvironment()
     {
         var windows = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
-        Assert.Equal(Path.Combine(windows, @"System32\svchost.exe"), MachineEnvironment.Expand(@"%SystemRoot%\System32\svchost.exe"));
-        Assert.Equal(Path.Combine(windows, @"System32\x.dll"), MachineEnvironment.Expand(@"%windir%\System32\x.dll"));
-        Assert.Equal(@"%PCO_NOT_A_MACHINE_VAR%\x.exe", MachineEnvironment.Expand(@"%PCO_NOT_A_MACHINE_VAR%\x.exe"));
+        Assert.Equal(Path.Combine(windows, @"System32\svchost.exe"), PathExpander.Machine.Expand(@"%SystemRoot%\System32\svchost.exe"));
+        Assert.Equal(Path.Combine(windows, @"System32\x.dll"), PathExpander.Machine.Expand(@"%windir%\System32\x.dll"));
+        Assert.Equal(@"%PCO_NOT_A_MACHINE_VAR%\x.exe", PathExpander.Machine.Expand(@"%PCO_NOT_A_MACHINE_VAR%\x.exe"));
         var vars = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["SystemRoot"] = @"C:\Windows" };
-        Assert.Equal(@"C:\Windows\TEMP", MachineEnvironment.Expand(@"%systemroot%\TEMP", vars));
+        Assert.Equal(@"C:\Windows\TEMP", PathExpander.Expand(@"%systemroot%\TEMP", vars));
     }
 
     /// <summary>A certificate named "Microsoft Corporation" under a root someone added is not Microsoft's.</summary>

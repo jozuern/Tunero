@@ -23,11 +23,12 @@ public static class ProgramOrphans
 
     /// <summary>
     /// Everything in the registry that points into program folders, plus <paramref name="extraPaths"/> (autostart entries
-    /// and running programs, which the caller reads).
+    /// and running programs, which the caller reads). <paramref name="user"/> expands the signed-in user's own uninstall
+    /// entries (<see cref="Platform.PathExpander.ForUser(string?, IRegistryRoots?)"/>).
     /// </summary>
-    public static OrphanEvidence ReadEvidence(IRegistryRoots registry, IEnumerable<string> extraPaths)
+    public static OrphanEvidence ReadEvidence(IRegistryRoots registry, IEnumerable<string> extraPaths, Platform.PathExpander? user = null)
     {
-        var paths = new List<string>(Programs.ReferencedPaths(registry));
+        var paths = new List<string>(Programs.ReferencedPaths(registry, user));
         var names = new List<string>();
         var productCodes = new List<string>();
         foreach (var (hive, path) in new[] { (Hive.Machine, Uninstall), (Hive.Machine, Uninstall32), (Hive.User, Uninstall) })
@@ -46,8 +47,8 @@ public static class ProgramOrphans
         ReadEach(registry, Hive.Machine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths", (key, sub) =>
         {
             using var app = key.OpenSubKey(sub);
-            AddPath(paths, app?.GetValue(null) as string);
-            AddPath(paths, app?.GetValue("Path") as string);
+            AddPath(paths, app?.GetValue(null, null, Microsoft.Win32.RegistryValueOptions.DoNotExpandEnvironmentNames) as string);
+            AddPath(paths, app?.GetValue("Path", null, Microsoft.Win32.RegistryValueOptions.DoNotExpandEnvironmentNames) as string);
         });
         foreach (var clsid in new[] { @"SOFTWARE\Classes\CLSID", @"SOFTWARE\WOW6432Node\Classes\CLSID" })
         {
@@ -56,7 +57,8 @@ public static class ProgramOrphans
                 foreach (var server in new[] { "InprocServer32", "LocalServer32" })
                 {
                     using var s = key.OpenSubKey($@"{sub}\{server}");
-                    if (s?.GetValue(null) is string value) AddPath(paths, CommandLine.ImagePath(value));
+                    if (s?.GetValue(null, null, Microsoft.Win32.RegistryValueOptions.DoNotExpandEnvironmentNames) is string value)
+                        AddPath(paths, CommandLine.ImagePath(value, Platform.PathExpander.Machine.Expand));
                 }
             });
         }
@@ -75,10 +77,13 @@ public static class ProgramOrphans
         return Directory.Exists(pins) ? ProgramLeftovers.Shortcuts(pins).Select(ProgramLeftovers.ShortcutTarget).OfType<string>().ToList() : [];
     }
 
-    /// <summary>A path that points into a folder; an 8.3 short name ("C:\PROGRA~2\Vendor") as its long form, so it matches the folder.</summary>
+    /// <summary>
+    /// A path that points into a folder; an 8.3 short name ("C:\PROGRA~2\Vendor") as its long form, so it matches the
+    /// folder. Values here are the machine's or already expanded (autostart entries, running programs).
+    /// </summary>
     private static void AddPath(List<string> paths, string? value)
     {
-        if (ProgramLeftovers.CleanPath(value, _ => false) is not { } p) return;
+        if (ProgramLeftovers.CleanPath(value, Platform.PathExpander.Machine, _ => false) is not { } p) return;
         paths.Add(p.Contains('~') ? Platform.SafeDelete.LongPath(p) : p);
     }
 

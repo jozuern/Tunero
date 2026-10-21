@@ -28,7 +28,7 @@ public class ProgressReportTests
         using var fx = new EngineFixture();
         var steps = new Collect<BatchStep>();
         var tweaks = new[] { T("gpu.hags"), T("explorer.fileExtensions") };
-        var outcome = await new ChangeSession(fx.Engine, fx.RestorePoints)
+        var outcome = await new ChangeSession(fx.Engine, fx.RestorePoints, fx.ChangeLock)
             .ApplyBatchAsync(tweaks, Facts(), new HashSet<string>(), new ApplyOptions(), () => RestorePointChoice.Cancel, steps);
         Assert.Equal(2, outcome.Applied);
         Assert.Equal(
@@ -47,7 +47,7 @@ public class ProgressReportTests
         var tweaks = new[] { T("gpu.hags"), T("explorer.fileExtensions") };
         // Stop pressed while the first change runs: it is finished, the second one is not started.
         var steps = new Collect<BatchStep>();
-        var outcome = await new ChangeSession(fx.Engine, fx.RestorePoints).ApplyBatchAsync(tweaks, Facts(), new HashSet<string>(), new ApplyOptions(),
+        var outcome = await new ChangeSession(fx.Engine, fx.RestorePoints, fx.ChangeLock).ApplyBatchAsync(tweaks, Facts(), new HashSet<string>(), new ApplyOptions(),
             () => RestorePointChoice.Cancel, new Progress(s =>
             {
                 steps.Report(s);
@@ -70,7 +70,7 @@ public class ProgressReportTests
         using var fx = new EngineFixture();
         // Without System Restore: no backup of the restore point frequency joins the two.
         fx.RestorePoints.Enabled = false;
-        var session = new ChangeSession(fx.Engine, fx.RestorePoints);
+        var session = new ChangeSession(fx.Engine, fx.RestorePoints, fx.ChangeLock);
         await session.ApplyBatchAsync([T("gpu.hags"), T("explorer.fileExtensions")], Facts(), new HashSet<string>(), new ApplyOptions(), () => RestorePointChoice.Continue);
         var steps = new Collect<BatchStep>();
         var undone = await session.UndoAllAsync(steps);

@@ -271,11 +271,13 @@ public static class OneDrive
     public static OneDriveState Read(IRegistryRoots registry, string? profilePath, int maxFiles = 200_000)
     {
         var userFolders = UserFolders(registry);
+        // The folders are the signed-in user's: expanded with that user's profile and variables, not the elevated account's.
+        var user = Platform.PathExpander.ForUser(profilePath, registry);
         var redirected = new List<string>();
         foreach (var name in new[] { "Desktop", "Personal", "My Pictures", "My Music", "My Video" })
         {
             var v = RegistryValue.Read(registry, Hive.User, @"Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders", name);
-            var expanded = Expand(v.Data, profilePath);
+            var expanded = string.IsNullOrEmpty(v.Data) ? null : user.Expand(v.Data);
             if (expanded is not null && userFolders.Any(f => IsBelow(expanded, f))) redirected.Add(name);
         }
 
@@ -329,13 +331,6 @@ public static class OneDrive
         return File.Exists(machine) || (perUser is not null && File.Exists(perUser));
     }
 
-    private static string? Expand(string? value, string? profilePath)
-    {
-        if (string.IsNullOrEmpty(value)) return null;
-        // %USERPROFILE% must be the session user's profile, not the elevated account's.
-        if (profilePath is not null) value = value.Replace("%USERPROFILE%", profilePath, StringComparison.OrdinalIgnoreCase);
-        return Environment.ExpandEnvironmentVariables(value);
-    }
 
     public static string? FindSetup(string? profilePath)
     {

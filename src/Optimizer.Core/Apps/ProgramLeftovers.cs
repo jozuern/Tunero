@@ -80,11 +80,15 @@ public static class ProgramLeftovers
         @"Microsoft\Crypto", @"Microsoft\Protect", @"Microsoft\Credentials", @"Microsoft\Vault", @"Microsoft\Office",
     };
 
-    /// <summary>A folder path from a registry value: quotes, an icon index (",0") and a trailing backslash removed; a file gives its folder.</summary>
-    public static string? CleanPath(string? value, Func<string, bool>? isFile = null)
+    /// <summary>
+    /// A folder path from a registry value: %variables% expanded with <paramref name="paths"/> (the machine's for an entry
+    /// of the PC, the signed-in user's for one of their own), quotes, an icon index (",0") and a trailing backslash
+    /// removed; a file gives its folder. Null when it is no full path (a variable the expander does not know).
+    /// </summary>
+    public static string? CleanPath(string? value, PathExpander paths, Func<string, bool>? isFile = null)
     {
         if (string.IsNullOrWhiteSpace(value)) return null;
-        var s = Environment.ExpandEnvironmentVariables(value.Trim());
+        var s = paths.Expand(value.Trim());
         // "C:\App\app.exe",0 or C:\App\app.exe,0: the icon index after the path.
         var comma = s.LastIndexOf(',');
         if (comma > 0 && int.TryParse(s[(comma + 1)..].Trim(), out _)) s = s[..comma].Trim();
@@ -193,20 +197,22 @@ public static class ProgramLeftovers
     }
 
     /// <summary>The program's own folders: its install location and the folders of its uninstaller and its icon (not System32's msiexec).</summary>
-    public static IReadOnlyList<string> Folders(DesktopProgram p, Func<string, bool>? isFile = null)
+    /// <param name="user">The signed-in user's expander, for a program of their own uninstall list; null leaves its user folder variables as they are.</param>
+    public static IReadOnlyList<string> Folders(DesktopProgram p, Func<string, bool>? isFile = null, PathExpander? user = null)
     {
         isFile ??= File.Exists;
+        var paths = p.PerUser ? user ?? PathExpander.UnknownUser : PathExpander.Machine;
         var list = new List<string>();
-        if (CleanPath(p.InstallLocation, isFile) is { } location) list.Add(location);
+        if (CleanPath(p.InstallLocation, paths, isFile) is { } location) list.Add(location);
         foreach (var command in new[] { p.UninstallString, p.QuietUninstallString })
         {
             // The program the line starts: a rundll32 line gives rundll32 (skipped), not a DLL in a shared folder.
-            if (p.ProductCode is not null || CommandLine.Program(command, null, isFile) is not var (image, _)) continue;
+            if (p.ProductCode is not null || CommandLine.Program(command, paths.Expand, isFile) is not var (image, _)) continue;
             if (image.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.Windows) + "\\", StringComparison.OrdinalIgnoreCase)) continue;
             if (Path.IsPathFullyQualified(image) && Path.GetDirectoryName(image) is { } folder) list.Add(folder.TrimEnd('\\'));
         }
         // An icon is often the program itself; an icon in the Installer cache or in Windows says nothing about the folder.
-        if (CleanPath(p.DisplayIcon, _ => true) is { } icon && !icon.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.Windows) + "\\", StringComparison.OrdinalIgnoreCase))
+        if (CleanPath(p.DisplayIcon, paths, _ => true) is { } icon && !icon.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.Windows) + "\\", StringComparison.OrdinalIgnoreCase))
             list.Add(icon);
         return list.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
     }
@@ -237,10 +243,10 @@ public static class ProgramLeftovers
     /// <see cref="ProgramOrphans.ReadEvidence"/>, read after the uninstall.
     /// </summary>
     public static IReadOnlyList<Leftover> Find(DesktopProgram removed, LeftoverRoots roots, IReadOnlyCollection<string> referenced,
-        Func<string, string?>? shortcutTarget = null)
+        Func<string, string?>? shortcutTarget = null, PathExpander? user = null)
     {
         shortcutTarget ??= ShortcutTarget;
-        var folders = Folders(removed).Where(f => MayOffer(f, roots, referenced)).ToList();
+        var folders = Folders(removed, user: user).Where(f => MayOffer(f, roots, referenced)).ToList();
         if (folders.Count == 0) return [];
         // A folder inside another one found here is moved with it.
         folders = folders.Where(f => !folders.Any(o => Inside(f, o))).ToList();
@@ -263,12 +269,12 @@ public static class ProgramLeftovers
 
     /// <summary>Leftovers of several removed programs; each shortcut is read once, not once per program.</summary>
     public static IReadOnlyList<(DesktopProgram Program, Leftover Leftover)> FindAll(IEnumerable<DesktopProgram> removed, LeftoverRoots roots,
-        IReadOnlyCollection<string> referenced)
+        IReadOnlyCollection<string> referenced, PathExpander? user = null)
     {
         var targets = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
         string? Cached(string lnk) => targets.TryGetValue(lnk, out var t) ? t : targets[lnk] = ShortcutTarget(lnk);
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        return removed.SelectMany(p => Find(p, roots, referenced, Cached).Select(l => (p, l))).Where(x => seen.Add(x.l.Path)).ToList();
+        return removed.SelectMany(p => Find(p, roots, referenced, Cached, user).Select(l => (p, l))).Where(x => seen.Add(x.l.Path)).ToList();
     }
 
     internal static IEnumerable<string> Shortcuts(string folder)

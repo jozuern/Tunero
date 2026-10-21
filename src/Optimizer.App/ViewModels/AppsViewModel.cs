@@ -350,7 +350,7 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
     private async Task UninstallProgramAsync(ProgramRow? row)
     {
         if (row is null || row.IsRemoving) return;
-        if (Programs.Command(row.Program) is not { } command)
+        if (Programs.Command(row.Program, user: services.UserPaths) is not { } command)
         {
             row.StateText = Loc.Instance["Programs_NoUninstaller"];
             return;
@@ -424,10 +424,11 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
     {
         if (IsQueueRunning) return;
         var quietOn = QuietUninstall;
+        var user = services.UserPaths;
         var plan = _allPrograms.Where(r => r.IsSelected && !r.IsRemoving).Select(r =>
         {
-            var quiet = quietOn ? Programs.QuietCommand(r.Program) : null;
-            return (Row: r, Command: quiet ?? Programs.Command(r.Program), Quiet: quiet is not null);
+            var quiet = quietOn ? Programs.QuietCommand(r.Program, user: user) : null;
+            return (Row: r, Command: quiet ?? Programs.Command(r.Program, user: user), Quiet: quiet is not null);
         }).ToList();
         foreach (var p in plan.Where(p => p.Command is null)) p.Row.StateText = Loc.Instance["Programs_NoUninstaller"];
         var queue = plan.Where(p => p.Command is not null).ToList();
@@ -544,11 +545,12 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
     private async Task FindLeftoversAsync(IReadOnlyList<DesktopProgram> removed)
     {
         var roots = LeftoverRoots.ForPc(services.ProfilePath);
+        var user = services.UserPaths;
         var found = await Task.Run(async () =>
         {
             // Some uninstallers remove their entry first and delete the files afterwards: wait until the folders stop
             // changing (at most a minute), so nothing is offered while it is still being deleted.
-            var folders = removed.SelectMany(p => ProgramLeftovers.Folders(p)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            var folders = removed.SelectMany(p => ProgramLeftovers.Folders(p, user: user)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
             var last = ProgramLeftovers.Footprint(folders);
             for (var i = 0; i < 30; i++)
             {
@@ -559,8 +561,8 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
             }
             // Everything that still points into program folders, as the unused-folder search reads it: also the files of
             // Windows Installer products still installed (which often record no install location), App Paths and COM servers.
-            var referenced = ProgramOrphans.ReadEvidence(services.Context.Registry, []).Paths;
-            return ProgramLeftovers.FindAll(removed, roots, referenced);
+            var referenced = ProgramOrphans.ReadEvidence(services.Context.Registry, [], user).Paths;
+            return ProgramLeftovers.FindAll(removed, roots, referenced, user);
         });
         foreach (var (program, l) in found)
             if (!Leftovers.Any(x => string.Equals(x.Path, l.Path, StringComparison.OrdinalIgnoreCase))) Leftovers.Add(new LeftoverRow(l, program.Name));
@@ -626,7 +628,7 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
                         }
                     }
                 }
-                var evidence = ProgramOrphans.ReadEvidence(services.Context.Registry, inUse);
+                var evidence = ProgramOrphans.ReadEvidence(services.Context.Registry, inUse, services.UserPaths);
                 return ProgramOrphans.Find([Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86)],
                     roots, evidence, DateTime.UtcNow);
             });

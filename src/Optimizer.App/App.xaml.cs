@@ -182,39 +182,12 @@ public partial class App : Application
             return;
         }
 
-        // The first sign-in on a PC installed from Tunero's media (FirstSignInStart): before the desktop appears, nothing is
-        // shown; it installs this exe, starts the installed copy with the profile and ends. A failure is logged and ends the
-        // run, so Windows always goes on to the desktop.
-        if (args.Has(Optimizer.Core.Media.FirstSignIn.Switch))
+        // Runs without the window (CommandLineVerbs): the first sign-in of Tunero's install media, changes (CommandLineApply)
+        // and the developer switch --build-media (CommandLineMedia). The exit code ends the process.
+        if (CommandLineVerbs.Find(args) is { } verb)
         {
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
-            try
-            {
-                var running = Environment.ProcessPath;
-                FirstSignInStart.Run(running, _settings, _settings.Save,
-                    InstallService.Steps.ForThisPc(running ?? "", () => StartMenuShortcut.ProgramsFolder(services.Elevation, services.ProfilePath)), new Launch());
-                Shutdown(0);
-            }
-            catch (Exception ex)
-            {
-                Log.Error("firstsignin", "the first sign-in run failed", ex);
-                Shutdown(CommandLineApply.Error);
-            }
-            return;
-        }
-
-        // Changes without the window (CommandLineApply): apply an exported changes file, or undo everything. And the
-        // developer switch --build-media (CommandLineMedia): an install media ISO from a request file, for the VM tests.
-        if (args.IsCommandLineRun)
-        {
-            ShutdownMode = ShutdownMode.OnExplicitShutdown;
-            var log = args.Value("--log");
-            Shutdown(args.Value(CommandLineMedia.Switch) is { } mediaRequest ? await CommandLineMedia.BuildAsync(mediaRequest, log, MediaCommandLineSystem.ForThisPc(services, _settings.Theme))
-                : args.Value("--apply") is { } changes ? await CommandLineApply.ApplyAsync(changes, services, log, args.Has("--no-restore-point"))
-                : args.Has("--apply-recommended") ? await CommandLineApply.ApplyRecommendedAsync(services, args.Value("--profile"), _settings.Profile, _settings.IgnoredFindings, _settings.IgnoredTweaks, log, args.Has("--no-restore-point"))
-                : args.Value("--export") is { } exportPath ? await CommandLineApply.ExportAsync(exportPath, services, log, args.Value("--include"))
-                : args.Has(Optimizer.Core.Tweaks.ReapplyTask.Argument) ? await CommandLineApply.ReapplyAsync(services, log)
-                : await CommandLineApply.UndoAllAsync(services, log));
+            Shutdown(await CommandLineVerbs.RunAsync(verb, args, services, _settings));
             return;
         }
 
@@ -920,11 +893,7 @@ public partial class App : Application
 
         public bool Has(string name) => args.Any(a => string.Equals(a, name, StringComparison.OrdinalIgnoreCase));
 
-        /// <summary>
-        /// --apply &lt;file&gt;, --apply-recommended, --export &lt;file&gt;, --reapply, --undo-all, --first-sign-in or
-        /// --build-media &lt;file&gt;: no window, the result is the exit code (and the --log file).
-        /// </summary>
-        public bool IsCommandLineRun => Value("--apply") is not null || Has("--apply-recommended") || Value("--export") is not null || Has(Optimizer.Core.Tweaks.ReapplyTask.Argument) || Has("--undo-all")
-            || Has(Optimizer.Core.Media.FirstSignIn.Switch) || Value(CommandLineMedia.Switch) is not null;
+        /// <summary>A verb of <see cref="CommandLineVerbs"/>: no window, the result is the exit code (and the --log file).</summary>
+        public bool IsCommandLineRun => CommandLineVerbs.Find(this) is not null;
     }
 }

@@ -79,9 +79,9 @@ public static class ServiceManager
             if (name.Length == 0) continue;
             var image = s.Str("PathName");
             // The service manager expands the path with the machine's variables, not the signed-in user's.
-            var file = CommandLine.ImagePath(image, Platform.MachineEnvironment.Expand);
+            var file = CommandLine.ImagePath(image, Platform.PathExpander.Machine.Expand);
             if (file is not null && Path.GetFileName(file).Equals("svchost.exe", StringComparison.OrdinalIgnoreCase))
-                file = CommandLine.ImagePath(Platform.Reg.HklmUnexpanded($@"SYSTEM\CurrentControlSet\Services\{name}\Parameters", "ServiceDll"), Platform.MachineEnvironment.Expand) ?? file;
+                file = CommandLine.ImagePath(Platform.Reg.HklmUnexpanded($@"SYSTEM\CurrentControlSet\Services\{name}\Parameters", "ServiceDll"), Platform.PathExpander.Machine.Expand) ?? file;
             rows.Add(new ServiceRow(name, s.Str("DisplayName"), NullIfEmpty(s.Str("Description")), services.GetStartType(name),
                 string.Equals(s.Str("State"), "Running", StringComparison.OrdinalIgnoreCase), NullIfEmpty(image), file, catalog.Find(BaseName(name))));
         }

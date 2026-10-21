@@ -83,7 +83,7 @@ public static class CommandLine
         bool interpreters = false)
     {
         if (string.IsNullOrWhiteSpace(command)) return false;
-        expand ??= Environment.ExpandEnvironmentVariables;
+        expand ??= Platform.PathExpander.Machine.Expand;
         if (Program(command, expand, exists) is not var (host, args)) return false;
         bool Trusted(string file) => !file.Contains("..", StringComparison.Ordinal) && !HasStream(file) && trusted(file);
         if (IsLauncher(host)) return LauncherStartsSomethingElse(args, Trusted);
@@ -227,7 +227,8 @@ public static class CommandLine
     }
 
     /// <summary>
-    /// Image file of a command line: quoted or unquoted first token, environment variables expanded, kernel prefixes
+    /// Image file of a command line: quoted or unquoted first token, %variables% expanded with <paramref name="expand"/>
+    /// (by default the machine's, <see cref="Platform.PathExpander.Machine"/>), kernel prefixes
     /// (\SystemRoot\, \??\, System32\drivers) resolved, rundll32 lines resolved to their DLL. Null when empty.
     /// </summary>
     public static string? ImagePath(string? command, Func<string, string>? expand = null, Func<string, bool>? exists = null)
@@ -257,7 +258,7 @@ public static class CommandLine
     private static (string First, string Tail, string Windows, Func<string, bool> Exists)? Parse(string? command, Func<string, string>? expand, Func<string, bool>? exists)
     {
         if (string.IsNullOrWhiteSpace(command)) return null;
-        expand ??= Environment.ExpandEnvironmentVariables;
+        expand ??= Platform.PathExpander.Machine.Expand;
         exists ??= File.Exists;
         var s = expand(command.Trim());
         var system = Environment.GetFolderPath(Environment.SpecialFolder.Windows);

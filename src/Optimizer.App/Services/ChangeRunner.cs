@@ -22,9 +22,13 @@ public sealed record ResultMessage(string Text, InfoBarSeverity Severity);
 /// logged and reported with a text that says what is left.
 /// </para>
 /// </summary>
-public sealed class ChangeRunner(AppServices services, IDialogs dialogs, Func<Facts> facts, Func<IReadOnlySet<string>> appliedIds, Func<bool> expertMode)
+/// <param name="session">The change session whose lock the runner holds; null: the app's (<see cref="AppServices.Session"/>). Tests pass one with a fake lock.</param>
+public sealed class ChangeRunner(AppServices services, IDialogs dialogs, Func<Facts> facts, Func<IReadOnlySet<string>> appliedIds, Func<bool> expertMode,
+    ChangeSession? session = null)
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
+
+    private ChangeSession Session => session ?? services.Session;
 
     /// <summary>The scan that runs now, or a completed task: a change waits for it (see <see cref="ExclusiveAsync"/>).</summary>
     public Func<Task> ScanInProgress { get; init; } = () => Task.CompletedTask;
@@ -113,18 +117,24 @@ public sealed class ChangeRunner(AppServices services, IDialogs dialogs, Func<Fa
             Report(Loc.Instance["Change_Busy"], InfoBarSeverity.Warning);
             return whenNotRun;
         }
-        // Another Tunero (a second window, a command line run, another account) may be changing this PC right now.
-        var crossProcess = ChangeLock.TryAcquire();
-        if (crossProcess is null)
+        try
         {
-            _gate.Release();
+            // Another Tunero (a second window, a command line run, another account) may be changing this PC right now:
+            // the session takes the cross-process lock for the confirmation and the change together.
+            var result = whenNotRun;
+            if (await Session.ExclusiveAsync(async () =>
+                {
+                    Busy(true);
+                    result = await work();
+                }))
+                return result;
             Report(Loc.Instance["Change_OtherInstance"], InfoBarSeverity.Warning);
             return whenNotRun;
         }
-        Busy(true);
-        try
+        catch (ChangeBusyException)
         {
-            return await work();
+            Report(Loc.Instance["Change_OtherInstance"], InfoBarSeverity.Warning);
+            return whenNotRun;
         }
         catch (Exception ex)
         {
@@ -134,7 +144,6 @@ public sealed class ChangeRunner(AppServices services, IDialogs dialogs, Func<Fa
         }
         finally
         {
-            crossProcess.Dispose();
             Busy(false);
             _gate.Release();
         }
@@ -180,7 +189,7 @@ public sealed class ChangeRunner(AppServices services, IDialogs dialogs, Func<Fa
         using var work = Work.Begin(Loc.Instance["Work_ApplyOne"]);
         work.Indeterminate(request.Title);
         var options = new ApplyOptions { ExpertMode = expertMode(), AcknowledgeAntiCheat = confirm.AcknowledgedAntiCheat, RestorePointStarting = RestorePointNote(work) };
-        if (await services.Session.ApplyAsync(t, currentFacts, applied, options, dialogs.AskRestorePoint) is not { } result) return false;
+        if (await Session.ApplyAsync(t, currentFacts, applied, options, dialogs.AskRestorePoint) is not { } result) return false;
         Report(ResultText(t, request.Title, result), SeverityOf(result));
         var written = result.Outcome is ApplyOutcome.Applied or ApplyOutcome.AppliedIneffective;
         // A failed apply can leave a backup behind (a rollback that did not work): the pages show it as a change.
@@ -238,7 +247,7 @@ public sealed class ChangeRunner(AppServices services, IDialogs dialogs, Func<Fa
         work.Indeterminate(title);
         try
         {
-            var result = await services.Session.UndoAsync(t);
+            var result = await Session.UndoAsync(t);
             if (!result.Success) Report(Loc.Instance.Format("Result_UndoIncomplete", title, string.Join("; ", result.Errors)), InfoBarSeverity.Error);
             else if (result.AlreadyRevertedByWindows.Count > 0) Report(Loc.Instance.Format("Result_UndoneSkipped", title, result.AlreadyRevertedByWindows.Count));
             else Report(Loc.Instance.Format("Result_Undone", title), InfoBarSeverity.Success);
@@ -271,7 +280,7 @@ public sealed class ChangeRunner(AppServices services, IDialogs dialogs, Func<Fa
         using var work = Work.Begin(Loc.Instance["Work_UndoAll"]);
         try
         {
-            var outcome = await services.Session.UndoAllAsync(new Progress<BatchStep>(s => work.Step(s.Done, s.Total, s.Tweak is { } t ? Title(t) : null)));
+            var outcome = await Session.UndoAllAsync(new Progress<BatchStep>(s => work.Step(s.Done, s.Total, s.Tweak is { } t ? Title(t) : null)));
             if (outcome.Failed == 0) Report(Loc.Instance.Format("Result_UndoAll", outcome.Results.Count), InfoBarSeverity.Success);
             else Report((Loc.Instance.Format("Result_UndoAllIncomplete", outcome.Undone, outcome.Failed) + " " + incompleteNote).TrimEnd(), InfoBarSeverity.Error);
             return outcome.Failed == 0;
@@ -322,7 +331,7 @@ public sealed class ChangeRunner(AppServices services, IDialogs dialogs, Func<Fa
             {
                 var t = backups[i].Tweak;
                 work.Step(i, backups.Count, Title(t));
-                var result = await services.Session.UndoAsync(t);
+                var result = await Session.UndoAsync(t);
                 if (result.Success) undone++;
                 else
                 {
@@ -360,7 +369,7 @@ public sealed class ChangeRunner(AppServices services, IDialogs dialogs, Func<Fa
             if (s.RestorePoint) work.Indeterminate(Loc.Instance["Work_RestorePoint"]);
             else work.Step(s.Done, s.Total, s.Tweak is { } t ? Title(t) : null);
         });
-        var outcome = await services.Session.ApplyBatchAsync(tweaks, facts(), appliedIds(), new ApplyOptions { ExpertMode = expertMode() }, dialogs.AskRestorePoint,
+        var outcome = await Session.ApplyBatchAsync(tweaks, facts(), appliedIds(), new ApplyOptions { ExpertMode = expertMode() }, dialogs.AskRestorePoint,
             steps, stop.Token);
         // Cancelled at the restore point question: nothing was changed, like a cancelled confirmation (Import then stops too).
         if (outcome.Results.Count == 0 && !outcome.Stopped) return [];

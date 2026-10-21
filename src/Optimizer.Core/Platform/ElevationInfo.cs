@@ -21,6 +21,25 @@ public sealed record ElevationInfo(
     /// <summary>Banner only for the separate-admin-account case; under Administrator protection the mismatch is expected.</summary>
     public bool ShowSeparateAdminBanner => UserMismatch && !AdministratorProtection;
 
+    /// <summary>
+    /// Windows names the signed-in account but cannot give its SID (a domain account while no domain controller answers),
+    /// and it is not the account this app runs as: user settings then go to this app's own account (the app falls back to
+    /// <see cref="ProcessUserSid"/>), not to the signed-in user. Also under Administrator protection, whose hidden
+    /// account is never the user's.
+    /// </summary>
+    public bool SessionUserUnresolved => SessionUser is { Length: > 0 } session && SessionUserSid is null && !SameAccount(session, ProcessUser);
+
+    /// <summary>Which "other account" banner the window shows, if any.</summary>
+    public AccountBanner Banner => SessionUserUnresolved ? AccountBanner.UnresolvedUser : ShowSeparateAdminBanner ? AccountBanner.SeparateAdmin : AccountBanner.None;
+
+    /// <summary>"DOMAIN\name" against "DOMAIN\name", or a bare name (no domain from Windows) against the name part.</summary>
+    internal static bool SameAccount(string a, string b)
+    {
+        if (string.Equals(a, b, StringComparison.OrdinalIgnoreCase)) return true;
+        if (a.Contains('\\') && b.Contains('\\')) return false;
+        return string.Equals(a.Split('\\').Last(), b.Split('\\').Last(), StringComparison.OrdinalIgnoreCase);
+    }
+
     public static ElevationInfo Read()
     {
         using var identity = WindowsIdentity.GetCurrent();
@@ -86,6 +105,12 @@ public sealed record ElevationInfo(
         }
     }
 }
+
+/// <summary>
+/// The "other account" banner: none, a separate administrator account (user settings go to the signed-in user), or a
+/// signed-in account Windows cannot look up (user settings go to the account the app runs as).
+/// </summary>
+public enum AccountBanner { None, SeparateAdmin, UnresolvedUser }
 
 /// <summary>Domain join and MDM enrollment. Policies may override changes on such devices.</summary>
 public sealed record ManagedDeviceInfo(bool DomainJoined, bool EntraJoined, bool MdmEnrolled)

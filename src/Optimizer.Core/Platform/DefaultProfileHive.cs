@@ -31,7 +31,7 @@ public static class DefaultProfileHive
         try
         {
             if (Reg.HklmUnexpanded(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList", "Default") is not { Length: > 0 } folder) return null;
-            var file = Path.Combine(MachineEnvironment.Expand(folder), "NTUSER.DAT");
+            var file = Path.Combine(PathExpander.Machine.Expand(folder), "NTUSER.DAT");
             return Path.IsPathFullyQualified(file) && TrustedPath.IsAdminOnlyBelowSharedFolders(file) ? file : null;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException or ArgumentException)

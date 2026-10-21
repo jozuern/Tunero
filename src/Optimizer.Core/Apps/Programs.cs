@@ -127,52 +127,46 @@ public static class Programs
     /// Every folder the uninstall entries (also the components and updates the list hides) and the services point into:
     /// a folder that holds one of them still belongs to something installed (<see cref="ProgramLeftovers"/>).
     /// </summary>
-    public static IReadOnlyList<string> ReferencedPaths(IRegistryRoots registry)
+    /// <param name="user">Expands the entries of the signed-in user's own uninstall list (<see cref="Platform.PathExpander.ForUser(string?, IRegistryRoots?)"/>); null leaves their user folder variables as they are.</param>
+    public static IReadOnlyList<string> ReferencedPaths(IRegistryRoots registry, PathExpander? user = null)
     {
         var paths = new List<string>();
-        void Add(string? value, bool command)
+        void Add(string? value, bool command, PathExpander expander)
         {
             if (string.IsNullOrWhiteSpace(value)) return;
-            var path = command ? CommandLine.ImagePath(value) : ProgramLeftovers.CleanPath(value);
+            var path = command ? CommandLine.ImagePath(value, expander.Expand) : ProgramLeftovers.CleanPath(value, expander);
             if (path is { Length: > 0 }) paths.Add(path);
         }
         // Each entry on its own: one only the system can read leaves out that entry, not the rest of the key.
         foreach (var (hive, path) in new[] { (Hive.Machine, Uninstall), (Hive.Machine, Uninstall32), (Hive.User, Uninstall) })
         {
+            var expander = hive == Hive.User ? user ?? PathExpander.UnknownUser : PathExpander.Machine;
             ProgramOrphans.ReadEach(registry, hive, path, (key, sub) =>
             {
                 using var app = key.OpenSubKey(sub);
                 if (app is null) return;
-                Add(app.GetValue("InstallLocation") as string, command: false);
-                Add(app.GetValue("UninstallString") as string, command: true);
-                Add(app.GetValue("QuietUninstallString") as string, command: true);
-                Add(app.GetValue("DisplayIcon") as string, command: false);
+                foreach (var (value, command) in new[] { ("InstallLocation", false), ("UninstallString", true), ("QuietUninstallString", true), ("DisplayIcon", false) })
+                    Add(app.GetValue(value, null, Microsoft.Win32.RegistryValueOptions.DoNotExpandEnvironmentNames) as string, command, expander);
             });
         }
         ProgramOrphans.ReadEach(registry, Hive.Machine, @"SYSTEM\CurrentControlSet\Services", (key, sub) =>
         {
             using var service = key.OpenSubKey(sub);
-            Add(service?.GetValue("ImagePath") as string, command: true);
+            Add(service?.GetValue("ImagePath", null, Microsoft.Win32.RegistryValueOptions.DoNotExpandEnvironmentNames) as string, command: true, PathExpander.Machine);
         });
         return paths;
     }
 
     /// <summary>
-    /// Null when the program has no usable uninstall command. Windows Installer entries always use System32's msiexec
-    /// with /x; a per-user entry (HKCU, which any program of the user can write) runs it as the signed-in user, so a
-    /// planted entry cannot make an elevated msiexec remove a program installed for the whole PC. Other uninstallers run
-    /// elevated only when the program and, for rundll32 lines, its DLL are in folders only administrators can change.
-    /// </summary>
-    /// <summary>
     /// The uninstall without questions, or null when the program has none: Windows Installer gets /qn /norestart (a
     /// needed restart is left to the user), other programs only their own QuietUninstallString, under the same rules for
     /// running elevated as <see cref="Command"/>.
     /// </summary>
-    public static UninstallCommand? QuietCommand(DesktopProgram p, Func<string, bool>? isAdminOnly = null, Func<string, bool>? exists = null)
+    public static UninstallCommand? QuietCommand(DesktopProgram p, Func<string, bool>? isAdminOnly = null, Func<string, bool>? exists = null, PathExpander? user = null)
     {
-        if (Command(p, isAdminOnly, exists) is { } normal && IsWindowsInstaller(normal)) return Quiet(normal);
+        if (Command(p, isAdminOnly, exists, user) is { } normal && IsWindowsInstaller(normal)) return Quiet(normal);
         if (string.IsNullOrWhiteSpace(p.QuietUninstallString)) return null;
-        var quiet = Command(p with { UninstallString = p.QuietUninstallString, ProductCode = null }, isAdminOnly, exists);
+        var quiet = Command(p with { UninstallString = p.QuietUninstallString, ProductCode = null }, isAdminOnly, exists, user);
         return quiet is not null && IsWindowsInstaller(quiet) ? Quiet(quiet) : quiet;
     }
 
@@ -184,7 +178,17 @@ public static class Programs
     /// <summary>Exit codes of a finished uninstall: 3010 and 1641 are Windows Installer's "done, restart needed".</summary>
     public static bool Succeeded(int code) => code is 0 or 3010 or 1641;
 
-    public static UninstallCommand? Command(DesktopProgram p, Func<string, bool>? isAdminOnly = null, Func<string, bool>? exists = null)
+    /// <summary>
+    /// Null when the program has no usable uninstall command. Windows Installer entries always use System32's msiexec
+    /// with /x; a per-user entry (HKCU, which any program of the user can write) runs it as the signed-in user, so a
+    /// planted entry cannot make an elevated msiexec remove a program installed for the whole PC. Other uninstallers run
+    /// elevated only when the program and, for rundll32 lines, its DLL are in folders only administrators can change.
+    /// </summary>
+    /// <param name="user">
+    /// The signed-in user's expander (<see cref="PathExpander.ForUser(string?, IRegistryRoots?)"/>) for a per-user entry,
+    /// which runs as that user; null leaves its user folder variables as they are.
+    /// </param>
+    public static UninstallCommand? Command(DesktopProgram p, Func<string, bool>? isAdminOnly = null, Func<string, bool>? exists = null, PathExpander? user = null)
     {
         isAdminOnly ??= TrustedPath.IsAdminOnlyWritable;
         var msiMode = p.PerUser ? UninstallMode.AsUser : UninstallMode.WindowsInstaller;
@@ -192,8 +196,9 @@ public static class Programs
         if (p.ProductCode is { } productCode) return new UninstallCommand(msiMode, msiexec, $"/x {productCode}");
         if (string.IsNullOrWhiteSpace(p.UninstallString)) return null;
         // A machine-wide entry is expanded with the machine's variables, not with this process's (the signed-in user can
-        // set %ProgramFiles% or %LOCALAPPDATA% for their account in HKCU\Environment).
-        var expanded = p.PerUser ? Environment.ExpandEnvironmentVariables(p.UninstallString.Trim()) : MachineEnvironment.Expand(p.UninstallString.Trim());
+        // set %ProgramFiles% or %LOCALAPPDATA% for their account in HKCU\Environment). A per-user entry runs as the
+        // signed-in user, so it is expanded as that user sees it, not as the elevated account would.
+        var expanded = (p.PerUser ? user ?? PathExpander.UnknownUser : PathExpander.Machine).Expand(p.UninstallString.Trim());
         if (CommandLine.Program(expanded, s => s, exists) is not var (file, args)) return null;
         // "MsiExec.exe /I{GUID}" or "/X{GUID}" without the WindowsInstaller flag: always the remove action of System32's msiexec.
         if (Path.GetFileName(file).Equals("msiexec.exe", StringComparison.OrdinalIgnoreCase) || Path.GetFileName(file).Equals("msiexec", StringComparison.OrdinalIgnoreCase))

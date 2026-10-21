@@ -31,6 +31,12 @@ public sealed record UndoAllOutcome(IReadOnlyList<(TweakDefinition Tweak, Revert
     public int Failed => Results.Count - Undone;
 }
 
+/// <summary>
+/// A change of <see cref="ChangeSession"/> was started outside <see cref="ChangeSession.ExclusiveAsync"/> while another
+/// Tunero held the change lock: nothing was changed.
+/// </summary>
+public sealed class ChangeBusyException() : InvalidOperationException("Another Tunero is changing this PC, so nothing was changed.");
+
 /// <summary>The PC as a scan sees it: the facts that decide what fits, the state of each tweak, the findings.</summary>
 public sealed record PcSnapshot(Facts Facts, IReadOnlyList<TweakStatus> States, IReadOnlySet<string> Applied, IReadOnlyList<Finding> Findings)
 {
@@ -42,33 +48,81 @@ public sealed record PcSnapshot(Facts Facts, IReadOnlyList<TweakStatus> States, 
 /// The steps every change takes, for the window and the command line alike: apply one tweak or a set, and when Windows
 /// cannot make the restore point, ask <c>decide</c> (a dialog in the window, a switch on the command line), turn System
 /// Protection on if chosen and try again; undo one tweak or all. What differs between the two is only how a decision is
-/// made and how a result is shown. Both hold <see cref="Platform.ChangeLock"/> around it, so two copies of Tunero never
-/// change the PC at the same time.
+/// made and how a result is shown.
+/// <para>
+/// The session owns the cross-process change lock (<see cref="Platform.IChangeLock"/>), so two copies of Tunero never
+/// change the PC at the same time and no entry point can skip it: every change of the session holds it. A caller that
+/// asks or reads before the change (the confirmation, the scan of a command line run) wraps all of it in
+/// <see cref="ExclusiveAsync"/>, and the changes inside use that hold. A change started outside one takes the lock for
+/// itself and throws <see cref="ChangeBusyException"/> when another Tunero holds it.
+/// </para>
 /// </summary>
-public sealed class ChangeSession(TweakEngine engine, IRestorePoints restorePoints)
+public sealed class ChangeSession(TweakEngine engine, IRestorePoints restorePoints, Platform.IChangeLock changeLock)
 {
+    // True in the flow that holds the lock and in the tasks it starts (AsyncLocal flows into awaits and Task.Run, never
+    // back out or into a flow that started elsewhere): a change inside it uses the hold instead of taking the lock again,
+    // which the lock file would refuse even in the same process.
+    private readonly AsyncLocal<bool> _holding = new();
+
+    /// <summary>
+    /// Runs <paramref name="work"/> as the only change on this PC: takes the lock, waiting up to <paramref name="wait"/>
+    /// for another Tunero (a window, a command line run, another account), and releases it when the work ends. False,
+    /// without running the work, when the other one did not finish in time. Inside a hold the work simply runs.
+    /// </summary>
+    public async Task<bool> ExclusiveAsync(Func<Task> work, TimeSpan wait = default)
+    {
+        if (_holding.Value)
+        {
+            await work();
+            return true;
+        }
+        using var held = wait > TimeSpan.Zero ? await Task.Run(() => changeLock.TryAcquire(wait)) : changeLock.TryAcquire(wait);
+        if (held is null) return false;
+        _holding.Value = true;
+        try
+        {
+            await work();
+            return true;
+        }
+        finally
+        {
+            _holding.Value = false;
+        }
+    }
+
+    /// <summary>One change of the session under the lock: the caller's hold, or the lock taken for this change alone.</summary>
+    private async Task<T> Locked<T>(Func<Task<T>> change)
+    {
+        T result = default!;
+        if (!await ExclusiveAsync(async () => result = await change())) throw new ChangeBusyException();
+        return result;
+    }
+
     /// <summary>Applies one tweak. Null when <paramref name="decide"/> cancelled at the restore point question.</summary>
-    public async Task<ApplyResult?> ApplyAsync(TweakDefinition t, Facts facts, IReadOnlySet<string> applied, ApplyOptions options, Func<RestorePointChoice> decide)
+    public Task<ApplyResult?> ApplyAsync(TweakDefinition t, Facts facts, IReadOnlySet<string> applied, ApplyOptions options, Func<RestorePointChoice> decide) => Locked(async () =>
     {
         var result = await Task.Run(() => engine.ApplyAsync(t, facts, applied, options));
         if (result.Outcome != ApplyOutcome.NeedsRestorePointDecision) return result;
         return await AfterDecision(options, decide) is { } again ? await Task.Run(() => engine.ApplyAsync(t, facts, applied, again)) : null;
-    }
+    });
 
     /// <summary>
     /// Applies a set with one restore point. <see cref="BatchOutcome.Cancelled"/> when <paramref name="decide"/> cancelled;
     /// <see cref="BatchOutcome.StoppedForRestorePoint"/> when even after the decision no restore point came of it.
     /// <paramref name="stop"/> ends it before the next change (<see cref="BatchOutcome.Stopped"/>).
     /// </summary>
-    public async Task<BatchOutcome> ApplyBatchAsync(IReadOnlyList<TweakDefinition> tweaks, Facts facts, IReadOnlySet<string> applied, ApplyOptions options,
+    public Task<BatchOutcome> ApplyBatchAsync(IReadOnlyList<TweakDefinition> tweaks, Facts facts, IReadOnlySet<string> applied, ApplyOptions options,
         Func<RestorePointChoice> decide, IProgress<BatchStep>? progress = null, CancellationToken stop = default)
     {
-        if (tweaks.Count == 0) return BatchOutcome.Cancelled;
-        var results = await Task.Run(() => engine.ApplyBatchAsync(tweaks, facts, applied, options, progress, stop));
-        if (!results.Any(r => r.Result.Outcome == ApplyOutcome.NeedsRestorePointDecision)) return Outcome(results);
-        // Nothing was changed yet: a cancel ends here like a cancelled confirmation.
-        if (await AfterDecision(options, decide) is not { } again) return BatchOutcome.Cancelled;
-        return Outcome(await Task.Run(() => engine.ApplyBatchAsync(tweaks, facts, applied, again, progress, stop)));
+        if (tweaks.Count == 0) return Task.FromResult(BatchOutcome.Cancelled);
+        return Locked(async () =>
+        {
+            var results = await Task.Run(() => engine.ApplyBatchAsync(tweaks, facts, applied, options, progress, stop));
+            if (!results.Any(r => r.Result.Outcome == ApplyOutcome.NeedsRestorePointDecision)) return Outcome(results);
+            // Nothing was changed yet: a cancel ends here like a cancelled confirmation.
+            if (await AfterDecision(options, decide) is not { } again) return BatchOutcome.Cancelled;
+            return Outcome(await Task.Run(() => engine.ApplyBatchAsync(tweaks, facts, applied, again, progress, stop)));
+        });
 
         BatchOutcome Outcome(IReadOnlyList<BatchItemResult> results) => new(results) { Stopped = results.Count < tweaks.Count && stop.IsCancellationRequested };
     }
@@ -90,7 +144,7 @@ public sealed class ChangeSession(TweakEngine engine, IRestorePoints restorePoin
     /// other at every sign-in. A restore point is made when Windows can; without one the run goes on, since the user
     /// chose these changes before and nobody is there to ask. <see cref="BatchOutcome.Cancelled"/> when nothing was reset.
     /// </summary>
-    public async Task<BatchOutcome> ReapplyResetAsync(PcSnapshot pc)
+    public Task<BatchOutcome> ReapplyResetAsync(PcSnapshot pc) => Locked(async () =>
     {
         var known = pc.States.ToDictionary(s => s.Tweak.Id, s => s.State, StringComparer.Ordinal);
         var reset = await Task.Run(() =>
@@ -104,11 +158,11 @@ public sealed class ChangeSession(TweakEngine engine, IRestorePoints restorePoin
         });
         if (reset.Count == 0) return BatchOutcome.Cancelled;
         return await ApplyBatchAsync(reset, pc.Facts, pc.Applied, new ApplyOptions { ContinueWithoutRestorePoint = true }, () => RestorePointChoice.Continue);
-    }
+    });
 
-    public Task<RevertResult> UndoAsync(TweakDefinition t) => Task.Run(() => engine.Revert(t));
+    public Task<RevertResult> UndoAsync(TweakDefinition t) => Locked(() => Task.Run(() => engine.Revert(t)));
 
-    public async Task<UndoAllOutcome> UndoAllAsync(IProgress<BatchStep>? progress = null) => new(await Task.Run(() => engine.RevertAll(progress)));
+    public Task<UndoAllOutcome> UndoAllAsync(IProgress<BatchStep>? progress = null) => Locked(async () => new UndoAllOutcome(await Task.Run(() => engine.RevertAll(progress))));
 
     /// <summary>The scan the window runs, without the window: findings, facts and the state of every visible tweak.</summary>
     /// <param name="ignored">The results the user ignores (<see cref="IgnoredResults.Key"/>): left out of the findings and the facts, as in the window.</param>

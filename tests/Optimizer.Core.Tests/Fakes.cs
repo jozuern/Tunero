@@ -338,9 +338,43 @@ internal sealed class FakeRestorePoints : IRestorePoints
     }
 }
 
+/// <summary>
+/// The cross-process change lock without a file in the real data folder: one holder at a time, as the lock file allows
+/// (also within one process); <see cref="HeldByOther"/> plays another Tunero that holds it.
+/// </summary>
+internal sealed class FakeChangeLock : Platform.IChangeLock
+{
+    private int _held;
+
+    public bool HeldByOther { get; set; }
+
+    /// <summary>How often the lock was taken.</summary>
+    public int Taken { get; private set; }
+
+    public bool IsHeld => Volatile.Read(ref _held) == 1;
+
+    public IDisposable? TryAcquire(TimeSpan wait)
+    {
+        if (HeldByOther || Interlocked.CompareExchange(ref _held, 1, 0) != 0) return null;
+        Taken++;
+        return new Release(this);
+    }
+
+    private sealed class Release(FakeChangeLock owner) : IDisposable
+    {
+        private int _done;
+
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref _done, 1) == 0) Volatile.Write(ref owner._held, 0);
+        }
+    }
+}
+
 /// <summary>Everything an engine test needs, disposed together.</summary>
 internal sealed class EngineFixture : IDisposable
 {
+    public FakeChangeLock ChangeLock { get; } = new();
     public SandboxRegistry Registry { get; } = new();
     public FakeServices Services { get; } = new();
     public FakePower Power { get; } = new();

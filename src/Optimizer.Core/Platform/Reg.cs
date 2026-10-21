@@ -26,7 +26,7 @@ public static class Reg
     /// <summary>
     /// A REG_EXPAND_SZ value as stored, with its %variables% left in: .NET would expand them with this process's
     /// environment, which includes the signed-in user's own variables (HKCU\Environment). Expand it with
-    /// <see cref="MachineEnvironment.Expand"/> instead.
+    /// <see cref="PathExpander.Machine"/> instead.
     /// </summary>
     public static string? HklmUnexpanded(string path, string name)
     {

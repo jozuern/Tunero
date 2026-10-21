@@ -517,7 +517,14 @@ public sealed partial class MainViewModel
         if (Profile.Elevation is { } e)
         {
             if (!e.IsElevated) Banners.Add(new Banner(Loc.Instance["Banner_NotElevated"], true));
-            if (e.ShowSeparateAdminBanner) Banners.Add(new Banner(Loc.Instance.Format("Banner_SeparateAdmin", e.ProcessUser, e.SessionUser), true));
+            // The signed-in account Windows cannot look up: user settings go to the account the app runs as, and the banner says so.
+            var account = e.Banner switch
+            {
+                AccountBanner.SeparateAdmin => "Banner_SeparateAdmin",
+                AccountBanner.UnresolvedUser => "Banner_UnresolvedUser",
+                _ => null,
+            };
+            if (account is not null) Banners.Add(new Banner(Loc.Instance.Format(account, e.ProcessUser, e.SessionUser), true));
         }
     }
 }

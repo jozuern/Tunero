@@ -88,6 +88,8 @@ Data: `%ProgramData%\Tunero` when elevated; Debug runs without admin rights use 
 
 Native libraries: `NativeLibraryGuard` resolves P/Invoke targets to System32 or the protected runtime folder and refuses a DLL of that name next to the exe. New P/Invokes need nothing extra; never load a DLL by a path a standard user can write to.
 
+Paths and changes: `%variables%` in paths read from the system are expanded only by `PathExpander`, `Machine` for what Windows starts outside a sign-in and `ForUser` (the app's `UserPaths`) for the signed-in user's own entries; this elevated process's environment can belong to another account. Every change goes through `ChangeSession`, which holds `changes.lock` itself (`ExclusiveAsync` around a confirmation or a scan). The command line's verbs and switches live in one table, `CommandLineVerbs`, which the start, the dispatch and a test against README's Command line table use. `ArchitectureTests` and `CommandLineVerbsTests` fail when code goes around them.
+
 Catalog data in `src/Optimizer.Core/Catalog/`: `Tweaks/*.json` (tweaks), `Data/profiles.json` (profiles: per-profile impact of tweaks and findings, recommendations, what works against each), `Data/labels.json` (generated text, EN and DE), `Docs/{en,de}/*.md` (one explanation page per tweak and check). Entries marked `verified: false` (one anti-cheat, some service names) say so on their explanation page. Tweaks the evidence does not support are listed in [docs/not-included.md](docs/not-included.md) instead of the catalog.
 
 ## App design

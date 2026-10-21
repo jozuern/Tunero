@@ -125,7 +125,7 @@ public class ReapplyTaskTests
     {
         using var fx = new EngineFixture();
         fx.RestorePoints.Enabled = false;
-        var session = new ChangeSession(fx.Engine, fx.RestorePoints);
+        var session = new ChangeSession(fx.Engine, fx.RestorePoints, fx.ChangeLock);
         var t = TweakCatalog.Current.Get("privacy.advertisingIdOff")!;
         await fx.Engine.ApplyAsync(t, Facts(), new HashSet<string>(), new ApplyOptions { ContinueWithoutRestorePoint = true });
         var nothing = await session.ReapplyResetAsync(new PcSnapshot(Facts(), [], new HashSet<string>([t.Id]), []));
@@ -159,7 +159,7 @@ public class ReapplyTaskTests
     {
         using var fx = new EngineFixture();
         fx.RestorePoints.Enabled = false;
-        var session = new ChangeSession(fx.Engine, fx.RestorePoints);
+        var session = new ChangeSession(fx.Engine, fx.RestorePoints, fx.ChangeLock);
         var options = new ApplyOptions { ContinueWithoutRestorePoint = true };
         await fx.Engine.ApplyAsync(Writes("test.one", 1), Facts(), new HashSet<string>(), options);
         await fx.Engine.ApplyAsync(Writes("test.zero", 0), Facts(), new HashSet<string>(), options);

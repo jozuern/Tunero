@@ -41,6 +41,7 @@
   <data name="Banner_Insider" xml:space="preserve"><value>Windows Insider build detected ({0}).</value></data>
   <data name="Banner_Managed" xml:space="preserve"><value>This PC is managed by an organization (domain, Entra ID or MDM). Policies may override settings.</value></data>
   <data name="Banner_SeparateAdmin" xml:space="preserve"><value>The app runs as {0}, but {1} is signed in. User settings belong to {1}.</value></data>
+  <data name="Banner_UnresolvedUser" xml:space="preserve"><value>The app runs as {0}, but {1} is signed in, and Windows cannot look up the account {1} (a domain account while the domain cannot be reached, for example). User settings are changed for {0}, not for {1}.</value></data>
   <data name="Banner_NotElevated" xml:space="preserve"><value>Running without administrator rights. Some values (for example TPM) show as unknown.</value></data>
   <data name="Banner_Unsupported" xml:space="preserve"><value>Windows 11 24H2 is no longer supported: Home and Pro get no updates since 13 October 2026. Undo works as before. Update Windows to 25H2 or newer before you make new changes.</value></data>
   <data name="Startup_RuntimeFolderUnsafe" xml:space="preserve"><value>The program could not move its runtime libraries into its protected folder, so it does not start with administrator rights. If the environment variables {0} or {1} are set for your account, remove them and start Tunero again. Nothing was changed.</value></data>
