@@ -11,6 +11,7 @@
   import Watermark from './Watermark.svelte';
   import Window from './Window.svelte';
   import TuneroApp from './app/TuneroApp.svelte';
+  import Wallpaper from './wallpaper/Wallpaper.svelte';
   import type { AppStrings } from './app/appKeys.ts';
 
   let {
@@ -29,15 +30,23 @@
 
   const store = provideStore(new DesktopStore(demo));
   let ready = $state(false);
+  let theme = $state<'light' | 'dark'>('dark');
 
   onMount(() => {
     store.restore();
     ready = true;
+    // The theme lives on <html> (Base.astro sets it, Settings changes it); the wallpaper follows it.
+    const root = document.documentElement;
+    const read = () => (theme = root.dataset.theme === 'light' ? 'light' : 'dark');
+    read();
+    const observer = new MutationObserver(read);
+    observer.observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => observer.disconnect();
   });
 </script>
 
 <div class="desktop" class:ready>
-  <div class="wallpaper-fallback" aria-hidden="true"></div>
+  <Wallpaper clutter={store.clutter} {theme} />
   <DesktopIcons {copy} />
 
   {#if store.windows.tunero.open}
@@ -73,23 +82,6 @@
     inset: 0;
     overflow: hidden;
     user-select: none;
-  }
-
-  .wallpaper-fallback {
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-    background:
-      radial-gradient(120% 90% at 20% 110%, #2a6fd6 0%, transparent 55%),
-      radial-gradient(90% 80% at 85% 10%, #4b3aa8 0%, transparent 60%),
-      #0b1a33;
-  }
-
-  :global([data-theme='light']) .wallpaper-fallback {
-    background:
-      radial-gradient(120% 90% at 20% 110%, #9cc9ff 0%, transparent 55%),
-      radial-gradient(90% 80% at 85% 10%, #d6c8ff 0%, transparent 60%),
-      #e8f1fb;
   }
 
   .placeholder {

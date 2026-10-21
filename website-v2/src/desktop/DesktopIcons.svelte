@@ -24,7 +24,7 @@
     <li>
       <button
         type="button"
-        class:hint={item.id === 'tunero' && !opened && !store.windows.tunero.open}
+        class:hint={item.id === 'tunero' && !opened && !store.state.scanned && !store.windows.tunero.open}
         onclick={() => {
           if (item.id === 'tunero') opened = true;
           store.open(item.id);
@@ -34,7 +34,7 @@
           {#if item.icon === 'tunero'}<TuneroMark size={44} />{:else}<Icon name={item.icon} size={44} />{/if}
         </span>
         <span class="label">{item.label}</span>
-        {#if item.id === 'tunero' && !opened && !store.windows.tunero.open}
+        {#if item.id === 'tunero' && !opened && !store.state.scanned && !store.windows.tunero.open}
           <span class="tip">{copy.startHere}</span>
         {/if}
       </button>

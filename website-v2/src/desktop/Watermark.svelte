@@ -23,6 +23,11 @@
     pointer-events: none;
   }
 
+  :global([data-theme='light']) .watermark {
+    color: rgba(0, 0, 0, 0.62);
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.6);
+  }
+
   span:first-child {
     font-size: 16px;
   }
