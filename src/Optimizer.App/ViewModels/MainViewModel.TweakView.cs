@@ -27,6 +27,12 @@ public sealed record TweakViewOption(TweakView View, string Text)
     public override string ToString() => Text;
 }
 
+/// <summary>The impact filter: tweaks rated at least <paramref name="Min"/> of 5 for the profile's goal (0 = all).</summary>
+public sealed record TweakImpactOption(int Min, string Text)
+{
+    public override string ToString() => Text;
+}
+
 public sealed partial class MainViewModel
 {
     /// <summary>"Profile: Gaming (change on the overview)": the profile is set in one place.</summary>
@@ -47,6 +53,30 @@ public sealed partial class MainViewModel
         new(TweakView.Applicable, Loc.Instance["TweakView_Applicable"]),
         new(TweakView.Everything, Loc.Instance["TweakView_Everything"]),
     ];
+
+    /// <summary>"Any impact", "Impact 1 or more" up to "Impact 5": the rating the row's mark shows (the active profile's).</summary>
+    public IReadOnlyList<TweakImpactOption> TweakImpactOptions =>
+    [
+        new(0, Loc.Instance["TweakImpact_Any"]),
+        .. Enumerable.Range(1, 4).Select(n => new TweakImpactOption(n, Loc.Instance.Format("TweakImpact_AtLeast", n))),
+        new(5, Loc.Instance["TweakImpact_Five"]),
+    ];
+
+    /// <summary>Only tweaks with at least this impact for the profile (0 = all). Not saved, like the view and the search.</summary>
+    public int TweakImpactMin
+    {
+        get => _tweakImpactMin;
+        set
+        {
+            value = Math.Clamp(value, 0, 5);
+            if (value == _tweakImpactMin) return;
+            _tweakImpactMin = value;
+            OnPropertyChanged();
+            RefillTweaks();
+        }
+    }
+
+    private int _tweakImpactMin;
 
     /// <summary>
     /// The view as the switches it replaces: Recommended, Profile and the "does not apply" list keep their own properties

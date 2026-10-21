@@ -35,6 +35,11 @@ public class ProgramsTests
         Assert.False(zip.PerUser);
         Assert.Equal("{11111111-2222-3333-4444-555555555555}", list[1].ProductCode);
         Assert.True(list[2].PerUser);
+
+        // For the app catalog (WebView2 registers as a system component): included, marked.
+        var all = Programs.Read(r, systemComponents: true);
+        Assert.Equal(["7-Zip 24.08 (x64)", "Contoso Tool", "Discord", "Hidden part"], all.Select(p => p.Name));
+        Assert.Equal([false, false, false, true], all.Select(p => p.SystemComponent));
     }
 
     [Fact]

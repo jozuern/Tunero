@@ -14,7 +14,13 @@ public static class ReapplyTask
 {
     public const string TweakId = "app.reapplyTask";
     /// <summary>One task per account, named after its SID as Windows names per-user tasks: each administrator turns their own on and off.</summary>
-    public static string TaskPath(string userSid) => $@"\Tunero\Apply changes again {userSid}";
+    public static string TaskPath(string userSid) => $@"\{TaskPrefix}{userSid}";
+
+    private const string TaskPrefix = @"Tunero\Apply changes again ";
+
+    /// <summary>A scheduled task's path (with or without the leading backslash) is one of these tasks.</summary>
+    public static bool IsOwnTask(string taskPath) => taskPath.TrimStart('\\').StartsWith(TaskPrefix, StringComparison.OrdinalIgnoreCase);
+
     public const string Argument = "--reapply";
 
     /// <summary>

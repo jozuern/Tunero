@@ -136,6 +136,20 @@ public sealed class IsoReader : IIsoReader
         return ReadInfo(root);
     }, ct);
 
+    /// <summary>
+    /// The apps image <paramref name="index"/> of the ISO's install image holds (full package names, see
+    /// <see cref="DismTool.ImageAppsAsync"/>): attaches the ISO read-only, lists the image with DISM, detaches. Needs
+    /// administrator rights. Throws <see cref="IsoAttachException"/> or <see cref="DismException"/>, and
+    /// <see cref="FileNotFoundException"/> when the ISO has no single install image.
+    /// </summary>
+    public Task<IReadOnlyList<string>> ReadAppsAsync(string isoPath, int index, CancellationToken ct) => Task.Run(async () =>
+    {
+        using var iso = AttachedIso.Attach(isoPath);
+        var root = await iso.WaitForVolumeAsync(ct);
+        if (ReadInfo(root).ImageFile is not { } file) throw new FileNotFoundException("The ISO has no single install image.");
+        return await new DismTool().ImageAppsAsync(Path.Combine(root, "sources", file), index, ct);
+    }, ct);
+
     /// <summary>The install image of the media below <paramref name="root"/> and its images. Never throws for a missing or unreadable file.</summary>
     internal static IsoInfo ReadInfo(string root)
     {

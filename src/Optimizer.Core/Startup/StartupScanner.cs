@@ -611,6 +611,10 @@ public static class StartupTweaks
         new[] { StartupKind.RunKey, StartupKind.StartupFolder, StartupKind.LogonTask, StartupKind.ShellExtension, StartupKind.Service, StartupKind.ImageHijack }
             .Select(k => $"startup.{k.ToString().ToLowerInvariant()}").Append("startup.delete").ToList();
 
-    /// <summary>Third-party entries enabled at logon: what F16 counts.</summary>
-    public static bool CountsForF16(StartupEntry e) => e.Enabled == true && e.Kind is StartupKind.RunKey or StartupKind.StartupFolder or StartupKind.LogonTask;
+    /// <summary>
+    /// Third-party entries enabled at logon: what F16 counts. Tunero's own "Apply changes again" task is not one: it runs
+    /// two minutes after sign-in, only when the user turned it on, and turning it off belongs in Settings.
+    /// </summary>
+    public static bool CountsForF16(StartupEntry e) => e.Enabled == true && e.Kind is StartupKind.RunKey or StartupKind.StartupFolder or StartupKind.LogonTask
+        && !(e.Kind == StartupKind.LogonTask && Tweaks.ReapplyTask.IsOwnTask(e.Name));
 }

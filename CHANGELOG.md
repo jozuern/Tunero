@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **Tweaks:** an impact filter (1 or more up to 5, for your profile) and a Select mode: tick several tweaks, then turn them on or undo them with one confirmation each.
+- **Windows install media:** a check box per app group ticks or clears the whole group.
+
+### Changed
+
+- **Windows install media:** the app list shows what the image can actually hold. For your own ISO Tunero reads the chosen edition's apps (a few seconds); for the download it lists only Microsoft's apps, without manufacturer, third-party and Windows 10 apps that a Microsoft image never contains.
+
+### Fixed
+
+- **Install & update:** WebView2 Runtime shows as installed (Windows registers it as a system component).
+- **Search:** a check shows its result for this PC, not the text for a problem.
+- **Startup:** Tunero's own "Apply changes again" task no longer counts as a program that starts with Windows.
+
 ## 1.4.0
 
 Tunero now builds a debloated Windows 11 ISO, shows which programs use each device, and updates Chocolatey and Scoop apps too.

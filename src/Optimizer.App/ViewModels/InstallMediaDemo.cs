@@ -58,6 +58,23 @@ internal static class InstallMediaDemo
         return new IsoInfo("install.wim", [Image(1, "Core", "Windows 11 Home"), Image(2, "Professional", "Windows 11 Pro"), Image(3, "Education", "Windows 11 Education")], HasBootWim: true);
     }
 
+    /// <summary>
+    /// The apps of the sample ISO's images: what the 26300 Pro image held (PCO-Test, 2026-10-21), without frameworks, as
+    /// full package names.
+    /// </summary>
+    public static IReadOnlyList<string> IsoApps() =>
+    [
+        .. new[]
+        {
+            "Clipchamp.Clipchamp", "MSTeams", "Microsoft.BingNews", "Microsoft.BingSearch", "Microsoft.BingWeather", "Microsoft.GamingApp", "Microsoft.GetHelp",
+            "Microsoft.MicrosoftOfficeHub", "Microsoft.MicrosoftSolitaireCollection", "Microsoft.MicrosoftStickyNotes", "Microsoft.OutlookForWindows",
+            "Microsoft.Paint", "Microsoft.PowerAutomateDesktop", "Microsoft.Todos", "Microsoft.Windows.DevHome", "Microsoft.Windows.Photos",
+            "Microsoft.WindowsAlarms", "Microsoft.WindowsCalculator", "Microsoft.WindowsCamera", "Microsoft.WindowsFeedbackHub", "Microsoft.WindowsNotepad",
+            "Microsoft.WindowsSoundRecorder", "Microsoft.WindowsStore", "Microsoft.Xbox.TCUI", "Microsoft.XboxGamingOverlay", "Microsoft.XboxIdentityProvider",
+            "Microsoft.XboxSpeechToTextOverlay", "Microsoft.YourPhone", "Microsoft.ZuneMusic", "MicrosoftCorporationII.QuickAssist", "MicrosoftWindows.CrossDevice",
+        }.Select(name => $"{name}_1.0.0.0_x64__8wekyb3d8bbwe"),
+    ];
+
     /// <summary>What a DISM failure looks like on the page: stage, reason, DISM's code and the log.</summary>
     public static MediaBuildException Failure() =>
         new(MediaStage.Unpack, "Demo: DISM failed.", unchecked((int)0x800F081F), "Media_ImageCheckFailed")

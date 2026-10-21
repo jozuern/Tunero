@@ -272,19 +272,96 @@ public sealed class InstallMediaViewModelTests : IDisposable
         Assert.Contains(Loc.Instance["Media_NotEnoughSpace"], media.ResultText);
     }
 
+    /// <summary>The download: the allowlist apps Microsoft's image can hold (no manufacturer, third-party or legacy apps).</summary>
     [Fact]
     public async Task AppRowsComeFromTheAllowlist()
     {
         var media = await Loaded(Media());
         var appx = CatalogData.Current.Appx;
-        Assert.Equal(appx.Apps.Count, media.AppRows.Count);
+        var offered = appx.Apps.Where(a => MediaChoices.MicrosoftImageGroups.Contains(a.Group)).ToList();
+        Assert.Equal(offered.Count, media.AppRows.Count);
         Assert.DoesNotContain(media.AppRows, r => appx.IsProtected(r.Entry.Name));
+        Assert.DoesNotContain(media.AppRows, r => r.Entry.Group is "oem" or "thirdParty" or "legacy");
         Assert.All(media.AppRows, r => Assert.Equal(r.Entry.Group == "consumer", r.IsChecked));
-        Assert.Equal(appx.Apps.Select(a => a.Group).Distinct().Count(), media.AppGroups.Count);
+        Assert.Equal(offered.Select(a => a.Group).Distinct().Count(), media.AppGroups.Count);
+        Assert.Equal(Loc.Instance["Media_AppsFromDownload"], media.AppsSourceText);
         var consumer = appx.Apps.Count(a => a.Group == "consumer");
         Assert.Equal(Loc.Instance.Format("Media_AppsSummary", consumer), media.AppsSummary);
         media.AppRows[0].IsChecked = !media.AppRows[0].IsChecked;
         Assert.NotEqual(Loc.Instance.Format("Media_AppsSummary", consumer), media.AppsSummary);
+    }
+
+    /// <summary>An own ISO: the list holds exactly the allowlist apps its chosen edition has, read again for another edition.</summary>
+    [Fact]
+    public async Task OwnIsoListsTheAppsOfItsEdition()
+    {
+        var reads = new List<int>();
+        var system = System() with
+        {
+            ReadIsoApps = (_, index, _) =>
+            {
+                reads.Add(index);
+                IReadOnlyList<string> apps = index == 2
+                    ? ["Microsoft.BingNews_4.1.0.0_x64__8wekyb3d8bbwe", "Microsoft.GamingApp_2.0.0.0_x64__8wekyb3d8bbwe", "Microsoft.WindowsStore_1.0.0.0_x64__8wekyb3d8bbwe",
+                       "SpotifyAB.SpotifyMusic_1.0.0.0_x64__zpdnekdrzrea0"]
+                    : ["Microsoft.BingWeather_4.0.0.0_x64__8wekyb3d8bbwe"];
+                return Task.FromResult(apps);
+            },
+        };
+        var media = await WithOwnIso(Media(system: system));
+        await media.AppsLoading;
+        Assert.Equal([2], reads);
+        // The Store is protected: never offered. A third-party app the image holds is listed, unticked.
+        Assert.Equal(["Microsoft.BingNews", "Microsoft.GamingApp", "SpotifyAB.SpotifyMusic"], media.AppRows.Select(r => r.Entry.Name).Order());
+        Assert.Equal([true, false, false], media.AppRows.OrderBy(r => r.Entry.Name).Select(r => r.IsChecked));
+        Assert.Equal(Loc.Instance.Format("Media_AppsFromIso", 3), media.AppsSourceText);
+
+        // News unticked by hand stays unticked when the list comes back.
+        media.AppRows.Single(r => r.Entry.Name == "Microsoft.BingNews").IsChecked = false;
+        media.Edition = media.Editions.Single(e => e.Key == "1");
+        await media.AppsLoading;
+        Assert.Equal(["Microsoft.BingWeather"], media.AppRows.Select(r => r.Entry.Name));
+        media.Edition = media.Editions.Single(e => e.Key == "2");
+        await media.AppsLoading;
+        Assert.Equal([2, 1], reads);
+        Assert.False(media.AppRows.Single(r => r.Entry.Name == "Microsoft.BingNews").IsChecked);
+
+        await media.BuildCommand.ExecuteAsync(null);
+        Assert.Empty(Assert.Single(_requests).RemoveApps);
+
+        // Back to the download: the list of what Microsoft's image can hold again.
+        media.UseDownload = true;
+        Assert.Equal(Loc.Instance["Media_AppsFromDownload"], media.AppsSourceText);
+        Assert.DoesNotContain(media.AppRows, r => r.Entry.Name == "SpotifyAB.SpotifyMusic");
+    }
+
+    /// <summary>A failed read of the image's apps leaves the list of what a Microsoft image can hold, and says so.</summary>
+    [Fact]
+    public async Task OwnIsoWhoseAppsCannotBeReadKeepsTheMicrosoftList()
+    {
+        var system = System() with { ReadIsoApps = (_, _, _) => Task.FromException<IReadOnlyList<string>>(new DismException(5, "Error: 5")) };
+        var media = await WithOwnIso(Media(system: system));
+        await media.AppsLoading;
+        Assert.Equal(Loc.Instance["Media_AppsIsoFailed"], media.AppsSourceText);
+        Assert.Equal(CatalogData.Current.Appx.Apps.Count(a => MediaChoices.MicrosoftImageGroups.Contains(a.Group)), media.AppRows.Count);
+        Assert.True(media.CanBuild);
+    }
+
+    /// <summary>A group's check box ticks all of the group, then none; with some ticked it shows neither.</summary>
+    [Fact]
+    public async Task GroupCheckBoxTicksTheWholeGroup()
+    {
+        var media = await Loaded(Media());
+        var group = media.AppGroups.Single(g => g.Key == "microsoft");
+        Assert.False(group.AllChecked);
+        group.Rows[0].IsChecked = true;
+        Assert.Null(group.AllChecked);
+        group.AllChecked = true;
+        Assert.All(group.Rows, r => Assert.True(r.IsChecked));
+        Assert.True(group.AllChecked);
+        group.AllChecked = false;
+        Assert.All(group.Rows, r => Assert.False(r.IsChecked));
+        Assert.Equal(Loc.Instance.Format("Media_AppsChosen", 0, group.Rows.Count), group.Summary);
     }
 
     [Fact]

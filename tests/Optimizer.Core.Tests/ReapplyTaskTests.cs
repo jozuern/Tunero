@@ -14,6 +14,18 @@ public class ReapplyTaskTests
 
     private static OwnTaskAction Action(string exe = Exe) => new() { Path = ReapplyTask.TaskPath(Sid), Xml = ReapplyTask.Xml(exe, Sid) };
 
+    /// <summary>The task is not one of the "many programs at sign-in" (F16) nor of the Startup page's count.</summary>
+    [Fact]
+    public void TheTaskDoesNotCountAsAStartupProgram()
+    {
+        Assert.Equal(@"\Tunero\Apply changes again " + Sid, ReapplyTask.TaskPath(Sid));
+        static Startup.StartupEntry Task(string name) =>
+            new(Startup.StartupKind.LogonTask, name, Exe + " --reapply", Exe, "Task Scheduler", Actions.Hive.Machine, true, name);
+        Assert.False(Startup.StartupTweaks.CountsForF16(Task(@"Tunero\Apply changes again " + Sid)));
+        Assert.False(Startup.StartupTweaks.CountsForF16(Task(ReapplyTask.TaskPath(Sid))));
+        Assert.True(Startup.StartupTweaks.CountsForF16(Task(@"Contoso\Updater")));
+    }
+
     [Fact]
     public void TheTaskIsRegisteredAndUndoRemovesIt()
     {

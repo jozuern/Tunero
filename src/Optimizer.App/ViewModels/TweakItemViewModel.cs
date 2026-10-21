@@ -7,6 +7,9 @@ namespace Optimizer.App.ViewModels;
 
 public enum RowAction { None, Apply, ApplyAgain, Undo }
 
+/// <summary>What a picked row adds to the Tweaks page's selection: turning it on in one batch, or undoing it.</summary>
+public enum PickKind { None, TurnOn, Undo }
+
 /// <summary>One tweak row (card with a switch) and its inspector page, in the current language.</summary>
 public sealed class TweakItemViewModel : InspectorItem
 {
@@ -124,6 +127,14 @@ public sealed class TweakItemViewModel : InspectorItem
             _ => null,
         };
         ActionEnabled = Action == RowAction.Undo || hard.Count == 0;
+        // Several at once go through the batch, which takes only what Apply recommended takes; the rest keeps its own
+        // confirmation (its switch). A change this app made can always be undone with the others. Missing admin rights
+        // block every row alike, as for the group's Turn on: the page says so once.
+        var canTurnOn = canChange && !IsOn && hard.All(b => b.ReasonKey == "block.notElevated");
+        Pick = canChange && HasBackup ? PickKind.Undo
+            : canTurnOn && t.IsBatchSafe ? PickKind.TurnOn
+            : PickKind.None;
+        PickNote = Pick == PickKind.None && canTurnOn ? Loc.Instance["Tweaks_PickAlone"] : null;
         // In the details pane there is no page banner: missing admin rights are named here too.
         var adminNote = status.Blocks.Any(b => b.ReasonKey == "block.notElevated") ? ChangeRunner.BlockText(status.Blocks.First(b => b.ReasonKey == "block.notElevated"), lang) : null;
         ActionNote = Action is RowAction.Undo or RowAction.None ? null : BlockText ?? adminNote;
@@ -160,6 +171,38 @@ public sealed class TweakItemViewModel : InspectorItem
         : RowAction.Apply;
 
     public RowAction Action { get; }
+
+    public PickKind Pick { get; }
+
+    /// <summary>Why the row cannot be picked although it can be turned on (it needs its own confirmation).</summary>
+    public string? PickNote { get; }
+
+    public bool CanPick => Pick != PickKind.None;
+
+    /// <summary>Tweaks page in Select mode: the row shows its check box (the switch stays).</summary>
+    public bool ShowPick
+    {
+        get => _showPick;
+        set => SetProperty(ref _showPick, value);
+    }
+
+    /// <summary>The row's check box; the page keeps the picks by tweak id, so a rebuild after a scan keeps them.</summary>
+    public bool IsPicked
+    {
+        get => _picked;
+        set
+        {
+            if (value && !CanPick) value = false;
+            if (SetProperty(ref _picked, value)) PickChanged?.Invoke(this);
+        }
+    }
+
+    /// <summary>Set by the Tweaks page for its own rows.</summary>
+    internal Action<TweakItemViewModel>? PickChanged { get; set; }
+
+    public string PickLabel => Loc.Instance.Format("Programs_SelectName", Title);
+
+    private bool _showPick, _picked;
 
     public TweakStatus Status_ { get; }
     public TweakDefinition Tweak => Status_.Tweak;

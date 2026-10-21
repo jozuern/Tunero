@@ -1474,6 +1474,25 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="TweakView_Changed" xml:space="preserve"><value>Von dieser App geändert</value></data>
   <data name="TweakView_Applicable" xml:space="preserve"><value>Alle, die zu diesem PC passen</value></data>
   <data name="TweakView_Everything" xml:space="preserve"><value>Alle, auch die nicht passenden</value></data>
+  <data name="TweakImpact_Label" xml:space="preserve"><value>Wirkung</value></data>
+  <data name="TweakImpact_Any" xml:space="preserve"><value>Jede Wirkung</value></data>
+  <data name="TweakImpact_AtLeast" xml:space="preserve"><value>Wirkung ab {0}</value></data>
+  <data name="TweakImpact_Five" xml:space="preserve"><value>Wirkung 5</value></data>
+  <data name="TweakImpact_Tip" xml:space="preserve"><value>Nur Tweaks, die für das Ziel des Profils mindestens so hoch bewertet sind, wie es die Marke an jeder Zeile zeigt.</value></data>
+  <data name="Tweaks_Select" xml:space="preserve"><value>Auswählen</value></data>
+  <data name="Tweaks_SelectTip" xml:space="preserve"><value>Mehrere Tweaks mit Kontrollkästchen auswählen und dann zusammen einschalten oder rückgängig machen.</value></data>
+  <data name="Tweaks_Picked" xml:space="preserve"><value>Ausgewählt: {0}</value></data>
+  <data name="Tweaks_PickedTurnOn" xml:space="preserve"><value>Einschalten ({0})</value></data>
+  <data name="Tweaks_PickedUndo" xml:space="preserve"><value>Rückgängig ({0})</value></data>
+  <data name="Tweaks_PickedTurnOnTip" xml:space="preserve"><value>Eine Bestätigung zeigt jede Änderung, bevor etwas angewendet wird.</value></data>
+  <data name="Tweaks_PickedTurnOnTitle" xml:space="preserve"><value>Ausgewählte Tweaks einschalten</value></data>
+  <data name="Tweaks_PickedTurnOnIntro" xml:space="preserve"><value>Die ausgewählten Tweaks, die aus sind. Jeder lässt sich auf der Seite Änderungen rückgängig machen.</value></data>
+  <data name="Tweaks_PickedUndoTitle" xml:space="preserve"><value>Ausgewählte Änderungen rückgängig machen</value></data>
+  <data name="Tweaks_PickAll" xml:space="preserve"><value>Alle angezeigten auswählen</value></data>
+  <data name="Tweaks_PickAllTip" xml:space="preserve"><value>Wählt jeden aufgeführten Tweak, der sich auswählen lässt, auch in zugeklappten Gruppen. Von Alternativen wie den Energiesparplänen nur den ersten.</value></data>
+  <data name="Tweaks_PickNone" xml:space="preserve"><value>Auswahl aufheben</value></data>
+  <data name="Tweaks_PickAlone" xml:space="preserve"><value>Diesen Tweak mit seinem Schalter einschalten: er braucht eine eigene Bestätigung.</value></data>
+  <data name="Work_UndoPicked" xml:space="preserve"><value>Die ausgewählten Änderungen werden rückgängig gemacht</value></data>
   <data name="Advisor_SummaryGood" xml:space="preserve"><value>Im BIOS und an der Hardware ist nichts zu ändern</value></data>
   <data name="Advisor_SummaryProblems" xml:space="preserve"><value>Im BIOS oder an der Hardware zu ändern: {0}</value></data>
   <data name="Advisor_SummaryCounts" xml:space="preserve"><value>{0} geprüft</value></data>
@@ -1675,8 +1694,14 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Media_Edition_ProfessionalWorkstationN" xml:space="preserve"><value>Windows 11 Pro N for Workstations</value></data>
   <data name="Media_ChangesTitle" xml:space="preserve"><value>Änderungen</value></data>
   <data name="Media_RemoveAppsTitle" xml:space="preserve"><value>Vorinstallierte Apps entfernen</value></data>
-  <data name="Media_RemoveAppsText" xml:space="preserve"><value>Die angehakten Apps werden aus dem Abbild entfernt, damit kein Konto auf dem neuen PC sie bekommt. Es ist dieselbe Liste wie unter Apps entfernen; Apps, die das Abbild nicht enthält, werden übersprungen. Sobald der neue PC online ist, können Windows oder der Microsoft Store einige davon wieder installieren; Apps entfernen in Tunero entfernt sie dann erneut.</value></data>
+  <data name="Media_RemoveAppsText" xml:space="preserve"><value>Die angehakten Apps werden aus dem Abbild entfernt, damit kein Konto auf dem neuen PC sie bekommt. Sobald der neue PC online ist, können Windows oder der Microsoft Store einige davon wieder installieren; Apps entfernen in Tunero entfernt sie dann erneut.</value></data>
   <data name="Media_AppsChosen" xml:space="preserve"><value>{0} von {1} ausgewählt</value></data>
+  <data name="Media_AppsGroupAll" xml:space="preserve"><value>Alle auswählen: {0}</value></data>
+  <data name="Media_AppsFromDownload" xml:space="preserve"><value>Die Apps, die das Windows-11-Abbild von Microsoft enthalten kann. Der Download wird beim Erstellen gelesen: Apps, die er nicht enthält, werden übersprungen.</value></data>
+  <data name="Media_AppsReading" xml:space="preserve"><value>Es wird gelesen, welche Apps diese Edition deiner ISO enthält</value></data>
+  <data name="Media_AppsFromIso" xml:space="preserve"><value>Apps, die diese Edition deiner ISO enthält: {0}. Was sie nicht enthält, steht nicht in der Liste.</value></data>
+  <data name="Media_AppsIsoFailed" xml:space="preserve"><value>Die Apps dieser Edition ließen sich nicht lesen. Die Liste zeigt, was ein Abbild von Microsoft enthalten kann; beim Erstellen werden Apps übersprungen, die deine ISO nicht enthält.</value></data>
+  <data name="Media_AppsIsoNotRead" xml:space="preserve"><value>Sobald deine ISO gelesen ist, zeigt die Liste die Apps ihrer Edition.</value></data>
   <data name="Media_AppStore" xml:space="preserve"><value>Der Microsoft Store bietet diese App weiterhin an.</value></data>
   <data name="Media_AppNoStore" xml:space="preserve"><value>Diese App lässt sich nicht wieder installieren.</value></data>
   <data name="Media_SkipSetupTitle" xml:space="preserve"><value>Konto- und Einrichtungsfragen überspringen</value></data>

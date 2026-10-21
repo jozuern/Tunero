@@ -52,6 +52,9 @@ public sealed record InstallMediaSystem
     /// <summary>Reads what an own ISO holds (attaches it read-only); throws <see cref="IsoAttachException"/>.</summary>
     public Func<string, CancellationToken, Task<IsoInfo>> ReadIso { get; init; } = (_, _) => throw new NotSupportedException();
 
+    /// <summary>The apps one image of an own ISO holds, as full package names (attaches it read-only and lists the image with DISM).</summary>
+    public Func<string, int, CancellationToken, Task<IReadOnlyList<string>>> ReadIsoApps { get; init; } = (_, _, _) => throw new NotSupportedException();
+
     /// <summary>Free bytes on the drive of a path, or null when that cannot be read.</summary>
     public Func<string, long?> FreeBytes { get; init; } = _ => null;
 
@@ -75,6 +78,7 @@ public sealed record InstallMediaSystem
         },
         Keyboard = MediaLocales.ThisPcKeyboard,
         ReadIso = new IsoReader().ReadInfoAsync,
+        ReadIsoApps = new IsoReader().ReadAppsAsync,
         FreeBytes = FreeBytesOf,
         ShowInExplorer = showInExplorer,
     };
@@ -143,7 +147,12 @@ public sealed partial class MediaAppGroup : ObservableObject
         Title = title;
         Rows = rows;
         _isExpanded = key == "consumer";
-        foreach (var row in rows) row.PropertyChanged += (_, _) => OnPropertyChanged(nameof(Summary));
+        foreach (var row in rows)
+            row.PropertyChanged += (_, _) =>
+            {
+                OnPropertyChanged(nameof(Summary));
+                OnPropertyChanged(nameof(AllChecked));
+            };
     }
 
     public string Key { get; }
@@ -154,6 +163,18 @@ public sealed partial class MediaAppGroup : ObservableObject
 
     /// <summary>"3 of 18 chosen".</summary>
     public string Summary => Loc.Instance.Format("Media_AppsChosen", Rows.Count(r => r.IsChecked), Rows.Count);
+
+    /// <summary>The group's check box: all ticked, none, or some (null); a click ticks all, the next one none.</summary>
+    public bool? AllChecked
+    {
+        get => Rows.All(r => r.IsChecked) ? true : Rows.Any(r => r.IsChecked) ? null : false;
+        set
+        {
+            foreach (var row in Rows) row.IsChecked = value == true;
+        }
+    }
+
+    public string AllCheckedLabel => Loc.Instance.Format("Media_AppsGroupAll", Title);
 
     public override string ToString() => Title;
 }
@@ -184,6 +205,14 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     private IsoInfo? _isoInfo;
     private string? _isoProblem;
     private CancellationTokenSource? _isoRead;
+
+    /// <summary>The apps of each own ISO image read so far, by path and index: package names, or null when the read failed.</summary>
+    private readonly Dictionary<(string Iso, int Index), IReadOnlyList<string>?> _imageApps = [];
+    private (string Iso, int Index)? _appsReading;
+    private CancellationTokenSource? _appsRead;
+
+    /// <summary>The ticks by app name, kept while the list changes with the source and edition (and across a language switch).</summary>
+    private readonly Dictionary<string, bool> _ticks = new(StringComparer.OrdinalIgnoreCase);
     private bool _outputPicked;
     private string? _defaultOutput;
     private bool _demo;
@@ -219,6 +248,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     partial void OnUseDownloadChanged(bool value)
     {
         ShowEditions();
+        UpdateImageApps();
         Changed();
     }
 
@@ -271,6 +301,8 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     partial void OnEditionChanged(FilterOption? value)
     {
         if (UseDownload && value is not null) _downloadEdition = value.Key;
+        // While the lists are built, BuildListsCore builds the app list itself.
+        if (!_buildingLists) UpdateImageApps();
         Changed();
     }
 
@@ -282,6 +314,21 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     public IReadOnlyList<MediaAppRow> AppRows => AppGroups.SelectMany(g => g.Rows).ToList();
 
     partial void OnRemoveAppsChanged(bool value) => Changed();
+
+    /// <summary>The apps of the own ISO's chosen edition are being read (DISM lists the image: a few seconds).</summary>
+    [ObservableProperty] private bool _isReadingApps;
+
+    partial void OnIsReadingAppsChanged(bool value) => Changed();
+
+    /// <summary>The read of the image's apps that runs now, or a finished task.</summary>
+    public Task AppsLoading { get; private set; } = Task.CompletedTask;
+
+    /// <summary>Where the list comes from: the apps a Microsoft image can hold (the download), or what the own ISO's edition holds.</summary>
+    public string AppsSourceText =>
+        UseDownload ? Loc.Instance["Media_AppsFromDownload"]
+        : IsReadingIso || IsReadingApps ? Loc.Instance["Media_AppsReading"]
+        : ImageAppsRead(out var read) ? read is null ? Loc.Instance["Media_AppsIsoFailed"] : Loc.Instance.Format("Media_AppsFromIso", AppRows.Count)
+        : Loc.Instance["Media_AppsIsoNotRead"];
 
     /// <summary>What the folded apps card holds: "18 apps", or off.</summary>
     public string AppsSummary => RemoveApps ? Loc.Instance.Format("Media_AppsSummary", AppRows.Count(r => r.IsChecked)) : Loc.Instance["Media_Off"];
@@ -434,6 +481,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         OnPropertyChanged(nameof(BuildNote));
         OnPropertyChanged(nameof(CanBuild));
         OnPropertyChanged(nameof(AppsSummary));
+        OnPropertyChanged(nameof(AppsSourceText));
         OnPropertyChanged(nameof(SetupSummary));
         OnPropertyChanged(nameof(ProfileSummary));
         UpdateCatalogText();
@@ -457,7 +505,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         else
         {
             if (IsoPath is not { } iso || (!_demo && !File.Exists(iso))) return "Media_NeedsIso";
-            if (IsReadingIso) return "Media_ReadingIso";
+            if (IsReadingIso || IsReadingApps) return "Media_ReadingIso";
             if (_isoProblem is { } problem) return problem;
             // An install image without a readable image list: the read failed, nothing says the media is wrong.
             if (_isoInfo is { ImageFile: not null, Images.Count: 0 }) return "Media_IsoReadFailed";
@@ -600,19 +648,103 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         Profiles = CatalogData.Current.Profiles.Profiles.Select(p => new FilterOption(p.Id, Loc.Instance[$"Profile_{p.Id}"])).ToList();
         Profile = Profiles.FirstOrDefault(o => o.Key == profileKey) ?? Profiles.FirstOrDefault();
 
-        // The ticks survive a language switch.
-        var ticked = AppGroups.Count > 0 ? AppRows.Where(r => r.IsChecked).Select(r => r.Entry.Name).ToHashSet(StringComparer.OrdinalIgnoreCase) : null;
-        var appx = CatalogData.Current.Appx;
-        AppGroups = MediaChoices.OfferedApps(appx)
+        ShowEditions();
+        UpdateImageApps();
+    }
+
+    /// <summary>
+    /// The app list for the source: for the download the apps a Microsoft image can hold (its image is read only in the
+    /// build, which skips what it lacks), for an own ISO the apps its chosen edition holds once they are read. The groups
+    /// stay open or closed as the user left them.
+    /// </summary>
+    private void BuildAppGroups()
+    {
+        var lang = Lang;
+        var open = AppGroups.Where(g => g.IsExpanded).Select(g => g.Key).ToHashSet(StringComparer.Ordinal);
+        var first = AppGroups.Count == 0;
+        var apps = !UseDownload && ImageAppsRead(out var read) ? read : null;
+        AppGroups = MediaChoices.PageApps(CatalogData.Current.Appx, apps)
             .GroupBy(a => a.Group)
             .OrderBy(g => Array.IndexOf(GroupOrder, g.Key) is var i and >= 0 ? i : GroupOrder.Length)
             .Select(g => new MediaAppGroup(g.Key, Labels.Current.Get(lang, $"debloatGroup.{g.Key}"),
                 g.OrderBy(a => a.Label(lang), StringComparer.CurrentCulture)
-                 .Select(a => new MediaAppRow(a, lang, ticked?.Contains(a.Name) ?? MediaChoices.ChosenByDefault(a))).ToList()))
+                 .Select(a => new MediaAppRow(a, lang, _ticks.TryGetValue(a.Name, out var ticked) ? ticked : MediaChoices.ChosenByDefault(a))).ToList())
+            {
+                IsExpanded = first ? g.Key == "consumer" : open.Contains(g.Key),
+            })
             .ToList();
-        foreach (var row in AppRows) row.PropertyChanged += (_, _) => OnPropertyChanged(nameof(AppsSummary));
+        foreach (var row in AppRows)
+            row.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName != nameof(MediaAppRow.IsChecked)) return;
+                _ticks[row.Entry.Name] = row.IsChecked;
+                OnPropertyChanged(nameof(AppsSummary));
+            };
         OnPropertyChanged(nameof(AppRows));
-        ShowEditions();
+        Changed();
+    }
+
+    /// <summary>Whether the apps of the own ISO's chosen image were read; <paramref name="apps"/> is null when that read failed.</summary>
+    private bool ImageAppsRead(out IReadOnlyList<string>? apps)
+    {
+        apps = null;
+        return IsoPath is { } iso && SelectedImage() is { } image && _imageApps.TryGetValue((iso, image.Index), out apps);
+    }
+
+    /// <summary>The source or the edition changed: the list follows, reading the own ISO's image when it was not read yet.</summary>
+    private void UpdateImageApps()
+    {
+        if (!UseDownload && IsoPath is { } iso && SelectedImage() is { } image && !ImageAppsRead(out _))
+        {
+            if (_appsReading != (iso, image.Index)) AppsLoading = ReadAppsAsync(iso, image.Index);
+            return;
+        }
+        // A read that still runs is no longer wanted; coming back to that image starts a new one.
+        _appsRead?.Cancel();
+        _appsRead = null;
+        _appsReading = null;
+        IsReadingApps = false;
+        BuildAppGroups();
+    }
+
+    /// <summary>
+    /// Lists the chosen image of the own ISO with DISM and keeps its apps; a failed read leaves the list of what a
+    /// Microsoft image can hold (the build skips what the image lacks). A newer choice replaces a read that still runs.
+    /// </summary>
+    private async Task ReadAppsAsync(string iso, int index)
+    {
+        _appsRead?.Cancel();
+        if (!_system.Elevated && !_demo) return;
+        using var read = new CancellationTokenSource();
+        _appsRead = read;
+        _appsReading = (iso, index);
+        IsReadingApps = true;
+        IReadOnlyList<string>? apps = null;
+        try
+        {
+            apps = await _system.ReadIsoApps(iso, index, read.Token);
+        }
+        catch (OperationCanceledException) when (read.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            // The list of what a Microsoft image can hold stays; the build skips what this image lacks. The log has the cause.
+            Log.Warn("media", $"apps of the own ISO could not be read: {ex.GetType().Name}: {ex.Message}");
+        }
+        finally
+        {
+            if (_appsRead == read)
+            {
+                _appsRead = null;
+                _appsReading = null;
+                IsReadingApps = false;
+            }
+        }
+        if (read.IsCancellationRequested) return;
+        _imageApps[(iso, index)] = apps;
+        BuildAppGroups();
     }
 
     private static FilterOption? Pick(IEnumerable<FilterOption> options, string? key) =>
@@ -738,6 +870,8 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         _isoRead?.Cancel();
         _isoInfo = null;
         _isoProblem = null;
+        // Picked again (perhaps changed since): its images are read again, their apps too.
+        foreach (var key in _imageApps.Keys.Where(k => k.Iso == path).ToList()) _imageApps.Remove(key);
         // A new ISO starts from this PC's edition: an image index means nothing in another ISO.
         Edition = null;
         ShowEditions();
@@ -1078,6 +1212,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         {
             Elevated = true, ExePath = _system.ExePath ?? "Tunero.exe", IsPublishedExe = true,
             ReadIso = (_, _) => Task.FromResult(InstallMediaDemo.Iso()),
+            ReadIsoApps = (_, _, _) => Task.FromResult(InstallMediaDemo.IsoApps()),
         };
         CanApplyProfile = true;
         ApplyProfile = true;

@@ -42,6 +42,25 @@ public sealed record MediaChoices(
     /// <summary>The apps the page offers for removal: the reviewed list without the protected ones.</summary>
     public static IEnumerable<AppxEntry> OfferedApps(AppxCatalog appx) => appx.Apps.Where(a => !appx.IsProtected(a.Name));
 
+    /// <summary>
+    /// The groups of the reviewed list that Microsoft's own image can hold. Manufacturer apps come with a PC maker's image,
+    /// the third-party apps (Spotify, Candy Crush) are downloaded after the first sign-in, and the legacy ones are gone
+    /// since Windows 10: none of them was in the 26300 image (PCO-Test, 2026-10-21, 47 provisioned apps).
+    /// </summary>
+    public static readonly IReadOnlySet<string> MicrosoftImageGroups = new HashSet<string>(StringComparer.Ordinal) { "consumer", "microsoft", "media", "xbox" };
+
+    /// <summary>
+    /// The apps the page lists: with <paramref name="imageApps"/> (the full package names an own ISO's image holds, see
+    /// <see cref="DismOutput.ImageAppFolder"/>) exactly the offered ones among them, else those of
+    /// <see cref="MicrosoftImageGroups"/> (the download: its image is read only during the build).
+    /// </summary>
+    public static IEnumerable<AppxEntry> PageApps(AppxCatalog appx, IReadOnlyCollection<string>? imageApps)
+    {
+        if (imageApps is null) return OfferedApps(appx).Where(a => MicrosoftImageGroups.Contains(a.Group));
+        var names = imageApps.Select(p => p.Split('_')[0]).ToList();
+        return OfferedApps(appx).Where(a => names.Any(a.Matches));
+    }
+
     /// <summary>Ticked when the page opens (and what a request file's "consumer" means): the consumer group.</summary>
     public static bool ChosenByDefault(AppxEntry app) => app.Group == "consumer";
 

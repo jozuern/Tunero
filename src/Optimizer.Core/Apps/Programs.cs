@@ -21,7 +21,8 @@ public sealed record DesktopProgram(
     string RegistryKey,
     string? QuietUninstallString = null,
     string? InstallLocation = null,
-    string? DisplayIcon = null)
+    string? DisplayIcon = null,
+    bool SystemComponent = false)
 {
     public bool CanUninstall => ProductCode is not null || !string.IsNullOrWhiteSpace(UninstallString);
 }
@@ -42,7 +43,11 @@ public static class Programs
     private const string Uninstall = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall";
     private const string Uninstall32 = @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall";
 
-    public static IReadOnlyList<DesktopProgram> Read(IRegistryRoots registry)
+    /// <param name="systemComponents">
+    /// Also the entries Settings hides as parts of Windows or of another product (SystemComponent 1), marked as such: the
+    /// app catalog needs them to see installed runtimes (WebView2 registers that way). The uninstall list leaves them out.
+    /// </param>
+    public static IReadOnlyList<DesktopProgram> Read(IRegistryRoots registry, bool systemComponents = false)
     {
         var list = new List<DesktopProgram>();
         foreach (var (hive, path) in new[] { (Hive.Machine, Uninstall), (Hive.Machine, Uninstall32), (Hive.User, Uninstall) })
@@ -61,7 +66,7 @@ public static class Programs
                 foreach (var sub in key?.GetSubKeyNames() ?? [])
                 {
                     using var app = key!.OpenSubKey(sub);
-                    if (app is null || Read(app, sub, hive, path) is not { } p) continue;
+                    if (app is null || Read(app, sub, hive, path) is not { } p || (p.SystemComponent && !systemComponents)) continue;
                     list.Add(p);
                 }
             }
@@ -83,8 +88,8 @@ public static class Programs
     private static DesktopProgram? Read(Microsoft.Win32.RegistryKey app, string sub, Hive hive, string path)
     {
         if (app.GetValue("DisplayName") is not string name || string.IsNullOrWhiteSpace(name)) return null;
-        // Windows components, updates and parts of other products are not listed in Settings either.
-        if (app.GetValue("SystemComponent") is int sc && sc == 1) return null;
+        // Updates and parts of other products are not listed in Settings either; Windows components are marked.
+        var component = app.GetValue("SystemComponent") is int sc && sc == 1;
         if (app.GetValue("ParentKeyName") is string { Length: > 0 }) return null;
         if (app.GetValue("ReleaseType") is string release && release is "Update" or "Hotfix" or "Security Update") return null;
         var uninstall = app.GetValue("UninstallString", null, Microsoft.Win32.RegistryValueOptions.DoNotExpandEnvironmentNames) as string;
@@ -96,7 +101,8 @@ public static class Programs
             uninstall, productCode, hive == Hive.User, $@"{(hive == Hive.Machine ? "HKLM" : "HKCU")}\{path}\{sub}",
             app.GetValue("QuietUninstallString", null, Microsoft.Win32.RegistryValueOptions.DoNotExpandEnvironmentNames) as string,
             app.GetValue("InstallLocation", null, Microsoft.Win32.RegistryValueOptions.DoNotExpandEnvironmentNames) as string,
-            app.GetValue("DisplayIcon", null, Microsoft.Win32.RegistryValueOptions.DoNotExpandEnvironmentNames) as string);
+            app.GetValue("DisplayIcon", null, Microsoft.Win32.RegistryValueOptions.DoNotExpandEnvironmentNames) as string,
+            component);
     }
 
     /// <summary>True while the program's uninstall key still exists (the uninstaller has not finished or was cancelled).</summary>

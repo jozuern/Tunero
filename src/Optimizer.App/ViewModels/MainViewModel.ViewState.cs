@@ -23,6 +23,8 @@ public sealed partial class MainViewModel
         BuildFindingLists();
         OnPropertyChanged(nameof(IsEnglish));
         OnPropertyChanged(nameof(TweakViewOptions));
+        OnPropertyChanged(nameof(TweakImpactOptions));
+        OnPropertyChanged(nameof(TweakImpactMin));
         OnPropertyChanged(nameof(TweaksProfileLink));
         OnPropertyChanged(nameof(TweakViewMode));
         OnPropertyChanged(nameof(IsGerman));
@@ -190,6 +192,8 @@ public sealed partial class MainViewModel
         var groups = VisibleTweaks()
             .Where(p => !OnlyRecommended || p.Recommended)
             .Where(p => !_onlyChanged || p.Status.HasBackup)
+            // "Works against the profile" (a negative impact) has no rating: an impact filter leaves it out.
+            .Where(p => _tweakImpactMin == 0 || p.Impact >= _tweakImpactMin)
             // DNS servers are one choice, made on Graphics & DNS: not a second list of tweaks here.
             .Where(p => !p.Tweak.Id.StartsWith("network.dns.", StringComparison.Ordinal))
             .Where(Matches)
@@ -201,7 +205,11 @@ public sealed partial class MainViewModel
                 .ThenBy(p => CategoryOrder(p.Tweak.Category))
                 .Select(p => new TweakItemViewModel(p.Status, lang, _services.Engine, this, profiled: p, profile: _usage))
                 .ToList();
-            foreach (var item in items) Tweaks.Add(item);
+            foreach (var item in items)
+            {
+                ShowPick(item);
+                Tweaks.Add(item);
+            }
             // "12 of 34 on, 3 by this app": the same split as the page summary; "0 by this app" is left out.
             var byApp = items.Count(i => i.IsOn && i.HasBackup);
             var summary = Loc.Instance.Format("Tweaks_GroupCount", items.Count, items.Count(i => i.IsOn))
@@ -212,6 +220,7 @@ public sealed partial class MainViewModel
             });
         }
         ShowTweakRows();
+        UpdatePicks();
         var visible = VisibleTweaks().ToList();
         // "On" alone would count settings that were already that way as changes of this app. Counts of zero are left out:
         // "202 tweaks: 91 already set" reads, "0 changed by this app, 0 recommended" was noise.

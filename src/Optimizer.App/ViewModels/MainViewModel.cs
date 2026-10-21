@@ -59,7 +59,7 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
             OnPropertyChanged(nameof(CanChange));
             foreach (var command in new CommunityToolkit.Mvvm.Input.IRelayCommand[]
                      {
-                         RunActionCommand, ApplyRecommendedCommand, ApplyTweakGroupCommand, UndoAllCommand, UndoRecordCommand, ReapplyRecordCommand,
+                         RunActionCommand, ApplyRecommendedCommand, ApplyTweakGroupCommand, TurnOnPickedCommand, UndoPickedCommand, UndoAllCommand, UndoRecordCommand, ReapplyRecordCommand,
                          ReapplyDriftCommand, EnableRestorePointsCommand, ScanCommand, UpdateNowCommand, ImportChangesCommand, CopyToNewAccountsCommand, UninstallCommand,
                      })
                 command.NotifyCanExecuteChanged();

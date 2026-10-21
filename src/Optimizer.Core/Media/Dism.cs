@@ -124,6 +124,22 @@ public static class DismOutput
         return double.TryParse(m.Groups["n"].Value.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out var p) ? p : null;
     }
 
+    private const string AppsFolder = @"\Program Files\WindowsApps\";
+
+    /// <summary>
+    /// The package folder a /List-Image line names directly under \Program Files\WindowsApps (its full package name,
+    /// Name_Version_Arch_ResourceId_PublisherId), or null for any other line. In the 26300 image (PCO-Test, 2026-10-21)
+    /// these folders were exactly the 47 provisioned apps plus their frameworks and the "Deleted" and "Merged" folders,
+    /// which have no underscore and are left out here.
+    /// </summary>
+    public static string? ImageAppFolder(string line)
+    {
+        line = line.Trim();
+        if (line.Length <= AppsFolder.Length || !line.StartsWith(AppsFolder, StringComparison.OrdinalIgnoreCase) || !line.EndsWith('\\')) return null;
+        var name = line[AppsFolder.Length..^1];
+        return name.Length > 0 && name.Contains('_') && !name.Contains('\\') ? name : null;
+    }
+
     /// <summary>The "PackageName :" values of Get-ProvisionedAppxPackages.</summary>
     public static IReadOnlyList<string> ParseProvisioned(string output) => Values(output, "PackageName");
 
@@ -185,6 +201,10 @@ public static class DismArgs
 
     public static string Mount(string image, int index, string mountDir, bool readOnly = false) =>
         $"/English /Mount-Image /ImageFile:{Q(image)} /Index:{index} /MountDir:{Q(mountDir)}" + (readOnly ? " /ReadOnly" : "");
+
+    /// <summary>Lists every file and folder of one image without mounting it (about 2 seconds for a Pro image of 7.6 GB).</summary>
+    public static string ListImage(string image, int index) =>
+        $"/English /List-Image /ImageFile:{Q(image)} /Index:{index}";
 
     public static string Provisioned(string mountDir) =>
         $"/English /Image:{Q(mountDir)} /Get-ProvisionedAppxPackages";
@@ -274,6 +294,31 @@ public sealed class DismTool : IDism
 
     public async Task RemountAsync(string mountDir, CancellationToken ct) =>
         await RunAsync(DismArgs.Remount(mountDir), null, ct);
+
+    /// <summary>
+    /// The apps one image of a WIM or ESD holds, read with /List-Image (<see cref="DismOutput.ImageAppFolder"/>): full
+    /// package names. Only those lines are kept: the whole list has about 190,000.
+    /// </summary>
+    public async Task<IReadOnlyList<string>> ImageAppsAsync(string image, int index, CancellationToken ct)
+    {
+        var apps = new List<string>();
+        var tail = new Queue<string>();
+        var lines = new LineProgress(line =>
+        {
+            lock (apps)
+            {
+                if (DismOutput.ImageAppFolder(line) is { } app) apps.Add(app);
+                tail.Enqueue(line);
+                if (tail.Count > 40) tail.Dequeue();
+            }
+        });
+        var code = await StreamingProcess.RunAsync(Exe, DismArgs.ListImage(image, index), lines, ct, StreamingProcess.Oem);
+        lock (apps)
+        {
+            if (code != 0) throw new DismException(code, string.Join(Environment.NewLine, tail));
+            return apps.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        }
+    }
 
     private static async Task<string> RunAsync(string arguments, IProgress<double>? percent, CancellationToken ct)
     {

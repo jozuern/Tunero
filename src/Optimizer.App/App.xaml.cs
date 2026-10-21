@@ -313,6 +313,15 @@ public partial class App : Application
         if (Enum.TryParse<Page>(args.Value("--page"), true, out var page)) vm.CurrentPage = page;
         // The install media page with --media-demo reads its sample catalog on opening: the picture shows it read.
         if (vm.CurrentPage == Page.InstallMedia) await vm.InstallMedia.EnsureLoadedAsync();
+        // Developer aid (VM test): the page with this own ISO read, its editions and the apps of the chosen one (attached read-only).
+        if (args.Value("--media-iso") is { } mediaIso)
+        {
+            vm.InstallMedia.ExpandOptions = true;
+            vm.InstallMedia.UseDownload = false;
+            vm.InstallMedia.IsoPath = mediaIso;
+            await vm.InstallMedia.IsoLoading;
+            await vm.InstallMedia.AppsLoading;
+        }
         if (args.Value("--pane") is "closed") window.Nav.IsPaneOpen = false;
         if (double.TryParse(args.Value("--width"), CultureInfo.InvariantCulture, out var width)) window.Width = Math.Max(window.MinWidth, width);
         if (double.TryParse(args.Value("--height"), CultureInfo.InvariantCulture, out var height)) window.Height = Math.Max(window.MinHeight, height);
@@ -327,6 +336,15 @@ public partial class App : Application
             vm.SetupShown = setupShot != "card";
         }
         if (args.Value("--category") is { } cat) vm.OpenTweakGroup(cat);
+        if (int.TryParse(args.Value("--impact"), CultureInfo.InvariantCulture, out var impact)) vm.TweakImpactMin = impact;
+        // Developer aid: Select mode with these tweaks picked (comma-separated ids, or "all" as Select all shown); nothing runs.
+        if (args.Value("--pick") is { } pick)
+        {
+            vm.TweakSelectMode = true;
+            if (pick == "all") vm.PickAllTweaksCommand.Execute(null);
+            else
+                foreach (var row in vm.Tweaks.Where(t => pick.Split(',').Contains(t.Tweak.Id))) row.IsPicked = true;
+        }
         // Developer aid: the progress banner as a batch shows it (third of twelve changes, with Stop); nothing runs.
         if (args.Has("--work-demo") && vm.Tweaks.FirstOrDefault() is { } demo)
             vm.Runner.Work.Begin(Loc.Instance["Work_Apply"], new CancellationTokenSource()).Step(2, 12, vm.Runner.Title(demo.Tweak));

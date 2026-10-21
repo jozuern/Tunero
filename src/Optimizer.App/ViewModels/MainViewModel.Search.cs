@@ -7,7 +7,8 @@ using Optimizer.Core.Search;
 namespace Optimizer.App.ViewModels;
 
 /// <summary>One line in the search results: what it is, a line about it, and where it is.</summary>
-public sealed record SearchResultItem(SearchResult Result, string Where)
+/// <param name="LiveSnippet">For a check: its summary for this PC's result (the index holds the text for a problem).</param>
+public sealed record SearchResultItem(SearchResult Result, string Where, string? LiveSnippet = null)
 {
     /// <summary>What kind of thing it is, at a glance: a tweak, a check, a program, a service, a tool.</summary>
     public Wpf.Ui.Controls.SymbolRegular Icon => Result.Kind switch
@@ -24,7 +25,7 @@ public sealed record SearchResultItem(SearchResult Result, string Where)
     };
 
     public string Title => Result.Title;
-    public string Snippet => Result.Snippet;
+    public string Snippet => LiveSnippet ?? Result.Snippet;
 
     // What screen readers announce for this item in a list.
     public override string ToString() => $"{Title}, {Where}";
@@ -69,9 +70,22 @@ public sealed partial class MainViewModel
         var results = await Task.Run(() => _services.Search.Search(q, 20));
         if (generation != _searchGeneration) return; // a newer query is on its way
         SearchResults.Clear();
-        foreach (var r in results) SearchResults.Add(new SearchResultItem(r, WhereText(r)));
+        foreach (var r in results) SearchResults.Add(new SearchResultItem(r, WhereText(r), LiveSnippet(r)));
         SearchEmpty = SearchResults.Count == 0;
         SearchResultsOpen = true;
+    }
+
+    /// <summary>
+    /// A check that the scan evaluated: its summary for the result on this PC ("All required features are on" for a passed
+    /// check, not the problem text the index holds), or null to keep the index's line.
+    /// </summary>
+    private string? LiveSnippet(SearchResult r)
+    {
+        if (r.Kind != SearchKind.Finding || _profiledFindings.FirstOrDefault(f => f.Id == r.ItemId) is not { } finding) return null;
+        return Optimizer.Core.Docs.DocStore.GetOrEnglish(finding.Id, Loc.Instance.Language) is { } page
+               && Optimizer.Core.Docs.DocStore.Summary(page, finding) is { Length: > 0 } summary
+            ? string.Join(' ', summary.Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+            : null;
     }
 
     /// <summary>"Tweaks", "Services and tasks" or "Not included in Tunero": the page in its navigation name.</summary>

@@ -23,17 +23,25 @@
                  profile is a setting of the whole app, chosen on the overview: here it is named, with the way there. -->
             <ui:Card Padding="16,12" Margin="0,0,0,8">
                 <StackPanel>
-                    <Grid>
+                    <!-- Narrow (the details pane open): the filters go under the search box (code-behind) -->
+                    <Grid x:Name="FilterRow" SizeChanged="FilterRow_SizeChanged">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" MinWidth="160" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <ui:TextBox PlaceholderText="{l:Tr Tweaks_Search}" AutomationProperties.Name="{l:Tr Tweaks_Search}" Icon="{ui:SymbolIcon Search20}" Text="{Binding TweakSearch, UpdateSourceTrigger=PropertyChanged, Delay=200}"
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <ui:TextBox x:Name="SearchBox" PlaceholderText="{l:Tr Tweaks_Search}" AutomationProperties.Name="{l:Tr Tweaks_Search}" Icon="{ui:SymbolIcon Search20}" Text="{Binding TweakSearch, UpdateSourceTrigger=PropertyChanged, Delay=200}"
                                     Margin="0,0,16,0" ClearButtonEnabled="True" />
-                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <StackPanel x:Name="Filters" Grid.Column="1" Orientation="Horizontal">
                             <ui:TextBlock FontTypography="Body" Text="{l:Tr TweakView_Label}" VerticalAlignment="Center" Margin="0,0,8,0" />
                             <ComboBox ItemsSource="{Binding TweakViewOptions}" SelectedValuePath="View" SelectedValue="{Binding TweakViewMode}" DisplayMemberPath="Text"
                                       MinWidth="200" AutomationProperties.Name="{l:Tr TweakView_Label}" />
+                            <!-- The rating the rows' marks show, for the active profile -->
+                            <ComboBox ItemsSource="{Binding TweakImpactOptions}" SelectedValuePath="Min" SelectedValue="{Binding TweakImpactMin}" DisplayMemberPath="Text"
+                                      MinWidth="160" Margin="8,0,0,0" AutomationProperties.Name="{l:Tr TweakImpact_Label}" ToolTip="{l:Tr TweakImpact_Tip}" />
                         </StackPanel>
                     </Grid>
                     <Border Style="{StaticResource Divider}" />
@@ -41,6 +49,13 @@
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
                             <ui:Button Appearance="Primary" Content="{Binding RecommendedButtonText}" Command="{Binding ApplyRecommendedCommand}" Margin="0,0,8,0"
                                        Visibility="{Binding HasRecommendations, Converter={StaticResource BoolToVisibility}}" />
+                            <!-- Select mode: a check box on every row, the actions for the picked rows below -->
+                            <ToggleButton IsChecked="{Binding TweakSelectMode}" Margin="0,0,4,0" ToolTip="{l:Tr Tweaks_SelectTip}" AutomationProperties.Name="{l:Tr Tweaks_Select}">
+                                <StackPanel Orientation="Horizontal">
+                                    <ui:SymbolIcon Symbol="MultiselectLtr20" Margin="0,0,8,0" />
+                                    <TextBlock Text="{l:Tr Tweaks_Select}" />
+                                </StackPanel>
+                            </ToggleButton>
                             <ui:Button Appearance="Transparent" Content="{l:Tr Tweaks_OpenAll}" Icon="{ui:SymbolIcon ChevronDown20}" Command="{Binding OpenAllTweakGroupsCommand}" Margin="0,0,4,0" />
                             <ui:Button Appearance="Transparent" Content="{l:Tr Tweaks_CloseAll}" Icon="{ui:SymbolIcon ChevronUp20}" Command="{Binding CloseAllTweakGroupsCommand}" />
                         </StackPanel>
@@ -54,6 +69,21 @@
                         <ui:HyperlinkButton Content="{l:Tr Tweaks_ExpertLink}" Padding="0" Command="{Binding OpenSettingsCommand}"
                                             Visibility="{Binding ExpertMode, Converter={StaticResource InverseBoolToVisibility}}" />
                     </WrapPanel>
+                    <!-- What the picked rows get: one confirmation each for turning on and for undoing -->
+                    <StackPanel Visibility="{Binding TweakSelectMode, Converter={StaticResource BoolToVisibility}}">
+                        <Border Style="{StaticResource Divider}" />
+                        <WrapPanel>
+                            <ui:TextBlock FontTypography="Body" Text="{Binding TweaksPickedText}" VerticalAlignment="Center" Margin="0,0,16,0" />
+                            <ui:Button Appearance="Primary" Content="{Binding TurnOnPickedText}" Icon="{ui:SymbolIcon Play20}" Command="{Binding TurnOnPickedCommand}" Margin="0,0,8,0"
+                                       ToolTip="{l:Tr Tweaks_PickedTurnOnTip}" Visibility="{Binding PickedOnCount, Converter={StaticResource CountToVisibility}}" />
+                            <ui:Button Content="{Binding UndoPickedText}" Icon="{ui:SymbolIcon ArrowUndo20}" Command="{Binding UndoPickedCommand}" Margin="0,0,8,0"
+                                       Visibility="{Binding PickedUndoCount, Converter={StaticResource CountToVisibility}}" />
+                            <ui:Button Appearance="Transparent" Content="{l:Tr Tweaks_PickAll}" Icon="{ui:SymbolIcon SelectAllOn20}" Command="{Binding PickAllTweaksCommand}" Margin="0,0,4,0"
+                                       ToolTip="{l:Tr Tweaks_PickAllTip}" />
+                            <ui:Button Appearance="Transparent" Content="{l:Tr Tweaks_PickNone}" Icon="{ui:SymbolIcon SelectAllOff20}" Command="{Binding ClearTweakPicksCommand}"
+                                       Visibility="{Binding HasPicks, Converter={StaticResource BoolToVisibility}}" />
+                        </WrapPanel>
+                    </StackPanel>
                 </StackPanel>
             </ui:Card>
             <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Empty_List}" Visibility="{Binding Tweaks.Count, Converter={StaticResource EmptyToVisibility}}" />

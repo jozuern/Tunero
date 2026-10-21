@@ -91,6 +91,43 @@ public class DismParsingTests
         }, names);
     }
 
+    /// <summary>
+    /// The package folders directly under WindowsApps, as /List-Image prints them (lines from the 26300 Pro image): no
+    /// files, subfolders, "Deleted" or "Merged", nothing outside WindowsApps.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ImageAppFoldersFromListImage(bool streamed)
+    {
+        var text = Fixture("dism-list-image.txt");
+        var folders = (streamed ? Streamed(text) : text).Split('\n').Select(DismOutput.ImageAppFolder).OfType<string>().ToList();
+        Assert.Equal(new[]
+        {
+            "Clipchamp.Clipchamp_4.5.10920.0_neutral_split.scale-100_yxz26nhyzhsrt",
+            "Clipchamp.Clipchamp_4.5.10920.0_neutral_~_yxz26nhyzhsrt",
+            "Clipchamp.Clipchamp_4.5.10920.0_x64__yxz26nhyzhsrt",
+            "Microsoft.BingNews_4.11.6001.0_neutral_~_8wekyb3d8bbwe",
+            "Microsoft.VCLibs.140.00_14.0.33519.0_x64__8wekyb3d8bbwe",
+        }, folders);
+        Assert.Equal("/English /List-Image /ImageFile:\"E:\\sources\\install.wim\" /Index:6", DismArgs.ListImage(@"E:\sources\install.wim", 6));
+    }
+
+    /// <summary>The page's list: Microsoft's groups for the download, exactly the offered apps an own ISO's image holds.</summary>
+    [Fact]
+    public void PageAppsFollowTheImage()
+    {
+        var appx = Catalog.CatalogData.Current.Appx;
+        var download = MediaChoices.PageApps(appx, null).ToList();
+        Assert.NotEmpty(download);
+        Assert.All(download, a => Assert.Contains(a.Group, MediaChoices.MicrosoftImageGroups));
+        Assert.DoesNotContain(download, a => appx.IsProtected(a.Name));
+
+        var image = MediaChoices.PageApps(appx, ["Clipchamp.Clipchamp_4.5.10920.0_x64__yxz26nhyzhsrt", "Microsoft.WindowsStore_22510.1401.6.0_x64__8wekyb3d8bbwe",
+            "king.com.CandyCrushSaga_1.0.0.0_x86__kgqvnymyfvs32"]).Select(a => a.Name).Order();
+        Assert.Equal(["Clipchamp.Clipchamp", "king.com.CandyCrushSaga"], image);
+    }
+
     [Fact]
     public void ErrorCodeHexAndDecimal()
     {

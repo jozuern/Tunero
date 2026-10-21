@@ -282,6 +282,65 @@ public sealed class ChangeRunner(AppServices services, IDialogs dialogs, Func<Fa
         }
     }, false);
 
+    /// <summary>
+    /// Undoes several changes of this app after one confirmation listing every value that goes back (the Tweaks page's
+    /// selection). Returns the tweaks it tried; one without a readable backup is left out and stays selected.
+    /// </summary>
+    public Task<IReadOnlyList<TweakDefinition>> UndoBatchAsync(IReadOnlyList<TweakDefinition> tweaks) =>
+        tweaks.Count == 0 ? Task.FromResult<IReadOnlyList<TweakDefinition>>([]) : ExclusiveAsync<IReadOnlyList<TweakDefinition>>("undo batch", async () =>
+    {
+        foreach (var t in tweaks) ChangeLogText.Remember(t);
+        var lang = Loc.Instance.Language;
+        var backups = await Task.Run(() => tweaks.Select(t =>
+        {
+            try
+            {
+                return (Tweak: t, Backup: services.Store.Get(t.Id));
+            }
+            catch (BackupUnreadableException)
+            {
+                return (Tweak: t, Backup: (TweakBackup?)null);
+            }
+        }).Where(x => x.Backup is not null).ToList());
+        if (backups.Count == 0)
+        {
+            Report(Loc.Instance["Tweak_NoBackup"], InfoBarSeverity.Warning);
+            return [];
+        }
+        var lines = backups.SelectMany(x => x.Backup!.Entries.Select(e =>
+            new ChangeLine($"{Title(x.Tweak)}\n{e.Description}", e.Applied?.Display ?? "?", e.Original.Display, e.Label))).ToList();
+        var warnings = backups.Any(x => x.Tweak.IsBootCritical) ? new List<string> { Labels.Current.Get(lang, "undo.bootCritical") } : [];
+        var badges = new List<string> { Loc.Instance.Format("Rec_Count", backups.Count) };
+        if (dialogs.ConfirmApply(new ConfirmRequest(Loc.Instance["Tweaks_PickedUndoTitle"], Labels.Current.Get(lang, "undo.reversible"), lines, badges, warnings, null, true)) is null)
+            return [];
+
+        using var work = Work.Begin(Loc.Instance["Work_UndoPicked"]);
+        int undone = 0, failed = 0;
+        try
+        {
+            for (var i = 0; i < backups.Count; i++)
+            {
+                var t = backups[i].Tweak;
+                work.Step(i, backups.Count, Title(t));
+                var result = await services.Session.UndoAsync(t);
+                if (result.Success) undone++;
+                else
+                {
+                    failed++;
+                    Log.Warn("change", $"undo of {t.Id} incomplete: {string.Join("; ", result.Errors)}");
+                }
+            }
+            if (failed == 0) Report(Loc.Instance.Format("Result_UndoAll", undone), InfoBarSeverity.Success);
+            else Report(Loc.Instance.Format("Result_UndoAllIncomplete", undone, failed), InfoBarSeverity.Error);
+        }
+        finally
+        {
+            // Also after a failure: part of it may be undone, and the Changes page must show what is left.
+            Changed?.Invoke(this, null);
+        }
+        return backups.Select(x => x.Tweak).ToList();
+    }, []);
+
     /// <summary>Applies the given set after one confirmation listing every change (Apply recommended).</summary>
     public Task<IReadOnlyList<BatchItemResult>> ApplyBatchAsync(IReadOnlyList<TweakDefinition> tweaks, string title, string summary) =>
         tweaks.Count == 0 ? Task.FromResult<IReadOnlyList<BatchItemResult>>([]) : ExclusiveAsync<IReadOnlyList<BatchItemResult>>("apply batch", async () =>

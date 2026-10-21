@@ -1,0 +1,24 @@
+
+Deployment Image Servicing and Management tool
+Version: 10.0.26100.9549
+
+\
+\$Recycle.Bin\
+\Program Files\
+\Program Files\desktop.ini
+\Program Files\ModifiableWindowsApps\
+\Program Files\WindowsApps\
+\Program Files\WindowsApps\Clipchamp.Clipchamp_4.5.10920.0_neutral_split.scale-100_yxz26nhyzhsrt\
+\Program Files\WindowsApps\Clipchamp.Clipchamp_4.5.10920.0_neutral_split.scale-100_yxz26nhyzhsrt\AppxBlockMap.xml
+\Program Files\WindowsApps\Clipchamp.Clipchamp_4.5.10920.0_neutral_split.scale-100_yxz26nhyzhsrt\AppxManifest.xml
+\Program Files\WindowsApps\Clipchamp.Clipchamp_4.5.10920.0_neutral_~_yxz26nhyzhsrt\
+\Program Files\WindowsApps\Clipchamp.Clipchamp_4.5.10920.0_x64__yxz26nhyzhsrt\
+\Program Files\WindowsApps\Clipchamp.Clipchamp_4.5.10920.0_x64__yxz26nhyzhsrt\Assets\
+\Program Files\WindowsApps\Deleted\
+\Program Files\WindowsApps\Merged\
+\Program Files\WindowsApps\Microsoft.BingNews_4.11.6001.0_neutral_~_8wekyb3d8bbwe\
+\Program Files\WindowsApps\Microsoft.VCLibs.140.00_14.0.33519.0_x64__8wekyb3d8bbwe\
+\Program Files\WindowsApps\Microsoft.VCLibs.140.00_14.0.33519.0_x64__8wekyb3d8bbwe\vcruntime140_app.dll
+\Windows\SystemApps\Microsoft.Windows.Search_cw5n1h2txyewy\
+
+The operation completed successfully.

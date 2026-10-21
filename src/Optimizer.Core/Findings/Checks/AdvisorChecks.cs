@@ -255,7 +255,8 @@ public sealed class AmdChipsetCheck : IFindingCheck
             if (p.ProbeFailed("Extras")) yield return Finding.NotRead(Id);
             yield break;
         }
-        var programs = p.Extras.Programs;
+        // The package as Settings lists it; its hidden parts do not count.
+        var programs = p.Extras.Programs.Where(x => !x.SystemComponent).ToList();
         var package = programs.FirstOrDefault(x => IsChipsetPackage(x.Name));
         var x3d = X3d.Classify(p.Cpu, c) == X3dLayout.MultiCcdAsymmetric;
         var status = programs.Count == 0 ? FindingStatus.Unknown
