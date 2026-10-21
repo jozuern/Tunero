@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { counts, checkTitles, checkImpacts, tweak, doc, inboxApp, changelog } from './repo.ts';
+import { counts, checkTitles, checkImpacts, tweak, doc, inboxApp, changelog, appString, tweakCategory } from './repo.ts';
 
 test('the check pages match the README count', () => {
   assert.equal(checkTitles('en').length, counts.checks);
@@ -10,6 +10,7 @@ test('the check pages match the README count', () => {
 test('checkImpacts reads every rating a check can give', () => {
   assert.ok(checkImpacts('F1.refresh').includes(5));
   assert.deepEqual(checkImpacts('F16.startupPrograms'), [1]);
+  assert.deepEqual(checkImpacts('A.xmp'), [1, 3]);
   assert.throws(() => checkImpacts('F99.nothing'));
 });
 
@@ -46,4 +47,16 @@ test('changelog gives the newest versions first', () => {
   assert.equal(entries.length, 2);
   assert.match(entries[0].version, /^\d+\.\d+\.\d+$/);
   assert.ok(entries[0].body.length > 0);
+});
+
+test('appString reads the app texts from Strings.resx', () => {
+  assert.equal(appString('Changes_UndoAll', 'en'), 'Undo all');
+  assert.equal(appString('Changes_UndoAll', 'de'), 'Alles rückgängig');
+  assert.equal(appString('Nav_Services', 'en'), 'Services & tasks');
+  assert.throws(() => appString('Nothing_Here', 'en'));
+});
+
+test('tweakCategory gives the category label of a tweak', () => {
+  assert.equal(tweakCategory('privacy.suggestionsOff', 'en'), 'Privacy');
+  assert.equal(tweakCategory('privacy.suggestionsOff', 'de'), 'Datenschutz');
 });

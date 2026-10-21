@@ -1,5 +1,23 @@
 // The demo desktop's English copy. Plain strings only (it is passed to the browser), with {0} for numbers or names.
 const desktopEn = {
+  app: {
+    subtitle: 'Demo PC, Windows 11 Pro',
+    scanStart: 'Scan this PC',
+    scanNote: 'Reads {0} checks. Changes nothing.',
+    tweaksHint: 'The {0} tweaks you can watch on this demo PC. The app has {1}, each explained with sources.',
+    whatChanges: 'What changes',
+    fromTo: 'from {0} to {1}',
+    showWhere: 'Show where',
+    removed: 'Removed',
+    pickTweak: 'Select a tweak to see exactly what it changes.',
+    basis: { measured: 'measured', situational: 'situational', disputed: 'disputed' },
+    basisLabel: 'Evidence: {0}',
+    more: 'More on this PC',
+    moreTweaks: '{0} tweaks not applied yet',
+    moreStartup: '{0} programs start with Windows',
+    moreApps: '{0} preinstalled apps you can remove',
+    impactNote: 'Rated for games, 0 to 5. These rate 0: they do not make games faster, they stop the nagging.',
+  },
   watermark: ['Demo PC, Windows 11 Pro', 'Nothing here touches your computer.'],
   classicPage: 'Classic page',
   install: 'Install Tunero',

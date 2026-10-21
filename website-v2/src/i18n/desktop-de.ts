@@ -1,6 +1,24 @@
 import type { DesktopStrings } from './desktop-en.ts';
 
 const desktopDe: DesktopStrings = {
+  app: {
+    subtitle: 'Demo-PC, Windows 11 Pro',
+    scanStart: 'Diesen PC scannen',
+    scanNote: 'Liest {0} Prüfungen. Ändert nichts.',
+    tweaksHint: 'Die {0} Tweaks, deren Wirkung du auf diesem Demo-PC siehst. Die App hat {1}, jeder mit Quellen erklärt.',
+    whatChanges: 'Was sich ändert',
+    fromTo: 'von {0} auf {1}',
+    showWhere: 'Zeigen, wo',
+    removed: 'Entfernt',
+    pickTweak: 'Wähle einen Tweak, um genau zu sehen, was er ändert.',
+    basis: { measured: 'gemessen', situational: 'je nach PC', disputed: 'umstritten' },
+    basisLabel: 'Beleg: {0}',
+    more: 'Mehr auf diesem PC',
+    moreTweaks: '{0} Tweaks noch nicht angewendet',
+    moreStartup: '{0} Programme starten mit Windows',
+    moreApps: '{0} vorinstallierte Apps, die du entfernen kannst',
+    impactNote: 'Bewertet für Spiele, 0 bis 5. Diese haben 0: Sie machen Spiele nicht schneller, sie beenden das Nerven.',
+  },
   watermark: ['Demo-PC, Windows 11 Pro', 'Nichts hier verändert deinen Computer.'],
   classicPage: 'Klassische Seite',
   install: 'Tunero installieren',

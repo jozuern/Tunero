@@ -10,17 +10,21 @@
   import DesktopIcons from './DesktopIcons.svelte';
   import Watermark from './Watermark.svelte';
   import Window from './Window.svelte';
+  import TuneroApp from './app/TuneroApp.svelte';
+  import type { AppStrings } from './app/appKeys.ts';
 
   let {
     demo,
     copy,
     lang,
     facts,
+    app,
   }: {
     demo: Demo;
     copy: DesktopStrings;
     lang: 'en' | 'de';
-    facts: { version: string; download: string; classicHref: string; otherHref: string };
+    facts: { version: string; tweakCount: number; download: string; classicHref: string; otherHref: string };
+    app: AppStrings;
   } = $props();
 
   const store = provideStore(new DesktopStore(demo));
@@ -38,7 +42,7 @@
 
   {#if store.windows.tunero.open}
     <Window id="tunero" title="Tunero" icon="tunero" labels={copy.window}>
-      <div class="placeholder">Tunero</div>
+      <TuneroApp {app} copy={copy.app} tweakCount={facts.tweakCount} />
     </Window>
   {/if}
   {#if store.windows.trust.open}

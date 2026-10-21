@@ -142,8 +142,15 @@ const checkSources = (() => {
 export function checkImpacts(id: string): number[] {
   const source = checkSources.get(id);
   if (!source) throw new Error(`Check ${id} not found in Findings`);
-  const values = [...source.matchAll(/Impact = ([^,;\n]+)/g)]
-    .flatMap((m) => m[1].split(/[?:]/))
+  const expressions = [...source.matchAll(/Impact = ([^,;\n]+)/g)].map((m) => m[1]);
+  // A rating computed by a method of the class (A.xmp: Impact = Impact(p.Cpu, c)) counts with every value it returns.
+  if (/Impact = Impact\(/.test(source)) {
+    const method = source.match(/static int Impact\([^)]*\)\s*\{([\s\S]*?)\n    \}/);
+    if (!method) throw new Error(`Check ${id} computes its rating in a method the site cannot read`);
+    expressions.push(...[...method[1].matchAll(/return ([^;]+);/g)].map((m) => m[1]));
+  }
+  const values = expressions
+    .flatMap((expression) => expression.split(/[?:]/))
     .map((x) => x.trim())
     .filter((x) => /^\d$/.test(x))
     .map(Number);
@@ -218,4 +225,29 @@ export function changelog(versions: number): { version: string; body: string }[]
     .slice(1)
     .slice(0, versions)
     .map((part) => ({ version: part.slice(0, part.indexOf('\n')).trim(), body: part.slice(part.indexOf('\n') + 1).trim() }));
+}
+
+const resx = (lang: Lang) => {
+  const text = read(`src/Optimizer.App/Resources/Strings${lang === 'de' ? '.de' : ''}.resx`);
+  const entities: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
+  return new Map(
+    [...text.matchAll(/<data name="([^"]+)"[^>]*>\s*<value>([\s\S]*?)<\/value>/g)].map((m) => [m[1], m[2].replace(/&(\w+);/g, (_, name: string) => entities[name] ?? `&${name};`)]),
+  );
+};
+const appStrings = { en: resx('en'), de: resx('de') };
+
+/** A text of the app itself (Optimizer.App/Resources/Strings*.resx), so the demo app says what the real one says. */
+export function appString(key: string, lang: Lang): string {
+  const value = appStrings[lang].get(key);
+  if (value === undefined) throw new Error(`Strings.resx has no ${key}`);
+  return value;
+}
+
+/** The label of a tweak's category, as the app shows it (Catalog/Data/labels.json). */
+export function tweakCategory(id: string, lang: Lang): string {
+  const t = catalog.find((x) => x.id === id) as (CatalogTweak & { category?: string }) | undefined;
+  const labels = JSON.parse(read('src/Optimizer.Core/Catalog/Data/labels.json'))[lang] as Record<string, string>;
+  const label = t?.category && labels[`category.${t.category}`];
+  if (!label) throw new Error(`Tweak ${id} has no category label`);
+  return label;
 }

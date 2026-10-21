@@ -1,6 +1,6 @@
 // The demo PC: what the scan finds on it and what Tunero can change there, each with the desktop effect it drives.
 // Titles, ratings, summaries and registry values come from the catalog; an id that no longer exists fails the build.
-import { checkImpacts, checkTitles, doc, inboxApp, tweak, tweakTitle, type CheckStatus } from './repo.ts';
+import { checkImpacts, checkTitles, doc, inboxApp, tweak, tweakCategory, tweakTitle, type CheckStatus } from './repo.ts';
 import { t, type Lang } from '../i18n/index.ts';
 
 /** Something the visitor sees on the demo desktop until the changes behind it are applied. */
@@ -34,6 +34,8 @@ export interface DemoItem {
   basis: string;
   writes: Write[];
   effect: Effect;
+  /** The category label of a tweak, as the app groups it; empty for the rest. */
+  category?: string;
 }
 
 export interface DemoFinding extends DemoItem {
@@ -121,6 +123,7 @@ export function buildDemo(lang: Lang, s: typeof scenario = scenario): Demo {
         return { where: `${a.hive === 'user' ? 'HKCU' : 'HKLM'}\\${a.path}\\${a.name}`, from: demoFrom(a.path, a.value, copy.notSet), to: String(a.value) };
       }),
       effect,
+      category: tweakCategory(id, lang),
     };
   });
   const apps = s.apps.map((name): DemoItem => ({

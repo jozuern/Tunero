@@ -42,3 +42,8 @@ test('no demo tweak is limited to Enterprise and Education or unconfirmed by Mic
 test('an unknown id fails the build', () => {
   assert.throws(() => buildDemo('en', { ...scenario, tweaks: [...scenario.tweaks, { id: 'nothing.here', effect: 'none' }] }));
 });
+
+test('tweaks carry their category label', () => {
+  const suggestions = buildDemo('de').tweaks.find((t) => t.id === 'privacy.suggestionsOff')!;
+  assert.equal(suggestions.category, 'Datenschutz');
+});

@@ -6,7 +6,8 @@ import { t, localPath, type Lang } from '../i18n/index.ts';
 import desktopEn from '../i18n/desktop-en.ts';
 import desktopDe from '../i18n/desktop-de.ts';
 import { buildDemo } from '../lib/demo.ts';
-import { download } from '../lib/repo.ts';
+import { appString, counts, download } from '../lib/repo.ts';
+import { appKeys, type AppStrings } from '../desktop/app/appKeys.ts';
 import { latestRelease } from '../lib/release.ts';
 
 interface Props {
@@ -16,7 +17,9 @@ interface Props {
 const { lang } = Astro.props;
 const copy = t(lang);
 const release = await latestRelease();
+const app = Object.fromEntries(appKeys.map((key) => [key, appString(key, lang)])) as AppStrings;
 const facts = {
+  tweakCount: counts.tweaks,
   version: release.version,
   download,
   classicHref: localPath(lang, '/classic/'),
@@ -27,6 +30,6 @@ const facts = {
 <Base lang={lang} title={copy.meta.title} description={copy.meta.description} path="/">
   <main>
     <h1 class="visually-hidden">{copy.meta.title}</h1>
-    <Desktop client:load demo={buildDemo(lang)} copy={lang === 'de' ? desktopDe : desktopEn} lang={lang} facts={facts} />
+    <Desktop client:load demo={buildDemo(lang)} copy={lang === 'de' ? desktopDe : desktopEn} lang={lang} facts={facts} app={app} />
   </main>
 </Base>
