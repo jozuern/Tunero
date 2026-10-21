@@ -1,5 +1,5 @@
 // The wallpaper's WebGL2 driver: one full screen triangle, the fragment shader in wallpaper.frag, and a loop that eases
-// the clutter value, speeds the motion up and makes it stutter as clutter rises. No libraries.
+// the clutter value and speeds the motion up as clutter rises. It never drops frames on purpose. No libraries.
 //
 // Failure is reported through the optional `events.onFail` callback, at most once: when WebGL2 is missing, the shader
 // does not compile or link, or the context is lost later. startWallpaper never throws for these; it returns a stop
@@ -31,7 +31,6 @@ const themeRate = 9;
 const calmSpeed = 0.8;
 /** A frame from the middle of the calm motion, used for the still picture under reduced motion. */
 const stillPhase = 14;
-const stillTime = 3.5;
 
 type Theme = 'light' | 'dark';
 
@@ -89,11 +88,9 @@ export function startWallpaper(
     const uniform = (name: string) => gl.getUniformLocation(program, name);
     const uRes = uniform('uRes');
     const uPhase = uniform('uPhase');
-    const uTime = uniform('uTime');
     const uClutter = uniform('uClutter');
     const uTheme = uniform('uTheme');
     const uSeed = uniform('uSeed');
-    const uJitter = uniform('uJitter');
 
     const motionQuery = matchMedia('(prefers-reduced-motion: reduce)');
     let reduced = reducedMotion();
@@ -105,14 +102,8 @@ export function startWallpaper(
     let clutter = clamp01(getClutter());
     let clutterVelocity = 0;
     let theme = themeTarget();
-    let truePhase = stillPhase;
-    let shownPhase = stillPhase;
-    let sinceShown = 0;
-    let holdLeft = 0;
+    let phase = stillPhase;
     let seed = 1;
-    let jitterX = 0;
-    let jitterY = 0;
-    let clock = stillTime;
 
     // Size and quality.
     let cssWidth = canvas.clientWidth;
@@ -149,12 +140,10 @@ export function startWallpaper(
       gl.useProgram(program);
       gl.bindVertexArray(vertexArray);
       gl.uniform2f(uRes, canvas.width, canvas.height);
-      gl.uniform1f(uPhase, shownPhase);
-      gl.uniform1f(uTime, clock);
+      gl.uniform1f(uPhase, phase);
       gl.uniform1f(uClutter, clutter);
       gl.uniform1f(uTheme, theme);
       gl.uniform1f(uSeed, seed);
-      gl.uniform2f(uJitter, jitterX, jitterY);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
       if (!drewFirst) {
         drewFirst = true;
@@ -167,10 +156,8 @@ export function startWallpaper(
       clutter = clamp01(getClutter());
       clutterVelocity = 0;
       theme = themeTarget();
-      shownPhase = truePhase = stillPhase;
-      clock = stillTime;
+      phase = stillPhase;
       seed = 1;
-      jitterX = jitterY = 0;
       stillClutter = clutter;
       stillTheme = theme;
       draw();
@@ -185,27 +172,9 @@ export function startWallpaper(
       clutterVelocity = (clutterVelocity - clutterOmega * carry) * decay;
       theme += (themeTarget() - theme) * (1 - Math.exp(-themeRate * seconds));
 
-      clock += seconds;
-      // Neglect speeds the motion up (integrated, so a changing speed never jumps the picture) ...
-      truePhase += seconds * calmSpeed * (1 + 2.4 * Math.pow(clutter, 1.3));
-      // ... and makes it stutter: frames come at an uneven, lower rate, with an occasional longer hitch.
-      sinceShown += seconds;
-      if (holdLeft > 0) {
-        holdLeft -= seconds;
-        return;
-      }
-      const interval = clutter * clutter * (1 / 12);
-      if (sinceShown < interval * (0.6 + Math.random() * 0.8)) return;
-      const elapsed = sinceShown;
-      shownPhase = truePhase;
-      sinceShown = 0;
+      // Neglect speeds the motion up; integrated, so a changing speed never jumps the picture.
+      phase += seconds * calmSpeed * (1 + 1.4 * Math.pow(clutter, 1.3));
       seed = (seed % 4093) + 1;
-      const shake = clutter > 0.05 ? 0.0028 * clutter : 0;
-      jitterX = (Math.random() - 0.5) * shake;
-      jitterY = (Math.random() - 0.5) * shake;
-      if (Math.random() < clutter * clutter * 1.5 * elapsed) {
-        holdLeft = 0.08 + Math.random() * 0.2 * clutter;
-      }
     }
 
     /** If frames keep coming slowly, draw fewer pixels: the picture is soft and survives a lower resolution. */

@@ -44,14 +44,16 @@
             <h2>{group.category}</h2>
             <span>{fill(app.Tweaks_GroupCount, group.items.length, group.items.length - off.length)}</span>
           </div>
-          <button
-            type="button"
-            class="btn"
-            disabled={off.length === 0}
-            onclick={() => store.apply(group.items.map((item) => ({ kind: 'tweak' as const, id: item.id })))}
-          >
-            {fill(app.Tweaks_GroupApply, off.length)}
-          </button>
+          {#if off.length > 0}
+            <button
+              type="button"
+              class="btn"
+              title={app.Tweaks_GroupApplyTip}
+              onclick={() => store.apply(group.items.map((item) => ({ kind: 'tweak' as const, id: item.id })))}
+            >
+              {fill(app.Tweaks_GroupApply, off.length)}
+            </button>
+          {/if}
         </header>
         {#each group.items as item (item.id)}
           <div class="card tweak" class:selected={selectedId === item.id}>
@@ -71,9 +73,14 @@
     {#if selected}
       <h2>{selected.title}</h2>
       <p class="meta">
-        <Rating value={selected.impact} label={fill(app.Impact_Short, selected.impact)} />
-        <span>{fill(app.Impact_Short, selected.impact)}, {basisLabel(selected.basis)}</span>
+        {#if selected.impact > 0}
+          <Rating value={selected.impact} label={fill(app.Impact_Short, selected.impact)} />
+          <span>{fill(app.Impact_Short, selected.impact)}, {basisLabel(selected.basis)}</span>
+        {:else}
+          <span>{copy.noFpsEffect}</span>
+        {/if}
       </p>
+      {#if selected.ratingReason}<p class="reason">{selected.ratingReason}</p>{/if}
       <Toggle checked={on(selected)} label={selected.title} on={app.Tweak_SwitchOn} off={app.Tweak_SwitchOff} onchange={(value) => set(selected!, value)} />
       <p>{selected.summary}</p>
       <h3>{copy.whatChanges}</h3>
@@ -187,6 +194,12 @@
     align-items: center;
     gap: 12px;
     margin: 0 0 12px;
+    color: var(--ink-2);
+    font-size: 12px;
+  }
+
+  .reason {
+    margin: -4px 0 12px;
     color: var(--ink-2);
     font-size: 12px;
   }

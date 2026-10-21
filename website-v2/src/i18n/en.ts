@@ -35,6 +35,12 @@ const en = {
     notSet: 'not set',
     display: 'Display 1',
     refreshWhere: 'Display 1: refresh rate',
+    power: {
+      maxState: 'Power plan, plugged in: Maximum processor state',
+      boostMode: 'Power plan, plugged in: Processor performance boost mode',
+      boostOff: 'Disabled',
+      boostOn: 'Aggressive',
+    },
     startup: ['Game launcher', 'Chat', 'RGB control', 'Cloud sync', 'Updater', 'Music', 'Peripheral tool', 'Screenshot tool', 'Voice chat'],
   },
   classic: {

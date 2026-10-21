@@ -3,6 +3,7 @@
   // it stops the moment that change is applied and comes back with Undo.
   import { onMount } from 'svelte';
   import { fly } from 'svelte/transition';
+  import { flip } from 'svelte/animate';
   import type { DesktopStrings } from '../i18n/desktop-en.ts';
   import { useStore } from './store.svelte.ts';
   import { reducedMotion } from './store.svelte.ts';
@@ -62,7 +63,7 @@
   {#each visible as key (key)}
     {@const toast = copy.toasts[key]}
     {@const source = sources.find((s) => s.key === key)!}
-    <div class="toast" in:motion out:motion>
+    <div class="toast" in:motion out:motion animate:flip={{ duration: reducedMotion() ? 0 : 220 }}>
       <div class="head">
         <Icon name={source.icon} size={16} />
         <span>{toast.app}</span>

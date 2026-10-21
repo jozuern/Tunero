@@ -16,7 +16,8 @@ const desktopEn = {
     moreTweaks: 'Not applied yet: {0}',
     moreStartup: 'Programs that start with Windows: {0}',
     moreApps: 'Preinstalled apps you can remove: {0}',
-    impactNote: 'Rated for games, 0 to 5. These rate 0: they do not make games faster, they stop the nagging.',
+    impactNote: 'Rated for games on this PC, 0 to 5. No mark means no effect on frame rate: those tweaks stop the nagging instead.',
+    noFpsEffect: 'No FPS effect',
   },
   dive: {
     title: 'Where this change writes',

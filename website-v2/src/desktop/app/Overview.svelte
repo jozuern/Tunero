@@ -8,6 +8,8 @@
   import Writes from './Writes.svelte';
   import { single } from '../clicks.ts';
   import { fill, type AppStrings, type Page } from './appKeys.ts';
+  import type { DemoFinding } from '../../lib/demo.ts';
+  import type { Change } from '../../lib/demo-state.ts';
 
   let { app, copy, go }: { app: AppStrings; copy: DesktopStrings['app']; go: (page: Page) => void } = $props();
   const store = useStore();
@@ -39,13 +41,15 @@
   }
   onDestroy(() => clearInterval(timer));
 
-  const refresh = demo.findings.find((f) => f.fix === 'apply')!;
+  /** The problems Fix changes: by itself, or by turning on the tweak that fixes it, as the app does. */
+  const fixable = demo.findings.filter((f) => f.fix !== 'startup');
   const startupFinding = demo.findings.find((f) => f.fix === 'startup')!;
-  const refreshFixed = $derived(store.applied({ kind: 'finding', id: refresh.id }));
+  const change = (f: DemoFinding): Change => (f.fix === 'tweak' ? { kind: 'tweak', id: f.tweak! } : { kind: 'finding', id: f.id });
+  const fixed = (f: DemoFinding) => store.applied(change(f));
   const enabledStartup = $derived(demo.startup.filter((s) => !store.applied({ kind: 'startup', id: s.id })).length);
   const tweaksLeft = $derived(demo.tweaks.filter((t) => !store.applied({ kind: 'tweak', id: t.id })).length);
   const appsLeft = $derived(demo.apps.filter((a) => !store.applied({ kind: 'app', id: a.id })).length);
-  const problems = $derived(refreshFixed ? 0 : 1);
+  const problems = $derived(fixable.filter((f) => !fixed(f)).length);
   const verdict = $derived(problems === 0 ? app.Dash_VerdictNone : problems === 1 ? app.Dash_VerdictOne : fill(app.Dash_VerdictMany, problems));
 </script>
 
@@ -75,20 +79,23 @@
 {:else}
   <h2 class="verdict">{verdict}</h2>
   <ul class="findings">
-    <li class="card finding" class:fixed={refreshFixed}>
-      <span class="status" class:ok={refreshFixed}><Icon name={refreshFixed ? 'check' : 'warning'} size={20} /></span>
-      <div class="text">
-        <strong>{refresh.title}</strong>
-        <p>{refresh.summary}</p>
-        {#if refreshFixed}<Writes writes={refresh.writes} {copy} />{/if}
-      </div>
-      <Rating value={refresh.impact} label={fill(app.Impact_Short, refresh.impact)} />
-      {#if refreshFixed}
-        <button type="button" class="btn" onclick={single(() => store.undo({ kind: 'finding', id: refresh.id }))}>{app.Tweak_Undo}</button>
-      {:else}
-        <button type="button" class="btn primary" onclick={single(() => store.apply([{ kind: 'finding', id: refresh.id }]))}>{app.Fix_Apply}</button>
-      {/if}
-    </li>
+    {#each fixable as finding (finding.id)}
+      {@const done = fixed(finding)}
+      <li class="card finding" class:fixed={done}>
+        <span class="status" class:ok={done}><Icon name={done ? 'check' : 'warning'} size={20} /></span>
+        <div class="text">
+          <strong>{finding.title}</strong>
+          <p>{finding.summary}</p>
+          {#if done && finding.writes.length > 0}<Writes writes={finding.writes} {copy} />{/if}
+        </div>
+        <Rating value={finding.impact} label={fill(app.Impact_Short, finding.impact)} />
+        {#if done}
+          <button type="button" class="btn" onclick={single(() => store.undo(change(finding)))}>{app.Tweak_Undo}</button>
+        {:else}
+          <button type="button" class="btn primary" onclick={single(() => store.apply([change(finding)]))}>{app.Fix_Apply}</button>
+        {/if}
+      </li>
+    {/each}
     {#if enabledStartup > startupThreshold}
       <li class="card finding">
         <span class="status info"><Icon name="info" size={20} /></span>

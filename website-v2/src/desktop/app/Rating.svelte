@@ -1,9 +1,10 @@
 <script lang="ts">
-  // The app's rating mark: the number and five bars, filled up to it.
+  // The app's rating mark: the number and five bars, filled up to it. Like the app, a 0 shows no mark but keeps its place,
+  // so the marks of a list stand in one column.
   let { value, label }: { value: number; label: string } = $props();
 </script>
 
-<span class="rating" title={label} aria-label={label}>
+<span class="rating" class:none={value <= 0} title={label} aria-label={label}>
   <span class="number" aria-hidden="true">{value}</span>
   <span class="bars" aria-hidden="true">
     {#each [1, 2, 3, 4, 5] as bar (bar)}<span class:on={bar <= value}></span>{/each}
@@ -16,6 +17,10 @@
     align-items: center;
     gap: 8px;
     flex: none;
+  }
+
+  .none {
+    visibility: hidden;
   }
 
   .number {

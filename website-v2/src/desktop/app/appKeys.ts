@@ -19,6 +19,7 @@ export const appKeys = [
   'Tweak_SwitchOn',
   'Tweak_SwitchOff',
   'Tweaks_GroupApply',
+  'Tweaks_GroupApplyTip',
   'Tweaks_GroupCount',
   'Startup_Title',
   'Startup_SignInKinds',

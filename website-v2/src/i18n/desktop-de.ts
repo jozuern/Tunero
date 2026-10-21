@@ -17,7 +17,8 @@ const desktopDe: DesktopStrings = {
     moreTweaks: 'Noch nicht angewendet: {0}',
     moreStartup: 'Programme, die mit Windows starten: {0}',
     moreApps: 'Vorinstallierte Apps zum Entfernen: {0}',
-    impactNote: 'Bewertet für Spiele, 0 bis 5. Diese haben 0: Sie machen Spiele nicht schneller, sie beenden das Nerven.',
+    impactNote: 'Bewertet für Spiele auf diesem PC, 0 bis 5. Ohne Marke kein Effekt auf die FPS: Diese Tweaks beenden stattdessen das Nerven.',
+    noFpsEffect: 'Kein FPS-Effekt',
   },
   dive: {
     title: 'Wohin diese Änderung schreibt',

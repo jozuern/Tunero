@@ -1,6 +1,6 @@
 // The demo PC: what the scan finds on it and what Tunero can change there, each with the desktop effect it drives.
 // Titles, ratings, summaries and registry values come from the catalog; an id that no longer exists fails the build.
-import { checkImpacts, checkTitles, doc, inboxApp, tweak, tweakCategory, tweakTitle, type CheckStatus } from './repo.ts';
+import { checkImpacts, checkTitles, doc, inboxApp, tweak, tweakCategory, tweakImpactWhen, tweakTitle, type CheckStatus, type TweakAction } from './repo.ts';
 import { t, type Lang } from '../i18n/index.ts';
 
 /** Something the visitor sees on the demo desktop until the changes behind it are applied. */
@@ -19,6 +19,8 @@ export type Effect =
 export interface Write {
   /** A registry value (HKCU\...\Name) or a setting described in words. */
   where: string;
+  /** True for a registry value, which the dive can show. */
+  registry: boolean;
   /** The value on the demo PC before the change. */
   from: string;
   to: string;
@@ -30,6 +32,8 @@ export interface DemoItem {
   summary: string;
   /** Rating for games, 0 to 5; the app shows it for findings and tweaks only. */
   impact: number;
+  /** Why the rating is higher on the demo PC than on most PCs, in the app's words. */
+  ratingReason?: string;
   /** measured, situational or disputed for a tweak; empty for the rest. */
   basis: string;
   writes: Write[];
@@ -39,8 +43,10 @@ export interface DemoItem {
 }
 
 export interface DemoFinding extends DemoItem {
-  /** apply: Fix changes it; startup: Fix opens the startup list. */
-  fix: 'apply' | 'startup';
+  /** apply: Fix changes it; tweak: Fix turns on the tweak that fixes it; startup: Fix opens the startup list. */
+  fix: 'apply' | 'tweak' | 'startup';
+  /** The tweak behind a `tweak` fix. */
+  tweak?: string;
 }
 
 export interface Demo {
@@ -54,22 +60,25 @@ export interface Demo {
 }
 
 /**
- * The scenario. No tweak here is one Microsoft supports only on Enterprise and Education or whose effect it has not
+ * The scenario. The two problems are the kind the scan rates highest, and turbo restore carries the rating the catalog
+ * gives it on a PC whose power plan blocks turbo, which this one does. No tweak here is one Microsoft supports only on Enterprise and Education or whose effect it has not
  * confirmed; two are documented for Pro and up, so the demo PC is Windows 11 Pro.
  */
 export const scenario = {
   findings: [
     { id: 'F1.refresh', status: 'Problem' as CheckStatus, impact: 5, fix: 'apply' as const, effect: 'refresh-rate' as Effect },
+    { id: 'F6.turbo', status: 'Problem' as CheckStatus, impact: 5, fix: 'tweak' as const, tweak: 'power.turboRestore', effect: 'none' as Effect },
     { id: 'F16.startupPrograms', status: 'Info' as CheckStatus, impact: 1, fix: 'startup' as const, effect: 'tray' as Effect },
   ],
   tweaks: [
+    { id: 'power.turboRestore', effect: 'none', ratedFor: 'finding.F6.turbo.problem' },
     { id: 'privacy.suggestionsOff', effect: 'tips-toasts' },
     { id: 'personalize.startRecommendedOff', effect: 'start-recommended' },
     { id: 'privacy.searchHighlightsOff', effect: 'search-highlights' },
     { id: 'privacy.feedbackNotificationsOff', effect: 'feedback-toast' },
     { id: 'explorer.syncProviderNotificationsOff', effect: 'explorer-sync-ad' },
     { id: 'focus.startAccountNotificationsOff', effect: 'start-account' },
-  ] as { id: string; effect: Effect }[],
+  ] as { id: string; effect: Effect; ratedFor?: string }[],
   apps: [
     'Microsoft.BingNews',
     'Microsoft.BingWeather',
@@ -81,6 +90,19 @@ export const scenario = {
 };
 
 const refresh = { current: '60', max: '144' };
+/** The demo PC's power plan keeps the processor below its turbo clock: both settings F6.turbo reads are off. */
+const power = { maxState: '99 %' };
+
+/** What a catalog action changes on the demo PC, as the app's detail pane lists it. */
+function demoWrite(id: string, a: TweakAction, copy: ReturnType<typeof t>['demo']): Write {
+  if (a.type === 'registry' && a.path && a.name)
+    return { where: `${a.hive === 'user' ? 'HKCU' : 'HKLM'}\\${a.path}\\${a.name}`, registry: true, from: demoFrom(a.path, a.value, copy.notSet), to: String(a.value) };
+  if (a.type === 'powerSetting' && a.setting === 'PROCTHROTTLEMAX')
+    return { where: copy.power.maxState, registry: false, from: power.maxState, to: `${a.ac} %` };
+  if (a.type === 'powerSetting' && a.setting === 'PERFBOOSTMODE' && a.ac === 2)
+    return { where: copy.power.boostMode, registry: false, from: copy.power.boostOff, to: copy.power.boostOn };
+  throw new Error(`${id}: the demo cannot show a ${a.type} action`);
+}
 
 /** The value a registry action replaces on the demo PC: policies are not set there, switches are on. */
 function demoFrom(path: string, value: unknown, notSet: string): string {
@@ -105,23 +127,23 @@ export function buildDemo(lang: Lang, s: typeof scenario = scenario): Demo {
       summary: page.summary,
       impact: f.impact,
       basis: '',
-      writes: f.id === 'F1.refresh' ? [{ where: copy.refreshWhere, from: `${refresh.current} Hz`, to: `${refresh.max} Hz` }] : [],
+      writes: f.id === 'F1.refresh' ? [{ where: copy.refreshWhere, registry: false, from: `${refresh.current} Hz`, to: `${refresh.max} Hz` }] : [],
       effect: f.effect,
       fix: f.fix,
+      tweak: 'tweak' in f ? f.tweak : undefined,
     };
   });
-  const tweaks = s.tweaks.map(({ id, effect }): DemoItem => {
+  const tweaks = s.tweaks.map(({ id, effect, ratedFor }): DemoItem => {
     const catalog = tweak(id);
+    const rated = ratedFor ? tweakImpactWhen(id, ratedFor, lang) : undefined;
     return {
       id,
       title: tweakTitle(id, lang),
       summary: doc(id, lang).summary,
-      impact: catalog.impact,
+      impact: rated?.impact ?? catalog.impact,
+      ratingReason: rated?.reason,
       basis: catalog.basis,
-      writes: catalog.actions.map((a) => {
-        if (a.type !== 'registry' || !a.path || !a.name) throw new Error(`${id}: the demo shows registry values only`);
-        return { where: `${a.hive === 'user' ? 'HKCU' : 'HKLM'}\\${a.path}\\${a.name}`, from: demoFrom(a.path, a.value, copy.notSet), to: String(a.value) };
-      }),
+      writes: catalog.actions.map((a) => demoWrite(id, a, copy)),
       effect,
       category: tweakCategory(id, lang),
     };
@@ -145,5 +167,7 @@ export function buildDemo(lang: Lang, s: typeof scenario = scenario): Demo {
     effect: 'tray',
   }));
   const titles = checkTitles(lang);
+  // A finding fixed by a tweak writes what that tweak writes.
+  for (const f of findings) if (f.tweak) f.writes = tweaks.find((x) => x.id === f.tweak)!.writes;
   return { checksRun: titles.length, checkTitles: titles, findings, tweaks, apps, startup };
 }

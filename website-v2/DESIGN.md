@@ -31,7 +31,10 @@ watch it rewind. Doing it is the explanation; the rewind is the trust.
    opened.
 2. **Tunero.** A recreation of the real app in its Fluent look (navigation rail, cards, toggle switches): Overview,
    Scan, Tweaks, Changes. Check titles, ratings, summaries and the scan's check count come from the catalog. The scan
-   walks through every check and finds the fixed demo set of problems.
+   walks through every check and finds the fixed demo set of problems: the display at 60 Hz of 144 and the processor
+   turbo blocked by the power plan (both rated 5), plus many startup programs. Turbo is fixed by the tweak the catalog
+   names for it, which on this PC carries the rating the catalog gives it when turbo is blocked (4, with the app's
+   reason). As in the app, a rating of 0 shows no mark; the detail pane says "No FPS effect".
 3. **Fixing.** Fix one finding or apply the recommended set. Each change shows what it writes (registry key and value
    from the catalog, or the service and its start type) and the desktop reacts at the same moment: the toast stops,
    the tray icon goes, the Start ad goes, the startup list shrinks, removed apps fly out of Start. Every desktop effect
@@ -49,6 +52,8 @@ watch it rewind. Doing it is the explanation; the rewind is the trust.
 
 - **Wallpaper:** a full screen fragment shader (raw WebGL2, no library). Its restlessness follows a single
   `clutter` value from 1 (demo state) to 0 (everything fixed), eased, so fixing calms it and undo stirs it up again.
+  Neglect shows as muddy colour, grain, a wobble and faster motion, never as dropped frames or glitches: on a site
+  about a faster PC, anything that looks like lag reads as the site being slow.
   Paused when the tab is hidden, rendered once and frozen under reduced motion, capped at 1.5 device pixel ratio.
   Without WebGL2 a static CSS background stands in.
 - **The dive:** opening a change's details zooms through the Tunero window into the place it writes, the registry

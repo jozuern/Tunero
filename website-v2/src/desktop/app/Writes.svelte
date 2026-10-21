@@ -10,8 +10,10 @@
 <ul class="writes">
   {#each writes as write (write.where)}
     <li>
-      <code>{write.where}</code><span class="change">: {fill(copy.fromTo, write.from, '')}<b>{write.to}</b></span>
-      {#if ondive}
+      {#if write.registry}<code>{write.where}</code>{:else}<span class="setting">{write.where}</span>{/if}<span class="change"
+        >: {fill(copy.fromTo, write.from, '')}<b class:value={write.registry}>{write.to}</b></span
+      >
+      {#if ondive && write.registry}
         <button type="button" class="dive" onclick={() => ondive(write)}>{copy.showWhere}</button>
       {/if}
     </li>
@@ -43,6 +45,10 @@
 
   b {
     color: var(--ink);
+    font-weight: 600;
+  }
+
+  b.value {
     font-family: var(--mono);
     font-size: 12px;
   }

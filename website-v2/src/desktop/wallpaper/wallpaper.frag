@@ -1,16 +1,14 @@
 #version 300 es
 // The demo PC's wallpaper: twisting ribbons of light over a deep base. uClutter (0 = everything fixed, 1 = neglected)
-// makes it restless: faster (on the CPU side), wobbly, grainy, muddy, smeared and now and then torn by small glitch
-// bands. Brightness never pulses over the whole screen: every clutter effect is local or zero-mean.
+// makes it restless: faster (on the CPU side), wobbly, grainy and muddy. It always runs smoothly: a site about a faster
+// PC must never look like it lags. Brightness never pulses over the whole screen: every clutter effect is zero-mean.
 precision highp float;
 
 uniform vec2 uRes;      // drawing buffer size, pixels
-uniform float uPhase;   // animation time in seconds; the CPU speeds it up and makes it stutter with clutter
-uniform float uTime;    // wall clock seconds, for glitch timing
+uniform float uPhase;   // animation time in seconds; the CPU speeds it up with clutter
 uniform float uClutter; // eased, 0 to 1
 uniform float uTheme;   // 0 dark, 1 light; eased so a theme switch cross-fades
-uniform float uSeed;    // grain seed, a new one per shown frame
-uniform vec2 uJitter;   // per frame shake, scene units
+uniform float uSeed;    // grain seed, a new one per frame
 
 out vec4 outColor;
 
@@ -24,7 +22,7 @@ vec3 gShade;       // what the unlit side of a ribbon is multiplied by
 vec3 gShadowColor; // what a cast shadow multiplies the colour behind by
 float gGlow;
 
-// A fast integer hash (Hugo Elias style), good enough for grain and glitch decisions.
+// A fast integer hash (Hugo Elias style), good enough for grain.
 uint hashUint(uint value) {
   value = (value << 13u) ^ value;
   return value * (value * value * 15731u + 789221u) + 1376312589u;
@@ -145,21 +143,8 @@ void main() {
   vec2 uv = frag / uRes;
   float pixel = 1.0 / uRes.y;
 
-  // Glitches: rare horizontal bands and blocks shifted sideways, and thin torn lines. Almost none below half clutter.
-  float c2 = clutter * clutter;
-  float slot = floor(uTime * 6.0);
-  float band = floor(uv.y * 36.0);
-  float bandOn = step(hash2(vec2(band, slot), 1.0), c2 * 0.07);
-  float shiftX = bandOn * (hash2(vec2(band, slot), 2.0) - 0.5) * 0.12;
-  vec2 block = floor(uv * vec2(18.0, 10.0));
-  float blockOn = step(hash2(block, slot + 3.0), c2 * clutter * 0.03);
-  vec2 blockShift = blockOn * (vec2(hash2(block, slot + 4.0), hash2(block, slot + 5.0)) - 0.5) * vec2(0.10, 0.03);
-  float tear = step(hash2(vec2(floor(frag.y / 3.0), floor(uTime * 12.0)), 6.0), c2 * 0.004);
-  shiftX += tear * 0.05;
-
   vec2 point = (frag - 0.5 * uRes) / uRes.y;
   vec2 screen = point;
-  point += vec2(shiftX, 0.0) + blockShift + uJitter;
   // The whole composition leans: ribbons rise to the right.
   const float lean = 0.33;
   point = mat2(cos(lean), sin(lean), -sin(lean), cos(lean)) * point;
@@ -173,20 +158,7 @@ void main() {
     flow += grit * 0.035 * clutter;
   }
 
-  vec3 color;
-  if (clutter > 0.002) {
-    // Chromatic aberration: red and blue sampled apart (green between them), more inside glitches and towards the
-    // edges. Two samples instead of three keep the cost down.
-    vec2 offset = clutter * (0.0035 + 0.012 * max(bandOn, blockOn)) * vec2(1.0, 0.18) + clutter * 0.004 * point;
-    vec3 ahead = scene(point + offset, flow, time, clutter, pixel);
-    vec3 behind = scene(point - offset, flow, time, clutter, pixel);
-    color = vec3(ahead.r, 0.5 * (ahead.g + behind.g), behind.b);
-  } else {
-    color = scene(point, flow, time, clutter, pixel);
-  }
-
-  // Blocks that glitched also lose colour depth, like a bad video frame.
-  color = mix(color, floor(color * 9.0 + 0.5) / 9.0, blockOn);
+  vec3 color = scene(point, flow, time, clutter, pixel);
 
   // Neglect drains the colour into a muddy grey brown and flattens it.
   float luma = dot(color, vec3(0.299, 0.587, 0.114));
@@ -198,14 +170,10 @@ void main() {
   float vignette = dot(screen, screen);
   color *= 1.0 - mix(0.22, 0.07, light) * vignette - clutter * mix(0.35, 0.16, light) * vignette;
 
-  // Blotchy low-grade noise (changes ten times a second, small and local) and fine grain. Both average to zero, so the
-  // screen as a whole never brightens or darkens with them. At rest the grain is just a dither against banding.
-  if (clutter > 0.001) {
-    color += (valueNoise(screen * 26.0, floor(uTime * 10.0)) - 0.5) * 0.07 * clutter;
-  }
+  // Fine grain: a dither against banding at rest, a dull film over the picture when neglected.
   uvec2 cell = uvec2(frag);
   float grain = float(hashUint(cell.x + hashUint(cell.y + hashUint(uint(uSeed)))) & 0xffffu) / 65535.0 - 0.5;
-  color += grain * (0.010 + 0.10 * clutter);
+  color += grain * (0.010 + 0.06 * clutter);
 
   outColor = vec4(clamp(color, 0.0, 1.0), 1.0);
 }

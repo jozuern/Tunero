@@ -123,14 +123,20 @@
     color: var(--ink);
     border: 1px solid var(--stroke-strong);
     border-radius: var(--radius);
-    box-shadow: var(--shadow);
+    box-shadow: var(--shadow-window);
     overflow: hidden;
     outline: none;
     animation: open 200ms cubic-bezier(0.1, 0.9, 0.2, 1);
   }
 
   .window:not(.focused) {
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    box-shadow: var(--shadow);
+  }
+
+  /* Windows 11's thin scroll bars instead of the browser's own. */
+  .window :global(*) {
+    scrollbar-width: thin;
+    scrollbar-color: var(--ink-3) transparent;
   }
 
   .window.maximized {

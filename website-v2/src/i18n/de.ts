@@ -22,6 +22,12 @@ const de: Strings = {
     notSet: 'nicht gesetzt',
     display: 'Bildschirm 1',
     refreshWhere: 'Bildschirm 1: Bildwiederholrate',
+    power: {
+      maxState: 'Energiesparplan, Netzbetrieb: Maximaler Leistungszustand des Prozessors',
+      boostMode: 'Energiesparplan, Netzbetrieb: Leistungssteigerungsmodus für Prozessoren',
+      boostOff: 'Deaktiviert',
+      boostOn: 'Hoch',
+    },
     startup: ['Spiele-Launcher', 'Chat', 'RGB-Steuerung', 'Cloud-Sync', 'Updater', 'Musik', 'Zubehör-Tool', 'Screenshot-Tool', 'Sprachchat'],
   },
   classic: {

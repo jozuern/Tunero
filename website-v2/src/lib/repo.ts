@@ -40,8 +40,8 @@ const count = (pattern: RegExp) => {
   return Number(m[1]);
 };
 
-type Action = { type: string; hive?: string; path?: string; name?: string; value?: unknown; kind?: string; missingMeans?: unknown };
-type Override = { gaming?: number; reasonKey: string };
+type Action = { type: string; hive?: string; path?: string; name?: string; value?: unknown; kind?: string; missingMeans?: unknown; setting?: string; ac?: number };
+type Override = { when?: { fact: string; eq: unknown }; gaming?: number; reasonKey: string };
 type CatalogTweak = {
   id: string;
   docs?: string;
@@ -50,6 +50,7 @@ type CatalogTweak = {
   risk: string;
   impact: { gaming: number; basis: string };
   impactOverrides?: Override[];
+  fixes?: string[];
   actions: Action[];
 };
 
@@ -168,11 +169,25 @@ export function topChecks(lang: Lang): string[] {
 
 export type TweakAction = Action;
 
+/** The findings a catalog tweak fixes (its `fixes` list). */
+export const tweakFixes = (id: string) => tweak(id).fixes;
+
+/**
+ * A tweak's rating for games on a PC where `fact` is true, as its `impactOverrides` set it, with the app's sentence on
+ * why it is higher there. Fails the build when the catalog has no such override.
+ */
+export function tweakImpactWhen(id: string, fact: string, lang: Lang): { impact: number; reason: string } {
+  const override = catalog.find((x) => x.id === id)?.impactOverrides?.find((o) => o.when?.fact === fact && o.when.eq === true);
+  if (override?.gaming === undefined) throw new Error(`Tweak ${id} has no rating for ${fact}`);
+  const labels = JSON.parse(read('src/Optimizer.Core/Catalog/Data/labels.json'))[lang] as Record<string, string>;
+  return { impact: override.gaming, reason: labels[override.reasonKey] ?? '' };
+}
+
 /** A catalog tweak's rating for games on most PCs, the basis of that rating, its risk and what it does. */
-export function tweak(id: string): { impact: number; basis: string; risk: string; actions: TweakAction[] } {
+export function tweak(id: string): { impact: number; basis: string; risk: string; actions: TweakAction[]; fixes: string[] } {
   const t = catalog.find((x) => x.id === id);
   if (!t) throw new Error(`Tweak ${id} not found in the catalog`);
-  return { impact: t.impact.gaming, basis: t.impact.basis, risk: t.risk, actions: t.actions };
+  return { impact: t.impact.gaming, basis: t.impact.basis, risk: t.risk, actions: t.actions, fixes: t.fixes ?? [] };
 }
 
 /** A tweak's gaming impact (0 to 5) on most PCs, and the highest rating a condition on some PCs gives it. */
