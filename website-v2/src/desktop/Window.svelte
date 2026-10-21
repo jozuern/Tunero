@@ -37,7 +37,7 @@
   let drag: { pointer: number; dx: number; dy: number } | null = null;
 
   function startDrag(event: PointerEvent) {
-    if (frame.maximized || event.button !== 0 || (event.target as HTMLElement).closest('button')) return;
+    if (frame.maximized || matchMedia('(max-width: 899px)').matches || event.button !== 0 || (event.target as HTMLElement).closest('button')) return;
     drag = { pointer: event.pointerId, dx: event.clientX - frame.x, dy: event.clientY - frame.y };
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
     store.focus(id);
@@ -140,6 +140,22 @@
     height: calc(100% - 48px) !important;
     border-radius: 0;
     border: none;
+  }
+
+  @media (max-width: 899px) {
+    .window {
+      left: 0 !important;
+      top: 44px !important;
+      width: 100% !important;
+      height: calc(100% - 44px - 48px) !important;
+      border-radius: 0;
+      border-left: none;
+      border-right: none;
+    }
+
+    .titlebar {
+      touch-action: auto;
+    }
   }
 
   .window.minimized {

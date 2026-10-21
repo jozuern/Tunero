@@ -15,7 +15,20 @@
     download,
     version,
     classicHref,
-  }: { copy: DesktopStrings; lang: string; download: string; version: string; classicHref: string } = $props();
+    phone,
+  }: { copy: DesktopStrings; lang: string; download: string; version: string; classicHref: string; phone: boolean } = $props();
+
+  // Phones cannot run the app: Install copies the link to open on a PC.
+  let copied = $state(false);
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(download);
+      copied = true;
+      setTimeout(() => (copied = false), 4000);
+    } catch {
+      location.href = download;
+    }
+  }
 
   const store = useStore();
   const pinned: { id: WindowId; icon: IconName | 'tunero'; label: string }[] = $derived([
@@ -93,10 +106,18 @@
   </div>
 
   <div class="right">
-    <a class="install" href={download} title={copy.installTitle.replace('{0}', version)}>
-      <Icon name="download" size={16} />
-      <span>{copy.install}</span>
-    </a>
+    {#if phone}
+      <button type="button" class="install" onclick={copyLink}>
+        <Icon name={copied ? 'check' : 'copy'} size={16} />
+        <span>{copy.phone.install}</span>
+      </button>
+      {#if copied}<span class="copied" role="status">{copy.phone.copied}</span>{/if}
+    {:else}
+      <a class="install" href={download} title={copy.installTitle.replace('{0}', version)}>
+        <Icon name="download" size={16} />
+        <span>{copy.install}</span>
+      </a>
+    {/if}
     <span class="tray" data-anchor="tray">
       <span class="tray-icon" title={copy.trayMore}><Icon name="chevronUp" size={16} /></span>
       {#each trayItems as item (item.id)}
@@ -252,6 +273,24 @@
     white-space: nowrap;
   }
 
+  button.install {
+    border: none;
+    font-family: inherit;
+  }
+
+  .copied {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: 56px;
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    background: var(--surface-2);
+    color: var(--ink);
+    box-shadow: var(--shadow);
+    font-size: 13px;
+  }
+
   .install:hover {
     filter: brightness(1.08);
   }
@@ -279,6 +318,29 @@
     border-radius: var(--radius-sm);
     font-size: 12px;
     line-height: 1.3;
+  }
+
+  @media (max-width: 899px) {
+    .taskbar {
+      grid-template-columns: auto 1fr;
+      padding: 0 4px;
+    }
+
+    .corner,
+    .search,
+    .tray,
+    .clock {
+      display: none !important;
+    }
+
+    .tb {
+      width: 40px;
+    }
+
+    .install {
+      margin-right: 4px;
+      padding: 0 10px;
+    }
   }
 
   @media (max-width: 1180px) {

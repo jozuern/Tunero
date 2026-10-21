@@ -55,6 +55,12 @@
     list-style: none;
   }
 
+  @media (max-width: 899px) {
+    .icons {
+      top: 56px;
+    }
+  }
+
   button {
     position: relative;
     display: flex;

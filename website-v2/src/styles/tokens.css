@@ -136,3 +136,13 @@ a {
   background: radial-gradient(circle, #ffffff 0%, #f7b500 45%, transparent 72%);
   box-shadow: 0 0 18px 6px rgba(247, 181, 0, 0.45);
 }
+
+/* The first visit's boot covers the desktop from the first paint on (DesktopPage.astro, Boot.svelte). */
+html[data-boot='pending'],
+html[data-boot='pending'] body {
+  background: #000;
+}
+
+html[data-boot='pending'] .desktop {
+  visibility: hidden;
+}

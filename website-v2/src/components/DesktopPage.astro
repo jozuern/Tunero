@@ -28,6 +28,7 @@ const extras = {
   },
 };
 const facts = {
+  checkCount: counts.checks,
   tweakCount: counts.tweaks,
   version: release.version,
   download,
@@ -39,6 +40,14 @@ const facts = {
 <Base lang={lang} title={copy.meta.title} description={copy.meta.description} path="/">
   <main>
     <h1 class="visually-hidden">{copy.meta.title}</h1>
+    <script is:inline>
+      // Before the desktop paints: on the first visit of a session, keep it hidden for the boot (Boot.svelte ends it).
+      (() => {
+        let seen = false;
+        try { seen = JSON.parse(sessionStorage.getItem('tunero-demo') || '{}').bootSeen === true; } catch {}
+        if (!seen && document.documentElement.dataset.motion !== 'reduce') document.documentElement.dataset.boot = 'pending';
+      })();
+    </script>
     <Desktop client:load demo={buildDemo(lang)} copy={lang === 'de' ? desktopDe : desktopEn} lang={lang} facts={facts} app={app} {...extras} />
   </main>
 </Base>

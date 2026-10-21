@@ -13,6 +13,9 @@
   import TuneroApp from './app/TuneroApp.svelte';
   import Wallpaper from './wallpaper/Wallpaper.svelte';
   import Dive from './Dive.svelte';
+  import Boot from './Boot.svelte';
+  import PhoneStrip from './PhoneStrip.svelte';
+  import { reducedMotion } from './motion.ts';
   import Trust from './windows/Trust.svelte';
   import Notepad from './windows/Notepad.svelte';
   import Settings from './windows/Settings.svelte';
@@ -32,7 +35,7 @@
     demo: Demo;
     copy: DesktopStrings;
     lang: 'en' | 'de';
-    facts: { version: string; tweakCount: number; download: string; classicHref: string; otherHref: string };
+    facts: { version: string; checkCount: number; tweakCount: number; download: string; classicHref: string; otherHref: string };
     app: AppStrings;
     trust: { intro: string; items: TrustItem[] };
     changelog: { entries: { version: string; body: string }[]; href: string };
@@ -42,17 +45,34 @@
   const store = provideStore(new DesktopStore(demo));
   let ready = $state(false);
   let theme = $state<'light' | 'dark'>('dark');
+  let phone = $state(false);
+  let booting = $state(false);
+
+  function endBoot() {
+    booting = false;
+    store.markBootSeen();
+    delete document.documentElement.dataset.boot;
+  }
 
   onMount(() => {
     store.restore();
+    booting = !store.state.bootSeen && !reducedMotion();
+    if (!booting) delete document.documentElement.dataset.boot;
     ready = true;
+    const narrow = matchMedia('(max-width: 899px)');
+    const onWidth = () => (phone = narrow.matches);
+    onWidth();
+    narrow.addEventListener('change', onWidth);
     // The theme lives on <html> (Base.astro sets it, Settings changes it); the wallpaper follows it.
     const root = document.documentElement;
     const read = () => (theme = root.dataset.theme === 'light' ? 'light' : 'dark');
     read();
     const observer = new MutationObserver(read);
     observer.observe(root, { attributes: true, attributeFilter: ['data-theme'] });
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      narrow.removeEventListener('change', onWidth);
+    };
   });
 </script>
 
@@ -85,9 +105,16 @@
   {#if store.dive}
     <Dive write={store.dive.write} title={store.dive.title} copy={copy.dive} onclose={() => (store.dive = null)} />
   {/if}
-  <Toasts {copy} running={ready} />
+  {#if phone}
+    <PhoneStrip copy={copy.phone} classic={{ href: facts.classicHref, label: copy.classicPage }} />
+  {:else}
+    <Toasts {copy} running={ready && !booting} />
+  {/if}
   <StartMenu {copy} {links} />
-  <Taskbar {copy} {lang} download={facts.download} version={facts.version} classicHref={facts.classicHref} />
+  <Taskbar {copy} {lang} download={facts.download} version={facts.version} classicHref={facts.classicHref} {phone} />
+  {#if booting}
+    <Boot copy={copy.boot} version={facts.version} checks={facts.checkCount} tweaks={facts.tweakCount} ondone={endBoot} />
+  {/if}
 </div>
 
 <style>

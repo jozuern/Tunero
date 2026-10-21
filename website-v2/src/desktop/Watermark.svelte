@@ -28,6 +28,18 @@
     text-shadow: 0 1px 2px rgba(255, 255, 255, 0.6);
   }
 
+  @media (max-width: 899px) {
+    .watermark {
+      top: 52px;
+      right: 12px;
+      font-size: 11px;
+    }
+
+    span:first-child {
+      font-size: 13px !important;
+    }
+  }
+
   span:first-child {
     font-size: 16px;
   }

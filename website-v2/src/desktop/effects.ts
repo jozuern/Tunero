@@ -40,7 +40,8 @@ function origin() {
 
 export function trail(effect: Effect, direction: 'apply' | 'undo') {
   if (reduced() || effect === 'none') return;
-  const target = document.querySelector(`[data-anchor="${anchors[effect]}"]`);
+  // The first visible one: phones show the strip, wider screens the taskbar.
+  const target = [...document.querySelectorAll(`[data-anchor="${anchors[effect]}"]`)].find((element) => element.getClientRects().length > 0);
   if (!target) return;
   const a = origin();
   const b = center(target);
