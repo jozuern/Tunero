@@ -33,7 +33,7 @@ public class StartupTests
         Assert.True(entry.Enabled); // no StartupApproved value = enabled
 
         var tweak = StartupTweaks.Set(entry, enabled: false)!;
-        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(tweak, Facts, new HashSet<string>(), Options)).Outcome);
+        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(tweak, Facts, Options)).Outcome);
         var raw = RegistryValue.Read(fx.Registry, Hive.User, $@"{Approved}\Run", "Discord");
         Assert.StartsWith("03000000", raw.Data);
         Assert.Equal(24, raw.Data!.Length); // 12 bytes
@@ -69,7 +69,7 @@ public class StartupTests
         var entry = Assert.Single(new StartupScanner(fx.Registry, fx.Tasks, null).ShellExtensions());
         Assert.Equal("7-Zip Shell Extension", entry.Name);
         var tweak = StartupTweaks.Set(entry, enabled: false)!;
-        await fx.Engine.ApplyAsync(tweak, Facts, new HashSet<string>(), Options);
+        await fx.Engine.ApplyAsync(tweak, Facts, Options);
         Assert.True(RegistryValue.Read(fx.Registry, Hive.Machine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\Shell Extensions\Blocked", clsid).Existed);
         Assert.False(Assert.Single(new StartupScanner(fx.Registry, fx.Tasks, null).ShellExtensions()).Enabled);
         Assert.True(fx.Engine.Revert(tweak).Success);
@@ -89,7 +89,7 @@ public class StartupTests
         var entry = Assert.Single(new StartupScanner(fx.Registry, fx.Tasks, null).ShellExtensions());
         Assert.False(entry.Enabled);
 
-        await fx.Engine.ApplyAsync(StartupTweaks.Set(entry, enabled: true)!, Facts, new HashSet<string>(), Options);
+        await fx.Engine.ApplyAsync(StartupTweaks.Set(entry, enabled: true)!, Facts, Options);
         Assert.False(RegistryValue.Read(fx.Registry, Hive.Machine, blocked, clsid).Existed);
         Assert.False(RegistryValue.Read(fx.Registry, Hive.User, blocked, clsid).Existed);
         Assert.True(Assert.Single(new StartupScanner(fx.Registry, fx.Tasks, null).ShellExtensions()).Enabled);

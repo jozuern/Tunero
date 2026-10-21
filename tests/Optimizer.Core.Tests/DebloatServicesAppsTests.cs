@@ -177,8 +177,8 @@ public class DebloatServicesAppsTests
         var facts = new Facts().Set("os.build", 26300).Set("elevated", true);
         var options = new ApplyOptions { ContinueWithoutRestorePoint = true, ExpertMode = true };
 
-        await fx.Engine.ApplyAsync(ServiceManager.Change(Row(ServiceStart.Automatic), ServiceStart.Manual)!, facts, new HashSet<string>(), options);
-        await fx.Engine.ApplyAsync(ServiceManager.Change(Row(ServiceStart.Manual), ServiceStart.Disabled)!, facts, new HashSet<string>(), options);
+        await fx.Engine.ApplyAsync(ServiceManager.Change(Row(ServiceStart.Automatic), ServiceStart.Manual)!, facts, options);
+        await fx.Engine.ApplyAsync(ServiceManager.Change(Row(ServiceStart.Manual), ServiceStart.Disabled)!, facts, options);
         Assert.Equal(ServiceStart.Disabled, fx.Services.Start["LGHUBUpdaterService"]);
 
         var id = ServiceManager.ChangeId("LGHUBUpdaterService");
@@ -356,7 +356,7 @@ public class DebloatServicesAppsTests
         var smb = new FeatureEntry { Name = "SMB1Protocol", Title = "SMB 1.0" };
         var t = OptionalFeatureAction.Tweak(smb, enabled: true);
         Assert.Equal(TweakState.NotApplied, fx.Engine.DetectState(t, new Facts().Set("os.build", 26300)));
-        var r = await fx.Engine.ApplyAsync(t, new Facts().Set("os.build", 26300).Set("elevated", true), new HashSet<string>(), new ApplyOptions { ContinueWithoutRestorePoint = true });
+        var r = await fx.Engine.ApplyAsync(t, new Facts().Set("os.build", 26300).Set("elevated", true), new ApplyOptions { ContinueWithoutRestorePoint = true });
         Assert.Equal(ApplyOutcome.Applied, r.Outcome);
         Assert.Equal("Enabled", OptionalFeatureAction.ReadState(fx.Processes, "SMB1Protocol")); // pending counts as the target state
         Assert.Null(OptionalFeatureAction.ReadState(fx.Processes, "Missing"));
@@ -389,7 +389,7 @@ public class DebloatServicesAppsTests
         };
         var t = OptionalFeatureAction.Tweak(new FeatureEntry { Name = "Printing-XPSServices-Features", Title = "XPS" }, enabled: false);
         var facts = new Facts().Set("os.build", 26300).Set("elevated", true);
-        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(t, facts, new HashSet<string>(), new ApplyOptions { ContinueWithoutRestorePoint = true })).Outcome);
+        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(t, facts, new ApplyOptions { ContinueWithoutRestorePoint = true })).Outcome);
         Assert.True(fx.Engine.Revert(t).Success);
         Assert.Equal("Enabled", state);
         Assert.Equal(enableCalls, enables.Count);
@@ -427,7 +427,7 @@ public class DebloatServicesAppsTests
         var facts = new Facts().Set("os.build", 26300).Set("elevated", true);
         var old = OptionalFeatureAction.Tweak(smb, enabled: false, id => id == legacy);
         Assert.Equal(legacy, old.Id);
-        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(old, facts, new HashSet<string>(), new ApplyOptions { ContinueWithoutRestorePoint = true })).Outcome);
+        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(old, facts, new ApplyOptions { ContinueWithoutRestorePoint = true })).Outcome);
         Assert.Equal("Disabled", state);
 
         // The Features page builds the switch with the store's check: the old id, so the existing change is the one undone.

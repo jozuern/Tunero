@@ -33,7 +33,7 @@ public class RuntimeTweakPersistenceTests
         var facts = new Facts().Set("os.build", 26300).Set("elevated", true);
         var options = new ApplyOptions { ContinueWithoutRestorePoint = true };
         var deletes = new[] { run, once, auto }.Select(e => StartupTweaks.Delete(e)!).ToList();
-        foreach (var t in deletes) Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(t, facts, new HashSet<string>(), options)).Outcome);
+        foreach (var t in deletes) Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(t, facts, options)).Outcome);
 
         scanner = new StartupScanner(fx.Registry, fx.Tasks, null);
         Assert.DoesNotContain(scanner.RunKeys(), e => e.Name == "Gone");
@@ -61,7 +61,7 @@ public class RuntimeTweakPersistenceTests
         var entry = new StartupScanner(fx.Registry, fx.Tasks, null).RunKeys().Single();
         var tweak = StartupTweaks.Set(entry, enabled: false)!;
         var facts = new Facts().Set("os.build", 26300).Set("elevated", true);
-        await fx.Engine.ApplyAsync(tweak, facts, new HashSet<string>(), new ApplyOptions { ContinueWithoutRestorePoint = true });
+        await fx.Engine.ApplyAsync(tweak, facts, new ApplyOptions { ContinueWithoutRestorePoint = true });
 
         // A new engine on the same backup store = the app after a restart, without the startup page.
         var engine = new TweakEngine(fx.Context, new Backup.BackupStore(fx.BackupRoot, secure: false), fx.RestorePoints, "test", 26300);
@@ -85,7 +85,7 @@ public class RuntimeTweakPersistenceTests
         var tweak = StartupTweaks.Set(entry, enabled: false)!;
         var facts = new Facts().Set("os.build", 26300).Set("elevated", true);
         var before = new TweakEngine(fx.Context, new Backup.BackupStore(fx.BackupRoot, secure: false), fx.RestorePoints, "test", 26300, "26300.9000");
-        await before.ApplyAsync(tweak, facts, new HashSet<string>(), new ApplyOptions { ContinueWithoutRestorePoint = true });
+        await before.ApplyAsync(tweak, facts, new ApplyOptions { ContinueWithoutRestorePoint = true });
         Assert.Empty(before.CheckDrift(facts));
 
         // The update puts the entry back to enabled.

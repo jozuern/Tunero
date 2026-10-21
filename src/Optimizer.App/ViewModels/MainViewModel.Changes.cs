@@ -109,7 +109,7 @@ public sealed partial class MainViewModel
                 foreach (var t in plan.Together) ChangeLogText.Remember(t);
                 // No Stop: each change applies whole; the banner counts them.
                 var steps = new Progress<BatchStep>(s => work.Step(s.Done, s.Total, s.Tweak is { } t ? Runner.Title(t) : null));
-                outcome = await _services.Session.ApplyBatchAsync(plan.Together, pc.Facts, pc.Applied, new ApplyOptions { WithoutRestorePoint = true },
+                outcome = await _services.Session.ApplyBatchAsync(plan.Together, pc.Facts, new ApplyOptions { WithoutRestorePoint = true },
                     () => RestorePointChoice.Continue, steps);
             }
             catch (Exception ex)

@@ -40,9 +40,9 @@ public class EngineTests
         RegistryValue.Write(fx.Registry, Hive.Machine, path, "HwSchMode", "dword", "1");
         var t = T("gpu.hags");
 
-        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(t, Facts(), new HashSet<string>(), Expert)).Outcome);
+        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(t, Facts(), Expert)).Outcome);
         Assert.Equal("2", Reg(fx, Hive.Machine, path, "HwSchMode").Data);
-        await fx.Engine.ApplyAsync(t, Facts(), new HashSet<string>(), Expert); // second apply: nothing to do, original stays
+        await fx.Engine.ApplyAsync(t, Facts(), Expert); // second apply: nothing to do, original stays
 
         var undo = fx.Engine.Revert(t);
         Assert.True(undo.Success);
@@ -55,7 +55,7 @@ public class EngineTests
     {
         using var fx = new EngineFixture();
         var t = T("power.throttlingOff");
-        await fx.Engine.ApplyAsync(t, Facts(), new HashSet<string>(), Expert);
+        await fx.Engine.ApplyAsync(t, Facts(), Expert);
         Assert.True(Reg(fx, Hive.Machine, @"SYSTEM\CurrentControlSet\Control\Power\PowerThrottling", "PowerThrottlingOff").Existed);
         fx.Engine.Revert(t);
         Assert.False(Reg(fx, Hive.Machine, @"SYSTEM\CurrentControlSet\Control\Power\PowerThrottling", "PowerThrottlingOff").Existed);
@@ -69,7 +69,7 @@ public class EngineTests
         fx.Services.FailOnWrite.Add("DiagTrack");
         var t = T("privacy.telemetryOff"); // registry first, then the service (fails)
 
-        var result = await fx.Engine.ApplyAsync(t, Facts(), new HashSet<string>(), Expert);
+        var result = await fx.Engine.ApplyAsync(t, Facts(), Expert);
 
         Assert.Equal(ApplyOutcome.Failed, result.Outcome);
         Assert.False(Reg(fx, Hive.Machine, @"SOFTWARE\Policies\Microsoft\Windows\DataCollection", "AllowTelemetry").Existed);
@@ -83,7 +83,7 @@ public class EngineTests
         const string path = @"SYSTEM\CurrentControlSet\Control\GraphicsDrivers";
         RegistryValue.Write(fx.Registry, Hive.Machine, path, "HwSchMode", "dword", "1");
         var t = T("gpu.hags");
-        await fx.Engine.ApplyAsync(t, Facts(), new HashSet<string>(), Expert);
+        await fx.Engine.ApplyAsync(t, Facts(), Expert);
 
         RegistryValue.Write(fx.Registry, Hive.Machine, path, "HwSchMode", "dword", "3"); // a feature update wrote a new value
         var undo = fx.Engine.Revert(t);
@@ -97,7 +97,7 @@ public class EngineTests
     {
         using var fx = new EngineFixture();
         var t = T("privacy.advertisingIdOff");
-        await fx.Engine.ApplyAsync(t, Facts(), new HashSet<string>(), Expert);
+        await fx.Engine.ApplyAsync(t, Facts(), Expert);
         Assert.Equal(TweakState.Applied, fx.Engine.DetectState(t, Facts()));
 
         RegistryValue.Delete(fx.Registry, Hive.Machine, @"SOFTWARE\Policies\Microsoft\Windows\AdvertisingInfo", "DisabledByGroupPolicy");
@@ -115,8 +115,8 @@ public class EngineTests
             Id = "test.otherBit", Category = "Network", Hidden = true, Impact = new ImpactInfo { Gaming = 0, Basis = "situational", Effect = ["none"] },
             Actions = [new RegistryBitsAction { Hive = Hive.Machine, Path = path, Name = "DisabledComponents", Set = 8 }],
         };
-        await fx.Engine.ApplyAsync(T("network.preferIpv4"), Facts(), new HashSet<string>(), Expert);
-        await fx.Engine.ApplyAsync(other, Facts(), new HashSet<string>(), Expert);
+        await fx.Engine.ApplyAsync(T("network.preferIpv4"), Facts(), Expert);
+        await fx.Engine.ApplyAsync(other, Facts(), Expert);
         Assert.Equal("40", Reg(fx, Hive.Machine, path, "DisabledComponents").Data); // 0x20 | 0x08
 
         fx.Engine.Revert(T("network.preferIpv4"));
@@ -133,7 +133,7 @@ public class EngineTests
         const string path = @"Software\Microsoft\DirectX\UserGpuPreferences";
         RegistryValue.Write(fx.Registry, Hive.User, path, "DirectXUserGlobalSettings", "string", "AutoHDREnable=1;");
         var t = T("gpu.windowedOptimizations");
-        await fx.Engine.ApplyAsync(t, Facts(), new HashSet<string>(), Expert);
+        await fx.Engine.ApplyAsync(t, Facts(), Expert);
         Assert.Equal("AutoHDREnable=1;SwapEffectUpgradeEnable=1;", Reg(fx, Hive.User, path, "DirectXUserGlobalSettings").Data);
         fx.Engine.Revert(t);
         Assert.Equal("AutoHDREnable=1;", Reg(fx, Hive.User, path, "DirectXUserGlobalSettings").Data);
@@ -164,7 +164,7 @@ public class EngineTests
         var applied = new HashSet<string> { balanced.Id };
         Assert.DoesNotContain(fx.Engine.Preflight(gaming, Facts(), Expert), b => b.ReasonKey == "block.conflict");
 
-        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(gaming, Facts(), applied, Expert)).Outcome);
+        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(gaming, Facts(), Expert)).Outcome);
         Assert.Equal("Tunero Gaming", fx.Power.SchemeNames[fx.Power.Active]);
         Assert.True(fx.Engine.Revert(gaming).Success);
         Assert.Equal(FakePower.Balanced, fx.Power.Active);
@@ -209,14 +209,14 @@ public class EngineTests
     {
         using var fx = new EngineFixture();
         var none = new HashSet<string>();
-        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(T("power.ultimatePlan"), Facts(), none, Expert)).Outcome);
-        var r = await fx.Engine.ApplyAsync(T("power.gamingPlan"), Facts(), none, Expert);
+        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(T("power.ultimatePlan"), Facts(), Expert)).Outcome);
+        var r = await fx.Engine.ApplyAsync(T("power.gamingPlan"), Facts(), Expert);
         Assert.Equal(ApplyOutcome.Blocked, r.Outcome);
         Assert.Contains(r.Blocks!, b => b.ReasonKey == "block.conflict" && b.Detail == "power.ultimatePlan");
 
         // After undo the Gaming plan is free again.
         fx.Engine.Revert(T("power.ultimatePlan"));
-        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(T("power.gamingPlan"), Facts(), none, Expert)).Outcome);
+        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(T("power.gamingPlan"), Facts(), Expert)).Outcome);
     }
 
     /// <summary>
@@ -227,13 +227,13 @@ public class EngineTests
     public async Task WithoutRestorePointMakesNoneAndLeavesTheNextChangeItsOwn()
     {
         using var fx = new EngineFixture();
-        var r = await fx.Engine.ApplyAsync(T("gpu.hags"), Facts(), new HashSet<string>(), new ApplyOptions { ExpertMode = true, WithoutRestorePoint = true });
+        var r = await fx.Engine.ApplyAsync(T("gpu.hags"), Facts(), new ApplyOptions { ExpertMode = true, WithoutRestorePoint = true });
         Assert.Equal(ApplyOutcome.Applied, r.Outcome);
         Assert.Equal(0, fx.RestorePoints.Created);
         Assert.Null(fx.Store.Get(TweakEngine.RestorePointFrequencyTweak));
         Assert.NotNull(fx.Store.Get("gpu.hags"));
 
-        await fx.Engine.ApplyAsync(T("power.throttlingOff"), Facts(), new HashSet<string>(), new ApplyOptions { ExpertMode = true });
+        await fx.Engine.ApplyAsync(T("power.throttlingOff"), Facts(), new ApplyOptions { ExpertMode = true });
         Assert.Equal(1, fx.RestorePoints.Created);
     }
 
@@ -242,8 +242,8 @@ public class EngineTests
     {
         using var fx = new EngineFixture();
         var opts = new ApplyOptions { ExpertMode = true };
-        await fx.Engine.ApplyAsync(T("gpu.hags"), Facts(), new HashSet<string>(), opts);
-        await fx.Engine.ApplyAsync(T("power.throttlingOff"), Facts(), new HashSet<string>(), opts);
+        await fx.Engine.ApplyAsync(T("gpu.hags"), Facts(), opts);
+        await fx.Engine.ApplyAsync(T("power.throttlingOff"), Facts(), opts);
 
         Assert.Equal(1, fx.RestorePoints.Created);
         Assert.Equal("0", Reg(fx, Hive.Machine, @"SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore", "SystemRestorePointCreationFrequency").Data);
@@ -256,8 +256,8 @@ public class EngineTests
         using var fx = new EngineFixture();
         fx.RestorePoints.Enabled = false;
         var t = T("gpu.hags");
-        Assert.Equal(ApplyOutcome.NeedsRestorePointDecision, (await fx.Engine.ApplyAsync(t, Facts(), new HashSet<string>(), new ApplyOptions())).Outcome);
-        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(t, Facts(), new HashSet<string>(), new ApplyOptions { ContinueWithoutRestorePoint = true })).Outcome);
+        Assert.Equal(ApplyOutcome.NeedsRestorePointDecision, (await fx.Engine.ApplyAsync(t, Facts(), new ApplyOptions())).Outcome);
+        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(t, Facts(), new ApplyOptions { ContinueWithoutRestorePoint = true })).Outcome);
     }
 
     [Fact]
@@ -268,7 +268,7 @@ public class EngineTests
         var max = PowerAliases.Resolve("PROCTHROTTLEMAX");
         fx.Power.Ac[(FakePower.Balanced, sub, max)] = 99;
         var t = T("power.turboRestore");
-        await fx.Engine.ApplyAsync(t, Facts(), new HashSet<string>(), Expert);
+        await fx.Engine.ApplyAsync(t, Facts(), Expert);
         Assert.Equal(100u, fx.Power.Ac[(FakePower.Balanced, sub, max)]);
         Assert.NotEmpty(fx.Power.Exports);
 
@@ -282,7 +282,7 @@ public class EngineTests
     {
         using var fx = new EngineFixture();
         var t = T("power.gamingPlan");
-        await fx.Engine.ApplyAsync(t, Facts(), new HashSet<string>(), Expert);
+        await fx.Engine.ApplyAsync(t, Facts(), Expert);
         Assert.Equal("Tunero Gaming", fx.Power.SchemeNames[fx.Power.Active]);
         Assert.Equal(TweakState.Applied, fx.Engine.DetectState(t, Facts()));
 
@@ -297,7 +297,7 @@ public class EngineTests
         using var fx = new EngineFixture();
         fx.Bcd.Values["useplatformclock"] = "Yes";
         var t = T("leftover.usePlatformClock");
-        await fx.Engine.ApplyAsync(t, Facts(), new HashSet<string>(), Expert);
+        await fx.Engine.ApplyAsync(t, Facts(), Expert);
         Assert.Single(fx.Bcd.Exports);
         Assert.False(fx.Bcd.Values.ContainsKey("useplatformclock"));
         fx.Engine.Revert(t);
@@ -311,7 +311,7 @@ public class EngineTests
         using var fx = new EngineFixture();
         fx.Bcd.Values["useplatformclock"] = "No";
         var t = T("leftover.usePlatformClock");
-        await fx.Engine.ApplyAsync(t, Facts(), new HashSet<string>(), Expert);
+        await fx.Engine.ApplyAsync(t, Facts(), Expert);
         Assert.False(fx.Bcd.Values.ContainsKey("useplatformclock"));
         Assert.True(fx.Engine.Revert(t).Success);
         Assert.Equal("no", fx.Bcd.Values["useplatformclock"]);
@@ -353,7 +353,7 @@ public class EngineTests
         using var fx = new EngineFixture("{AAAA}", "{BBBB}");
         var t = T("network.nagleOff");
         Assert.Equal(2, fx.Engine.Expand(t).Count);
-        await fx.Engine.ApplyAsync(t, Facts(), new HashSet<string>(), Expert);
+        await fx.Engine.ApplyAsync(t, Facts(), Expert);
         Assert.Equal("1", Reg(fx, Hive.Machine, @"SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces\{BBBB}", "TcpAckFrequency").Data);
     }
 
@@ -365,7 +365,7 @@ public class EngineTests
         const string eth = @"SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces\{AAAA}";
         RegistryValue.Write(fx.Registry, Hive.Machine, eth, "TcpAckFrequency", "dword", "2");
         var t = T("network.nagleOff");
-        await fx.Engine.ApplyAsync(t, Facts(), new HashSet<string>(), Expert);
+        await fx.Engine.ApplyAsync(t, Facts(), Expert);
         Assert.Equal("1", Reg(fx, Hive.Machine, eth, "TcpAckFrequency").Data);
 
         var wifiOnly = new TweakEngine(WithInterfaces(fx.Context, "{BBBB}"), fx.Store, fx.RestorePoints, "test", 26300);
@@ -388,7 +388,7 @@ public class EngineTests
             Id = "test.twoServices", Category = "Services", Hidden = true, Impact = new ImpactInfo { Gaming = 0, Basis = "situational", Effect = ["none"] },
             Actions = [new ServiceAction { Name = "SvcA", StartType = ServiceStart.Manual }, new ServiceAction { Name = "SvcB", StartType = ServiceStart.Manual }],
         };
-        await fx.Engine.ApplyAsync(t, Facts(), new HashSet<string>(), Expert);
+        await fx.Engine.ApplyAsync(t, Facts(), Expert);
         fx.Services.FailOnWrite.Add("SvcA");
         var first = fx.Engine.Revert(t);
         Assert.False(first.Success);
@@ -417,7 +417,7 @@ public class EngineTests
         // SvcA is written, SvcB fails, and rolling back SvcA fails too (the fake throws on every later SvcA write).
         var services = new ThrowAfterFirstWrite(fx.Services, "SvcA", "SvcB");
         var engine = new TweakEngine(WithServices(fx.Context, services), fx.Store, fx.RestorePoints, "test", 26300);
-        var r = await engine.ApplyAsync(t, Facts(), new HashSet<string>(), Expert);
+        var r = await engine.ApplyAsync(t, Facts(), Expert);
         Assert.Equal(ApplyOutcome.Failed, r.Outcome);
         Assert.Equal(ServiceStart.Manual, fx.Services.Start["SvcA"]);
         var backup = fx.Store.Get(t.Id);
@@ -457,7 +457,7 @@ public class EngineTests
     {
         using var fx = new EngineFixture();
         var t = T("explorer.classicContextMenu");
-        await fx.Engine.ApplyAsync(t, Facts(), new HashSet<string>(), Expert);
+        await fx.Engine.ApplyAsync(t, Facts(), Expert);
         using (var created = fx.Registry.Open(Hive.User, @"Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32", false))
             Assert.NotNull(created);
         fx.Engine.Revert(t);
@@ -473,9 +473,9 @@ public class EngineTests
         // 0x80000002: system managed, last access updates on (the Windows default on small volumes).
         RegistryValue.Write(fx.Registry, Hive.Machine, path, "NtfsDisableLastAccessUpdate", "dword", "2147483650");
         var t = T("storage.lastAccessOff");
-        await fx.Engine.ApplyAsync(t, Facts(), new HashSet<string>(), Expert);
+        await fx.Engine.ApplyAsync(t, Facts(), Expert);
         RegistryValue.Write(fx.Registry, Hive.Machine, path, "NtfsDisableLastAccessUpdate", "dword", "0");
-        await fx.Engine.ApplyAsync(t, Facts(), new HashSet<string>(), Expert); // re-apply after drift
+        await fx.Engine.ApplyAsync(t, Facts(), Expert); // re-apply after drift
 
         Assert.Equal("2147483650", fx.Store.Get(t.Id)!.Entries.Single().Original.Data);
         fx.Engine.Revert(t);
@@ -487,7 +487,7 @@ public class EngineTests
     {
         using var fx = new EngineFixture();
         var t = T("memory.compressionOff");
-        await fx.Engine.ApplyAsync(t, Facts(), new HashSet<string>(), Expert);
+        await fx.Engine.ApplyAsync(t, Facts(), Expert);
         Assert.False(fx.Processes.MemoryCompression);
         fx.Engine.Revert(t);
         Assert.True(fx.Processes.MemoryCompression);
@@ -517,7 +517,7 @@ public class EngineTests
         fx.Processes.MemoryCompressionAfterRestart = true;
         var t = T("memory.compressionOff");
 
-        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(t, Facts(), new HashSet<string>(), Expert)).Outcome);
+        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(t, Facts(), Expert)).Outcome);
         Assert.True(fx.Processes.MemoryCompression); // still the running value
         Assert.Equal(TweakState.PendingRestart, fx.Engine.DetectState(t, Facts()));
         Assert.Empty(fx.Engine.CheckDrift(Facts()));
@@ -547,13 +547,13 @@ public class EngineTests
         using var fx = new EngineFixture();
         fx.Processes.MemoryCompressionAfterRestart = true;
         var t = T("memory.compressionOff");
-        await fx.Engine.ApplyAsync(t, Facts(), new HashSet<string>(), Expert);
+        await fx.Engine.ApplyAsync(t, Facts(), Expert);
         Restart(fx, t.Id);
         fx.Engine.Revert(t); // Enable-MMAgent pending, compression still off
         Assert.Equal(TweakState.UndoPendingRestart, fx.Engine.DetectState(t, Facts()));
 
         // Turning it on again must not be "nothing to do": the pending Enable has to be replaced by Disable.
-        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(t, Facts(), new HashSet<string>(), Expert)).Outcome);
+        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(t, Facts(), Expert)).Outcome);
         Assert.Equal(2, fx.Processes.Calls.Count(c => c.Contains("Disable-MMAgent")));
         Assert.Null(fx.Store.GetPendingUndo(t.Id));
         Assert.Equal("True", fx.Store.Get(t.Id)!.Entries[0].Original.Data); // the real original, not the running value
@@ -572,7 +572,7 @@ public class EngineTests
         using var fx = new EngineFixture();
         fx.Processes.MemoryCompressionAfterRestart = true;
         var t = T("memory.compressionOff");
-        await fx.Engine.ApplyAsync(t, Facts(), new HashSet<string>(), Expert);
+        await fx.Engine.ApplyAsync(t, Facts(), Expert);
 
         Assert.True(fx.Engine.Revert(t).Success);
         Assert.Contains(fx.Processes.Calls, c => c.Contains("Enable-MMAgent"));
@@ -590,7 +590,7 @@ public class EngineTests
         using var fx = new EngineFixture();
         fx.Processes.MemoryCompressionAfterRestart = true;
         var t = T("memory.compressionOff");
-        await fx.Engine.ApplyAsync(t, Facts(), new HashSet<string>(), Expert);
+        await fx.Engine.ApplyAsync(t, Facts(), Expert);
         var b = fx.Store.Get(t.Id)!;
         b.Entries[0].Applied = b.Entries[0].Original;
         fx.Store.Save(b);
@@ -621,7 +621,7 @@ public class EngineTests
         RegistryValue.Write(fx.Registry, Hive.Machine, PowerKey, "HibernateEnabled", "dword", "1");
         var t = T("power.hibernateOff");
 
-        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(t, Facts(), new HashSet<string>(), Expert)).Outcome);
+        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(t, Facts(), Expert)).Outcome);
         Assert.Equal("0", Reg(fx, Hive.Machine, PowerKey, "HibernateEnabled").Data);
         Assert.True(fx.Engine.Revert(t).Success);
         Assert.Equal("1", Reg(fx, Hive.Machine, PowerKey, "HibernateEnabled").Data);
@@ -637,7 +637,7 @@ public class EngineTests
         var t = T("power.hibernateOff");
 
         Assert.Equal(TweakState.Unsupported, fx.Engine.DetectState(t, Facts()));
-        Assert.Equal(ApplyOutcome.Blocked, (await fx.Engine.ApplyAsync(t, Facts(), new HashSet<string>(), Expert)).Outcome);
+        Assert.Equal(ApplyOutcome.Blocked, (await fx.Engine.ApplyAsync(t, Facts(), Expert)).Outcome);
         Assert.DoesNotContain(fx.Processes.Calls, c => c.Contains("/hibernate"));
     }
 
@@ -648,7 +648,7 @@ public class EngineTests
         using var fx = new EngineFixture();
         FakePowercfg(fx);
         var t = T("power.hibernateOff");
-        await fx.Engine.ApplyAsync(t, Facts(), new HashSet<string>(), Expert);
+        await fx.Engine.ApplyAsync(t, Facts(), Expert);
         fx.Power.Hibernation = false;
 
         var undo = fx.Engine.Revert(t);
@@ -675,7 +675,7 @@ public class EngineTests
     {
         using var fx = new EngineFixture();
         foreach (var id in new[] { "gpu.hags", "storage.lastAccessOff", "explorer.fileExtensions" })
-            await fx.Engine.ApplyAsync(T(id), Facts(), new HashSet<string>(), Expert);
+            await fx.Engine.ApplyAsync(T(id), Facts(), Expert);
         var results = fx.Engine.RevertAll();
         Assert.True(results.Count >= 3);
         Assert.All(results, r => Assert.True(r.Result.Success));

@@ -49,7 +49,7 @@ public class StartupDeleteTests
         var line = Assert.Single(fx.Engine.Preview(delete));
         Assert.Equal("\"C:\\Vendor\\updater.exe\" /silent", line.Before);
 
-        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(delete, Facts, new HashSet<string>(), Options)).Outcome);
+        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(delete, Facts, Options)).Outcome);
         Assert.False(fx.Tasks.Xml.ContainsKey(path));
 
         // After a restart of the app the stored definition still undoes it, with the exported XML.
@@ -59,7 +59,7 @@ public class StartupDeleteTests
 
         // A task with a stored password is not offered for a delete that could not be undone.
         fx.Tasks.Xml[path] = TaskXml("<UserId>PC\\admin</UserId><LogonType>Password</LogonType>");
-        Assert.NotEqual(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(StartupTweaks.Delete(entry)!, Facts, new HashSet<string>(), Options)).Outcome);
+        Assert.NotEqual(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(StartupTweaks.Delete(entry)!, Facts, Options)).Outcome);
         Assert.True(fx.Tasks.Xml.ContainsKey(path));
     }
 
@@ -75,13 +75,13 @@ public class StartupDeleteTests
         fx.Tasks.Xml[path] = TaskXml("<UserId>S-1-5-18</UserId>");
         var entry = new StartupEntry(StartupKind.LogonTask, @"Vendor\Updater", null, null, @"Task Scheduler\Vendor", Hive.Machine, true, "task:vendor") { Target = path };
         var delete = StartupTweaks.Delete(entry)!;
-        await fx.Engine.ApplyAsync(delete, Facts, new HashSet<string>(), Options);
+        await fx.Engine.ApplyAsync(delete, Facts, Options);
 
         var v2 = TaskXml("<UserId>S-1-5-18</UserId>", @"C:\Vendor\v2\updater.exe");
         fx.Tasks.Xml[path] = v2;
         Assert.Empty(fx.Engine.CheckDrift(Facts));
 
-        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(delete, Facts, new HashSet<string>(), Options)).Outcome);
+        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(delete, Facts, Options)).Outcome);
         Assert.True(fx.Engine.Revert(delete).Success);
         Assert.Equal(v2, fx.Tasks.Xml[path]);
     }
@@ -114,7 +114,7 @@ public class StartupDeleteTests
             var entry = Assert.Single(new StartupScanner(fx.Registry, fx.Tasks, profile) { CommonStartupFolder = Path.Combine(profile, "no-startup") }.StartupFolders());
             var delete = StartupTweaks.Delete(entry)!;
             Assert.Equal(file, Assert.IsType<StartupFileDeleteAction>(Assert.Single(delete.Actions)).Path, ignoreCase: true);
-            Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(delete, Facts, new HashSet<string>(), Options)).Outcome);
+            Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(delete, Facts, Options)).Outcome);
             Assert.False(File.Exists(file));
 
             var engine = new TweakEngine(fx.Context, new Backup.BackupStore(fx.BackupRoot, secure: false), fx.RestorePoints, "test", 26300);

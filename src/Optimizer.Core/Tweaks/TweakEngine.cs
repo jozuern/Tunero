@@ -313,11 +313,10 @@ public sealed class TweakEngine(ActionContext ctx, BackupStore store, IRestorePo
     /// whole batch, per-tweak rollback). Stops early when the restore point decision is needed, and before the next
     /// change when <paramref name="stop"/> is set (a change is never left half done).
     /// </summary>
-    public async Task<IReadOnlyList<BatchItemResult>> ApplyBatchAsync(IEnumerable<TweakDefinition> tweaks, Facts facts, IReadOnlySet<string> applied,
+    public async Task<IReadOnlyList<BatchItemResult>> ApplyBatchAsync(IEnumerable<TweakDefinition> tweaks, Facts facts,
         ApplyOptions options, IProgress<BatchStep>? progress = null, CancellationToken stop = default)
     {
         var results = new List<BatchItemResult>();
-        var nowApplied = new HashSet<string>(applied);
         var list = tweaks.ToList();
         foreach (var t in list)
         {
@@ -329,16 +328,15 @@ public sealed class TweakEngine(ActionContext ctx, BackupStore store, IRestorePo
             }
             var done = results.Count;
             progress?.Report(new BatchStep(done, list.Count, t));
-            var r = await ApplyAsync(t, facts, nowApplied,
+            var r = await ApplyAsync(t, facts,
                 progress is null ? options : options with { RestorePointStarting = () => progress.Report(new BatchStep(done, list.Count, t, RestorePoint: true)) });
             results.Add(new BatchItemResult(t, r));
             if (r.Outcome == ApplyOutcome.NeedsRestorePointDecision) break;
-            if (r.Outcome is ApplyOutcome.Applied or ApplyOutcome.AppliedIneffective) nowApplied.Add(t.Id);
         }
         return results;
     }
 
-    public async Task<ApplyResult> ApplyAsync(TweakDefinition t, Facts facts, IReadOnlySet<string> applied, ApplyOptions options)
+    public async Task<ApplyResult> ApplyAsync(TweakDefinition t, Facts facts, ApplyOptions options)
     {
         var blocks = Preflight(t, facts, options);
         if (blocks.Count > 0) return new ApplyResult(ApplyOutcome.Blocked, [], Blocks: blocks);
@@ -576,7 +574,7 @@ public sealed class TweakEngine(ActionContext ctx, BackupStore store, IRestorePo
         // Lift the 24 h limit through a normal, backed-up tweak, so undo puts the original value back.
         var freq = _catalog.Get(RestorePointFrequencyTweak);
         var lifted = freq is not null && PeekBackup(freq.Id) is null && !store.IsDamaged(freq.Id) &&
-                     (await ApplyAsync(freq, facts, new HashSet<string>(), new ApplyOptions { ExpertMode = true, ContinueWithoutRestorePoint = true })).Outcome
+                     (await ApplyAsync(freq, facts, new ApplyOptions { ExpertMode = true, ContinueWithoutRestorePoint = true })).Outcome
                      is ApplyOutcome.Applied or ApplyOutcome.AppliedIneffective;
         var created = await restorePoints.CreateAsync($"Tunero {DateTime.Now:yyyy-MM-dd HH:mm}");
         // No restore point came of it (the user may now cancel the change): the limit goes back as it was.

@@ -47,7 +47,7 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
         _dialogs = dialogs;
         _expertMode = settings.ExpertMode;
         _checkForUpdates = settings.CheckForUpdates;
-        Runner = new ChangeRunner(services, dialogs, () => _facts, AppliedIds, () => ExpertMode) { ScanInProgress = () => ScanInProgress };
+        Runner = new ChangeRunner(services, dialogs, () => _facts, () => ExpertMode) { ScanInProgress = () => ScanInProgress };
         Install = InstallFacts.ForThisProcess(services);
         Updates = new UpdateService(Install, dialogs, this, steps: updateSteps);
         _setup = new SetupDecision(Install, settings, setupChecks ?? SetupChecks.ForThisPc(MachineRegistry));

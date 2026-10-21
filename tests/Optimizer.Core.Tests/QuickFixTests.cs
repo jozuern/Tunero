@@ -114,7 +114,7 @@ public class DohTests
         };
         var facts = new Tweaks.Facts().Set("os.build", 26300).Set("elevated", true);
         var options = new Tweaks.ApplyOptions { ExpertMode = true, ContinueWithoutRestorePoint = true };
-        Assert.Equal(Tweaks.ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(only, facts, new HashSet<string>(), options)).Outcome);
+        Assert.Equal(Tweaks.ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(only, facts, options)).Outcome);
         Assert.All(state.Servers.Values, Assert.True);
         Assert.True(fx.Engine.Revert(only).Success);
         Assert.False(state.Servers["1.1.1.1"]);
@@ -196,7 +196,7 @@ public class CapabilityTests
         var off = OptionalCapabilityAction.Tweak(entry, installed: false);
         var facts = new Tweaks.Facts().Set("os.build", 26300).Set("elevated", true);
         var options = new Tweaks.ApplyOptions { ExpertMode = true, ContinueWithoutRestorePoint = true };
-        Assert.Equal(Tweaks.ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(off, facts, new HashSet<string>(), options)).Outcome);
+        Assert.Equal(Tweaks.ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(off, facts, options)).Outcome);
         Assert.DoesNotContain("OpenSSH.Client~~~~0.0.1.0", installed);
         Assert.True(fx.Engine.Revert(off).Success);
         Assert.Contains("OpenSSH.Client~~~~0.0.1.0", installed);
@@ -213,12 +213,12 @@ public class CapabilityTests
             return (0, "The operation completed successfully.");
         };
         var rs = Tweaks.TweakCatalog.Current.Tweaks.Single(x => x.Id == "storage.reservedStorageOff");
-        Assert.Equal(Tweaks.ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(rs, facts, new HashSet<string>(), options)).Outcome);
+        Assert.Equal(Tweaks.ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(rs, facts, options)).Outcome);
         Assert.False(reserved);
         Assert.True(fx.Engine.Revert(rs).Success);
         Assert.True(reserved);
         inUse = true;
-        Assert.Equal(Tweaks.ApplyOutcome.Failed, (await fx.Engine.ApplyAsync(rs, facts, new HashSet<string>(), options)).Outcome);
+        Assert.Equal(Tweaks.ApplyOutcome.Failed, (await fx.Engine.ApplyAsync(rs, facts, options)).Outcome);
         Assert.True(reserved);
 
         Assert.Null(OptionalCapabilityAction.MapState("Unknown"));

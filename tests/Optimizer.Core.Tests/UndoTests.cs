@@ -35,7 +35,7 @@ public class UndoTests
         using var fx = new EngineFixture();
         const string path = @"SOFTWARE\Test\Drift";
         RegistryValue.Write(fx.Registry, Hive.Machine, path, "Level", "dword", "0");
-        await fx.Engine.ApplyAsync(Tweak("test.level", Reg(path, "Level", 1)), Facts, new HashSet<string>(), Options);
+        await fx.Engine.ApplyAsync(Tweak("test.level", Reg(path, "Level", 1)), Facts, Options);
 
         var newer = Tweak("test.level", Reg(path, "Level", 2));
         Assert.Equal(TweakState.NotApplied, fx.Engine.DetectState(newer, Facts));
@@ -200,11 +200,11 @@ public class UndoTests
         fx.Power.Ac[(FakePower.Balanced, sub, key)] = 0;
         fx.Power.Ac[(FakePower.High, sub, key)] = 1;
 
-        await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options); // on Balanced
+        await fx.Engine.ApplyAsync(t, Facts, Options); // on Balanced
         fx.Power.Active = FakePower.High;
         // Another plan is active: the tweak is simply not applied there, not "reset by Windows".
         Assert.Equal(TweakState.NotApplied, fx.Engine.DetectState(t, Facts));
-        await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options); // on High performance
+        await fx.Engine.ApplyAsync(t, Facts, Options); // on High performance
 
         Assert.Equal(2, fx.Store.Get(t.Id)!.Entries.Count);
         Assert.True(fx.Engine.Revert(t).Success);
@@ -227,9 +227,9 @@ public class UndoTests
         var v1 = Tweak("test.boost", new PowerSettingAction { Subgroup = "SUB_PROCESSOR", Setting = "PERFBOOSTMODE", Ac = 2, Dc = 2 });
         var v2 = Tweak("test.boost", new PowerSettingAction { Subgroup = "SUB_PROCESSOR", Setting = "PERFBOOSTMODE", Ac = 2 });
 
-        await fx.Engine.ApplyAsync(v1, Facts, new HashSet<string>(), Options);
+        await fx.Engine.ApplyAsync(v1, Facts, Options);
         fx.Power.Ac[(FakePower.Balanced, sub, key)] = 0; // reset by Windows
-        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(v2, Facts, new HashSet<string>(), Options)).Outcome);
+        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(v2, Facts, Options)).Outcome);
 
         Assert.True(fx.Engine.Revert(v2).Success);
         Assert.Equal(0u, fx.Power.Ac[(FakePower.Balanced, sub, key)]);
@@ -246,7 +246,7 @@ public class UndoTests
         RegistryValue.Write(fx.Registry, Hive.User, path, "Settings", "string", original);
         var t = Tweak("test.token", new RegistryTokenAction { Hive = Hive.User, Path = path, Name = "Settings", Token = "SwapEffectUpgradeEnable", Value = "1" });
 
-        await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options);
+        await fx.Engine.ApplyAsync(t, Facts, Options);
         Assert.Equal(original + "SwapEffectUpgradeEnable=1;", RegistryValue.Read(fx.Registry, Hive.User, path, "Settings").Data);
         Assert.True(fx.Engine.Revert(t).Success);
         Assert.Equal(original, RegistryValue.Read(fx.Registry, Hive.User, path, "Settings").Data);
@@ -260,7 +260,7 @@ public class UndoTests
     {
         using var fx = new EngineFixture();
         var t = Tweak("test.plan", new PowerSchemeAction { DuplicateFrom = "highPerformance", Name = "Tunero Test" });
-        await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options);
+        await fx.Engine.ApplyAsync(t, Facts, Options);
         Assert.Contains("Tunero Test", fx.Power.SchemeNames.Values);
 
         fx.Power.Active = FakePower.High; // the user picked another plan
@@ -279,7 +279,7 @@ public class UndoTests
         using (var key = fx.Registry.Open(Hive.Machine, path, writable: true, create: true)!)
             Assert.Equal(0, RegSetValueExW(key.Handle, "Value", 0, 5 /* REG_DWORD_BIG_ENDIAN */, original, original.Length));
         var t = Tweak("test.raw", Reg(path, "Value", 1));
-        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options)).Outcome);
+        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(t, Facts, Options)).Outcome);
         Assert.Equal("raw:5", fx.Store.Get(t.Id)!.Entries.Single().Original.Kind);
         Assert.True(fx.Engine.Revert(t).Success);
         using (var key = fx.Registry.Open(Hive.Machine, path, writable: false)!)
@@ -304,7 +304,7 @@ public class UndoTests
         var existing = Guid.NewGuid();
         fx.Power.SchemeNames[existing] = "Tunero Test";
         var t = Tweak("test.plan", new PowerSchemeAction { DuplicateFrom = "highPerformance", Name = "Tunero Test" });
-        await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options);
+        await fx.Engine.ApplyAsync(t, Facts, Options);
         Assert.Equal(existing, fx.Power.Active);
         Assert.Equal(PowerSchemeAction.ExistingKind, fx.Store.Get(t.Id)!.Entries.Single().Applied!.Kind);
 
@@ -322,9 +322,9 @@ public class UndoTests
     {
         using var fx = new EngineFixture();
         var t = Tweak("test.plan", new PowerSchemeAction { DuplicateFrom = "highPerformance", Name = "Tunero Test" });
-        await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options);
+        await fx.Engine.ApplyAsync(t, Facts, Options);
         fx.Power.Active = FakePower.Balanced;
-        await fx.Engine.ApplyAsync(Tweak("test.plan", new PowerSchemeAction { DuplicateFrom = "highPerformance", Name = "Tunero Test" }), Facts, new HashSet<string>(), Options);
+        await fx.Engine.ApplyAsync(Tweak("test.plan", new PowerSchemeAction { DuplicateFrom = "highPerformance", Name = "Tunero Test" }), Facts, Options);
         Assert.Equal(PowerSchemeAction.CreatedKind, fx.Store.Get(t.Id)!.Entries.Single().Applied!.Kind);
 
         Assert.True(fx.Engine.Revert(t).Success);
@@ -339,7 +339,7 @@ public class UndoTests
         using var fx = new EngineFixture();
         const string path = @"SOFTWARE\Test\ReadFails";
         var t = Tweak("test.readFails", Reg(path, "A", 1), new ThrowingRead());
-        var r = await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options);
+        var r = await fx.Engine.ApplyAsync(t, Facts, Options);
         Assert.Equal(ApplyOutcome.Failed, r.Outcome);
         Assert.False(RegistryValue.Read(fx.Registry, Hive.Machine, path, "A").Existed);
         Assert.Null(fx.Store.Get(t.Id));
@@ -362,7 +362,7 @@ public class UndoTests
     {
         using var fx = new EngineFixture();
         var t = Tweak("test.plan", new PowerSchemeAction { DuplicateFrom = "highPerformance", Name = "Tunero Test" });
-        await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options);
+        await fx.Engine.ApplyAsync(t, Facts, Options);
         var backup = fx.Store.Get(t.Id)!;
         Assert.Equal(PowerSchemeAction.CreatedKind, backup.Entries.Single().Applied!.Kind);
         backup.Entries.Single().Applied = backup.Entries.Single().Applied! with { Kind = "scheme" };
@@ -380,7 +380,7 @@ public class UndoTests
         fx.Power.SchemeNames[custom] = "My plan";
         fx.Power.Active = custom;
         var t = Tweak("test.plan", new PowerSchemeAction { DuplicateFrom = "highPerformance", Name = "Tunero Test" });
-        await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options);
+        await fx.Engine.ApplyAsync(t, Facts, Options);
         fx.Power.SchemeNames.Remove(custom);
 
         Assert.True(fx.Engine.Revert(t).Success);
@@ -397,20 +397,20 @@ public class UndoTests
         var t = Tweak("test.keys", Reg(path, "", "", "string", root));
 
         // Keys did not exist: undo removes both.
-        await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options);
+        await fx.Engine.ApplyAsync(t, Facts, Options);
         Assert.True(fx.Engine.Revert(t).Success);
         using (var k = fx.Registry.Open(Hive.Machine, root, writable: false)) Assert.Null(k);
 
         // The outer key existed with a value of its own: it stays, only the created subkey goes.
         RegistryValue.Write(fx.Registry, Hive.Machine, root, "Keep", "string", "x");
-        await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options);
+        await fx.Engine.ApplyAsync(t, Facts, Options);
         Assert.True(fx.Engine.Revert(t).Success);
         Assert.Equal("x", RegistryValue.Read(fx.Registry, Hive.Machine, root, "Keep").Data);
         using (var k = fx.Registry.Open(Hive.Machine, path, writable: false)) Assert.Null(k);
 
         // The inner key existed with another value: nothing is removed.
         RegistryValue.Write(fx.Registry, Hive.Machine, path, "ThreadingModel", "string", "Both");
-        await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options);
+        await fx.Engine.ApplyAsync(t, Facts, Options);
         Assert.True(fx.Engine.Revert(t).Success);
         Assert.Equal("Both", RegistryValue.Read(fx.Registry, Hive.Machine, path, "ThreadingModel").Data);
         Assert.False(RegistryValue.Read(fx.Registry, Hive.Machine, path, "").Existed);
@@ -440,7 +440,7 @@ public class UndoTests
         RegistryValue.Write(fx.Registry, Hive.Machine, key, "*EEE", "dword", "1");
         var t = Tweak("test.eee", new NicPropertyAction { Properties = new(StringComparer.OrdinalIgnoreCase) { ["*EEE"] = "0" } });
 
-        await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options);
+        await fx.Engine.ApplyAsync(t, Facts, Options);
         Assert.Equal(new StoredValue(true, "dword", "0"), RegistryValue.Read(fx.Registry, Hive.Machine, key, "*EEE"));
         Assert.True(fx.Engine.Revert(t).Success);
         Assert.Equal(new StoredValue(true, "dword", "1"), RegistryValue.Read(fx.Registry, Hive.Machine, key, "*EEE"));
@@ -462,7 +462,7 @@ public class UndoTests
         RegistryValue.Write(fx.Registry, Hive.Machine, $@"{key}\Ndi\params\*EEE\enum", "1", "string", "Enabled");
         RegistryValue.Write(fx.Registry, Hive.Machine, key, "*EEE", "string", "1");
         var t = Tweak("test.eee", new NicPropertyAction { Properties = new(StringComparer.OrdinalIgnoreCase) { ["*EEE"] = "0" } });
-        await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options);
+        await fx.Engine.ApplyAsync(t, Facts, Options);
 
         // Another adapter in the same slot, with the value the undo would compare against.
         RegistryValue.Write(fx.Registry, Hive.Machine, key, "NetCfgInstanceId", "string", "{22222222-2222-2222-2222-222222222222}");
@@ -484,7 +484,7 @@ public class UndoTests
         var mask = t.Actions.OfType<RegistryBinaryBitsAction>().Single();
         var only = Tweak("test.mask", mask);
 
-        await fx.Engine.ApplyAsync(only, Facts, new HashSet<string>(), Options);
+        await fx.Engine.ApplyAsync(only, Facts, Options);
         Assert.Equal("B112038010000000", RegistryValue.Read(fx.Registry, Hive.User, path, "UserPreferencesMask").Data); // bits 0 and 5 kept
 
         // The user turns off "underline access keys" meanwhile: not a reset by Windows, and undo keeps the user's choice.
@@ -522,7 +522,7 @@ public class UndoTests
         using var fx = new EngineFixture();
         fx.Services.Start["OldSvc"] = ServiceStart.Automatic;
         var t = Tweak("test.svc", new ServiceAction { Name = "OldSvc", StartType = ServiceStart.Manual });
-        await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options);
+        await fx.Engine.ApplyAsync(t, Facts, Options);
         fx.Services.Start.Remove("OldSvc");
 
         Assert.True(fx.Engine.Revert(t).Success);
@@ -572,7 +572,7 @@ public class CatalogRuleTests
         var facts = new Facts().Set("os.build", 26300).Set("elevated", true).Set("os.edition", "Professional");
         var options = new ApplyOptions { ExpertMode = true, ContinueWithoutRestorePoint = true };
 
-        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(t, facts, new HashSet<string>(), options)).Outcome);
+        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(t, facts, options)).Outcome);
         Assert.Equal("1", RegistryValue.Read(fx.Registry, Hive.Machine, path, name).Data);
         Assert.True(fx.Engine.Revert(t).Success);
         Assert.False(RegistryValue.Read(fx.Registry, Hive.Machine, path, name).Existed);

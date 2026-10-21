@@ -13,7 +13,7 @@ internal sealed class FakePageHost : IPageHost
 {
     // The page operations under test run through the runner's lock (RunExclusiveAsync), never the engine: a session with
     // a lock that lives in memory, so no test takes the real changes.lock in the data folder.
-    public FakePageHost() => Runner = new ChangeRunner(null!, new FakeDialogs(), () => throw new NotSupportedException(), () => new HashSet<string>(), () => false,
+    public FakePageHost() => Runner = new ChangeRunner(null!, new FakeDialogs(), () => throw new NotSupportedException(), () => false,
         new ChangeSession(null!, null!, new MemoryChangeLock()));
 
     private sealed class MemoryChangeLock : IChangeLock

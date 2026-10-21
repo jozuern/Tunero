@@ -99,11 +99,11 @@ public sealed class ChangeSession(TweakEngine engine, IRestorePoints restorePoin
     }
 
     /// <summary>Applies one tweak. Null when <paramref name="decide"/> cancelled at the restore point question.</summary>
-    public Task<ApplyResult?> ApplyAsync(TweakDefinition t, Facts facts, IReadOnlySet<string> applied, ApplyOptions options, Func<RestorePointChoice> decide) => Locked(async () =>
+    public Task<ApplyResult?> ApplyAsync(TweakDefinition t, Facts facts, ApplyOptions options, Func<RestorePointChoice> decide) => Locked(async () =>
     {
-        var result = await Task.Run(() => engine.ApplyAsync(t, facts, applied, options));
+        var result = await Task.Run(() => engine.ApplyAsync(t, facts, options));
         if (result.Outcome != ApplyOutcome.NeedsRestorePointDecision) return result;
-        return await AfterDecision(options, decide) is { } again ? await Task.Run(() => engine.ApplyAsync(t, facts, applied, again)) : null;
+        return await AfterDecision(options, decide) is { } again ? await Task.Run(() => engine.ApplyAsync(t, facts, again)) : null;
     });
 
     /// <summary>
@@ -111,17 +111,17 @@ public sealed class ChangeSession(TweakEngine engine, IRestorePoints restorePoin
     /// <see cref="BatchOutcome.StoppedForRestorePoint"/> when even after the decision no restore point came of it.
     /// <paramref name="stop"/> ends it before the next change (<see cref="BatchOutcome.Stopped"/>).
     /// </summary>
-    public Task<BatchOutcome> ApplyBatchAsync(IReadOnlyList<TweakDefinition> tweaks, Facts facts, IReadOnlySet<string> applied, ApplyOptions options,
+    public Task<BatchOutcome> ApplyBatchAsync(IReadOnlyList<TweakDefinition> tweaks, Facts facts, ApplyOptions options,
         Func<RestorePointChoice> decide, IProgress<BatchStep>? progress = null, CancellationToken stop = default)
     {
         if (tweaks.Count == 0) return Task.FromResult(BatchOutcome.Cancelled);
         return Locked(async () =>
         {
-            var results = await Task.Run(() => engine.ApplyBatchAsync(tweaks, facts, applied, options, progress, stop));
+            var results = await Task.Run(() => engine.ApplyBatchAsync(tweaks, facts, options, progress, stop));
             if (!results.Any(r => r.Result.Outcome == ApplyOutcome.NeedsRestorePointDecision)) return Outcome(results);
             // Nothing was changed yet: a cancel ends here like a cancelled confirmation.
             if (await AfterDecision(options, decide) is not { } again) return BatchOutcome.Cancelled;
-            return Outcome(await Task.Run(() => engine.ApplyBatchAsync(tweaks, facts, applied, again, progress, stop)));
+            return Outcome(await Task.Run(() => engine.ApplyBatchAsync(tweaks, facts, again, progress, stop)));
         });
 
         BatchOutcome Outcome(IReadOnlyList<BatchItemResult> results) => new(results) { Stopped = results.Count < tweaks.Count && stop.IsCancellationRequested };
@@ -157,7 +157,7 @@ public sealed class ChangeSession(TweakEngine engine, IRestorePoints restorePoin
                 .Select(d => d.Tweak).ToList();
         });
         if (reset.Count == 0) return BatchOutcome.Cancelled;
-        return await ApplyBatchAsync(reset, pc.Facts, pc.Applied, new ApplyOptions { ContinueWithoutRestorePoint = true }, () => RestorePointChoice.Continue);
+        return await ApplyBatchAsync(reset, pc.Facts, new ApplyOptions { ContinueWithoutRestorePoint = true }, () => RestorePointChoice.Continue);
     });
 
     public Task<RevertResult> UndoAsync(TweakDefinition t) => Locked(() => Task.Run(() => engine.Revert(t)));

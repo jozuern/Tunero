@@ -62,7 +62,7 @@ public class TransactionTests
         using var fx = new EngineFixture();
         var engine = Engine(fx, new FailingBatteryWrite(fx.Power));
         var t = Tweak("test.boost", Boost(0, 0));
-        var r = await engine.ApplyAsync(t, Facts, new HashSet<string>(), Options);
+        var r = await engine.ApplyAsync(t, Facts, Options);
         Assert.Equal(ApplyOutcome.Failed, r.Outcome);
         Assert.DoesNotContain("rollback failed", r.Error);
         // The mains value written before the failure is back, and nothing is left to undo.
@@ -77,7 +77,7 @@ public class TransactionTests
         fx.Services.Start["SvcA"] = ServiceStart.Automatic;
         fx.Services.FailOnWrite.Add("SvcA");
         var t = Tweak("test.refused", new ServiceAction { Name = "SvcA", StartType = ServiceStart.Disabled });
-        var r = await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options);
+        var r = await fx.Engine.ApplyAsync(t, Facts, Options);
         Assert.Equal(ApplyOutcome.Failed, r.Outcome);
         Assert.DoesNotContain("rollback failed", r.Error);
         Assert.Null(fx.Store.Get(t.Id));
@@ -92,12 +92,12 @@ public class TransactionTests
     {
         using var fx = new EngineFixture();
         const string path = @"SOFTWARE\PCOTest\Reapply";
-        await fx.Engine.ApplyAsync(Tweak("test.reapply", Reg(path, "Value", 1)), Facts, new HashSet<string>(), Options);
+        await fx.Engine.ApplyAsync(Tweak("test.reapply", Reg(path, "Value", 1)), Facts, Options);
         fx.Services.Start["SvcB"] = ServiceStart.Automatic;
         fx.Services.FailOnWrite.Add("SvcB");
         var wider = Tweak("test.reapply", Reg(path, "Value", 1), new ServiceAction { Name = "SvcB", StartType = ServiceStart.Disabled });
 
-        Assert.Equal(ApplyOutcome.Failed, (await fx.Engine.ApplyAsync(wider, Facts, new HashSet<string>(), Options)).Outcome);
+        Assert.Equal(ApplyOutcome.Failed, (await fx.Engine.ApplyAsync(wider, Facts, Options)).Outcome);
         var backup = fx.Store.Get("test.reapply")!;
         Assert.Single(backup.Entries);
         Assert.NotEqual(TweakState.RevertedByWindows, fx.Engine.DetectState(wider, Facts));
@@ -115,7 +115,7 @@ public class TransactionTests
         var t = Tweak("test.planfail", new PowerSchemeAction { DuplicateFrom = "highPerformance", Name = "Tunero Test" },
             new ServiceAction { Name = "SvcC", StartType = ServiceStart.Disabled });
 
-        Assert.Equal(ApplyOutcome.Failed, (await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options)).Outcome);
+        Assert.Equal(ApplyOutcome.Failed, (await fx.Engine.ApplyAsync(t, Facts, Options)).Outcome);
         Assert.True(fx.Power.SchemeNames.ContainsKey(existing));
         Assert.Equal(FakePower.Balanced, fx.Power.Active);
     }
@@ -143,11 +143,11 @@ public class TransactionTests
         TweakDefinition[] batch = [a, preview, failing, b];
 
         fx.RestorePoints.Enabled = false;
-        var first = await fx.Engine.ApplyBatchAsync(batch, Facts, new HashSet<string>(), new ApplyOptions { ExpertMode = true });
+        var first = await fx.Engine.ApplyBatchAsync(batch, Facts, new ApplyOptions { ExpertMode = true });
         Assert.Equal(ApplyOutcome.NeedsRestorePointDecision, Assert.Single(first).Result.Outcome);
         Assert.False(RegistryValue.Read(fx.Registry, Hive.Machine, path, "A").Existed);
 
-        var second = await fx.Engine.ApplyBatchAsync(batch, Facts, new HashSet<string>(), Options);
+        var second = await fx.Engine.ApplyBatchAsync(batch, Facts, Options);
         Assert.Equal([ApplyOutcome.Applied, ApplyOutcome.Blocked, ApplyOutcome.Failed, ApplyOutcome.Applied], second.Select(r => r.Result.Outcome));
         Assert.Contains(second[1].Result.Blocks!, x => x.ReasonKey == "block.notBatchSafe");
         Assert.False(RegistryValue.Read(fx.Registry, Hive.Machine, path, "P").Existed);
@@ -155,7 +155,7 @@ public class TransactionTests
         Assert.Equal("1", RegistryValue.Read(fx.Registry, Hive.Machine, path, "B").Data);
 
         // Once more: everything already applied is left alone.
-        var third = await fx.Engine.ApplyBatchAsync([a, b], Facts, new HashSet<string>(), Options);
+        var third = await fx.Engine.ApplyBatchAsync([a, b], Facts, Options);
         Assert.All(third, r => Assert.Equal(ApplyOutcome.NothingToDo, r.Result.Outcome));
     }
 
@@ -166,14 +166,14 @@ public class TransactionTests
         using var fx = new EngineFixture();
         const string path = @"SOFTWARE\PCOTest\Locked";
         var t = Tweak("test.locked", Reg(path, "Value", 1));
-        await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options);
+        await fx.Engine.ApplyAsync(t, Facts, Options);
         using (new FileStream(Path.Combine(fx.Store.BackupFolder, "test.locked.json"), FileMode.Open, FileAccess.Read, FileShare.None))
         {
             Assert.Throws<BackupUnreadableException>(() => fx.Store.Get(t.Id));
             Assert.True(fx.Store.Exists(t.Id));
             Assert.False(fx.Engine.Revert(t).Success);
             RegistryValue.Write(fx.Registry, Hive.Machine, path, "Value", "dword", "0");
-            Assert.Equal(ApplyOutcome.Failed, (await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options)).Outcome);
+            Assert.Equal(ApplyOutcome.Failed, (await fx.Engine.ApplyAsync(t, Facts, Options)).Outcome);
         }
         Assert.NotNull(fx.Store.Get(t.Id)); // the originals are still there
     }
@@ -183,7 +183,7 @@ public class TransactionTests
     {
         using var fx = new EngineFixture();
         var t = Tweak("test.boost", Boost(0, 0));
-        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options)).Outcome);
+        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(t, Facts, Options)).Outcome);
         var (s, g, k) = BoostKey(fx);
         fx.Power.WriteAc(s, g, k, 3); // the user picked another mains value since
         var r = fx.Engine.Revert(t);
@@ -200,14 +200,14 @@ public class TransactionTests
         using var fx = new EngineFixture();
         const string path = @"SOFTWARE\PCOTest\Damaged";
         var t = Tweak("test.damaged", Reg(path, "Value", 1));
-        await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options);
+        await fx.Engine.ApplyAsync(t, Facts, Options);
         var file = Path.Combine(fx.Store.BackupFolder, "test.damaged.json");
         File.WriteAllText(file, "{\"TweakId\":\"test.dam"); // cut off by a power loss
 
         Assert.Null(fx.Store.Get(t.Id));
         Assert.True(fx.Store.IsDamaged(t.Id));
         Assert.True(File.Exists(file + BackupStore.DamagedSuffix));
-        var r = await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options);
+        var r = await fx.Engine.ApplyAsync(t, Facts, Options);
         Assert.Equal(ApplyOutcome.Blocked, r.Outcome);
         Assert.Contains(r.Blocks!, b => b.ReasonKey == "block.backupDamaged");
         Assert.False(fx.Engine.Revert(t).Success);
@@ -221,14 +221,14 @@ public class TransactionTests
         using var fx = new EngineFixture();
         const string path = @"SOFTWARE\PCOTest\DamagedHeld";
         var t = Tweak("test.damagedheld", Reg(path, "Value", 1));
-        await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options);
+        await fx.Engine.ApplyAsync(t, Facts, Options);
         var file = Path.Combine(fx.Store.BackupFolder, "test.damagedheld.json");
         File.WriteAllText(file, "{\"TweakId\":\"test.dam");
         using (var key = fx.Registry.Open(Hive.Machine, path, writable: true)) key!.SetValue("Value", 0); // so apply has work to do
         using (new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read))
         {
             Assert.Throws<BackupUnreadableException>(() => fx.Store.Get(t.Id));
-            Assert.Equal(ApplyOutcome.Failed, (await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options)).Outcome);
+            Assert.Equal(ApplyOutcome.Failed, (await fx.Engine.ApplyAsync(t, Facts, Options)).Outcome);
             Assert.False(fx.Engine.Revert(t).Success);
         }
         Assert.Equal("{\"TweakId\":\"test.dam", File.ReadAllText(file));
@@ -251,7 +251,7 @@ public class TransactionTests
         using var fx = new EngineFixture();
         var efficiency = Guid.NewGuid();
         var t = Tweak("test.powermode", new PowerModeAction { Overlay = efficiency });
-        await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options);
+        await fx.Engine.ApplyAsync(t, Facts, Options);
         Assert.Equal(efficiency, fx.PowerMode.Current);
 
         fx.PowerMode.Battery = true; // unplugged: Windows shows the battery mode now
@@ -278,8 +278,8 @@ public class TransactionTests
 
         var created = Tweak("test.created", Reg(@"SOFTWARE\Policies\PCOTest\Sub", "Value", 1));
         var existing = Tweak("test.existing", Reg(@"SOFTWARE\Policies\EmptyBefore", "Value", 1, removeKeyOnUndo: @"SOFTWARE\Policies\EmptyBefore"));
-        await fx.Engine.ApplyAsync(created, Facts, new HashSet<string>(), Options);
-        await fx.Engine.ApplyAsync(existing, Facts, new HashSet<string>(), Options);
+        await fx.Engine.ApplyAsync(created, Facts, Options);
+        await fx.Engine.ApplyAsync(existing, Facts, Options);
         fx.Engine.Revert(created);
         fx.Engine.Revert(existing);
 
@@ -322,7 +322,7 @@ public class TransactionTests
             return (0, "");
         };
         var t = Tweak("test.hibernate", new HibernationAction { Enabled = false });
-        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options)).Outcome);
+        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(t, Facts, Options)).Outcome);
         Assert.Equal("0", RegistryValue.Read(fx.Registry, Hive.Machine, power, "HibernateEnabled").Data);
         Assert.True(fx.Engine.Revert(t).Success);
         Assert.Equal("1", RegistryValue.Read(fx.Registry, Hive.Machine, power, "HibernateEnabled").Data);
@@ -335,12 +335,12 @@ public class TransactionTests
         using var fx = new EngineFixture();
         fx.Displays.Refresh[@"\\.\DISPLAY1"] = 60;
         var t = Tweak("test.display", new DisplayModeAction { GdiName = @"\\.\DISPLAY1", Width = 2560, Height = 1440, RefreshHz = 144 });
-        await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options);
+        await fx.Engine.ApplyAsync(t, Facts, Options);
         Assert.Equal(144, fx.Displays.Refresh[@"\\.\DISPLAY1"]);
         Assert.True(fx.Engine.Revert(t).Success);
         Assert.Equal(60, fx.Displays.Refresh[@"\\.\DISPLAY1"]);
 
-        await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options);
+        await fx.Engine.ApplyAsync(t, Facts, Options);
         fx.Displays.Refresh.Remove(@"\\.\DISPLAY1"); // monitor unplugged
         Assert.True(fx.Engine.Revert(t).Success);
         Assert.Null(fx.Store.Get(t.Id));
@@ -357,7 +357,7 @@ public class TransactionTests
             Hive = Hive.Machine, Path = path, Name = "Auto", Value = System.Text.Json.JsonSerializer.SerializeToElement(1),
             MissingMeans = System.Text.Json.JsonSerializer.SerializeToElement(1),
         });
-        await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options);
+        await fx.Engine.ApplyAsync(t, Facts, Options);
         RegistryValue.Delete(fx.Registry, Hive.Machine, path, "Auto"); // a feature update removes the value; Windows assumes 1
 
         Assert.True(fx.Engine.Revert(t).Success);
@@ -370,7 +370,7 @@ public class TransactionTests
         using var fx = new EngineFixture();
         fx.Displays.Refresh[@"\\.\DISPLAY1"] = 60;
         var t = Tweak("test.display", new DisplayModeAction { GdiName = @"\\.\DISPLAY1", Width = 2560, Height = 1440, RefreshHz = 144 });
-        await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options);
+        await fx.Engine.ApplyAsync(t, Facts, Options);
         fx.Displays.Size[@"\\.\DISPLAY1"] = (1920, 1080); // the user picks another resolution in Settings
 
         Assert.True(fx.Engine.Revert(t).Success);
@@ -384,7 +384,7 @@ public class TransactionTests
         using var fx = new EngineFixture();
         fx.RestorePoints.CreateFails = true;
         var t = Tweak("test.needsPoint", Reg(@"SOFTWARE\PCOTest", "Value", 1));
-        var r = await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), new ApplyOptions { ExpertMode = true });
+        var r = await fx.Engine.ApplyAsync(t, Facts, new ApplyOptions { ExpertMode = true });
         Assert.Equal(ApplyOutcome.NeedsRestorePointDecision, r.Outcome);
         Assert.Null(fx.Store.Get(TweakEngine.RestorePointFrequencyTweak));
         Assert.False(RegistryValue.Read(fx.Registry, Hive.Machine, @"SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore", "SystemRestorePointCreationFrequency").Existed);

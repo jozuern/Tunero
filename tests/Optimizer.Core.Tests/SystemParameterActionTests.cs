@@ -17,7 +17,7 @@ public class SystemParameterActionTests
         using var fx = new EngineFixture();
         fx.SystemParameters.Values[parameter] = 250; // the user had set something of their own
         var t = TweakCatalog.Current.Tweaks.Single(x => x.Id == id);
-        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options)).Outcome);
+        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(t, Facts, Options)).Outcome);
         Assert.Equal(value, fx.SystemParameters.Values[parameter]);
         Assert.Equal(TweakState.Applied, fx.Engine.Detect(t, Facts).State);
 

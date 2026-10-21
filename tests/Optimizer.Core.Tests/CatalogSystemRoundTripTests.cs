@@ -125,7 +125,7 @@ public class CatalogSystemRoundTripTests(ITestOutputHelper output)
             Assert.Fail($"{id} is blocked against the fakes: {string.Join(", ", blocks.Select(b => b.ReasonKey))}");
         }
 
-        var result = await fx.Engine.ApplyAsync(t, facts, new HashSet<string>(), Options);
+        var result = await fx.Engine.ApplyAsync(t, facts, Options);
         Assert.True(result.Outcome is ApplyOutcome.Applied or ApplyOutcome.AppliedIneffective, $"{id}: {result.Outcome} {result.Error}");
         Assert.True(fx.Engine.DetectState(t, facts) is TweakState.Applied or TweakState.PendingRestart, $"{id}: not detected as applied");
 

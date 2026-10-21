@@ -288,7 +288,7 @@ public static class CommandLineApply
     /// said to go on (there is nobody to ask).
     /// </summary>
     private static Func<IReadOnlyList<TweakDefinition>, Task<BatchOutcome>> Apply(AppServices services, PcSnapshot pc, bool withoutRestorePoint) =>
-        together => services.Session.ApplyBatchAsync(together, pc.Facts, pc.Applied, new ApplyOptions { ContinueWithoutRestorePoint = withoutRestorePoint },
+        together => services.Session.ApplyBatchAsync(together, pc.Facts, new ApplyOptions { ContinueWithoutRestorePoint = withoutRestorePoint },
             () => RestorePointChoice.Cancel);
 
     /// <summary>Applies the batch-safe changes with <paramref name="apply"/> and lists the rest for the app.</summary>

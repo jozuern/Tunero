@@ -21,7 +21,7 @@ public class ChangeSessionTests
     {
         using var fx = new EngineFixture();
         var asked = 0;
-        var result = await Session(fx).ApplyAsync(T("gpu.hags"), Facts(), new HashSet<string>(), new ApplyOptions(), () => { asked++; return RestorePointChoice.Cancel; });
+        var result = await Session(fx).ApplyAsync(T("gpu.hags"), Facts(), new ApplyOptions(), () => { asked++; return RestorePointChoice.Cancel; });
         Assert.Equal(ApplyOutcome.Applied, result!.Outcome);
         Assert.Equal(0, asked);
         Assert.Equal(1, fx.RestorePoints.Created);
@@ -33,7 +33,7 @@ public class ChangeSessionTests
         using var fx = new EngineFixture();
         fx.RestorePoints.Enabled = false;
         var t = T("gpu.hags");
-        Assert.Null(await Session(fx).ApplyAsync(t, Facts(), new HashSet<string>(), new ApplyOptions(), () => RestorePointChoice.Cancel));
+        Assert.Null(await Session(fx).ApplyAsync(t, Facts(), new ApplyOptions(), () => RestorePointChoice.Cancel));
         Assert.Null(fx.Store.Get(t.Id));
     }
 
@@ -42,7 +42,7 @@ public class ChangeSessionTests
     {
         using var fx = new EngineFixture();
         fx.RestorePoints.Enabled = false;
-        var result = await Session(fx).ApplyAsync(T("gpu.hags"), Facts(), new HashSet<string>(), new ApplyOptions(), () => RestorePointChoice.Continue);
+        var result = await Session(fx).ApplyAsync(T("gpu.hags"), Facts(), new ApplyOptions(), () => RestorePointChoice.Continue);
         Assert.Equal(ApplyOutcome.Applied, result!.Outcome);
         Assert.False(fx.RestorePoints.Enabled);
     }
@@ -52,7 +52,7 @@ public class ChangeSessionTests
     {
         using var fx = new EngineFixture();
         fx.RestorePoints.Enabled = false;
-        var result = await Session(fx).ApplyAsync(T("gpu.hags"), Facts(), new HashSet<string>(), new ApplyOptions(), () => RestorePointChoice.Enable);
+        var result = await Session(fx).ApplyAsync(T("gpu.hags"), Facts(), new ApplyOptions(), () => RestorePointChoice.Enable);
         Assert.Equal(ApplyOutcome.Applied, result!.Outcome);
         Assert.True(fx.RestorePoints.Enabled);
         Assert.True(fx.RestorePoints.Created > 0);
@@ -65,11 +65,11 @@ public class ChangeSessionTests
         fx.RestorePoints.Enabled = false;
         var session = Session(fx);
         var tweaks = new[] { T("gpu.hags"), T("explorer.fileExtensions") };
-        var cancelled = await session.ApplyBatchAsync(tweaks, Facts(), new HashSet<string>(), new ApplyOptions(), () => RestorePointChoice.Cancel);
+        var cancelled = await session.ApplyBatchAsync(tweaks, Facts(), new ApplyOptions(), () => RestorePointChoice.Cancel);
         Assert.Same(BatchOutcome.Cancelled, cancelled);
         Assert.Empty(fx.Store.All());
 
-        var outcome = await session.ApplyBatchAsync(tweaks, Facts(), new HashSet<string>(), new ApplyOptions(), () => RestorePointChoice.Continue);
+        var outcome = await session.ApplyBatchAsync(tweaks, Facts(), new ApplyOptions(), () => RestorePointChoice.Continue);
         Assert.False(outcome.StoppedForRestorePoint);
         Assert.Equal((2, 0, 0), (outcome.Applied, outcome.Failed, outcome.Skipped));
 
@@ -90,7 +90,7 @@ public class ChangeSessionTests
         var session = Session(fx);
         var t = T("gpu.hags");
         var heldWhileDeciding = false;
-        var result = await session.ApplyAsync(t, Facts(), new HashSet<string>(), new ApplyOptions(), () =>
+        var result = await session.ApplyAsync(t, Facts(), new ApplyOptions(), () =>
         {
             heldWhileDeciding = fx.ChangeLock.IsHeld;
             return RestorePointChoice.Continue;
@@ -103,7 +103,7 @@ public class ChangeSessionTests
         fx.ChangeLock.HeldByOther = true;
         await Assert.ThrowsAsync<ChangeBusyException>(() => session.UndoAsync(t));
         await Assert.ThrowsAsync<ChangeBusyException>(() => session.UndoAllAsync());
-        await Assert.ThrowsAsync<ChangeBusyException>(() => session.ApplyBatchAsync([T("explorer.fileExtensions")], Facts(), new HashSet<string>(), new ApplyOptions(),
+        await Assert.ThrowsAsync<ChangeBusyException>(() => session.ApplyBatchAsync([T("explorer.fileExtensions")], Facts(), new ApplyOptions(),
             () => RestorePointChoice.Continue));
         Assert.NotNull(fx.Store.Get(t.Id));
         Assert.Null(fx.Store.Get("explorer.fileExtensions"));
@@ -131,7 +131,7 @@ public class ChangeSessionTests
         var first = session.ExclusiveAsync(async () =>
         {
             Assert.True(fx.ChangeLock.IsHeld);
-            outcome = await session.ApplyBatchAsync([T("gpu.hags"), T("explorer.fileExtensions")], Facts(), new HashSet<string>(), new ApplyOptions(),
+            outcome = await session.ApplyBatchAsync([T("gpu.hags"), T("explorer.fileExtensions")], Facts(), new ApplyOptions(),
                 () => RestorePointChoice.Continue);
             Assert.True(fx.ChangeLock.IsHeld);
             inside.SetResult();
@@ -169,7 +169,7 @@ public class ChangeSessionTests
         using var fx = new EngineFixture();
         fx.RestorePoints.Enabled = false;
         fx.RestorePoints.CreateFails = true;
-        var outcome = await Session(fx).ApplyBatchAsync([T("gpu.hags")], Facts(), new HashSet<string>(), new ApplyOptions(), () => RestorePointChoice.Enable);
+        var outcome = await Session(fx).ApplyBatchAsync([T("gpu.hags")], Facts(), new ApplyOptions(), () => RestorePointChoice.Enable);
         Assert.True(outcome.StoppedForRestorePoint);
         Assert.Equal(0, outcome.Applied);
         Assert.Empty(fx.Store.All());

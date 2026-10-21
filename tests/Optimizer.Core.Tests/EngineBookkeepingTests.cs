@@ -32,8 +32,8 @@ public class EngineBookkeepingTests
         using var fx = new EngineFixture();
         var kept = Tweak("test.kept", Reg("Kept"));
         var damaged = Tweak("test.damagedLater", Reg("Damaged"));
-        await fx.Engine.ApplyAsync(kept, Facts, new HashSet<string>(), Options);
-        await fx.Engine.ApplyAsync(damaged, Facts, new HashSet<string>(), Options);
+        await fx.Engine.ApplyAsync(kept, Facts, Options);
+        await fx.Engine.ApplyAsync(damaged, Facts, Options);
         File.WriteAllText(Path.Combine(fx.Store.BackupFolder, "test.damagedLater.json"), "{\"TweakId\":\"test.dam"); // cut off
 
         var results = fx.Engine.RevertAll();
@@ -55,7 +55,7 @@ public class EngineBookkeepingTests
             File.SetLastWriteTimeUtc(old, new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddMinutes(i));
         }
         var t = Tweak("test.history", Reg("History"));
-        await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options);
+        await fx.Engine.ApplyAsync(t, Facts, Options);
         Assert.True(fx.Engine.Revert(t).Success);
 
         var left = Directory.GetFiles(fx.Store.HistoryFolder, "*.json");
@@ -100,7 +100,7 @@ public class EngineBookkeepingTests
         };
         try
         {
-            var r = await fx.Engine.ApplyAsync(Tweak("test.saveFails", new MemoryCompressionAction { Enabled = false }), Facts, new HashSet<string>(), Options);
+            var r = await fx.Engine.ApplyAsync(Tweak("test.saveFails", new MemoryCompressionAction { Enabled = false }), Facts, Options);
             Assert.Equal(ApplyOutcome.Applied, r.Outcome);
             Assert.True(r.BackupNotUpdated);
             Assert.Equal("True", fx.Store.Get("test.saveFails")!.Entries.Single().Original.Data); // Undo still has the original
@@ -115,7 +115,7 @@ public class EngineBookkeepingTests
     public async Task ApplyReportsNothingWhenTheSaveWorks()
     {
         using var fx = new EngineFixture();
-        var r = await fx.Engine.ApplyAsync(Tweak("test.saves", Reg("Saves")), Facts, new HashSet<string>(), Options);
+        var r = await fx.Engine.ApplyAsync(Tweak("test.saves", Reg("Saves")), Facts, Options);
         Assert.Equal(ApplyOutcome.Applied, r.Outcome);
         Assert.False(r.BackupNotUpdated);
     }
@@ -133,7 +133,7 @@ public class EngineBookkeepingTests
         Assert.False(entry.Enabled);
         Assert.Equal(Hive.User, entry.Hive);
         var on = StartupTweaks.Set(entry, enabled: true)!;
-        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(on, Facts, new HashSet<string>(), Options)).Outcome);
+        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(on, Facts, Options)).Outcome);
         Assert.False(RegistryValue.Read(fx.Registry, Hive.User, Blocked, clsid).Existed);
         Assert.True(Assert.Single(new StartupScanner(fx.Registry, fx.Tasks, null).ShellExtensions()).Enabled);
         Assert.True(fx.Engine.Revert(on).Success);

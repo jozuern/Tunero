@@ -53,7 +53,7 @@ public class NewUserDefaultsTests
         var facts = new Facts().Set("os.build", 26300).Set("elevated", true);
         var loads = fx.Registry.DefaultProfileLoads;
 
-        var result = await fx.Engine.ApplyAsync(copy, facts, new HashSet<string>(), new ApplyOptions { ContinueWithoutRestorePoint = true });
+        var result = await fx.Engine.ApplyAsync(copy, facts, new ApplyOptions { ContinueWithoutRestorePoint = true });
 
         Assert.Equal(ApplyOutcome.Applied, result.Outcome);
         // Two loads (the check before the restore point, then the change), not one per value.
@@ -85,7 +85,7 @@ public class NewUserDefaultsTests
         using var fx = new EngineFixture();
         var copy = NewUserDefaults.Build([With(T("explorer.a", User("A", 1)))])!;
         var facts = new Facts().Set("os.build", 26300).Set("elevated", true);
-        await fx.Engine.ApplyAsync(copy, facts, new HashSet<string>(), new ApplyOptions { ContinueWithoutRestorePoint = true });
+        await fx.Engine.ApplyAsync(copy, facts, new ApplyOptions { ContinueWithoutRestorePoint = true });
         var loads = fx.Registry.DefaultProfileLoads;
         Assert.Empty(fx.Engine.CheckDrift(facts));
         Assert.Equal(loads, fx.Registry.DefaultProfileLoads);
@@ -98,7 +98,7 @@ public class NewUserDefaultsTests
         using var fx = new EngineFixture();
         fx.Registry.LoadFails = "The Default profile could not be loaded: in use";
         var copy = NewUserDefaults.Build([With(T("explorer.a", User("A", 1)))])!;
-        var result = await fx.Engine.ApplyAsync(copy, new Facts().Set("os.build", 26300).Set("elevated", true), new HashSet<string>(),
+        var result = await fx.Engine.ApplyAsync(copy, new Facts().Set("os.build", 26300).Set("elevated", true),
             new ApplyOptions { ContinueWithoutRestorePoint = true });
         Assert.Equal(ApplyOutcome.Failed, result.Outcome);
         Assert.Contains("in use", result.Error);

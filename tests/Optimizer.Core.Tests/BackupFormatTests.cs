@@ -180,7 +180,7 @@ public class BackupFormatTests
         {
             using var fx = Prepare(s);
             var t = Tweak(s);
-            var r = await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options);
+            var r = await fx.Engine.ApplyAsync(t, Facts, Options);
             Assert.True(r.Outcome is ApplyOutcome.Applied or ApplyOutcome.AppliedIneffective, $"{s.Name}: {r.Outcome} {r.Error}");
             var file = Path.Combine(folder, s.Name + ".json");
             if (!File.Exists(file)) File.WriteAllText(file, Swap(File.ReadAllText(Path.Combine(fx.Store.BackupFolder, s.Id + ".json")), FixtureRoot, FixturePlaceholder));
@@ -192,7 +192,7 @@ public class BackupFormatTests
         {
             fx.Processes.MemoryCompressionAfterRestart = true;
             var t = Tweak(pendingScenario);
-            await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options);
+            await fx.Engine.ApplyAsync(t, Facts, Options);
             fx.Processes.Restart();
             Assert.True(fx.Engine.Revert(t).Success);
             var file = Path.Combine(folder, "pending-undo.memoryCompression.json");

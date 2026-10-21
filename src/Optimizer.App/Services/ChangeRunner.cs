@@ -23,7 +23,7 @@ public sealed record ResultMessage(string Text, InfoBarSeverity Severity);
 /// </para>
 /// </summary>
 /// <param name="session">The change session whose lock the runner holds; null: the app's (<see cref="AppServices.Session"/>). Tests pass one with a fake lock.</param>
-public sealed class ChangeRunner(AppServices services, IDialogs dialogs, Func<Facts> facts, Func<IReadOnlySet<string>> appliedIds, Func<bool> expertMode,
+public sealed class ChangeRunner(AppServices services, IDialogs dialogs, Func<Facts> facts, Func<bool> expertMode,
     ChangeSession? session = null)
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
@@ -179,7 +179,6 @@ public sealed class ChangeRunner(AppServices services, IDialogs dialogs, Func<Fa
     public Task<bool> ApplyAsync(TweakDefinition t) => ExclusiveAsync($"apply {t.Id}", async () =>
     {
         ChangeLogText.Remember(t);
-        var applied = appliedIds();
         var currentFacts = facts();
         var status = await Task.Run(() => services.Engine.Detect(t, currentFacts));
         var request = ConfirmRequestFor(t, status, expertMode(), Title(t), Summary(t), await Task.Run(() => services.Engine.Preview(t)));
@@ -189,7 +188,7 @@ public sealed class ChangeRunner(AppServices services, IDialogs dialogs, Func<Fa
         using var work = Work.Begin(Loc.Instance["Work_ApplyOne"]);
         work.Indeterminate(request.Title);
         var options = new ApplyOptions { ExpertMode = expertMode(), AcknowledgeAntiCheat = confirm.AcknowledgedAntiCheat, RestorePointStarting = RestorePointNote(work) };
-        if (await Session.ApplyAsync(t, currentFacts, applied, options, dialogs.AskRestorePoint) is not { } result) return false;
+        if (await Session.ApplyAsync(t, currentFacts, options, dialogs.AskRestorePoint) is not { } result) return false;
         Report(ResultText(t, request.Title, result), SeverityOf(result));
         var written = result.Outcome is ApplyOutcome.Applied or ApplyOutcome.AppliedIneffective;
         // A failed apply can leave a backup behind (a rollback that did not work): the pages show it as a change.
@@ -369,7 +368,7 @@ public sealed class ChangeRunner(AppServices services, IDialogs dialogs, Func<Fa
             if (s.RestorePoint) work.Indeterminate(Loc.Instance["Work_RestorePoint"]);
             else work.Step(s.Done, s.Total, s.Tweak is { } t ? Title(t) : null);
         });
-        var outcome = await Session.ApplyBatchAsync(tweaks, facts(), appliedIds(), new ApplyOptions { ExpertMode = expertMode() }, dialogs.AskRestorePoint,
+        var outcome = await Session.ApplyBatchAsync(tweaks, facts(), new ApplyOptions { ExpertMode = expertMode() }, dialogs.AskRestorePoint,
             steps, stop.Token);
         // Cancelled at the restore point question: nothing was changed, like a cancelled confirmation (Import then stops too).
         if (outcome.Results.Count == 0 && !outcome.Stopped) return [];

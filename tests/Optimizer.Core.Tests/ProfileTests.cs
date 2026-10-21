@@ -238,9 +238,9 @@ public class ProfileTests
         var facts = new Facts().Set("os.build", 26300).Set("elevated", true).Set("system.laptop", false).Set("power.personality", "balanced");
         var options = new ApplyOptions { ContinueWithoutRestorePoint = true, ExpertMode = true };
         fx.PowerMode.Current = Platform.FirmwareExtras.OverlayBetterBattery;
-        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(RuntimeFixes.PowerModeBestPerformance(), facts, new HashSet<string>(), options)).Outcome);
+        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(RuntimeFixes.PowerModeBestPerformance(), facts, options)).Outcome);
         var quietMode = TweakCatalog.Current.Get("quiet.powerModeEfficiency")!;
-        var r = await fx.Engine.ApplyAsync(quietMode, facts, new HashSet<string>(), options);
+        var r = await fx.Engine.ApplyAsync(quietMode, facts, options);
         Assert.Equal(ApplyOutcome.Blocked, r.Outcome);
         Assert.Contains(r.Blocks!, b => b.ReasonKey == "block.conflict" && b.Detail == "fix.powerMode");
     }
@@ -288,8 +288,8 @@ public class ProfileTests
 
         var turbo = TweakCatalog.Current.Get("power.turboRestore")!;
         var battery = TweakCatalog.Current.Get("battery.boostOffDc")!;
-        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(turbo, facts, new HashSet<string>(), options)).Outcome);
-        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(battery, facts, new HashSet<string>(), options)).Outcome);
+        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(turbo, facts, options)).Outcome);
+        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(battery, facts, options)).Outcome);
         Assert.Equal((2u, 0u), (fx.Power.Ac[(scheme, sub, boost)], fx.Power.Dc[(scheme, sub, boost)]));
 
         // Undo the mains tweak: the battery value set by the other tweak stays.

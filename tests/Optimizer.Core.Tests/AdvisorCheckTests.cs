@@ -634,7 +634,7 @@ public class ExtendedActionTests
         Assert.Single(fx.Engine.Expand(t)); // the virtual adapter is never touched
         Assert.Equal(TweakState.NotApplied, fx.Engine.DetectState(t, Facts));
 
-        var r = await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options);
+        var r = await fx.Engine.ApplyAsync(t, Facts, Options);
         Assert.Equal(ApplyOutcome.Applied, r.Outcome);
         Assert.Equal("0", RegistryValue.Read(fx.Registry, Hive.Machine, physical, "*EEE").Data);
         Assert.False(RegistryValue.Read(fx.Registry, Hive.Machine, physical, "GreenEthernet").Existed); // not declared by the driver
@@ -654,7 +654,7 @@ public class ExtendedActionTests
         var key = AddAdapter(fx, "0001", "{11111111-1111-1111-1111-111111111111}", @"PCI\VEN_8086&DEV_15BC\3", 0x84, ("*EEE", ["0", "1"]));
         fx.Devices.Fail = true;
         var t = Tweak("test.nic", new NicPropertyAction { Properties = new(StringComparer.OrdinalIgnoreCase) { ["*EEE"] = "0" } });
-        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options)).Outcome);
+        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(t, Facts, Options)).Outcome);
         Assert.Equal("0", RegistryValue.Read(fx.Registry, Hive.Machine, key, "*EEE").Data);
     }
 
@@ -666,7 +666,7 @@ public class ExtendedActionTests
         var t = Tweak("test.nic", new NicPropertyAction { Properties = new(StringComparer.OrdinalIgnoreCase) { ["*EEE"] = "0" } });
         Assert.Equal(TweakState.Unsupported, fx.Engine.DetectState(t, Facts));
         // Not "already in place": the adapter has nothing this tweak changes.
-        var r = await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options);
+        var r = await fx.Engine.ApplyAsync(t, Facts, Options);
         Assert.Equal(ApplyOutcome.Blocked, r.Outcome);
         Assert.Contains(r.Blocks!, b => b.ReasonKey == "block.unsupported");
     }
@@ -676,7 +676,7 @@ public class ExtendedActionTests
     {
         using var fx = new EngineFixture();
         var t = Tweak("test.nv", new NvidiaDrsAction { Profile = "global", SettingId = Nvapi.SettingPreRenderLimit, Value = 1 });
-        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options)).Outcome);
+        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(t, Facts, Options)).Outcome);
         Assert.Equal(1u, fx.Nvidia.Values[("global", Nvapi.SettingPreRenderLimit)]);
         Assert.True(fx.Engine.Revert(t).Success);
         Assert.False(fx.Nvidia.Values.ContainsKey(("global", Nvapi.SettingPreRenderLimit)));
@@ -697,7 +697,7 @@ public class ExtendedActionTests
         using var fx = new EngineFixture();
         fx.PowerMode.Current = FirmwareExtras.OverlayBetterBattery;
         var t = RuntimeFixes.PowerModeBestPerformance();
-        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options)).Outcome);
+        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(t, Facts, Options)).Outcome);
         Assert.Equal(FirmwareExtras.OverlayBestPerformance, fx.PowerMode.Current);
         Assert.True(fx.Engine.Revert(t).Success);
         Assert.Equal(FirmwareExtras.OverlayBetterBattery, fx.PowerMode.Current);
@@ -711,7 +711,7 @@ public class ExtendedActionTests
         var path = $@"SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces\{nic}";
         RegistryValue.Write(fx.Registry, Hive.Machine, path, "NameServer", "string", "");
         var t = Tweak("test.dns", new DnsAction { InterfaceGuid = "{nic}", Servers = "1.1.1.1,1.0.0.1" });
-        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options)).Outcome);
+        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(t, Facts, Options)).Outcome);
         Assert.Equal("1.1.1.1,1.0.0.1", RegistryValue.Read(fx.Registry, Hive.Machine, path, "NameServer").Data);
         Assert.True(fx.Engine.Revert(t).Success);
         Assert.Equal("", RegistryValue.Read(fx.Registry, Hive.Machine, path, "NameServer").Data);

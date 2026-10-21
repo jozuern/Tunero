@@ -26,7 +26,7 @@ public class ProgramPriorityTests
     {
         using var fx = new EngineFixture();
         var t = ProgramPriority.Tweak("game.exe", CpuPriority.AboveNormal, lowIo: false);
-        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options)).Outcome);
+        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(t, Facts, Options)).Outcome);
         var rule = Assert.Single(ProgramPriority.Read(fx.Registry));
         Assert.Equal(new PriorityRule("game.exe", CpuPriority.AboveNormal, false), rule);
         // Not flagged as a program redirect: no Debugger value.
@@ -37,7 +37,7 @@ public class ProgramPriorityTests
         using (var key = fx.Registry.Open(Hive.Machine, $@"{StartupScanner.Ifeo}\game.exe", writable: false)) Assert.Null(key);
 
         var low = ProgramPriority.Tweak("backup.exe", CpuPriority.Low, lowIo: true);
-        await fx.Engine.ApplyAsync(low, Facts, new HashSet<string>(), Options);
+        await fx.Engine.ApplyAsync(low, Facts, Options);
         Assert.Equal(new PriorityRule("backup.exe", CpuPriority.Low, true), Assert.Single(ProgramPriority.Read(fx.Registry)));
         // Undocumented, but proven in the VM: no longer a Preview, and the proof travels with the rule.
         Assert.True(low.Undocumented && !low.Preview && low.AntiCheatSensitive);
@@ -46,12 +46,12 @@ public class ProgramPriorityTests
 
         // The same program again without low disk priority: the earlier value goes, undo brings it back.
         var again = ProgramPriority.Tweak("backup.exe", CpuPriority.BelowNormal, lowIo: false);
-        await fx.Engine.ApplyAsync(again, Facts, new HashSet<string>(), Options);
+        await fx.Engine.ApplyAsync(again, Facts, Options);
         Assert.Equal(new PriorityRule("backup.exe", CpuPriority.BelowNormal, false), Assert.Single(ProgramPriority.Read(fx.Registry)));
 
         // Low memory priority: PagePriority 2 (MEMORY_PRIORITY_LOW), read back, and gone with the rule.
         var memory = ProgramPriority.Tweak("launcher.exe", CpuPriority.BelowNormal, lowIo: false, lowMemory: true);
-        await fx.Engine.ApplyAsync(memory, Facts, new HashSet<string>(), Options);
+        await fx.Engine.ApplyAsync(memory, Facts, Options);
         Assert.Equal(new StoredValue(true, "dword", "2"), RegistryValue.Read(fx.Registry, Hive.Machine, $@"{StartupScanner.Ifeo}\launcher.exe\PerfOptions", "PagePriority"));
         Assert.Contains(ProgramPriority.Read(fx.Registry), r => r == new PriorityRule("launcher.exe", CpuPriority.BelowNormal, false) { LowMemory = true });
         Assert.True(fx.Engine.Revert(memory).Success);
@@ -69,7 +69,7 @@ public class ProgramPriorityTests
         Assert.Equal(new PriorityRule("game.exe", null, false, 4), rule);
 
         var remove = ProgramPriority.RemoveTweak("game.exe");
-        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(remove, Facts, new HashSet<string>(), Options)).Outcome);
+        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(remove, Facts, Options)).Outcome);
         Assert.Empty(ProgramPriority.Read(fx.Registry));
         Assert.True(fx.Engine.Revert(remove).Success);
         Assert.Equal(4, Assert.Single(ProgramPriority.Read(fx.Registry)).OtherCpu);

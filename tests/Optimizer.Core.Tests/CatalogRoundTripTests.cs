@@ -56,11 +56,11 @@ public class CatalogRoundTripTests(ITestOutputHelper output)
         if (fx.Engine.DetectState(t, facts) == TweakState.Applied)
         {
             // A missing value already means the Windows default this tweak sets (Game Mode, TRIM): nothing to write.
-            Assert.Equal(ApplyOutcome.NothingToDo, (await fx.Engine.ApplyAsync(t, facts, new HashSet<string>(), Options)).Outcome);
+            Assert.Equal(ApplyOutcome.NothingToDo, (await fx.Engine.ApplyAsync(t, facts, Options)).Outcome);
             return;
         }
 
-        var result = await fx.Engine.ApplyAsync(t, facts, new HashSet<string>(), Options);
+        var result = await fx.Engine.ApplyAsync(t, facts, Options);
         Assert.True(result.Outcome is ApplyOutcome.Applied, $"{id}: {result.Outcome} {result.Error}");
         Assert.True(fx.Engine.DetectState(t, facts) is TweakState.Applied or TweakState.PendingRestart, $"{id}: not detected as applied");
 
@@ -86,7 +86,7 @@ public class CatalogRoundTripTests(ITestOutputHelper output)
         var facts = FactsFor(t);
         fx.Accessibility.Flags[AccessibilityFeature.StickyKeys] = 511; // Sticky Keys itself on: stays on
 
-        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(t, facts, new HashSet<string>(), Options)).Outcome);
+        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(t, facts, Options)).Outcome);
         Assert.Equal(507u, fx.Accessibility.Flags[AccessibilityFeature.StickyKeys]);
         Assert.Equal(122u, fx.Accessibility.Flags[AccessibilityFeature.FilterKeys]);
         Assert.Equal(58u, fx.Accessibility.Flags[AccessibilityFeature.ToggleKeys]);
