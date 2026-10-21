@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Optimizer.App.Services;
+using Optimizer.Core;
 using Optimizer.Core.Actions;
 using Optimizer.Core.Docs;
 using Optimizer.Core.Logging;
@@ -363,8 +364,7 @@ public sealed partial class NetworkViewModel(IPageHost owner, AppServices servic
                 await Owner.ScanCommand.ExecuteAsync(null);
                 // Undo brings back the servers from before, which may already be the choice (usually automatic).
                 var facts = Owner.Facts;
-                var applied = Owner.AppliedIds();
-                if ((await Task.Run(() => services.Engine.Detect(choice.Item.Tweak, facts, applied))).IsOn) return;
+                if ((await Task.Run(() => services.Engine.Detect(choice.Item.Tweak, facts))).IsOn) return;
             }
             await Owner.Runner.ApplyAsync(choice.Item.Tweak);
         }

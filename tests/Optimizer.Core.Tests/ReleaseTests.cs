@@ -157,25 +157,34 @@ public class ReleaseTests
     }
 
     /// <summary>
-    /// Every workflow and script that checks a release (winget, Chocolatey, the hand-run package scripts) checks the same
-    /// statement as the app, over the lowercase hash: a copy that drifted would accept or refuse other releases than the app.
+    /// Every workflow and script that signs or checks a release (release.yml signs, winget, Chocolatey and the hand-run
+    /// package scripts check) uses the same statement as the app, over the lowercase hash: a copy that drifted would accept
+    /// or refuse other releases than the app. The check itself lives once, in verify-release.ps1.
     /// </summary>
     [Fact]
     public void EveryReleaseCheckVerifiesTheAppsStatement()
     {
-        var files = Directory.EnumerateFiles(Path.Combine(RepoPaths.Root, ".github", "workflows"), "*.yml")
+        var workflows = Path.Combine(RepoPaths.Root, ".github", "workflows");
+        var files = Directory.EnumerateFiles(workflows, "*.yml")
             .Append(Path.Combine(RepoPaths.Root, "scripts", "verify-release.ps1"));
-        var checkers = 0;
+        var statements = new List<string>();
         foreach (var file in files)
         {
             var text = File.ReadAllText(file);
             if (!text.Contains("\"PCOptimizer $", StringComparison.Ordinal)) continue;
-            checkers++;
+            statements.Add(Path.GetFileName(file));
             var statement = System.Text.RegularExpressions.Regex.Match(text, "\"PCOptimizer \\$[^\"`]+`n\\$hash`n\"");
             Assert.True(statement.Success, $"{Path.GetFileName(file)}: the statement is not \"PCOptimizer <version>`n$hash`n\"");
             Assert.Contains(".Hash.ToLowerInvariant()", text);
         }
-        Assert.True(checkers >= 4, $"expected release.yml, winget.yml, chocolatey.yml and verify-release.ps1, found {checkers}");
+        Assert.Equal(new[] { "release.yml", "verify-release.ps1" }, statements.Order().ToArray());
+        // The workflows that check a release run the one check (release.yml on the files it just signed), no copy of it.
+        foreach (var workflow in new[] { "release.yml", "winget.yml", "chocolatey.yml" })
+        {
+            var text = File.ReadAllText(Path.Combine(workflows, workflow));
+            Assert.Contains("scripts/verify-release.ps1 -Version $env:TAG.TrimStart('v') -Folder ", text);
+            Assert.DoesNotContain("VerifyData", text);
+        }
         // The hand-run package scripts take their hash from the verified check, never from the .sha256 file alone.
         foreach (var script in new[] { "chocolatey-package.ps1", "scoop-manifest.ps1", "winget-manifest.ps1" })
         {

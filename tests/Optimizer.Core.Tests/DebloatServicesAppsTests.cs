@@ -397,6 +397,61 @@ public class DebloatServicesAppsTests
     }
 
     /// <summary>
+    /// Feature switch ids come from TweakIds.Slug now. A switch an earlier version made keeps its old id (the lowercase
+    /// feature name): the Features page still finds that backup, so switching back undoes it instead of making a second
+    /// change, and after the restart of the app the stored definition still undoes it.
+    /// </summary>
+    [Fact]
+    public async Task FeatureSwitchesOfEarlierVersionsAreStillFoundByTheirOldId()
+    {
+        using var fx = new EngineFixture();
+        var state = "Enabled";
+        fx.Processes.Handler = (file, args) =>
+        {
+            if (!file.Equals("dism.exe", StringComparison.OrdinalIgnoreCase)) return null;
+            if (args.Contains("/Get-FeatureInfo")) return (0, $"Feature Name : SMB1Protocol\r\nState : {state}\r\n");
+            if (args.Contains("/Enable-Feature")) { state = "Enabled"; return (0, ""); }
+            if (args.Contains("/Disable-Feature")) { state = "Disabled"; return (0, ""); }
+            return null;
+        };
+        var smb = new FeatureEntry { Name = "SMB1Protocol", Title = "SMB 1.0" };
+        var legacy = OptionalFeatureAction.LegacyTweakId(smb.Name, enabled: false);
+        Assert.Equal("feature.off.smb1protocol", legacy);
+        var current = OptionalFeatureAction.TweakId(smb.Name, enabled: false);
+        Assert.Equal("feature.off." + TweakIds.Slug("SMB1Protocol"), current);
+        Assert.Equal(current, OptionalFeatureAction.TweakId("smb1protocol", enabled: false)); // DISM names are case-insensitive
+        Assert.Equal(current, OptionalFeatureAction.Tweak(smb, enabled: false, fx.Store.Exists).Id);
+        Assert.Equal(current, OptionalFeatureAction.Tweak(smb, enabled: false).Id);
+
+        // What an earlier version applied: a backup under the old id.
+        var facts = new Facts().Set("os.build", 26300).Set("elevated", true);
+        var old = OptionalFeatureAction.Tweak(smb, enabled: false, id => id == legacy);
+        Assert.Equal(legacy, old.Id);
+        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(old, facts, new HashSet<string>(), new ApplyOptions { ContinueWithoutRestorePoint = true })).Outcome);
+        Assert.Equal("Disabled", state);
+
+        // The Features page builds the switch with the store's check: the old id, so the existing change is the one undone.
+        var built = OptionalFeatureAction.Tweak(smb, enabled: false, fx.Store.Exists);
+        Assert.Equal(legacy, built.Id);
+        Assert.True(fx.Store.Exists(built.Id));
+        Assert.Equal(TweakState.PendingRestart, fx.Engine.DetectState(built, facts)); // read from the old backup
+        // The other direction has no backup of either kind: the new id.
+        Assert.Equal(OptionalFeatureAction.TweakId(smb.Name, enabled: true), OptionalFeatureAction.Tweak(smb, enabled: true, fx.Store.Exists).Id);
+
+        // The app after a restart: the stored definition under the old id still undoes it.
+        var engine = new TweakEngine(fx.Context, new Backup.BackupStore(fx.BackupRoot, secure: false), fx.RestorePoints, "test", 26300);
+        Assert.Equal(legacy, engine.Resolve(legacy)?.Id);
+        Assert.True(fx.Engine.Revert(built).Success);
+        Assert.Equal("Enabled", state);
+        Assert.False(fx.Store.Exists(legacy));
+        Assert.Equal(current, OptionalFeatureAction.Tweak(smb, enabled: false, fx.Store.Exists).Id);
+
+        // When both ids have a backup, the current one wins.
+        Assert.Equal("new", TweakIds.OrLegacy("new", "old", _ => true));
+        Assert.Equal("new", TweakIds.OrLegacy("new", "old", null));
+    }
+
+    /// <summary>
     /// The uninstall guard looks at every OneDrive account: Documents moved into the work account (Business1) blocks
     /// it, even when the personal account is listed first. A scan that stops at its limit blocks too.
     /// </summary>

@@ -4,9 +4,10 @@
 # volunteer moderator, later ones usually not. choco offers the version once it is approved.
 #
 # The API key (chocolatey.org > Account > API Keys) is stored as secret CHOCOLATEY_API_KEY of the environment
-# "chocolatey", which only v*.*.* tags may use. No project code runs here. To push a release again (for example after a
-# failed run): Actions > chocolatey > Run workflow, "Use workflow from" the tag. A version that was pushed once cannot be
-# pushed again; fix the package with a fourth version segment (0.8.0.20261013) instead.
+# "chocolatey", which only v*.*.* tags may use. Of the project only scripts/verify-release.ps1 and
+# scripts/chocolatey-package.ps1 run here (no build). To push a release again (for example after a failed run):
+# Actions > chocolatey > Run workflow, "Use workflow from" the tag. A version that was pushed once cannot be pushed
+# again; fix the package with a fourth version segment (0.8.0.20261013) instead.
 
 name: chocolatey
 
@@ -42,12 +43,13 @@ jobs:
         GH_TOKEN: ${{ github.token }}
 
     # The package pins the exe's SHA-256: only an exe that matches the release's checksum, signed with the app's key for
-    # this version (the statement of UpdateSignature), is packaged. Same check as in winget.yml.
-    - name: Checkout the update key and the package script
+    # this version (the statement of UpdateSignature), is packaged. scripts/verify-release.ps1, as in winget.yml.
+    - name: Checkout the update key, the release check and the package script
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       with:
         sparse-checkout: |
           src/Optimizer.Core/Updates/update-key*.pem
+          scripts/verify-release.ps1
           scripts/chocolatey-package.ps1
         sparse-checkout-cone-mode: false
         path: repo
@@ -60,20 +62,7 @@ jobs:
       run: |
         gh release download $env:TAG --repo $env:GITHUB_REPOSITORY --dir assets --pattern Tunero.exe --pattern Tunero.exe.sha256 --pattern Tunero.exe.sig
         if ($LASTEXITCODE -ne 0) { Write-Error "release assets not downloaded"; exit 1 }
-        $hash = (Get-FileHash assets/Tunero.exe -Algorithm SHA256).Hash.ToLowerInvariant()
-        $listed = ((Get-Content -Raw assets/Tunero.exe.sha256) -split '\s+')[0].ToLowerInvariant()
-        if ($hash -ne $listed) { Write-Error "Tunero.exe has SHA-256 $hash, the release lists $listed"; exit 1 }
-        $statement = [System.Text.Encoding]::UTF8.GetBytes("PCOptimizer $($env:TAG.TrimStart('v'))`n$hash`n")
-        $signature = [Convert]::FromBase64String((Get-Content -Raw assets/Tunero.exe.sig).Trim())
-        $matched = $false
-        foreach ($pem in Get-ChildItem repo/src/Optimizer.Core/Updates -Filter 'update-key*.pem') {
-          $public = [System.Security.Cryptography.ECDsa]::Create()
-          try {
-            $public.ImportFromPem((Get-Content -Raw $pem.FullName))
-            if ($public.VerifyData($statement, $signature, [System.Security.Cryptography.HashAlgorithmName]::SHA256)) { $matched = $true }
-          } finally { $public.Dispose() }
-        }
-        if (-not $matched) { Write-Error "The release signature matches none of the app's update keys for $env:TAG"; exit 1 }
+        $hash = ./repo/scripts/verify-release.ps1 -Version $env:TAG.TrimStart('v') -Folder assets -KeyFolder repo/src/Optimizer.Core/Updates
         "SHA256=$hash" >> $env:GITHUB_ENV
         "Verified Tunero.exe SHA-256 $hash" | Out-File -Encoding utf8 -Append $env:GITHUB_STEP_SUMMARY
 

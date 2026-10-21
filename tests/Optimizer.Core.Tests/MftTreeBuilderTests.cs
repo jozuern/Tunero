@@ -145,7 +145,6 @@ public class MftTreeBuilderTests
         // extension record, and the data and most names sit in extension records that point back to it.
         var record = (uint)(Convert.ToUInt64(names[0].FileId, 16) & 0x0000_FFFF_FFFF_FFFF);
         var baseRecord = f.Records.Single(r => r.Number == record);
-        Assert.Empty(baseRecord.ExtensionReferences);
         Assert.Null(baseRecord.DataSize);
         Assert.True(baseRecord.Names.Count < 120);
 
@@ -228,9 +227,9 @@ public class MftTreeBuilderTests
     private static MftRecord Rec(uint number, uint parent, string name, bool folder = false, long? size = 0, long? allocated = 0,
         uint attributes = 0, uint reparseTag = 0, byte ns = 1, ushort sequence = 1) =>
         new(number, sequence, 0, folder, [new MftName(Ref(parent), name, ns)], folder ? null : size,
-            folder ? null : allocated, T, attributes, [], reparseTag);
+            folder ? null : allocated, T, attributes, reparseTag);
 
-    private static MftRecord FileRecord(uint number, params MftName[] names) => new(number, 1, 0, false, names, 1, 0, T, 0x20, [], 0);
+    private static MftRecord FileRecord(uint number, params MftName[] names) => new(number, 1, 0, false, names, 1, 0, T, 0x20, 0);
 
     private static ulong Ref(uint number, ushort sequence = 1) => (ulong)sequence << 48 | number;
 
@@ -263,7 +262,7 @@ public class MftTreeBuilderTests
             Root(),
             Rec(40, 5, "unrelated", folder: true, sequence: 2),
             Rec(41, 40, "phantom.txt", size: 100),
-            new MftRecord(42, 1, 0, false, [new MftName(Ref(40, 2), "current.txt", 1)], 7, 0, T, 0x20, [], 0),
+            new MftRecord(42, 1, 0, false, [new MftName(Ref(40, 2), "current.txt", 1)], 7, 0, T, 0x20, 0),
         ], @"X:\", TimeSpan.Zero);
 
         var folder = Assert.Single(t.Children(t.Root));
@@ -276,9 +275,9 @@ public class MftTreeBuilderTests
     public void AnExtensionRecordOfAnEarlierUseOfItsBaseIsNotFolded()
     {
         // Record 50 now holds an unrelated file (sequence 3); record 30 is a leftover extension of its earlier use.
-        var stale = new MftRecord(30, 1, Ref(50, 2), false, [new MftName(Ref(5), "old name.bin", 1)], 9000, 12288, default, 0, [], 0);
+        var stale = new MftRecord(30, 1, Ref(50, 2), false, [new MftName(Ref(5), "old name.bin", 1)], 9000, 12288, default, 0, 0);
         // Its own name is a POSIX link and its data is missing, so a wrongly folded Win32 name and data would show.
-        var current = new MftRecord(50, 3, 0, false, [new MftName(Ref(5), "new.txt", 0)], null, null, T, 0x20, [], 0);
+        var current = new MftRecord(50, 3, 0, false, [new MftName(Ref(5), "new.txt", 0)], null, null, T, 0x20, 0);
 
         var t = MftTreeBuilder.Build([Root(), stale, current], @"X:\", TimeSpan.Zero);
 
@@ -346,8 +345,8 @@ public class MftTreeBuilderTests
     public void ExtensionRecordsFoldIntoTheirBaseInAnyOrder()
     {
         // The extension record comes first and holds the data and the Win32 name; the base has only a POSIX link.
-        var extension = new MftRecord(30, 1, Ref(50), false, [new MftName(Ref(60), "second.bin", 1)], 9000, 12288, default, 0, [], 0);
-        var baseRecord = new MftRecord(50, 1, 0, false, [new MftName(Ref(61), "first.bin", 0)], null, null, T, 0x20, [], 0);
+        var extension = new MftRecord(30, 1, Ref(50), false, [new MftName(Ref(60), "second.bin", 1)], 9000, 12288, default, 0, 0);
+        var baseRecord = new MftRecord(50, 1, 0, false, [new MftName(Ref(61), "first.bin", 0)], null, null, T, 0x20, 0);
         var t = MftTreeBuilder.Build([
             extension, Root(), baseRecord, Rec(60, 5, "a", folder: true), Rec(61, 5, "b", folder: true),
         ], @"X:\", TimeSpan.Zero);
@@ -364,7 +363,7 @@ public class MftTreeBuilderTests
     [Fact]
     public void AFileWithoutDataTakesNoSpaceAndKeepsTheTotalsKnown()
     {
-        var noData = new MftRecord(40, 1, 0, false, [new MftName(Ref(5), "odd.bin", 1)], null, null, T, 0x20, [], 0);
+        var noData = new MftRecord(40, 1, 0, false, [new MftName(Ref(5), "odd.bin", 1)], null, null, T, 0x20, 0);
         var t = MftTreeBuilder.Build([Root(), noData, Rec(41, 5, "normal.bin", size: 100, allocated: 4096)], @"X:\", TimeSpan.Zero);
 
         var odd = t.Children(t.Root).Single(c => t.Name(c) == "odd.bin");

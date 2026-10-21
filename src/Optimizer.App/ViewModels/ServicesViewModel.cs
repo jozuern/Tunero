@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Optimizer.App.Services;
+using Optimizer.Core;
 using Optimizer.Core.Actions;
 using Optimizer.Core.Backup;
 using Optimizer.Core.Catalog;

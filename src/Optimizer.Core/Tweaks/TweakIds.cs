@@ -19,4 +19,13 @@ public static class TweakIds
         var hash = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(subject.ToUpperInvariant())))[..8];
         return readable.Length > 0 ? $"{readable}-{hash}" : hash;
     }
+
+    /// <summary>
+    /// The id for a subject whose id scheme changed: <paramref name="id"/>, unless only <paramref name="legacyId"/> has a
+    /// backup (a change made by an earlier version). Then the legacy id, so that change is still found and undone, and a
+    /// switch back undoes it instead of making a second change on top. A stored definition keeps its own id anyway, so
+    /// the change list, Undo all and the drift check need no fallback.
+    /// </summary>
+    public static string OrLegacy(string id, string legacyId, Func<string, bool>? hasBackup) =>
+        hasBackup is not null && id != legacyId && !hasBackup(id) && hasBackup(legacyId) ? legacyId : id;
 }

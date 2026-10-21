@@ -45,27 +45,6 @@
                     <StackPanel Style="{StaticResource EdgeContent}">
                         <!-- Quick fixes in three groups; the last one repairs Windows (system files, updates, drive) -->
                         <ui:TextBlock Style="{StaticResource SectionHeader}" Text="{l:Tr Quick_GroupNetwork}" Margin="0,0,0,8" />
-                        <ui:CardControl Padding="{StaticResource CardPadding}" Margin="{StaticResource CardRowMargin}">
-                            <ui:CardControl.Header>
-                                <StackPanel>
-                                    <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Quick_Dns}" />
-                                    <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Quick_DnsHint}" Margin="0,4,0,0" />
-                                </StackPanel>
-                            </ui:CardControl.Header>
-                            <ui:Button Content="{l:Tr Quick_DnsAction}" MinWidth="96" Command="{Binding Tools.FlushDnsCommand}" IsEnabled="{Binding Tools.IsWorking, Converter={StaticResource InverseBool}}" />
-                        </ui:CardControl>
-                        <ui:CardControl Padding="{StaticResource CardPadding}" Margin="{StaticResource CardRowMargin}">
-                            <ui:CardControl.Header>
-                                <StackPanel>
-                                    <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Quick_Winsock}" />
-                                    <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Quick_WinsockHint}" Margin="0,4,0,0" />
-                                    <Border Style="{StaticResource TagBorder}" Margin="0,6,0,0" Background="{DynamicResource SystemFillColorCautionBackgroundBrush}">
-                                        <TextBlock Text="{l:Tr Tag_Restart}" FontSize="12" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
-                                    </Border>
-                                </StackPanel>
-                            </ui:CardControl.Header>
-                            <ui:Button Content="{l:Tr Quick_WinsockAction}" MinWidth="96" Command="{Binding Tools.WinsockResetCommand}" IsEnabled="{Binding Tools.IsWorking, Converter={StaticResource InverseBool}}" />
-                        </ui:CardControl>
                         <v:ItemList ItemsSource="{Binding Tools.QuickNetworkRows}" ItemTemplate="{StaticResource QuickFixRow}" />
 
                         <ui:TextBlock Style="{StaticResource SectionHeader}" Text="{l:Tr Quick_GroupRestart}" />

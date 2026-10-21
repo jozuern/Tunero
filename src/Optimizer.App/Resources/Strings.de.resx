@@ -690,7 +690,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Quick_DnsHint" xml:space="preserve">
     <value>Leert zwischengespeicherte Namensauflösungen, zum Beispiel wenn eine Website oder ein Spielserver umgezogen ist.</value>
   </data>
-  <data name="Quick_DnsFlushed" xml:space="preserve">
+  <data name="Quick_DnsDone" xml:space="preserve">
     <value>DNS-Cache geleert.</value>
   </data>
   <data name="Quick_Explorer" xml:space="preserve">
@@ -711,10 +711,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Quick_WinsockHint" xml:space="preserve">
     <value>Repariert gestörte Netzwerkverbindungen durch fehlerhafte Netzwerk-Erweiterungen.</value>
   </data>
-  <data name="Quick_WinsockTitle" xml:space="preserve">
-    <value>Winsock zurücksetzen?</value>
-  </data>
-  <data name="Quick_WinsockText" xml:space="preserve">
+  <data name="Quick_WinsockConfirm" xml:space="preserve">
     <value>Setzt den Netzwerk-Socket-Katalog von Windows zurück. Manche VPN- oder Sicherheitsprogramme müssen danach eventuell neu installiert werden. Ein Neustart ist nötig.</value>
   </data>
   <data name="Quick_WinsockDone" xml:space="preserve">
@@ -1449,6 +1446,10 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Apps_FoundConfirmText" xml:space="preserve"><value>{0} ({1}) steht nicht auf Tuneros geprüfter Liste. winget lädt und installiert es so, wie sein Eintrag im Community-Verzeichnis es angibt, für den ganzen PC, wo das Paket das anbietet, sonst für dein Konto. Installiere es nur, wenn du dem Hersteller vertraust.</value></data>
   <data name="Quick_TabFixes" xml:space="preserve"><value>Hilfen und Reparatur</value></data>
   <data name="Tag_Restart" xml:space="preserve"><value>Neustart nötig</value></data>
+  <data name="Scroll_Up" xml:space="preserve"><value>Nach oben scrollen</value></data>
+  <data name="Scroll_Down" xml:space="preserve"><value>Nach unten scrollen</value></data>
+  <data name="Scroll_Left" xml:space="preserve"><value>Nach links scrollen</value></data>
+  <data name="Scroll_Right" xml:space="preserve"><value>Nach rechts scrollen</value></data>
   <data name="Quick_DnsAction" xml:space="preserve"><value>Leeren</value></data>
   <data name="Quick_WinsockAction" xml:space="preserve"><value>Winsock zurücksetzen</value></data>
   <data name="Quick_ExplorerAction" xml:space="preserve"><value>Neu starten</value></data>

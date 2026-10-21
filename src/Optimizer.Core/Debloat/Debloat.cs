@@ -28,7 +28,7 @@ public sealed class AppxCatalog
         : string.Equals(pattern, name, StringComparison.OrdinalIgnoreCase);
 }
 
-public sealed class AppxEntry
+public sealed class AppxEntry : IBilingual
 {
     public string Name { get; init; } = "";
 
@@ -61,8 +61,7 @@ public sealed class AppxEntry
 
     public bool CanReinstall => Reinstall != "none";
 
-    public string Text(string lang) => lang == "de" && De.Length > 0 ? De : En;
-    public string Label(string lang) => lang == "de" && TitleDe.Length > 0 ? TitleDe : Title.Length > 0 ? Title : Name;
+    public string Label(string lang) => Bilingual.Pick(lang, Title.Length > 0 ? Title : Name, TitleDe);
 }
 
 public sealed record InstalledAppx(string Name, string FamilyName, string Version, bool NonRemovable);

@@ -31,6 +31,9 @@
 - **Tools' temporary folder:** a renamed copy no longer empties it while another Tunero still uses it.
 - **Install & update:** a winget search or update check that gets no answer stops after five minutes with an error instead of waiting forever.
 - **Benchmark:** a PresentMon capture that does not end on its own is stopped a minute after its capture time and not kept.
+- **Screen readers:** scroll bar arrows are read as "Scroll up" and "Scroll down" instead of icon names.
+- **Windows features:** a switch made by an earlier version is still found, so switching back undoes it.
+- **Tools:** Flush DNS cache and Reset Winsock work like the other quick fixes; the Winsock confirmation carries the card's title.
 
 ## 1.4.0
 

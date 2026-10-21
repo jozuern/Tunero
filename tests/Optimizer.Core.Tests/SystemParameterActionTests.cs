@@ -19,7 +19,7 @@ public class SystemParameterActionTests
         var t = TweakCatalog.Current.Tweaks.Single(x => x.Id == id);
         Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(t, Facts, new HashSet<string>(), Options)).Outcome);
         Assert.Equal(value, fx.SystemParameters.Values[parameter]);
-        Assert.Equal(TweakState.Applied, fx.Engine.Detect(t, Facts, new HashSet<string>()).State);
+        Assert.Equal(TweakState.Applied, fx.Engine.Detect(t, Facts).State);
 
         Assert.True(fx.Engine.Revert(t).Success);
         Assert.Equal(250u, fx.SystemParameters.Values[parameter]);

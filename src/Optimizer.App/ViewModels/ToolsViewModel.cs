@@ -4,6 +4,7 @@ using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Optimizer.App.Services;
+using Optimizer.Core;
 using Optimizer.Core.Apps;
 using Optimizer.Core.Backup;
 using Optimizer.Core.Catalog;
@@ -39,7 +40,7 @@ public sealed partial class FeatureRow : SwitchRow
     public string? Note { get; }
 
     protected override Task<bool> ToggleAsync(bool on) => Switching.SetAsync(_services, _runner,
-        enabled => Entry.Capability ? OptionalCapabilityAction.Tweak(Entry, enabled) : OptionalFeatureAction.Tweak(Entry, enabled), on);
+        enabled => Entry.Capability ? OptionalCapabilityAction.Tweak(Entry, enabled) : OptionalFeatureAction.Tweak(Entry, enabled, _services.Store.Exists), on);
 }
 
 public sealed record StepRow(string Text, bool Ok, string? Detail)
@@ -134,7 +135,7 @@ public sealed partial class ToolsViewModel(IPageHost owner, AppServices services
     [ObservableProperty] private IReadOnlyList<QuickFixRow> _quickFixRows = QuickFixes.All.Select(f => new QuickFixRow(f)).ToList();
 
     // The page shows the quick fixes in three groups: network, restart a part of Windows, repair Windows.
-    private static readonly string[] NetworkFixes = ["IpRenew", "TcpIpReset"];
+    private static readonly string[] NetworkFixes = ["Dns", "Winsock", "IpRenew", "TcpIpReset"];
     private static readonly string[] RestartFixes = ["AudioRestart", "BluetoothRestart", "SearchRestart", "GraphicsRestart"];
 
     public IEnumerable<QuickFixRow> QuickNetworkRows => QuickFixRows.Where(r => NetworkFixes.Contains(r.Fix.Id));
@@ -196,13 +197,6 @@ public sealed partial class ToolsViewModel(IPageHost owner, AppServices services
             Owner.ShowResult(ok ? Loc.Instance["Repair_Done"] : Loc.Instance["Repair_Partial"], ok ? Wpf.Ui.Controls.InfoBarSeverity.Success : Wpf.Ui.Controls.InfoBarSeverity.Warning);
         });
     }
-
-    [RelayCommand]
-    private Task FlushDnsAsync() => RunWorkAsync("flush dns", async () =>
-    {
-        var (code, output) = await Task.Run(() => services.Context.Processes.Run("ipconfig.exe", "/flushdns"));
-        ShowQuickResult(code == 0, Loc.Instance["Quick_DnsFlushed"], output);
-    });
 
     [RelayCommand]
     private async Task RestartExplorerAsync()
@@ -282,17 +276,6 @@ public sealed partial class ToolsViewModel(IPageHost owner, AppServices services
     private void ShowQuickResult(bool ok, string done, string output) =>
         Owner.ShowResult(ok ? done : Loc.Instance.Format("Result_Error", output.Trim()),
             ok ? Wpf.Ui.Controls.InfoBarSeverity.Success : Wpf.Ui.Controls.InfoBarSeverity.Error);
-
-    [RelayCommand]
-    private async Task WinsockResetAsync()
-    {
-        if (!dialogs.Ask(Loc.Instance["Quick_WinsockTitle"], Loc.Instance["Quick_WinsockText"], Loc.Instance["Quick_Winsock"])) return;
-        await RunWorkAsync("winsock reset", async () =>
-        {
-            var (code, output) = await Task.Run(() => services.Context.Processes.Run("netsh.exe", "winsock reset"));
-            ShowQuickResult(code == 0, Loc.Instance["Quick_WinsockDone"], output);
-        });
-    }
 }
 
 /// <summary>A start priority rule found in Image File Execution Options.</summary>

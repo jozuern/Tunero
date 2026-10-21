@@ -172,7 +172,7 @@ public sealed class ChangeRunner(AppServices services, IDialogs dialogs, Func<Fa
         ChangeLogText.Remember(t);
         var applied = appliedIds();
         var currentFacts = facts();
-        var status = await Task.Run(() => services.Engine.Detect(t, currentFacts, applied));
+        var status = await Task.Run(() => services.Engine.Detect(t, currentFacts));
         var request = ConfirmRequestFor(t, status, expertMode(), Title(t), Summary(t), await Task.Run(() => services.Engine.Preview(t)));
         var confirm = dialogs.ConfirmApply(request);
         if (confirm is null) return false;

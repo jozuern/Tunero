@@ -16,7 +16,7 @@ public class WingetPackageTests
     [InlineData(@"C:\Users\a\AppData\Local\Microsoft\WinGet\Packages\jozuern.PCOptimizerBeta_x\Tunero.exe", false)]
     [InlineData(@"C:\Users\a\AppData\Local\Microsoft\WinGet\Packages\Other.App_Microsoft.Winget.Source_8wekyb3d8bbwe\Tunero.exe", false)]
     public void RecognizesTheWingetPackageFolder(string exe, bool expected) =>
-        Assert.Equal(expected, WingetPackage.IsInstalledWithWinget(exe));
+        Assert.Equal(expected, WingetPackage.PackageFolder(exe) is not null);
 
     [Theory]
     [InlineData("plain", "'plain'")]

@@ -9,7 +9,7 @@ public sealed class FeatureCatalog
     public List<FeatureEntry> Features { get; init; } = [];
 }
 
-public sealed class FeatureEntry
+public sealed class FeatureEntry : IBilingual
 {
     /// <summary>DISM feature name.</summary>
     public string Name { get; init; } = "";
@@ -28,8 +28,7 @@ public sealed class FeatureEntry
     /// <summary>"off" = recommended off (e.g. SMB1), "on" = needed by games when off, null = your choice.</summary>
     public string? Recommend { get; init; }
 
-    public string Text(string lang) => lang == "de" && De.Length > 0 ? De : En;
-    public string Label(string lang) => lang == "de" && TitleDe.Length > 0 ? TitleDe : Title;
+    public string Label(string lang) => Bilingual.Pick(lang, Title, TitleDe);
 }
 
 /// <summary>
@@ -115,10 +114,19 @@ public sealed partial class OptionalFeatureAction : TweakAction
     [GeneratedRegex(@"^State\s*:\s*(Enabled|Disabled|Enable Pending|Disable Pending|Disabled with Payload Removed)", RegexOptions.Multiline | RegexOptions.IgnoreCase)]
     private static partial Regex StateRegex();
 
-    /// <summary>Engine tweak for one feature switch (backup, undo, restart badge).</summary>
-    public static TweakDefinition Tweak(FeatureEntry f, bool enabled) => new()
+    /// <summary>The id of a feature switch: the feature name as <see cref="TweakIds.Slug"/> makes it.</summary>
+    public static string TweakId(string feature, bool enabled) => $"feature.{(enabled ? "on" : "off")}.{TweakIds.Slug(feature)}";
+
+    /// <summary>The id earlier versions gave a feature switch (the lowercase feature name); their backups keep it.</summary>
+    public static string LegacyTweakId(string feature, bool enabled) => $"feature.{(enabled ? "on" : "off")}.{feature.ToLowerInvariant()}";
+
+    /// <summary>
+    /// Engine tweak for one feature switch (backup, undo, restart badge). With <paramref name="hasBackup"/> (the backup
+    /// store's check) a switch an earlier version made keeps its old id, so it is found, undone and never made twice.
+    /// </summary>
+    public static TweakDefinition Tweak(FeatureEntry f, bool enabled, Func<string, bool>? hasBackup = null) => new()
     {
-        Id = $"feature.{(enabled ? "on" : "off")}.{f.Name.ToLowerInvariant()}",
+        Id = TweakIds.OrLegacy(TweakId(f.Name, enabled), LegacyTweakId(f.Name, enabled), hasBackup),
         Docs = "feature.change",
         Subject = f.Title,
         Category = "Features",

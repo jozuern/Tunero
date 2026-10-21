@@ -11,7 +11,9 @@ public sealed record QuickFixStep(string File, string Arguments, TimeSpan? Timeo
 /// <summary>
 /// A repair that runs documented Windows commands and changes nothing that needs an undo: it restarts a service or
 /// device, renews or resets network state, or rebuilds a Windows cache. Text lives in the app's string resources
-/// (Quick_{Id}, Quick_{Id}Hint, Quick_{Id}Confirm, Quick_{Id}Done).
+/// (Quick_{Id}, Quick_{Id}Hint, Quick_{Id}Action, Quick_{Id}Confirm, Quick_{Id}Done). Every command-only repair of the
+/// Tools page is one of these; only Restart Explorer and the icon cache reset have their own code (Explorer must start
+/// again as the signed-in user, not elevated).
 /// </summary>
 public sealed record QuickFix(string Id, bool Confirm, bool NeedsRestart, IReadOnlyList<QuickFixStep> Steps, string Source)
 {
@@ -26,6 +28,11 @@ public static class QuickFixes
     public static IReadOnlyList<QuickFix> All { get; } =
     [
         // ipconfig: https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/ipconfig
+        new("Dns", Confirm: false, NeedsRestart: false, [new("ipconfig.exe", "/flushdns")],
+            "https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/ipconfig"),
+        // Resets the Winsock catalog to a clean state (removes added layered service providers); needs a restart.
+        new("Winsock", Confirm: true, NeedsRestart: true, [new("netsh.exe", "winsock reset")],
+            "https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/netsh-winsock"),
         new("IpRenew", Confirm: true, NeedsRestart: false,
             [new("ipconfig.exe", "/release"), new("ipconfig.exe", "/renew", TimeSpan.FromMinutes(2), AlwaysRun: true)],
             "https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/ipconfig"),

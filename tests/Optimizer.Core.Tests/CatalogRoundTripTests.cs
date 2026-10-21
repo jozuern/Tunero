@@ -43,7 +43,7 @@ public class CatalogRoundTripTests(ITestOutputHelper output)
         var facts = FactsFor(t);
         var before = t.Actions.Select(a => a.Read(fx.Context)).ToList();
 
-        var blocks = fx.Engine.Preflight(t, facts, new HashSet<string>(), Options);
+        var blocks = fx.Engine.Preflight(t, facts, Options);
         if (blocks.Count > 0)
         {
             // Only tweaks whose guard needs something the sandbox facts do not have (covered by their own tests) may be

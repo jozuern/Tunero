@@ -38,7 +38,6 @@ public class MftParserTests
         Assert.Equal(T, r.LastWriteUtc);
         Assert.Equal(DateTimeKind.Utc, r.LastWriteUtc.Kind);
         Assert.Equal(0x20u, r.FileAttributes);
-        Assert.Empty(r.ExtensionReferences);
     }
 
     [Fact]
@@ -220,7 +219,7 @@ public class MftParserTests
     }
 
     [Fact]
-    public void ReadsAttributeListReferences()
+    public void ParsesARecordWithAnAttributeList()
     {
         const ulong ext41 = 0x0002_0000_0000_0029, ext42 = 0x0003_0000_0000_002A, ext43 = 0x0001_0000_0000_002B;
         const ulong self = 0x0001_0000_0000_0028;
@@ -240,7 +239,7 @@ public class MftParserTests
             .Build(), number: 40);
 
         Assert.NotNull(r);
-        Assert.Equal(new[] { ext41, ext42 }, r.ExtensionReferences);
+        Assert.Equal(new[] { new MftName(RootRef, "many links.txt", 1) }, r.Names);
         Assert.Null(r.DataSize); // the data sits in an extension record
     }
 

@@ -10,7 +10,7 @@ public sealed class AppCatalog
     public List<AppEntry> Apps { get; init; } = [];
 }
 
-public sealed class AppEntry
+public sealed class AppEntry : IBilingual
 {
     public string Id { get; init; } = "";
     public string Name { get; init; } = "";
@@ -38,7 +38,6 @@ public sealed class AppEntry
     public string En { get; init; } = "";
     public string De { get; init; } = "";
 
-    public string Text(string lang) => lang == "de" && De.Length > 0 ? De : En;
 
     public bool IsInstalled(IEnumerable<InstalledProgram> programs) =>
         Detect.Length > 1 && programs.Any(p => Regex.IsMatch(p.Name, Detect, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)));

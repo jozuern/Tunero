@@ -82,6 +82,7 @@ public partial class App : Application
         // a command (SelectableCard, the Tweaks group headers set Focusable). Not as a style for the card type: that
         // replaces WPF-UI's own and loses its template.
         UIElement.FocusableProperty.OverrideMetadata(typeof(CardControl), new FrameworkPropertyMetadata(false));
+        ScrollBarNames.Register();
         StartAsync(e);
     }
 
@@ -453,7 +454,7 @@ public partial class App : Application
         // Developer aid: render the confirmation dialog of a tweak without applying anything.
         if (args.Value("--confirm") is { } confirmId && services.Catalog.Get(confirmId) is { } ct && args.Value("--confirm-shot") is { } confirmShot)
         {
-            var request = ChangeRunner.ConfirmRequestFor(ct, services.Engine.Detect(ct, vm.Facts, vm.AppliedIds()), vm.ExpertMode,
+            var request = ChangeRunner.ConfirmRequestFor(ct, services.Engine.Detect(ct, vm.Facts), vm.ExpertMode,
                 vm.Runner.Title(ct), vm.Runner.Summary(ct), services.Engine.Preview(ct));
             var dlg = new ConfirmWindow(request) { Owner = window };
             KeepOffScreen(dlg);

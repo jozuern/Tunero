@@ -3,6 +3,7 @@ using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Optimizer.App.Services;
+using Optimizer.Core;
 using Optimizer.Core.Apps;
 using Optimizer.Core.Catalog;
 using Optimizer.Core.Docs;

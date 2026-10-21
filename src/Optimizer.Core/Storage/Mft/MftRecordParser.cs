@@ -17,12 +17,11 @@ public sealed record MftName(ulong ParentReference, string Name, byte Namespace)
 /// and the base record's file reference for an extension record. Data sizes are null when the record holds no unnamed
 /// $DATA with sizes (a folder, or the stream lives in an extension record); resident data occupies no clusters, so its
 /// allocated size is 0. <paramref name="LastWriteUtc"/> is default when the record has no valid
-/// $STANDARD_INFORMATION time. <paramref name="ExtensionReferences"/> are the other records a resident
-/// $ATTRIBUTE_LIST names for $FILE_NAME or unnamed $DATA. <paramref name="ReparseTag"/> is the tag of a resident
-/// $REPARSE_POINT in this record, 0 when there is none or it is non-resident.
+/// $STANDARD_INFORMATION time. <paramref name="ReparseTag"/> is the tag of a resident $REPARSE_POINT in this record, 0
+/// when there is none or it is non-resident.
 /// </summary>
 public sealed record MftRecord(uint Number, ushort Sequence, ulong BaseReference, bool IsFolder, IReadOnlyList<MftName> Names, long? DataSize,
-    long? DataAllocated, DateTime LastWriteUtc, uint FileAttributes, IReadOnlyList<ulong> ExtensionReferences, uint ReparseTag);
+    long? DataAllocated, DateTime LastWriteUtc, uint FileAttributes, uint ReparseTag);
 
 /// <summary>One segment of a non-resident unnamed $DATA: the VCNs it maps and their runs on the volume.</summary>
 internal sealed record MftDataSegment(long LowestVcn, long HighestVcn, IReadOnlyList<(long Lcn, long Clusters)> Runs);
@@ -46,7 +45,6 @@ public static class MftRecordParser
 {
     /// <summary>NTFS protects multisector structures in strides of 512 bytes whatever the sector size (MULTI_SECTOR_HEADER).</summary>
     private const int Stride = 512;
-    private const ulong RecordNumberMask = 0x0000_FFFF_FFFF_FFFF;
     private const uint StandardInformation = 0x10, AttributeList = 0x20, FileName = 0x30, Data = 0x80, ReparsePoint = 0xC0,
         End = 0xFFFF_FFFF;
     private const ushort InUse = 0x0001, Directory = 0x0002;
@@ -65,7 +63,7 @@ public static class MftRecordParser
         if (!Walk(record, bytesPerSector, number, ref f)) return null;
         return new MftRecord(number, f.Sequence, f.BaseReference, f.IsFolder, (IReadOnlyList<MftName>?)f.Names ?? [],
             f.HasData ? f.DataSize : null, f.HasData ? f.DataAllocated : null, MftTable.Time(f.LastWriteTicks), f.Attributes,
-            (IReadOnlyList<ulong>?)f.Extensions ?? [], f.ReparseTag);
+            f.ReparseTag);
     }
 
     /// <summary>
@@ -99,7 +97,7 @@ public static class MftRecordParser
 
     private const byte PosixNamespace = 0, DosNamespace = 2;
 
-    /// <summary>One record's fields as the attribute walk finds them. The names and extension references are collected only for <see cref="Parse"/>.</summary>
+    /// <summary>One record's fields as the attribute walk finds them. The names are collected only for <see cref="Parse"/>.</summary>
     private struct Fields
     {
         public bool Collect;
@@ -109,7 +107,6 @@ public static class MftRecordParser
         public long DataSize, DataAllocated, LastWriteTicks;
         public uint Attributes, ReparseTag;
         public List<MftName>? Names;
-        public List<ulong>? Extensions;
         /// <summary>The best name so far (first of the highest rank): where its characters start in the record.</summary>
         public int NameAt, NameChars;
         public byte NameRank;
@@ -183,7 +180,7 @@ public static class MftRecordParser
                         f.Attributes = U32(value, 0x20);
                         break;
                     case AttributeList:
-                        if (!ReadAttributeList(value, number, f.Collect, ref f.Extensions)) return false;
+                        if (!IsAttributeList(value)) return false;
                         break;
                     case FileName:
                         // FILE_NAME: parent at 0x00, name length (characters) at 0x40, namespace at 0x41, name at 0x42.
@@ -337,11 +334,11 @@ public static class MftRecordParser
     }
 
     /// <summary>
-    /// ATTRIBUTE_LIST_ENTRY records: type at 0x00, length at 0x04, name length at 0x06, segment reference at 0x10. Keeps
-    /// the distinct other records that hold a $FILE_NAME or the unnamed $DATA.
+    /// Whether a resident $ATTRIBUTE_LIST is well formed: ATTRIBUTE_LIST_ENTRY records of at least 0x1A bytes, each with
+    /// its length at 0x04, that end exactly at the end of the list. A record with a broken list is malformed.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-    private static bool ReadAttributeList(ReadOnlySpan<byte> list, uint number, bool collect, ref List<ulong>? extensions)
+    private static bool IsAttributeList(ReadOnlySpan<byte> list)
     {
         var pos = 0;
         while (pos < list.Length)
@@ -349,13 +346,6 @@ public static class MftRecordParser
             if (list.Length - pos < 0x1A) return false;
             int length = U16(list, pos + 4);
             if (length < 0x1A || length > list.Length - pos) return false;
-            var type = U32(list, pos);
-            var reference = U64(list, pos + 0x10);
-            if (collect && (type == FileName || (type == Data && list[pos + 6] == 0)) && (reference & RecordNumberMask) != number)
-            {
-                extensions ??= new List<ulong>(2);
-                if (!extensions.Contains(reference)) extensions.Add(reference);
-            }
             pos += length;
         }
         return true;

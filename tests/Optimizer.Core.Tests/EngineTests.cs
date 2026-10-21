@@ -143,15 +143,14 @@ public class EngineTests
     public void GuardRulesBlock()
     {
         using var fx = new EngineFixture();
-        var none = new HashSet<string>();
         var opts = new ApplyOptions { ExpertMode = true };
 
-        Assert.Contains(fx.Engine.Preflight(T("security.vbsOff"), Facts(f => f.Set("anticheat.strict", true)), none, opts), b => b.ReasonKey == "block.antiCheat");
-        Assert.DoesNotContain(fx.Engine.Preflight(T("security.vbsOff"), Facts(f => f.Set("anticheat.strict", true)), none, new ApplyOptions { ExpertMode = true, AcknowledgeAntiCheat = true }), b => b.ReasonKey == "block.antiCheat");
-        Assert.Contains(fx.Engine.Preflight(T("power.gamingPlan"), Facts(f => f.Set("cpu.x3dMultiCcd", true)), none, opts), b => b.ReasonKey == "block.x3dBalanced");
-        Assert.Contains(fx.Engine.Preflight(T("leftover.usePlatformClock"), Facts(), none, new ApplyOptions()), b => b.ReasonKey == "block.expertMode");
-        Assert.Contains(fx.Engine.Preflight(T("gpu.hags"), Facts(f => f.Set("elevated", false)), none, opts), b => b.ReasonKey == "block.notElevated");
-        Assert.Contains(fx.Engine.Preflight(T("power.hibernateOff"), Facts(f => f.Set("power.modernStandby", true).Set("system.laptop", true)), none, opts), b => b.ReasonKey == "block.modernStandbyHibernate");
+        Assert.Contains(fx.Engine.Preflight(T("security.vbsOff"), Facts(f => f.Set("anticheat.strict", true)), opts), b => b.ReasonKey == "block.antiCheat");
+        Assert.DoesNotContain(fx.Engine.Preflight(T("security.vbsOff"), Facts(f => f.Set("anticheat.strict", true)), new ApplyOptions { ExpertMode = true, AcknowledgeAntiCheat = true }), b => b.ReasonKey == "block.antiCheat");
+        Assert.Contains(fx.Engine.Preflight(T("power.gamingPlan"), Facts(f => f.Set("cpu.x3dMultiCcd", true)), opts), b => b.ReasonKey == "block.x3dBalanced");
+        Assert.Contains(fx.Engine.Preflight(T("leftover.usePlatformClock"), Facts(), new ApplyOptions()), b => b.ReasonKey == "block.expertMode");
+        Assert.Contains(fx.Engine.Preflight(T("gpu.hags"), Facts(f => f.Set("elevated", false)), opts), b => b.ReasonKey == "block.notElevated");
+        Assert.Contains(fx.Engine.Preflight(T("power.hibernateOff"), Facts(f => f.Set("power.modernStandby", true).Set("system.laptop", true)), opts), b => b.ReasonKey == "block.modernStandbyHibernate");
     }
 
     [Fact]
@@ -163,7 +162,7 @@ public class EngineTests
         var gaming = T("power.gamingPlan");
         Assert.Equal(TweakState.Applied, fx.Engine.DetectState(balanced, Facts()));
         var applied = new HashSet<string> { balanced.Id };
-        Assert.DoesNotContain(fx.Engine.Preflight(gaming, Facts(), applied, Expert), b => b.ReasonKey == "block.conflict");
+        Assert.DoesNotContain(fx.Engine.Preflight(gaming, Facts(), Expert), b => b.ReasonKey == "block.conflict");
 
         Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(gaming, Facts(), applied, Expert)).Outcome);
         Assert.Equal("Tunero Gaming", fx.Power.SchemeNames[fx.Power.Active]);

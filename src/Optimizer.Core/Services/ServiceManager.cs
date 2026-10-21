@@ -12,7 +12,7 @@ public sealed class ServiceCatalog
     public ServiceNote? Find(string name) => Services.FirstOrDefault(s => string.Equals(s.Name, name, StringComparison.OrdinalIgnoreCase));
 }
 
-public sealed class ServiceNote
+public sealed class ServiceNote : IBilingual
 {
     public string Name { get; init; } = "";
 
@@ -22,7 +22,6 @@ public sealed class ServiceNote
     public string En { get; init; } = "";
     public string De { get; init; } = "";
 
-    public string Text(string lang) => lang == "de" && De.Length > 0 ? De : En;
 }
 
 public enum ServiceEdit { ReadOnly, ManualOnly, Full }

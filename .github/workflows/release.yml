@@ -12,8 +12,8 @@
 # removes Tunero-unsigned.exe.
 #
 # Two jobs on purpose: the build job runs third-party package code (restore, build, tests) with a read-only token and
-# without the signing key; only the release job, which builds nothing and runs no package code (its only script from the
-# repository is scripts/check-signed-build.ps1), gets write access and the key.
+# without the signing key; only the release job, which builds nothing and runs no package code (its only scripts from the
+# repository are scripts/check-signed-build.ps1 and scripts/verify-release.ps1), gets write access and the key.
 # Actions are pinned to commit SHAs; to update one, look up the new tag's commit (gh api repos/<action>/commits/<tag> --jq .sha).
 
 name: Release
@@ -135,15 +135,16 @@ jobs:
         name: release-exe
         path: release
 
-    # Only the public keys the app checks updates with, the changelog for the notes and the check of a signed exe (no
-    # build and no package code runs in this job).
-    - name: Get the app's update keys, the changelog and the signature check
+    # Only the public keys the app checks updates with, the changelog for the notes, the check of a signed exe and the
+    # release check (no build and no package code runs in this job).
+    - name: Get the app's update keys, the changelog and the checks
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       with:
         sparse-checkout: |
           src/Optimizer.Core/Updates/update-key*.pem
           CHANGELOG.md
           scripts/check-signed-build.ps1
+          scripts/verify-release.ps1
         sparse-checkout-cone-mode: false
         path: key
         persist-credentials: false
@@ -197,19 +198,19 @@ jobs:
           $ecdsa.ImportFromPem($env:UPDATE_SIGNING_KEY)
           $signature = $ecdsa.SignData($statement, [System.Security.Cryptography.HashAlgorithmName]::SHA256)
         } finally { $ecdsa.Dispose() }
-        # A secret from another key would ship a release every installed copy rejects: check against the app's keys (the
-        # release key update-key.pem and the offline backup key update-key-backup.pem, used only if the first is lost).
-        $matched = $false
-        foreach ($pem in Get-ChildItem key/src/Optimizer.Core/Updates -Filter 'update-key*.pem') {
-          $public = [System.Security.Cryptography.ECDsa]::Create()
-          try {
-            $public.ImportFromPem((Get-Content -Raw $pem.FullName))
-            if ($public.VerifyData($statement, $signature, [System.Security.Cryptography.HashAlgorithmName]::SHA256)) { $matched = $true }
-          } finally { $public.Dispose() }
-        }
-        if (-not $matched) { Write-Error "The signature matches none of the app's update keys: UPDATE_SIGNING_KEY is not the app's key"; exit 1 }
         [Convert]::ToBase64String($signature) | Set-Content -Encoding ascii release/Tunero.exe.sig
         "SHA-256: $hash" | Out-File -Encoding utf8 -Append $env:GITHUB_STEP_SUMMARY
+
+    # A secret from another key would ship a release every installed copy rejects: the files just written must pass the
+    # check winget.yml and chocolatey.yml run later (scripts/verify-release.ps1), against the app's keys (the release key
+    # update-key.pem and the offline backup key update-key-backup.pem, used only if the first is lost). A step of its
+    # own, so the script never sees the signing key.
+    - name: Check the update signature
+      if: steps.mode.outputs.mode != 'await-signature'
+      shell: pwsh
+      run: |
+        try { $null = ./key/scripts/verify-release.ps1 -Version $env:TAG.TrimStart('v') -Folder release -KeyFolder key/src/Optimizer.Core/Updates }
+        catch { Write-Error "UPDATE_SIGNING_KEY is not the app's key: $($_.Exception.Message)"; exit 1 }
 
     - name: Draft release
       if: steps.mode.outputs.mode != 'signed'

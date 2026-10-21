@@ -12,15 +12,12 @@ public static class WingetPackage
     public const string LegacyId = "jozuern.PCOptimizer";
 
     /// <summary>
-    /// winget keeps a portable package in a folder named after the package id, with the source appended for a source
+    /// Name of the package folder the exe sits in, or null when it is not one. winget keeps a portable package in a folder
+    /// named after the package id, with the source appended for a source
     /// ("jozuern.PCOptimizer_Microsoft.Winget.Source_8wekyb3d8bbwe"), under a root its settings can move. Started through
-    /// the command link in WinGet\Links, the path is the link's: it is followed to the file first.
-    /// </summary>
-    public static bool IsInstalledWithWinget(string exePath) => PackageFolder(exePath) is not null;
-
-    /// <summary>
-    /// Name of the package folder the exe sits in, or null when it is not one. winget registers a portable package in
-    /// Installed apps under this name, so it is also the product code that finds the installation, from any source.
+    /// the command link in WinGet\Links, the path is the link's: it is followed to the file first. winget registers a
+    /// portable package in Installed apps under this name, so it is also the product code that finds the installation,
+    /// from any source.
     /// </summary>
     public static string? PackageFolder(string exePath)
     {

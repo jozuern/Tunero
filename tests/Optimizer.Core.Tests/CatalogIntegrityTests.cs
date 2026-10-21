@@ -275,9 +275,9 @@ public partial class CatalogIntegrityTests(ITestOutputHelper output)
         };
         using var fx = new EngineFixture();
         var known = new Facts().Set("os.build", 26300).Set("elevated", true).Set("power.modernStandby", false);
-        Assert.Empty(fx.Engine.Preflight(t, known, new HashSet<string>(), new ApplyOptions { ExpertMode = true }));
+        Assert.Empty(fx.Engine.Preflight(t, known, new ApplyOptions { ExpertMode = true }));
         var unknown = new Facts().Set("os.build", 26300).Set("elevated", true); // the power probe failed
-        Assert.Contains(fx.Engine.Preflight(t, unknown, new HashSet<string>(), new ApplyOptions { ExpertMode = true }), b => b.ReasonKey == "block.cannotCheck");
+        Assert.Contains(fx.Engine.Preflight(t, unknown, new ApplyOptions { ExpertMode = true }), b => b.ReasonKey == "block.cannotCheck");
     }
 
     [GeneratedRegex(@"\.Set\(""([\w.]+)""")]

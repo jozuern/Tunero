@@ -690,7 +690,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Quick_DnsHint" xml:space="preserve">
     <value>Clears cached name lookups, for example when a website or game server moved.</value>
   </data>
-  <data name="Quick_DnsFlushed" xml:space="preserve">
+  <data name="Quick_DnsDone" xml:space="preserve">
     <value>DNS cache flushed.</value>
   </data>
   <data name="Quick_Explorer" xml:space="preserve">
@@ -711,10 +711,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Quick_WinsockHint" xml:space="preserve">
     <value>Repairs broken network connections caused by faulty network add-ons.</value>
   </data>
-  <data name="Quick_WinsockTitle" xml:space="preserve">
-    <value>Reset Winsock?</value>
-  </data>
-  <data name="Quick_WinsockText" xml:space="preserve">
+  <data name="Quick_WinsockConfirm" xml:space="preserve">
     <value>Resets the Windows network socket catalog. Some VPN or security programs may need to be reinstalled afterwards. A restart is required.</value>
   </data>
   <data name="Quick_WinsockDone" xml:space="preserve">
@@ -1449,6 +1446,10 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Apps_FoundConfirmText" xml:space="preserve"><value>{0} ({1}) is not on Tunero's reviewed list. winget downloads and installs it as its listing in the community repository says, for the whole PC where the package offers that, else for your account. Install it only if you trust the vendor.</value></data>
   <data name="Quick_TabFixes" xml:space="preserve"><value>Fixes and repair</value></data>
   <data name="Tag_Restart" xml:space="preserve"><value>Restart needed</value></data>
+  <data name="Scroll_Up" xml:space="preserve"><value>Scroll up</value></data>
+  <data name="Scroll_Down" xml:space="preserve"><value>Scroll down</value></data>
+  <data name="Scroll_Left" xml:space="preserve"><value>Scroll left</value></data>
+  <data name="Scroll_Right" xml:space="preserve"><value>Scroll right</value></data>
   <data name="Quick_DnsAction" xml:space="preserve"><value>Flush</value></data>
   <data name="Quick_WinsockAction" xml:space="preserve"><value>Reset Winsock</value></data>
   <data name="Quick_ExplorerAction" xml:space="preserve"><value>Restart</value></data>

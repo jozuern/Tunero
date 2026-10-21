@@ -118,8 +118,7 @@ public sealed class TweakEngine(ActionContext ctx, BackupStore store, IRestorePo
         var read = store.ReadAll();
         var view = new BackupView(read.Own.ToDictionary(b => b.TweakId, StringComparer.Ordinal), read.OtherAccounts);
         var first = list.Select(t => (t, state: DetectState(t, facts, view))).ToList();
-        var applied = first.Where(x => x.state is TweakState.Applied or TweakState.PendingRestart).Select(x => x.t.Id).ToHashSet();
-        return first.Select(x => BuildStatus(x.t, x.state, facts, applied, view)).ToList();
+        return first.Select(x => BuildStatus(x.t, x.state, facts, view)).ToList();
     }
 
     /// <summary>The backups as one detection read them; null outside a detection (each lookup reads the file).</summary>
@@ -166,14 +165,13 @@ public sealed class TweakEngine(ActionContext ctx, BackupStore store, IRestorePo
         })));
     }
 
-    public TweakStatus Detect(TweakDefinition t, Facts facts, IReadOnlySet<string>? appliedIds = null) =>
-        BuildStatus(t, DetectState(t, facts), facts, appliedIds ?? new HashSet<string>(), null);
+    public TweakStatus Detect(TweakDefinition t, Facts facts) => BuildStatus(t, DetectState(t, facts), facts, null);
 
-    private TweakStatus BuildStatus(TweakDefinition t, TweakState state, Facts facts, IReadOnlySet<string> applied, BackupView? view)
+    private TweakStatus BuildStatus(TweakDefinition t, TweakState state, Facts facts, BackupView? view)
     {
         var (impact, effects, reason) = ImpactFor(t, facts);
         // Expert mode is a UI filter, not a reason to show a tweak as blocked; the anti-cheat warning is kept.
-        var blocks = Preflight(t, facts, applied, new ApplyOptions { ExpertMode = true }, view);
+        var blocks = Preflight(t, facts, new ApplyOptions { ExpertMode = true }, view);
         var recommended = state is TweakState.NotApplied or TweakState.Partial or TweakState.RevertedByWindows
                           && t.RecommendWhen?.Evaluate(facts) == true && blocks.Count == 0;
         return new TweakStatus(t, state, impact, effects, reason, recommended, blocks, BackupOf(t.Id, view) is not null);
@@ -265,10 +263,9 @@ public sealed class TweakEngine(ActionContext ctx, BackupStore store, IRestorePo
 
     // ---------------- preflight / guard rules ----------------
 
-    public List<Block> Preflight(TweakDefinition t, Facts facts, IReadOnlySet<string> applied, ApplyOptions options) =>
-        Preflight(t, facts, applied, options, null);
+    public List<Block> Preflight(TweakDefinition t, Facts facts, ApplyOptions options) => Preflight(t, facts, options, null);
 
-    private List<Block> Preflight(TweakDefinition t, Facts facts, IReadOnlySet<string> applied, ApplyOptions options, BackupView? view)
+    private List<Block> Preflight(TweakDefinition t, Facts facts, ApplyOptions options, BackupView? view)
     {
         var blocks = new List<Block>();
         if (!AppliesTo(t, facts)) blocks.Add(new Block("block.notApplicable"));
@@ -343,7 +340,7 @@ public sealed class TweakEngine(ActionContext ctx, BackupStore store, IRestorePo
 
     public async Task<ApplyResult> ApplyAsync(TweakDefinition t, Facts facts, IReadOnlySet<string> applied, ApplyOptions options)
     {
-        var blocks = Preflight(t, facts, applied, options);
+        var blocks = Preflight(t, facts, options);
         if (blocks.Count > 0) return new ApplyResult(ApplyOutcome.Blocked, [], Blocks: blocks);
 
         var actions = Expand(t);

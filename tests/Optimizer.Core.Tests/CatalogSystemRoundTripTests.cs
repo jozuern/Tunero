@@ -117,7 +117,7 @@ public class CatalogSystemRoundTripTests(ITestOutputHelper output)
         var targets = fx.Engine.Expand(t);
         var before = targets.Select(a => a.Read(fx.Context)).ToList();
 
-        var blocks = fx.Engine.Preflight(t, facts, new HashSet<string>(), Options);
+        var blocks = fx.Engine.Preflight(t, facts, Options);
         if (blocks.Count > 0)
         {
             // A block here means a fact the fakes do not set: list it, so a new guard is noticed instead of passing silently.

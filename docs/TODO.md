@@ -11,7 +11,6 @@ What is still open: it needs a person, a VM image or hardware we do not have, or
 
 - **`privacy.locationOff` on Home editions:** the tweak uses the documented policy "Turn off location" (`DisableLocation`), proven on Pro, and is left out on Home. A run on PCO-Home (2026-10-14) was not conclusive: location was already off there, and the location API answers Denied from the test task with and without the policy. Turn location on by hand at the console, set the policy and look at Settings; if Windows honors it, drop the edition condition.
 - **`focus.lockScreenTipsOff` turns off Windows spotlight:** check whether writing only `SubscribedContent-338387Enabled` avoids it. Needs an activated Windows (Spotlight settings are locked without it); the test script mode `spot` is ready.
-- **Scroll bar arrows in dialogs:** UI Automation names them "CaretUp24" and "CaretDown24" (WPF-UI's icon names), so a screen reader reads those. Give them real names or hide them from UI Automation.
 - **Need real hardware or traffic capture:** `gpu.windowedOptimizations` (discrete GPU), `display.autoHdrOn` and `display.vrrOn` (HDR or VRR display), `network.dohAutoUpgrade`, the NVIDIA settings, MSI mode and interrupt affinity, the network adapter properties (section 5 of the VM plan).
 - **V-Cache driver:** the service name `amd3dvcacheSvc` needs a check on an X3D PC.
 - **Num Lock at sign-in:** left out until a VM run checks it at the sign-in screen (an undocumented value that only shows there).
@@ -22,6 +21,4 @@ The audit's other findings are fixed (commits `dde41d6` to `2a931a0`, and `1de68
 
 - **One path expander and one CLI verb table, with `ChangeSession` owning the change lock:** per-user strings are expanded four ways (`Programs.Command` and `ProgramLeftovers.CleanPath` use the elevated process's environment), and the cross-process `ChangeLock` is taken by the callers, so a new entry point could skip it.
 - **User-scope writes without a resolved SID** fall back to the elevated account without the "other account" banner (a domain account without a domain controller; cannot be tested here).
-- **Workflows:** the verify logic is copied inline into the workflows, and `pages.yml` does not wait for CI.
-- **Dead code:** the unused `Preflight` parameter, the test-only `MftRecord.ExtensionReferences` and `WingetPackage.IsInstalledWithWinget`, the `OptionalFeatures` ids without `TweakIds.Slug` (changing them needs a legacy-id fallback), the split quick fixes and the copied `Text(lang)` helpers.
 - **Test tooling majors** (Test SDK 18, xunit runner 4): left to Dependabot.

@@ -1,6 +1,7 @@
 # Builds the website in website/ (Astro) and publishes it to GitHub Pages at https://tunero.dev.
 # Runs when the site, the facts it reads (README counts, catalog, explanation pages, the checks' ratings) or this file
-# change, after each release (so the version on the page follows the latest release), and on demand.
+# change, after each release (so the version on the page follows the latest release), and on demand. It publishes only a
+# commit that passed CI (the ci job below).
 name: Website
 
 on:
@@ -39,8 +40,33 @@ jobs:
         GH_TOKEN: ${{ github.token }}
       run: gh workflow run pages.yml --repo "$GITHUB_REPOSITORY" --ref main
 
-  build:
+  # The site goes live only from a commit that passed "Build and test" (dotnet-desktop.yml, which runs on every push to
+  # main and also checks the catalog and explanation pages the site reads). It waits for that run while it is going.
+  ci:
     if: github.event_name != 'release'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      actions: read
+    steps:
+    - name: Build and test passed for this commit
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        id=
+        for attempt in $(seq 1 20); do
+          id=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow dotnet-desktop.yml --commit "$GITHUB_SHA" --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+          [ -n "$id" ] && break
+          sleep 30
+        done
+        if [ -z "$id" ]; then echo "::error::No Build and test run for $GITHUB_SHA: the site is not published"; exit 1; fi
+        gh run watch "$id" --repo "$GITHUB_REPOSITORY" --interval 30 > /dev/null || true
+        conclusion=$(gh run view "$id" --repo "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)
+        if [ "$conclusion" != "success" ]; then echo "::error::Build and test ended with '$conclusion' for $GITHUB_SHA: the site is not published"; exit 1; fi
+        echo "Build and test passed for $GITHUB_SHA (run $id)" >> "$GITHUB_STEP_SUMMARY"
+
+  build:
+    needs: ci
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
