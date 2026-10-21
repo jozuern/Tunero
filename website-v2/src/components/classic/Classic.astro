@@ -1,0 +1,56 @@
+---
+// The classic page: the calm, static companion of the demo desktop. Download, why to trust it, every rating, the
+// questions. It works without JavaScript and is where "Exit to classic page" and the skip link lead.
+import Page from './Page.astro';
+import Download from './Download.astro';
+import Trust from './Trust.astro';
+import RatingBoard from './RatingBoard.astro';
+import Faq from './Faq.astro';
+import { t, type Lang } from '../../i18n/index.ts';
+
+interface Props {
+  lang: Lang;
+  release: { version: string; sizeMb?: number };
+}
+
+const { lang, release } = Astro.props;
+const copy = t(lang);
+// A hyphenated word such as "PC-Optimierer" stays on one line.
+const claim = copy.classic.claim.split(/(\S+-\S+)/).map((part, index) => ({ keep: index % 2 === 1, part }));
+---
+
+<Page lang={lang} title={copy.meta.classicTitle} description={copy.meta.description} path="/classic/" version={release.version}>
+  <div class="intro">
+    <h1>{claim.map((piece) => (piece.keep ? <span class="nowrap">{piece.part}</span> : piece.part))}</h1>
+    <p class="lead">{copy.classic.lead}</p>
+  </div>
+  <Download lang={lang} release={release} />
+  <Trust lang={lang} />
+  <RatingBoard lang={lang} />
+  <Faq lang={lang} />
+</Page>
+
+<style>
+  .intro {
+    display: grid;
+    gap: 16px;
+    padding-top: 32px;
+  }
+
+  .nowrap {
+    white-space: nowrap;
+  }
+
+  .lead {
+    font-size: 18px;
+    line-height: 1.5;
+    color: var(--ink-2);
+    max-width: 64ch;
+  }
+
+  @media (min-width: 640px) {
+    .intro {
+      padding-top: 48px;
+    }
+  }
+</style>

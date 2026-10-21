@@ -1,0 +1,12 @@
+---
+// A paragraph of the copy with links in it (Rich in en.ts).
+import type { Rich } from '../../i18n/en.ts';
+
+interface Props {
+  parts: Rich;
+}
+
+const { parts } = Astro.props;
+---
+
+{parts.map((part) => (typeof part === 'string' ? part : <a href={part.href} hreflang={part.lang} lang={part.lang}>{part.text}</a>))}

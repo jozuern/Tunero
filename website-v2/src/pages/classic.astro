@@ -1,10 +1,8 @@
 ---
-import Base from '../layouts/Base.astro';
-import { t } from '../i18n/index.ts';
+import Classic from '../components/classic/Classic.astro';
+import { latestRelease } from '../lib/release.ts';
 
-const copy = t('en');
+const release = await latestRelease();
 ---
 
-<Base lang="en" title={copy.meta.classicTitle} description={copy.meta.description} path="/classic/">
-  <main id="main"><h1>{copy.classic.heading}</h1></main>
-</Base>
+<Classic lang="en" release={release} />

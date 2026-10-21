@@ -1,0 +1,203 @@
+---
+// The download: the exe of the latest release with its version and size, the package managers that offer Tunero,
+// and the honest notes about SmartScreen and the first start. Works without JavaScript; the copy buttons and the
+// note after a click are extras.
+import { t, type Lang } from '../../i18n/index.ts';
+import { repo, download, packages } from '../../lib/repo.ts';
+
+interface Props {
+  lang: Lang;
+  release: { version: string; sizeMb?: number };
+}
+
+const { lang, release } = Astro.props;
+const copy = t(lang);
+const smartscreen = copy.faq.items.find((item) => item.id === 'smartscreen');
+if (!smartscreen) throw new Error('The download notes link to the SmartScreen question, which is gone');
+const managers = [
+  { key: 'winget', name: 'winget', ...packages.winget },
+  { key: 'choco', name: 'Chocolatey', ...packages.choco },
+  { key: 'scoop', name: 'Scoop', ...packages.scoop },
+].filter((manager) => manager.live);
+---
+
+<section class="part download" id="download" aria-labelledby="download-title">
+  <h2 id="download-title" class="visually-hidden">{copy.download.title}</h2>
+  <div class="card download-card">
+    <div class="get">
+      <a class="button" href={download}>
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1.5a.75.75 0 0 1 .75.75v7.19l2.22-2.22a.75.75 0 1 1 1.06 1.06l-3.5 3.5a.75.75 0 0 1-1.06 0l-3.5-3.5a.75.75 0 0 1 1.06-1.06l2.22 2.22V2.25A.75.75 0 0 1 8 1.5ZM2.75 13h10.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1 0-1.5Z" /></svg>
+        <span>{copy.download.button}</span>
+        {release.sizeMb && <span class="size">{release.sizeMb} MB</span>}
+      </a>
+      <p class="started" role="status" hidden>{copy.download.started} <a href={`#${smartscreen.id}`}>{copy.download.startedLink}</a></p>
+    </div>
+    <div class="notes">
+      <p>{copy.download.facts(release.version)} <a href={`${repo}/blob/main/CHANGELOG.md`}>{copy.download.changes}</a></p>
+      <p>{copy.download.signed} <a href={`#${smartscreen.id}`}>{copy.download.signedLink}</a></p>
+      <p>{copy.download.firstStart}</p>
+    </div>
+    {managers.length > 0 && (
+      <div class="managers">
+        <h3>{copy.download.managers}</h3>
+        <dl>
+          {managers.map((manager) => (
+            <div class="manager">
+              <dt>{manager.name}</dt>
+              {manager.commands.map((command, index) => (
+                <dd>
+                  <code id={`command-${manager.key}-${index}`}>{command}</code>
+                  <button class="standard copy" type="button" data-copy={`command-${manager.key}-${index}`} data-done={copy.download.copied} hidden>{copy.download.copy}</button>
+                </dd>
+              ))}
+            </div>
+          ))}
+        </dl>
+      </div>
+    )}
+    <p class="releases"><a href={`${repo}/releases`}>{copy.download.releases}</a></p>
+  </div>
+</section>
+
+<style>
+  .download {
+    padding-top: 32px;
+  }
+
+  .download-card {
+    display: grid;
+    gap: 24px;
+    padding: 16px;
+  }
+
+  @media (min-width: 640px) {
+    .download-card {
+      padding: 24px;
+    }
+  }
+
+  .get {
+    display: grid;
+    gap: 12px;
+    justify-items: start;
+  }
+
+  .button {
+    max-width: 100%;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    padding-inline: 16px;
+  }
+
+  @media (min-width: 640px) {
+    .button {
+      padding-inline: 24px;
+    }
+  }
+
+  .started {
+    font-size: 14px;
+  }
+
+  .notes {
+    display: grid;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--ink-2);
+  }
+
+  .managers {
+    display: grid;
+    gap: 12px;
+    padding-top: 24px;
+    border-top: 1px solid var(--stroke);
+  }
+
+  .managers h3 {
+    font-size: 16px;
+  }
+
+  dl {
+    display: grid;
+    gap: 12px;
+    margin: 0;
+  }
+
+  .manager {
+    display: grid;
+    gap: 4px;
+  }
+
+  dt {
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  dd {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    min-width: 0;
+  }
+
+  code {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    border: 1px solid var(--stroke);
+    overflow-wrap: anywhere;
+    user-select: all;
+  }
+
+  .copy {
+    flex: none;
+  }
+
+  .releases {
+    font-size: 14px;
+  }
+
+  @media (min-width: 640px) {
+    .manager {
+      grid-template-columns: 112px minmax(0, 1fr);
+      column-gap: 16px;
+      align-items: center;
+    }
+
+    dd {
+      grid-column: 2;
+    }
+  }
+</style>
+
+<script>
+  // After a click on the download button: where to read about the SmartScreen warning, since nobody scrolls down to
+  // the questions on their own.
+  for (const link of document.querySelectorAll<HTMLAnchorElement>('.download .button')) {
+    link.addEventListener('click', () => {
+      const note = link.parentElement?.querySelector<HTMLElement>('.started');
+      if (note) note.hidden = false;
+    });
+  }
+
+  // Copy a package manager command. The buttons stay hidden without script or clipboard access.
+  if (navigator.clipboard) {
+    for (const button of document.querySelectorAll<HTMLButtonElement>('button[data-copy]')) {
+      button.hidden = false;
+      const label = button.textContent;
+      button.addEventListener('click', async () => {
+        const text = document.getElementById(button.dataset.copy!)?.textContent ?? '';
+        try {
+          await navigator.clipboard.writeText(text);
+          button.textContent = button.dataset.done!;
+          setTimeout(() => (button.textContent = label), 2000);
+        } catch {
+          // Clipboard refused: the command stays selectable by hand.
+        }
+      });
+    }
+  }
+</script>

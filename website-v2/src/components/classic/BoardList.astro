@@ -1,0 +1,78 @@
+---
+// One list of the rating board: names, and under each the note that qualifies its rating (basis measured or disputed,
+// higher on some PCs, lower for other findings).
+import { t, type Lang } from '../../i18n/index.ts';
+import type { BoardEntry } from '../../lib/board.ts';
+
+interface Props {
+  lang: Lang;
+  entries: BoardEntry[];
+  /** Muted names, for the long tail of the 0 row. */
+  quiet?: boolean;
+}
+
+const { lang, entries, quiet = false } = Astro.props;
+const copy = t(lang);
+const levels = new Intl.ListFormat(lang, { type: 'disjunction' });
+const basis = (value?: string) => (value === 'measured' ? copy.board.measured : value === 'disputed' ? copy.board.disputed : undefined);
+const rows = entries.map((entry) => ({
+  title: entry.title,
+  note: [
+    basis(entry.basis),
+    entry.otherwise && copy.board.some(entry.otherwise.impact),
+    entry.also && copy.board.also(levels.format(entry.also.map(String))),
+  ]
+    .filter(Boolean)
+    .join(', '),
+  reason: entry.otherwise?.reason || undefined,
+}));
+---
+
+<ul class:list={['names', { quiet }]}>
+  {rows.map((row) => (
+    <li title={row.reason}>
+      <span class="name">{row.title}</span>
+      {row.note && <span class="note">{row.note}{row.reason && <span class="visually-hidden">. {row.reason}</span>}</span>}
+    </li>
+  ))}
+</ul>
+
+<style>
+  .names {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li {
+    break-inside: avoid;
+    padding-block: 4px;
+  }
+
+  .name {
+    display: block;
+    color: var(--ink);
+  }
+
+  .quiet .name {
+    color: var(--ink-2);
+    font-size: 15px;
+  }
+
+  .note {
+    display: block;
+    font-size: 13px;
+    color: var(--ink-2);
+  }
+
+  li[title] {
+    cursor: help;
+  }
+
+  @media (min-width: 720px) {
+    .names {
+      columns: 2;
+      column-gap: 24px;
+    }
+  }
+</style>

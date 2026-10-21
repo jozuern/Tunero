@@ -12,13 +12,15 @@ interface Props {
   indexed?: boolean;
   /** Where "Skip to classic page" leads; the classic page itself skips to its own content. */
   skipTo?: string;
+  /** The German path when it is not /de in front of the English one (v1's /de/datenschutz/ and /de/impressum/). */
+  germanPath?: string;
 }
 
-const { lang, title, description, path, indexed = true, skipTo } = Astro.props;
+const { lang, title, description, path, indexed = true, skipTo, germanPath } = Astro.props;
 const copy = t(lang);
-const canonical = new URL(localPath(lang, path), Astro.site);
 const english = new URL(path, Astro.site);
-const german = new URL(localPath('de', path), Astro.site);
+const german = new URL(germanPath ?? localPath('de', path), Astro.site);
+const canonical = lang === 'de' ? german : english;
 ---
 
 <!doctype html>
@@ -55,7 +57,7 @@ const german = new URL(localPath('de', path), Astro.site);
     <meta property="og:locale" content={lang === 'en' ? 'en_US' : 'de_DE'} />
   </head>
   <body>
-    <a class="skip" href={skipTo ?? localPath(lang, '/classic/')}>{copy.skip}</a>
+    <a class="skip" href={skipTo ?? localPath(lang, '/classic/')}>{skipTo ? copy.skipContent : copy.skip}</a>
     <slot />
   </body>
 </html>

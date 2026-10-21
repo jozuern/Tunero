@@ -1,0 +1,58 @@
+---
+// The questions people ask before they run the exe. Each answer has an anchor, so the download notes can link to it.
+import { t, type Lang } from '../../i18n/index.ts';
+
+interface Props {
+  lang: Lang;
+}
+
+const copy = t(Astro.props.lang);
+---
+
+<section class="part" id="faq" aria-labelledby="faq-title">
+  <h2 id="faq-title">{copy.faq.title}</h2>
+  <div class="card questions">
+    {copy.faq.items.map((item) => (
+      <div class="question" id={item.id}>
+        <h3>{item.q}</h3>
+        <p>{item.a}</p>
+      </div>
+    ))}
+  </div>
+</section>
+
+<style>
+  .questions {
+    margin-top: 8px;
+  }
+
+  .question {
+    display: grid;
+    gap: 8px;
+    padding: 16px;
+    scroll-margin-top: 16px;
+  }
+
+  .question + .question {
+    border-top: 1px solid var(--stroke);
+  }
+
+  .question:target {
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+
+  h3 {
+    font-size: 16px;
+  }
+
+  p {
+    color: var(--ink-2);
+    max-width: 68ch;
+  }
+
+  @media (min-width: 640px) {
+    .question {
+      padding: 16px 24px;
+    }
+  }
+</style>

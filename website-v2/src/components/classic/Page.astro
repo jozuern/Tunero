@@ -1,0 +1,88 @@
+---
+// The frame of the classic page and its neighbours (privacy, legal notice): a header with the mark, the way back to
+// the demo PC and the language switch, the content column, and the footer with the project links.
+import Base from '../../layouts/Base.astro';
+import mark from '../../assets/tunero-icon.svg?url';
+import { t, localPath, type Lang } from '../../i18n/index.ts';
+import { repo, support } from '../../lib/repo.ts';
+import './classic.css';
+
+interface Props {
+  lang: Lang;
+  title: string;
+  description: string;
+  /** The English path of this page. */
+  path: string;
+  /** The German path when it is not /de in front of the English one. */
+  germanPath?: string;
+  /** The version of the latest release, for the footer. */
+  version?: string;
+}
+
+const { lang, title, description, path, germanPath, version } = Astro.props;
+const copy = t(lang);
+const english = path;
+const german = germanPath ?? localPath('de', path);
+const languages = [
+  { code: 'en' as const, href: english, ...copy.classic.english },
+  { code: 'de' as const, href: german, ...copy.classic.german },
+];
+const legalPaths = { privacy: lang === 'de' ? '/de/datenschutz/' : '/privacy/', legal: lang === 'de' ? '/de/impressum/' : '/legal/' };
+---
+
+<Base lang={lang} title={title} description={description} path={path} germanPath={germanPath} skipTo="#main">
+  <div class="classic">
+    <header class="masthead">
+      <div class="column masthead-row">
+        <a class="brand" href={localPath(lang, '/classic/')}>
+          <img src={mark} alt="" width="24" height="24" />
+          <span>Tunero</span>
+        </a>
+        <nav class="masthead-nav" aria-label={copy.classic.nav}>
+          <a class="demo-link" href={localPath(lang, '/')}>{copy.classic.demo}</a>
+          <ul class="languages" aria-label={copy.classic.languages}>
+            {languages.map((language) => (
+              <li>
+                {language.code === lang ? (
+                  <span class="language current" aria-current="true">
+                    <span aria-hidden="true">{language.short}</span>
+                    <span class="visually-hidden">{language.name}</span>
+                  </span>
+                ) : (
+                  <a class="language" href={language.href} hreflang={language.code} lang={language.code}>
+                    <span aria-hidden="true">{language.short}</span>
+                    <span class="visually-hidden">{language.name}</span>
+                  </a>
+                )}
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main" class="column" tabindex="-1">
+      <slot />
+    </main>
+
+    <footer class="colophon">
+      <div class="column">
+        <p class="colophon-line">
+          <img src={mark} alt="" width="20" height="20" />
+          <span>{version && `${copy.footer.version(version)} `}{copy.footer.license}</span>
+        </p>
+        <nav aria-label={copy.footer.label}>
+          <ul class="colophon-links">
+            <li><a href={`${repo}/releases`}>{copy.footer.links.releases}</a></li>
+            <li><a href={`${repo}/blob/main/CHANGELOG.md`}>{copy.footer.links.changelog}</a></li>
+            <li><a href={repo}>{copy.footer.links.source}</a></li>
+            <li><a href={support.kofi}>{copy.footer.links.kofi}</a></li>
+            <li><a href={support.sponsors}>{copy.footer.links.sponsors}</a></li>
+            <li><a href={legalPaths.privacy}>{copy.footer.links.privacy}</a></li>
+            <li><a href={legalPaths.legal}>{copy.footer.links.legal}</a></li>
+          </ul>
+        </nav>
+      </div>
+    </footer>
+  </div>
+</Base>

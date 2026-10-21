@@ -1,0 +1,228 @@
+---
+// Every check and every tweak on the app's 0 to 5 scale for games, highest first. Only problems the scan finds reach
+// 5; the long tail of tweaks rated 0 folds away so the rows that matter stay scannable.
+import BoardList from './BoardList.astro';
+import { t, type Lang } from '../../i18n/index.ts';
+import { ratingBoard } from '../../lib/board.ts';
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const copy = t(lang);
+const board = ratingBoard(lang);
+// The title says no tweak reaches 5 (board.test.ts pins the text about Restore processor turbo).
+if (board.rows[0].tweaks.length > 0) throw new Error('A tweak rates 5, but the board title says none does');
+const rows = board.rows.map((row) => ({
+  ...row,
+  named: row.level === 0 ? row.tweaks.filter((entry) => entry.basis === 'disputed') : row.tweaks,
+  rest: row.level === 0 ? row.tweaks.filter((entry) => entry.basis !== 'disputed') : [],
+}));
+---
+
+<section class="part" id="ratings" aria-labelledby="ratings-title">
+  <h2 id="ratings-title">{copy.board.title}</h2>
+  {copy.board.body(board.tweakCount, board.matter).map((paragraph) => <p>{paragraph}</p>)}
+  <p>{copy.board.all(board.checkCount, board.tweakCount)}</p>
+  <div class="card board">
+    {rows.map((row) => (
+      <section class="row" aria-labelledby={`rated-${row.level}`}>
+        <h3 class:list={['level', { top: row.level === 5, zero: row.level === 0 }]} id={`rated-${row.level}`}>
+          <span aria-hidden="true">{row.level}</span>
+          <span class="visually-hidden">{copy.board.rowLabel(row.level)}</span>
+        </h3>
+        <div class="groups">
+          {row.checks.length > 0 && (
+            <div class="group">
+              <h4>{copy.board.checks}</h4>
+              {row.level === 5 && <p class="hint">{copy.board.top}</p>}
+              <BoardList lang={lang} entries={row.checks} />
+            </div>
+          )}
+          {row.tweaks.length > 0 && (
+            <div class="group">
+              <h4>{copy.board.tweaks}</h4>
+              {row.level === 0 && <p class="hint">{copy.board.zeroNamed}</p>}
+              <BoardList lang={lang} entries={row.named} />
+              {row.rest.length > 0 && (
+                <details class="rest">
+                  <summary>{copy.board.zeroRest(row.rest.length)}</summary>
+                  <div class="rest-list">
+                    <BoardList lang={lang} entries={row.rest} quiet />
+                  </div>
+                </details>
+              )}
+            </div>
+          )}
+        </div>
+      </section>
+    ))}
+    {board.unrated.length > 0 && (
+      <section class="row unrated" aria-labelledby="rated-none">
+        <h3 class="unrated-title" id="rated-none">{copy.board.unrated}</h3>
+        <ul class="groups unrated-list">
+          {board.unrated.map((entry) => (
+            <li>
+              <span class="name">{entry.title}</span>
+              <span class="note">{entry.why === 'access' ? copy.board.access : copy.board.critical}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
+  </div>
+</section>
+
+<style>
+  .board {
+    margin-top: 8px;
+    overflow: hidden;
+  }
+
+  .row {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .row + .row {
+    border-top: 1px solid var(--stroke);
+  }
+
+  .level {
+    font-family: var(--font-display);
+    font-size: 36px;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+  }
+
+  .level.top {
+    color: var(--accent);
+  }
+
+  .level.zero {
+    color: var(--ink-3);
+  }
+
+  .groups {
+    display: grid;
+    gap: 16px;
+    min-width: 0;
+  }
+
+  .group {
+    display: grid;
+    gap: 4px;
+  }
+
+  h4 {
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-2);
+  }
+
+  .hint {
+    font-size: 14px;
+    color: var(--ink-2);
+    margin-bottom: 4px;
+  }
+
+  .rest {
+    margin-top: 8px;
+  }
+
+  summary {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--stroke);
+    background: var(--surface-2);
+    font-size: 14px;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  summary::-webkit-details-marker {
+    display: none;
+  }
+
+  summary::before {
+    content: '';
+    flex: none;
+    width: 6px;
+    height: 6px;
+    margin: 7px 4px 0 2px;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: rotate(-45deg);
+  }
+
+  .rest[open] summary::before {
+    transform: rotate(45deg);
+  }
+
+  summary:hover {
+    background: var(--surface);
+  }
+
+  .rest-list {
+    padding-top: 12px;
+  }
+
+  .unrated {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .unrated-title {
+    font-size: 16px;
+  }
+
+  .unrated-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    gap: 8px;
+  }
+
+  .unrated-list .name {
+    display: block;
+  }
+
+  .unrated-list .note {
+    display: block;
+    font-size: 13px;
+    color: var(--ink-2);
+  }
+
+  @media (min-width: 640px) {
+    .row {
+      grid-template-columns: 72px minmax(0, 1fr);
+      gap: 16px;
+      padding: 24px;
+    }
+
+    .level {
+      font-size: 48px;
+    }
+
+    .unrated {
+      grid-template-columns: 72px minmax(0, 1fr);
+    }
+
+    .unrated-title {
+      grid-column: 1 / -1;
+    }
+
+    .unrated-list {
+      grid-column: 2;
+    }
+  }
+</style>

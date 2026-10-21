@@ -1,0 +1,40 @@
+---
+// The legal notice (Impressum, § 5 DDG and § 18 MStV), ported from v1. The German version is the binding one.
+import Page from './Page.astro';
+import RichText from './RichText.astro';
+import { t, type Lang } from '../../i18n/index.ts';
+import { operator } from '../../lib/repo.ts';
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const copy = t(lang);
+const text = copy.legal;
+---
+
+<Page lang={lang} title={text.metaTitle} description={text.description} path="/legal/" germanPath="/de/impressum/">
+  <article class="legal">
+    <h1>{text.title}</h1>
+    {text.intro.length > 0 && <p><RichText parts={text.intro} /></p>}
+
+    <h2>{text.operator}</h2>
+    <address>
+      {operator.name}<br />
+      {operator.street}<br />
+      {operator.city}<br />
+      {operator.country[lang]}
+    </address>
+
+    <h2>{text.contact}</h2>
+    <p>{text.email}: <a href={`mailto:${operator.email}`}>{operator.email}</a></p>
+
+    <h2>{text.responsible}</h2>
+    <address>
+      {operator.name}<br />
+      {operator.street}<br />
+      {operator.city}
+    </address>
+  </article>
+</Page>

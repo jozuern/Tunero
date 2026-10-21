@@ -1,0 +1,294 @@
+/* The classic page and its neighbours: a quiet Windows 11 document. One content column on the page background,
+   cards on --surface, Segoe UI Variable, spacing in steps of 4, 8, 12, 16 and 24 px. */
+
+.classic {
+  font-size: 16px;
+  line-height: 1.55;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.classic .column {
+  width: 100%;
+  max-width: 848px;
+  margin-inline: auto;
+  padding-inline: 16px;
+}
+
+@media (min-width: 640px) {
+  .classic .column {
+    padding-inline: 24px;
+  }
+}
+
+.classic main {
+  flex: 1;
+  padding-block: 24px 72px;
+}
+
+.classic main:focus {
+  outline: none;
+}
+
+.classic h1,
+.classic h2,
+.classic h3,
+.classic h4 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
+}
+
+.classic h1 {
+  font-size: 32px;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.classic h2 {
+  font-size: 24px;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+
+.classic h3 {
+  font-size: 18px;
+  line-height: 1.35;
+  letter-spacing: -0.005em;
+}
+
+@media (min-width: 640px) {
+  .classic h1 {
+    font-size: 44px;
+  }
+
+  .classic h2 {
+    font-size: 28px;
+  }
+}
+
+.classic p {
+  margin: 0;
+}
+
+.classic code,
+.classic pre {
+  font-family: var(--mono);
+  font-size: 14px;
+}
+
+.classic a {
+  text-underline-offset: 2px;
+}
+
+.classic a:hover {
+  text-decoration-thickness: 2px;
+}
+
+/* A section of the page: its heading, then its text and parts, 16 px apart. */
+.classic .part {
+  display: grid;
+  gap: 16px;
+  padding-top: 64px;
+  scroll-margin-top: 16px;
+}
+
+.classic .part > p,
+.classic .prose {
+  color: var(--ink-2);
+  max-width: 68ch;
+}
+
+.classic .muted {
+  color: var(--ink-2);
+}
+
+.classic .card {
+  background: var(--surface);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius);
+}
+
+/* Header */
+
+.masthead {
+  border-bottom: 1px solid var(--stroke);
+}
+
+.masthead-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 56px;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  text-decoration: none;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.brand img {
+  display: block;
+}
+
+.masthead-nav {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 14px;
+}
+
+.demo-link {
+  color: var(--ink);
+}
+
+.languages {
+  display: flex;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.language {
+  display: inline-block;
+  min-width: 32px;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  text-align: center;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--ink-2);
+  text-decoration: none;
+}
+
+a.language:hover {
+  background: var(--stroke);
+  color: var(--ink);
+}
+
+.language.current {
+  color: var(--ink);
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--stroke-strong);
+}
+
+/* Footer */
+
+.colophon {
+  border-top: 1px solid var(--stroke);
+  padding-block: 24px 48px;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.colophon-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.colophon-line img {
+  flex: none;
+}
+
+.colophon-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Buttons in the Fluent look: accent for the one main action, standard for the rest. */
+
+.classic .button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 12px 24px;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-family: var(--font);
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: none;
+  border: 1px solid transparent;
+}
+
+.classic .button:hover {
+  background: color-mix(in srgb, var(--accent) 90%, var(--bg));
+}
+
+.classic .button:active {
+  background: color-mix(in srgb, var(--accent) 80%, var(--bg));
+}
+
+.classic .button svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+
+.classic .button .size {
+  font-weight: 400;
+  opacity: 0.85;
+}
+
+.classic .standard {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 4px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--stroke-strong);
+  background: var(--surface-2);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.classic .standard:hover {
+  background: var(--surface);
+}
+
+/* Privacy and legal notice */
+
+.classic .legal {
+  display: grid;
+  gap: 12px;
+  padding-top: 32px;
+  max-width: 68ch;
+}
+
+.classic .legal h1 {
+  margin-bottom: 12px;
+}
+
+.classic .legal h2 {
+  font-size: 20px;
+  margin-top: 24px;
+}
+
+.classic .legal p,
+.classic .legal address {
+  color: var(--ink-2);
+  font-style: normal;
+}

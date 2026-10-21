@@ -1,0 +1,76 @@
+---
+// Why the app can be trusted with full access to a PC, and how to check each fact. The same items fill the desktop's
+// "Why trust it" window.
+import { t, type Lang } from '../../i18n/index.ts';
+
+interface Props {
+  lang: Lang;
+}
+
+const copy = t(Astro.props.lang);
+---
+
+<section class="part" id="trust" aria-labelledby="trust-title">
+  <h2 id="trust-title">{copy.trust.title}</h2>
+  <p>{copy.trust.intro}</p>
+  <ul class="card facts">
+    {copy.trust.items.map((item) => (
+      <li class="fact">
+        <h3>{item.title}</h3>
+        <div class="fact-body">
+          <p>{item.body}</p>
+          {item.code && <pre><code>{item.code}</code></pre>}
+          {item.link && <p><a href={item.link.href}>{item.link.label}</a></p>}
+        </div>
+      </li>
+    ))}
+  </ul>
+</section>
+
+<style>
+  .facts {
+    margin: 8px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .fact {
+    display: grid;
+    gap: 8px;
+    padding: 16px;
+  }
+
+  .fact + .fact {
+    border-top: 1px solid var(--stroke);
+  }
+
+  h3 {
+    font-size: 16px;
+  }
+
+  .fact-body {
+    display: grid;
+    gap: 8px;
+    min-width: 0;
+    color: var(--ink-2);
+  }
+
+  pre {
+    margin: 0;
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    border: 1px solid var(--stroke);
+    color: var(--ink);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  @media (min-width: 640px) {
+    .fact {
+      grid-template-columns: 216px minmax(0, 1fr);
+      gap: 24px;
+      padding: 16px 24px;
+    }
+  }
+</style>
