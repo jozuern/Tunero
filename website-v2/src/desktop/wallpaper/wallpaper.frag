@@ -135,20 +135,31 @@ void main() {
   vec2 uvTop = gl_FragCoord.xy / uRes;
   // Before/after: the neglected PC left of the divider, the fixed one right of it.
   if (uSplit >= 0.0) clutter = 1.0 - smoothstep(uSplit - 0.002, uSplit + 0.002, uvTop.x);
-  // Ripples where something was fixed: a ring of light, and the picture inside it clean for a moment.
+  // Ripples where something was fixed: a ripple like a drop in glass, which bends the picture as it passes, with a thin
+  // rim of light, and the picture inside it clean for a moment. It slows down as it grows and fades out by 1.8 s
+  // (rippleLife in wallpaper.ts); its size follows the strength.
   vec2 here = (gl_FragCoord.xy - 0.5 * uRes) / uRes.y;
   float ring = 0.0;
   float clean = 0.0;
+  vec2 bendBy = vec2(0.0);
   for (int i = 0; i < 4; i++) {
     vec4 r = uRipples[i];
     if (r.w <= 0.0) continue;
     vec2 centre = vec2((r.x - 0.5) * uRes.x / uRes.y, 0.5 - r.y);
-    float d = length(here - centre);
-    float radius = r.z * 0.85;
-    ring += r.w * exp(-pow((d - radius) / 0.03, 2.0)) * exp(-r.z * 1.8);
-    clean = max(clean, r.w * smoothstep(radius, radius - 0.2, d) * exp(-r.z * 0.7));
+    vec2 away = here - centre;
+    float d = length(away);
+    float grow = 1.0 - exp(-r.z * 2.6);
+    float radius = (0.06 + 0.28 * r.w) * grow;
+    float width = 0.006 + 0.018 * grow;
+    float fade = smoothstep(0.0, 0.06, r.z) * (1.0 - smoothstep(0.5, 1.8, r.z));
+    float offset = (d - radius) / width;
+    float profile = exp(-offset * offset);
+    ring += r.w * fade * profile;
+    // The derivative of the profile: pushes the picture outward on the rim's outer side and inward on its inner side.
+    bendBy += (d > 0.0001 ? away / d : vec2(0.0)) * (-2.0 * offset * profile) * 0.01 * r.w * fade;
+    clean = max(clean, r.w * smoothstep(radius, radius - 0.12, d) * (1.0 - smoothstep(0.2, 1.2, r.z)));
   }
-  clutter *= 1.0 - 0.85 * clamp(clean, 0.0, 1.0);
+  clutter *= 1.0 - 0.45 * clamp(clean, 0.0, 1.0);
   float light = clamp(uTheme, 0.0, 1.0);
   gBgTop = mix(vec3(0.010, 0.016, 0.042), vec3(0.968, 0.975, 0.996), light);
   gBgBottom = mix(vec3(0.014, 0.026, 0.070), vec3(0.885, 0.915, 0.985), light);
@@ -163,7 +174,7 @@ void main() {
   vec2 uv = frag / uRes;
   float pixel = 1.0 / uRes.y;
 
-  vec2 point = (frag - 0.5 * uRes) / uRes.y;
+  vec2 point = (frag - 0.5 * uRes) / uRes.y + bendBy;
   vec2 screen = point;
   // The whole composition leans: ribbons rise to the right.
   const float lean = 0.33;
@@ -195,7 +206,7 @@ void main() {
   float grain = float(hashUint(cell.x + hashUint(cell.y + hashUint(uint(uSeed)))) & 0xffffu) / 65535.0 - 0.5;
   color += grain * (0.010 + 0.06 * clutter);
 
-  color += ring * mix(vec3(0.35, 0.65, 1.0), vec3(0.15, 0.4, 0.95), light) * 0.45;
+  color += ring * mix(vec3(0.45, 0.72, 1.0), vec3(0.15, 0.4, 0.95), light) * 0.24;
 
   // Fixed: the colour blooms for a moment and a band of light sweeps across.
   if (uBloom >= 0.0) {

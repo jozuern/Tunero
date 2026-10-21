@@ -216,7 +216,7 @@ html[data-boot='pending'] .desktop {
   z-index: 9690;
   width: 36px;
   height: 36px;
-  border: 2px solid var(--accent);
+  border: 1.5px solid var(--accent);
   border-radius: 50%;
   pointer-events: none;
 }

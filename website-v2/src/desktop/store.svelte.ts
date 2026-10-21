@@ -154,7 +154,7 @@ export class DesktopStore {
       const rect = element.getBoundingClientRect();
       shatter(element);
       element.classList.add('shattered');
-      ripple(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      ripple(rect.left + rect.width / 2, rect.top + rect.height / 2, Math.max(rect.width, rect.height));
       for (const effect of gone) if (element.matches(`[data-effect~="${effect}"]`)) burst.add(effect);
       for (const c of fresh) if (element.matches(`[data-change="${c.kind}:${c.id}"]`)) {
         const effect = allChanges(this.demo).find((x) => x.kind === c.kind && x.id === c.id)?.effect;

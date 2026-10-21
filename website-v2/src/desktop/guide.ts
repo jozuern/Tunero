@@ -9,7 +9,7 @@ import { click } from './sound.ts';
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** Pause after each kind of click, so every answer on the desktop can be seen. */
-const pause = { overview: 650, tweaks: 420, startup: 90, apps: 140 } as const;
+const pause = { overview: 650, tweaks: 420, startup: 160, apps: 220 } as const;
 
 const arrow = `<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M5 2.5v17.2l4.3-4.1 2.9 6.6 3-1.3-2.9-6.5h6.1z" fill="#fff" stroke="#000" stroke-width="1.3" stroke-linejoin="round"/></svg>`;
 
@@ -40,7 +40,7 @@ function makeCursor(from: { x: number; y: number }) {
       ring.className = 'guide-click';
       ring.style.transform = `translate(${at.x}px, ${at.y}px)`;
       document.body.append(ring);
-      ring.animate([{ opacity: 0.9, scale: '0.3' }, { opacity: 0, scale: '1.6' }], { duration: 420, easing: 'ease-out' }).onfinish = () => ring.remove();
+      ring.animate([{ opacity: 0.8, scale: '0.4' }, { opacity: 0, scale: '1.4' }], { duration: 560, easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)' }).onfinish = () => ring.remove();
       await element.animate([{ scale: '1' }, { scale: '0.85' }, { scale: '1' }], { duration: 110, composite: 'add' }).finished.catch(() => {});
     },
     remove() {

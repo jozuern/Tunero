@@ -35,13 +35,19 @@ const stillPhase = 14;
 type Theme = 'light' | 'dark';
 
 // Moments the desktop asks for; the running wallpaper reads them every frame.
-const ripples: { x: number; y: number; start: number }[] = [];
+const ripples: { x: number; y: number; start: number; strength: number }[] = [];
+/** Seconds a ripple lasts; the shader fades it out by then. */
+const rippleLife = 1.8;
 let bloomStart = -1;
 let split = -1;
 
-/** A ring of light at (x, y) in CSS pixels, where something was just fixed. */
-export function ripple(x: number, y: number) {
-  ripples.push({ x: x / innerWidth, y: y / innerHeight, start: performance.now() });
+/**
+ * A ripple at (x, y) in CSS pixels, where something was just fixed. `size` is that thing's size in CSS pixels: a
+ * notification makes a wider ripple than a tray icon.
+ */
+export function ripple(x: number, y: number, size = 300) {
+  const strength = Math.min(1, Math.max(0.35, Math.sqrt(size / 300)));
+  ripples.push({ x: x / innerWidth, y: y / innerHeight, start: performance.now(), strength });
   if (ripples.length > 4) ripples.shift();
 }
 
@@ -174,7 +180,7 @@ export function startWallpaper(
       rippleData.fill(0);
       ripples.forEach((r, i) => {
         const age = (now - r.start) / 1000;
-        if (age < 2.5 && !reduced) rippleData.set([r.x, r.y, age, 1], i * 4);
+        if (age < rippleLife && !reduced) rippleData.set([r.x, r.y, age, r.strength], i * 4);
       });
       gl.uniform4fv(uRipples, rippleData);
       const bloomAge = bloomStart < 0 || reduced ? -1 : (now - bloomStart) / 1000;

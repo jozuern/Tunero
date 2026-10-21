@@ -61,8 +61,10 @@ watch it rewind. Doing it is the explanation; the rewind is the trust.
   the comparison. A "This PC" widget in the corner shows the values the two big fixes change (the refresh rate counts
   up from 60 to 144 Hz, turbo goes from blocked to allowed) and the startup count.
 - **Shatter:** what a change removes from the desktop (marked `data-effect` or `data-change`) bursts into specks of its
-  own colours that stream into Tunero's Changes entry, with a ring of light in the wallpaper where it was
-  (`particles.ts`, ripples in the shader).
+  own colours that stream into Tunero's Changes entry, with a ripple in the wallpaper where it was
+  (`particles.ts`, ripples in the shader). Calm, not fireworks: a few hundred soft round specks at most, each on a fixed
+  eased path (drift out, wait, arc into the target), leaving in a stream; the ripple bends the picture like glass with a
+  thin rim, slows as it grows, is sized by what burst and is gone in 1.8 s.
 - **Watch Tunero fix it** (`guide.ts`, plan in `lib/autoplay.ts`): a cursor clicks the real buttons page by page, the
   clicks a visitor would make (Fix, Turn on per group, each startup switch, Remove per app). The app has no fix-all
   button and the demo does not pretend it has one. Any key or click takes over. About 15 seconds.
