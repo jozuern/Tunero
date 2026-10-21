@@ -226,11 +226,12 @@ export function inboxAppReinstall(name: string): string {
   return app.reinstall;
 }
 
-/** The newest `versions` sections of CHANGELOG.md (English only), as written there. */
+/** The newest `versions` released sections of CHANGELOG.md (English only), as written there; Unreleased is left out. */
 export function changelog(versions: number): { version: string; body: string }[] {
   return read('CHANGELOG.md')
     .split(/^## /m)
     .slice(1)
+    .filter((part) => /^\d+\.\d+\.\d+\s/.test(part))
     .slice(0, versions)
     .map((part) => ({ version: part.slice(0, part.indexOf('\n')).trim(), body: part.slice(part.indexOf('\n') + 1).trim() }));
 }
