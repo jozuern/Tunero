@@ -1,7 +1,7 @@
 // The desktop's live state: the tested demo logic (lib/demo-state.ts) in Svelte runes, plus the window manager.
 // The demo state survives a language switch through sessionStorage; blocked storage just starts fresh.
 import { getContext, setContext } from 'svelte';
-import type { Demo, Effect } from '../lib/demo.ts';
+import type { Demo, Effect, Write } from '../lib/demo.ts';
 import { trail } from './effects.ts';
 import {
   initial,
@@ -64,6 +64,8 @@ export class DesktopStore {
     settings: this.frame('settings'),
   });
   startOpen = $state(false);
+  /** The change the dive is showing, or null. */
+  dive = $state<{ title: string; write: Write } | null>(null);
   /** True while Undo all plays its steps. */
   rewinding = $state(false);
   get clutter() {

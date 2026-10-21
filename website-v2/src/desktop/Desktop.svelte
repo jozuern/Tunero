@@ -12,6 +12,7 @@
   import Window from './Window.svelte';
   import TuneroApp from './app/TuneroApp.svelte';
   import Wallpaper from './wallpaper/Wallpaper.svelte';
+  import Dive from './Dive.svelte';
   import type { AppStrings } from './app/appKeys.ts';
 
   let {
@@ -71,6 +72,9 @@
   {/if}
 
   <Watermark lines={copy.watermark} />
+  {#if store.dive}
+    <Dive write={store.dive.write} title={store.dive.title} copy={copy.dive} onclose={() => (store.dive = null)} />
+  {/if}
   <Toasts {copy} running={ready} />
   <StartMenu {copy} />
   <Taskbar {copy} {lang} download={facts.download} version={facts.version} classicHref={facts.classicHref} />

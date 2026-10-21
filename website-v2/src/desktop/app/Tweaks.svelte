@@ -9,8 +9,7 @@
   import Writes from './Writes.svelte';
   import { fill, type AppStrings } from './appKeys.ts';
 
-  let { app, copy, tweakCount, ondive }: { app: AppStrings; copy: DesktopStrings['app']; tweakCount: number; ondive?: (item: DemoItem, where: string) => void } =
-    $props();
+  let { app, copy, tweakCount }: { app: AppStrings; copy: DesktopStrings['app']; tweakCount: number } = $props();
   const store = useStore();
   const tweaks = store.demo.tweaks;
 
@@ -78,7 +77,7 @@
       <Toggle checked={on(selected)} label={selected.title} on={app.Tweak_SwitchOn} off={app.Tweak_SwitchOff} onchange={(value) => set(selected!, value)} />
       <p>{selected.summary}</p>
       <h3>{copy.whatChanges}</h3>
-      <Writes writes={selected.writes} {copy} ondive={ondive && ((write) => ondive(selected!, write.where))} />
+      <Writes writes={selected.writes} {copy} ondive={(write) => (store.dive = { title: selected!.title, write })} />
     {/if}
   </aside>
 </div>
