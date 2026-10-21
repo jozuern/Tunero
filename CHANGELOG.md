@@ -17,6 +17,7 @@
 
 ### Changed
 
+- **Windows install media:** every change to the install image happens in one mount, then a component cleanup without `/ResetBase` (installed updates stay removable) before the one commit; pending operations skip the cleanup and the build goes on. Size gain not yet measured in the test VM.
 - **Long work says so:** SFC and DISM, the drive check, Windows features, the component store cleanup, Update all apps, a long VirusTotal check and the install media build (half an hour or longer) show a clock line where you start them, in the confirmation and in the progress banner; tweaks that run DISM carry a "Can take minutes" tag. DISM work adds that it takes longer while Windows is installing updates.
 - **Startup:** tabs for apps at sign-in, scheduled tasks, services, drivers and advanced places, each with its count; a summary for the open tab; plainer cards with Show file, Copy location and Delete entry under More options.
 - **Remove apps:** the Microsoft Edge card says whether Windows lets you remove Edge on this PC (set up with a region in the European Economic Area or Switzerland) and opens Installed apps, where Windows removes it. Apps that show web content keep working: WebView2 is a separate program and stays, unlike what the old note said.

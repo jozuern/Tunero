@@ -11,6 +11,10 @@ public class DismParsingTests
     private static string Streamed(string text) =>
         string.Join("\n", text.Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0));
 
+    [Fact]
+    public void ComponentCleanupNeverResetsTheBase() =>
+        Assert.Equal(@"/English /Image:""C:\m"" /Cleanup-Image /StartComponentCleanup", DismArgs.ComponentCleanup(@"C:\m"));
+
     /// <summary>A failure keeps the error code and DISM's reason, not its version header or the dism.log pointer (PCO-Test, 2026-10-21).</summary>
     [Fact]
     public void FailureKeepsTheCodeAndTheReason()

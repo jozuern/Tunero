@@ -234,6 +234,10 @@ public static class DismArgs
     public static string CheckHealth(string mountDir) =>
         $"/English /Image:{Q(mountDir)} /Cleanup-Image /CheckHealth";
 
+    /// <summary>Never /ResetBase: it makes every installed update permanent, so none can be uninstalled from the new installation.</summary>
+    public static string ComponentCleanup(string mountDir) =>
+        $"/English /Image:{Q(mountDir)} /Cleanup-Image /StartComponentCleanup";
+
     public static string Unmount(string mountDir, bool commit) =>
         $"/English /Unmount-Image /MountDir:{Q(mountDir)} " + (commit ? "/Commit" : "/Discard");
 
@@ -265,6 +269,8 @@ public interface IDism
     Task RemoveProvisionedAsync(string mountDir, string packageName, CancellationToken ct);
     /// <summary>Runs /CheckHealth on the mounted image and returns the output (see <see cref="DismOutput.Healthy"/>).</summary>
     Task<string> CheckHealthAsync(string mountDir, CancellationToken ct);
+    /// <summary>Runs /StartComponentCleanup (without /ResetBase) on the mounted image. Fails with 0x800F0806 while operations are pending.</summary>
+    Task ComponentCleanupAsync(string mountDir, IProgress<double>? p, CancellationToken ct);
     Task UnmountAsync(string mountDir, bool commit, IProgress<double>? p, CancellationToken ct);
     Task<IReadOnlyList<MountedImage>> MountedImagesAsync(CancellationToken ct);
     Task CleanupMountpointsAsync(CancellationToken ct);
@@ -303,6 +309,9 @@ public sealed class DismTool(IProcessRunner? processes = null) : IDism
 
     public Task<string> CheckHealthAsync(string mountDir, CancellationToken ct) =>
         RunAsync(DismArgs.CheckHealth(mountDir), null, ct);
+
+    public async Task ComponentCleanupAsync(string mountDir, IProgress<double>? p, CancellationToken ct) =>
+        await RunAsync(DismArgs.ComponentCleanup(mountDir), p, ct);
 
     public async Task UnmountAsync(string mountDir, bool commit, IProgress<double>? p, CancellationToken ct) =>
         await RunAsync(DismArgs.Unmount(mountDir, commit), p, ct);

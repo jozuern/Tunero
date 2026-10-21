@@ -12,7 +12,7 @@ using AppLog = Optimizer.Core.Logging.Log;
 namespace Optimizer.Core.Media;
 
 /// <summary>The stages of a build in their order. Catalog is the page's own step before <see cref="MediaBuild.RunAsync"/>.</summary>
-public enum MediaStage { Catalog, Download, Check, Unpack, Apps, Files, Iso, Verify, Cleanup }
+public enum MediaStage { Catalog, Download, Check, Unpack, Apps, Parts, Settings, Shrink, Compress, Files, Iso, Verify, Cleanup }
 
 /// <summary>Where the Windows image comes from: exactly one of a catalog file to download or the user's own ISO. Cab is the catalog the page checked.</summary>
 public sealed record MediaSource(EsdFile? Download, string? IsoPath, CabLocation? Cab);
@@ -520,6 +520,9 @@ public sealed class MediaBuild(IMediaSteps steps)
     }
 
     /// <summary>Runs one DISM command and writes its command line and exit code to the build log.</summary>
+    /// <summary>DISM error: the image has pending operations that only finish at its first start.</summary>
+    internal const int PendingOperations = unchecked((int)0x800F0806);
+
     private static async Task<T> LoggedAsync<T>(IMediaSteps steps, string arguments, Func<Task<T>> call)
     {
         steps.Log("dism " + arguments);
@@ -674,11 +677,7 @@ public sealed class MediaBuild(IMediaSteps steps)
                 }
                 var build = await CheckImagesAsync(edition);
 
-                if (r.RemoveApps.Count > 0 || r.RemoveUnreviewed.Count > 0)
-                {
-                    Begin(MediaStage.Apps);
-                    await RemoveAppsAsync();
-                }
+                if (r.RemoveApps.Count > 0 || r.RemoveUnreviewed.Count > 0) await ChangeInstallImageAsync();
                 Begin(MediaStage.Files);
                 await WriteFilesAsync();
                 Begin(MediaStage.Iso);
@@ -1037,12 +1036,31 @@ public sealed class MediaBuild(IMediaSteps steps)
             return a with { UiLanguage = language };
         }
 
-        private async Task RemoveAppsAsync()
+        /// <summary>
+        /// Every change to install.wim happens in this one mount, in this order: apps, then (later steps) parts and
+        /// settings, then the component cleanup, then the health check and a single commit. One mount for all of them
+        /// saves a mount, an unmount and a commit of several GB per extra change.
+        /// </summary>
+        private async Task ChangeInstallImageAsync()
+        {
+            var apps = r.RemoveApps.Count > 0 || r.RemoveUnreviewed.Count > 0;
+            if (apps) Begin(MediaStage.Apps);
+            await MountAsync(InstallWim, 1, _mount!, readOnly: false, "install.wim");
+            var removed = apps ? await RemoveAppsInMountAsync() : 0;
+            Begin(MediaStage.Shrink);
+            var cleaned = await ComponentCleanupAsync();
+            var health = await Dism(DismArgs.CheckHealth(_mount!), () => steps.Dism.CheckHealthAsync(_mount!, ct));
+            if (!DismOutput.Healthy(health)) throw Fail("The image reports component store corruption; the changes were not saved.", "Media_Unhealthy");
+            // Nothing removed and nothing cleaned: the image stays exactly as it was.
+            await UnmountAsync(_mount!, commit: removed > 0 || cleaned, "install.wim");
+        }
+
+        /// <summary>Removes the chosen provisioned apps from the mounted image and returns how many it removed.</summary>
+        private async Task<int> RemoveAppsInMountAsync()
         {
             var catalog = CatalogData.Current.Appx;
             // Validate checked that every name is an allowlist entry.
             var entries = catalog.Apps.Where(a => r.RemoveApps.Contains(a.Name, StringComparer.OrdinalIgnoreCase)).ToList();
-            await MountAsync(InstallWim, 1, _mount!, readOnly: false, "install.wim");
             var provisioned = await Dism(DismArgs.Provisioned(_mount!), () => steps.Dism.ProvisionedAsync(_mount!, ct));
             // Provisioned names are full package names (Name_Version_Arch_ResourceId_PublisherId); the allowlist has the Name.
             var remove = provisioned.Where(p => PackageName(p) is var name && !catalog.IsProtected(name)
@@ -1054,10 +1072,26 @@ public sealed class MediaBuild(IMediaSteps steps)
                 Report(_stage, i * 100.0 / remove.Count, PackageName(package));
                 await Dism(DismArgs.RemoveProvisioned(_mount!, package), () => steps.Dism.RemoveProvisionedAsync(_mount!, package, ct));
             }
-            var health = await Dism(DismArgs.CheckHealth(_mount!), () => steps.Dism.CheckHealthAsync(_mount!, ct));
-            if (!DismOutput.Healthy(health)) throw Fail("The image reports component store corruption; the changes were not saved.", "Media_Unhealthy");
-            // Nothing removed: the image stays exactly as it was.
-            await UnmountAsync(_mount!, commit: remove.Count > 0, "install.wim");
+            return remove.Count;
+        }
+
+        /// <summary>
+        /// /StartComponentCleanup without /ResetBase: superseded component versions go, every installed update stays
+        /// removable. Pending operations (0x800F0806) mean the image has not had its first start, so nothing can be cleaned
+        /// yet; that is logged and the build goes on, never failed and never forced. Returns whether the cleanup ran.
+        /// </summary>
+        private async Task<bool> ComponentCleanupAsync()
+        {
+            try
+            {
+                await Dism(DismArgs.ComponentCleanup(_mount!), () => steps.Dism.ComponentCleanupAsync(_mount!, Percent("install.wim"), ct));
+                return true;
+            }
+            catch (DismException ex) when (DismOutput.ErrorCode(ex.Output) == PendingOperations)
+            {
+                steps.Log("Component cleanup skipped: 0x800F0806, operations wait for the first start");
+                return false;
+            }
         }
 
         private static string PackageName(string fullName) => fullName.Split('_')[0];

@@ -112,6 +112,32 @@ public sealed class MediaBuildTests : IDisposable
     }
 
     [Fact]
+    public async Task ImageChangesShareOneMountAndOneCommit()
+    {
+        await Run(Download(apps: ["Microsoft.BingNews"]));
+        Assert.Equal(1, Count("Mount install.wim 1"));
+        Assert.Equal(1, Count("Unmount commit")); // Plain answers: boot.wim is not committed
+        var i = _steps.Calls.IndexOf("ComponentCleanup");
+        Assert.True(i > _steps.Calls.FindLastIndex(c => c.StartsWith("Remove", StringComparison.Ordinal)) && i < _steps.Calls.IndexOf("CheckHealth"));
+    }
+
+    [Fact]
+    public async Task PendingOperationsSkipTheCleanupAndTheBuildGoesOn()
+    {
+        _steps.Dism.ComponentCleanupFails = MediaBuild.PendingOperations;
+        Assert.Equal(OutputIso, await Run(Download(apps: ["Microsoft.BingNews"])));
+        Assert.Contains(_steps.LogLines, l => l.Contains("0x800F0806", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task OtherCleanupErrorsFailAtShrink()
+    {
+        _steps.Dism.ComponentCleanupFails = 2;
+        await FailsAt(Download(apps: ["Microsoft.BingNews"]), MediaStage.Shrink, null);
+        AssertCleanedUp();
+    }
+
+    [Fact]
     public async Task MissingEditionFailsAtUnpack()
     {
         await FailsAt(Download("Education"), MediaStage.Unpack, "Media_EditionMissing");
@@ -272,19 +298,19 @@ public sealed class MediaBuildTests : IDisposable
         var apps = _steps.Calls.SkipWhile(c => !c.StartsWith("Mount", StringComparison.Ordinal)).TakeWhile(c => c != "Mount boot.wim 2").ToList();
         Assert.Equal(
         [
-            "Mount install.wim 1", "Provisioned", "Remove Microsoft.BingNews_4.55.62231.0_neutral_~_8wekyb3d8bbwe", "CheckHealth", "Unmount commit",
+            "Mount install.wim 1", "Provisioned", "Remove Microsoft.BingNews_4.55.62231.0_neutral_~_8wekyb3d8bbwe", "ComponentCleanup", "CheckHealth", "Unmount commit",
         ], apps);
         Assert.Empty(_steps.Dism.Mounted);
     }
 
     [Fact]
-    public async Task NothingToRemoveLeavesTheImageAsItWas()
+    public async Task NothingToRemoveStillCommitsTheCleanup()
     {
         _steps.Dism.Provisioned = ["Microsoft.WindowsStore_22510.1401.5.0_neutral_~_8wekyb3d8bbwe"];
         await Run(Download(apps: ["Microsoft.BingNews"]));
         Assert.DoesNotContain(_steps.Calls, c => c.StartsWith("Remove", StringComparison.Ordinal));
-        Assert.Contains("Unmount discard", _steps.Calls);
-        Assert.DoesNotContain("Unmount commit", _steps.Calls);
+        Assert.Contains("ComponentCleanup", _steps.Calls);
+        Assert.Contains("Unmount commit", _steps.Calls);
     }
 
     [Fact]
@@ -336,7 +362,7 @@ public sealed class MediaBuildTests : IDisposable
     {
         _steps.Dism.Provisioned = ["Microsoft.BingNews_4.55.62231.0_neutral_~_8wekyb3d8bbwe"];
         _steps.Dism.Healthy = false;
-        await FailsAt(Download(apps: ["Microsoft.BingNews"]), MediaStage.Apps, "Media_Unhealthy");
+        await FailsAt(Download(apps: ["Microsoft.BingNews"]), MediaStage.Shrink, "Media_Unhealthy");
         Assert.Contains("Unmount discard", _steps.Calls);
         Assert.DoesNotContain("Unmount commit", _steps.Calls);
         Assert.DoesNotContain("WriteIso", _steps.Calls);
@@ -1087,7 +1113,7 @@ public sealed class MediaBuildTests : IDisposable
         foreach (var stage in new[] { "Download", "Check", "Unpack", "Apps", "Files", "Iso", "Verify", "Cleanup" })
             Assert.Contains(_steps.LogLines, l => l.StartsWith(stage + " started", StringComparison.Ordinal));
         Assert.Contains(_steps.LogLines, l => l.StartsWith("Verify done in ", StringComparison.Ordinal));
-        var dismCalls = _steps.Calls.Count(c => c.Split(' ')[0] is "WimInfo" or "Apply" or "Export" or "Mount" or "Provisioned" or "Remove" or "CheckHealth" or "Unmount");
+        var dismCalls = _steps.Calls.Count(c => c.Split(' ')[0] is "WimInfo" or "Apply" or "Export" or "Mount" or "Provisioned" or "Remove" or "ComponentCleanup" or "CheckHealth" or "Unmount");
         Assert.Equal(dismCalls, _steps.LogLines.Count(l => l.StartsWith("dism /English ", StringComparison.Ordinal)));
         Assert.Equal(dismCalls, _steps.LogLines.Count(l => l == "dism exit code 0"));
         Assert.Contains(_steps.LogLines, l => l.Contains("/Remove-ProvisionedAppxPackage /PackageName:Microsoft.BingNews_", StringComparison.Ordinal));
@@ -2049,6 +2075,8 @@ internal sealed class FakeDism(FakeMediaSteps steps) : IDism
     public bool MountThrows { get; set; }
     public bool MountedImagesThrows { get; set; }
     public bool Healthy { get; set; } = true;
+    /// <summary>/StartComponentCleanup fails with this DISM error code.</summary>
+    public int? ComponentCleanupFails { get; set; }
     public int UnmountFailures { get; set; }
     public CancellationTokenSource? StopOnRemove { get; set; }
     public List<string> Mounted { get; } = [];
@@ -2173,6 +2201,14 @@ internal sealed class FakeDism(FakeMediaSteps steps) : IDism
             stop.Cancel();
             ct.ThrowIfCancellationRequested();
         }
+        return Task.CompletedTask;
+    }
+
+    public Task ComponentCleanupAsync(string mountDir, IProgress<double>? p, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        steps.Calls.Add("ComponentCleanup");
+        if (ComponentCleanupFails is { } code) throw new DismException(code, $"Error: 0x{code:x8}");
         return Task.CompletedTask;
     }
 

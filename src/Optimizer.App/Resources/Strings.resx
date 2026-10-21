@@ -1830,6 +1830,10 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Media_Stage_Check" xml:space="preserve"><value>Checking the download</value></data>
   <data name="Media_Stage_Unpack" xml:space="preserve"><value>Unpacking the image</value></data>
   <data name="Media_Stage_Apps" xml:space="preserve"><value>Removing apps</value></data>
+  <data name="Media_Stage_Parts" xml:space="preserve"><value>Removing Windows parts</value></data>
+  <data name="Media_Stage_Settings" xml:space="preserve"><value>Writing settings into the image</value></data>
+  <data name="Media_Stage_Shrink" xml:space="preserve"><value>Cleaning up the image</value></data>
+  <data name="Media_Stage_Compress" xml:space="preserve"><value>Compressing the image</value></data>
   <data name="Media_Stage_Files" xml:space="preserve"><value>Adding the setup files</value></data>
   <data name="Media_Stage_Iso" xml:space="preserve"><value>Writing the ISO</value></data>
   <data name="Media_Stage_Verify" xml:space="preserve"><value>Checking the ISO</value></data>
