@@ -13,6 +13,10 @@
   import TuneroApp from './app/TuneroApp.svelte';
   import Wallpaper from './wallpaper/Wallpaper.svelte';
   import Dive from './Dive.svelte';
+  import Trust from './windows/Trust.svelte';
+  import Notepad from './windows/Notepad.svelte';
+  import Settings from './windows/Settings.svelte';
+  import type { TrustItem } from '../i18n/en.ts';
   import type { AppStrings } from './app/appKeys.ts';
 
   let {
@@ -21,12 +25,18 @@
     lang,
     facts,
     app,
+    trust,
+    changelog,
+    links,
   }: {
     demo: Demo;
     copy: DesktopStrings;
     lang: 'en' | 'de';
     facts: { version: string; tweakCount: number; download: string; classicHref: string; otherHref: string };
     app: AppStrings;
+    trust: { intro: string; items: TrustItem[] };
+    changelog: { entries: { version: string; body: string }[]; href: string };
+    links: { download: string; faq: string; privacy: string };
   } = $props();
 
   const store = provideStore(new DesktopStore(demo));
@@ -57,17 +67,17 @@
   {/if}
   {#if store.windows.trust.open}
     <Window id="trust" title={copy.icons.trust} icon="folder" labels={copy.window}>
-      <div class="placeholder">{copy.icons.trust}</div>
+      <Trust copy={copy.explorer} items={trust.items} intro={trust.intro} />
     </Window>
   {/if}
   {#if store.windows.notepad.open}
     <Window id="notepad" title={copy.icons.notepad} icon="notepad" labels={copy.window}>
-      <div class="placeholder">{copy.icons.notepad}</div>
+      <Notepad copy={copy.notepad} entries={changelog.entries} href={changelog.href} />
     </Window>
   {/if}
   {#if store.windows.settings.open}
     <Window id="settings" title={copy.icons.settings} icon="settings" labels={copy.window}>
-      <div class="placeholder">{copy.icons.settings}</div>
+      <Settings copy={copy.settings} {lang} otherHref={facts.otherHref} />
     </Window>
   {/if}
 
@@ -76,7 +86,7 @@
     <Dive write={store.dive.write} title={store.dive.title} copy={copy.dive} onclose={() => (store.dive = null)} />
   {/if}
   <Toasts {copy} running={ready} />
-  <StartMenu {copy} />
+  <StartMenu {copy} {links} />
   <Taskbar {copy} {lang} download={facts.download} version={facts.version} classicHref={facts.classicHref} />
 </div>
 
@@ -88,11 +98,4 @@
     user-select: none;
   }
 
-  .placeholder {
-    display: grid;
-    place-items: center;
-    flex: 1;
-    font-size: 28px;
-    color: var(--ink-3);
-  }
 </style>

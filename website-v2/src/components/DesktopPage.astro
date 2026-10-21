@@ -6,7 +6,7 @@ import { t, localPath, type Lang } from '../i18n/index.ts';
 import desktopEn from '../i18n/desktop-en.ts';
 import desktopDe from '../i18n/desktop-de.ts';
 import { buildDemo } from '../lib/demo.ts';
-import { appString, counts, download } from '../lib/repo.ts';
+import { appString, changelog, counts, download, repo } from '../lib/repo.ts';
 import { appKeys, type AppStrings } from '../desktop/app/appKeys.ts';
 import { latestRelease } from '../lib/release.ts';
 
@@ -18,6 +18,15 @@ const { lang } = Astro.props;
 const copy = t(lang);
 const release = await latestRelease();
 const app = Object.fromEntries(appKeys.map((key) => [key, appString(key, lang)])) as AppStrings;
+const extras = {
+  trust: { intro: copy.trust.intro, items: copy.trust.items },
+  changelog: { entries: changelog(3), href: `${repo}/blob/main/CHANGELOG.md` },
+  links: {
+    download,
+    faq: `${localPath(lang, '/classic/')}#faq`,
+    privacy: lang === 'de' ? '/de/datenschutz/' : '/privacy/',
+  },
+};
 const facts = {
   tweakCount: counts.tweaks,
   version: release.version,
@@ -30,6 +39,6 @@ const facts = {
 <Base lang={lang} title={copy.meta.title} description={copy.meta.description} path="/">
   <main>
     <h1 class="visually-hidden">{copy.meta.title}</h1>
-    <Desktop client:load demo={buildDemo(lang)} copy={lang === 'de' ? desktopDe : desktopEn} lang={lang} facts={facts} app={app} />
+    <Desktop client:load demo={buildDemo(lang)} copy={lang === 'de' ? desktopDe : desktopEn} lang={lang} facts={facts} app={app} {...extras} />
   </main>
 </Base>

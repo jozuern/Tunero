@@ -7,7 +7,7 @@
   import TuneroMark from './TuneroMark.svelte';
   import type { IconName } from './icons.ts';
 
-  let { copy }: { copy: DesktopStrings } = $props();
+  let { copy, links }: { copy: DesktopStrings; links: { download: string; faq: string; privacy: string } } = $props();
   const store = useStore();
 
   const windows: { id: WindowId; icon: IconName | 'tunero'; label: string }[] = $derived([
@@ -21,6 +21,25 @@
   const recommendedIcons: IconName[] = ['lightbulbBig', 'star', 'notepad', 'folder'];
 
   let query = $state('');
+
+  type Key = keyof DesktopStrings['search']['items'];
+  const targets: Record<Key, { href?: string; window?: WindowId; icon: IconName | 'tunero' }> = $derived({
+    install: { href: links.download, icon: 'download' },
+    faq: { href: links.faq, icon: 'question' },
+    privacy: { href: links.privacy, icon: 'lock' },
+    trust: { window: 'trust', icon: 'folder' },
+    changelog: { window: 'notepad', icon: 'notepad' },
+    settings: { window: 'settings', icon: 'settings' },
+  });
+  /** Search: a result matches when its title contains the query or one of its words starts with it. */
+  const results = $derived.by(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    return (Object.keys(copy.search.items) as Key[]).filter((key) => {
+      const item = copy.search.items[key];
+      return item.title.toLowerCase().includes(q) || item.words.split(' ').some((word) => word.startsWith(q));
+    });
+  });
   let panel: HTMLElement;
 
   function onWindowClick(event: MouseEvent) {
@@ -48,6 +67,34 @@
       {/if}
     </label>
 
+    {#if query.trim()}
+      <section class="results" aria-live="polite">
+        <h2>{copy.search.results}</h2>
+        {#each results as key (key)}
+          {@const item = copy.search.items[key]}
+          {@const target = targets[key]}
+          {#if target.href}
+            <a class="result" href={target.href}>
+              <Icon name={target.icon as IconName} size={24} /><span><strong>{item.title}</strong>{item.body}</span>
+            </a>
+          {:else}
+            <button type="button" class="result" onclick={() => store.open(target.window!)}>
+              <Icon name={target.icon as IconName} size={24} /><span><strong>{item.title}</strong>{item.body}</span>
+            </button>
+          {/if}
+        {:else}
+          <p class="none">{copy.search.none}</p>
+        {/each}
+      </section>
+    {:else}
+    {#if store.active('search-highlights')}
+      <section class="trending" transition:appMotion>
+        <h2>{copy.search.trending}</h2>
+        <ul>
+          {#each copy.search.trendingItems as item (item)}<li><Icon name="star" size={16} />{item}</li>{/each}
+        </ul>
+      </section>
+    {/if}
     <h2>{copy.pinned}</h2>
     <div class="grid">
       {#each windows as item (item.id)}
@@ -75,6 +122,8 @@
           {/each}
         </ul>
       </section>
+    {/if}
+
     {/if}
 
     <footer>
@@ -185,6 +234,58 @@
 
   .static {
     color: var(--ink-2);
+  }
+
+  .result {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--ink);
+    font: inherit;
+    text-align: left;
+    text-decoration: none;
+  }
+
+  .result:hover {
+    background: var(--stroke);
+  }
+
+  .result span {
+    display: flex;
+    flex-direction: column;
+    color: var(--ink-2);
+    font-size: 12px;
+  }
+
+  .result strong {
+    color: var(--ink);
+    font-size: 14px;
+    font-weight: 400;
+  }
+
+  .none {
+    color: var(--ink-2);
+  }
+
+  .trending ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .trending li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border: 1px solid var(--stroke-strong);
+    border-radius: var(--radius-sm);
+    color: var(--ink);
   }
 
   ul {
