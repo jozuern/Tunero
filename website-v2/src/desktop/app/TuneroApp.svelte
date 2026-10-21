@@ -11,11 +11,14 @@
   import Apps from './Apps.svelte';
   import Changes from './Changes.svelte';
 
-  let { app, copy, tweakCount }: { app: AppStrings; copy: DesktopStrings['app']; tweakCount: number } = $props();
+  let { app, copy, tweakCount, download }: { app: AppStrings; copy: DesktopStrings['app']; tweakCount: number; download: string } = $props();
   const store = useStore();
 
   let page = $state<Page>('overview');
   let content: HTMLElement;
+  $effect(() => {
+    if (store.showTweak) go('tweaks');
+  });
 
   function go(next: Page) {
     page = next;
@@ -51,7 +54,7 @@
 
   <div class="content" bind:this={content}>
     {#if page === 'overview'}
-      <Overview {app} {copy} {go} />
+      <Overview {app} {copy} {go} {download} />
     {:else if page === 'tweaks'}
       <Tweaks {app} {copy} {tweakCount} />
     {:else if page === 'startup'}

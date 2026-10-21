@@ -15,25 +15,28 @@
 
   /** Distance between two keys in the tunnel, in px of depth. */
   const gap = 520;
+  /** Where the flight ends: the last key just in front, so it frames the card instead of flying past. */
+  const endDepth = () => (keys.length - 1) * gap + 240;
   let tunnel: HTMLElement;
   let card: HTMLElement;
   let leaving = false;
 
   onMount(() => {
     const opener = document.activeElement as HTMLElement | null;
-    const depth = keys.length * gap;
+    const depth = endDepth();
+    const flight = 900 + keys.length * 220;
     if (reducedMotion()) {
       tunnel.style.transform = `translateZ(${depth}px)`;
       card.style.opacity = '1';
     } else {
       tunnel.animate([{ transform: 'translateZ(-200px)' }, { transform: `translateZ(${depth}px)` }], {
-        duration: 900 + keys.length * 260,
+        duration: flight,
         easing: 'cubic-bezier(0.55, 0, 0.15, 1)',
         fill: 'forwards',
       });
       card.animate([{ opacity: 0, transform: 'translateY(16px) scale(0.96)' }, { opacity: 1, transform: 'none' }], {
         duration: 360,
-        delay: 700 + keys.length * 260,
+        delay: flight * 0.7,
         easing: 'ease-out',
         fill: 'forwards',
       });
@@ -48,7 +51,7 @@
     if (leaving) return;
     leaving = true;
     if (reducedMotion()) return onclose();
-    const depth = keys.length * gap;
+    const depth = endDepth();
     card.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, fill: 'forwards' });
     tunnel.animate([{ transform: `translateZ(${depth}px)` }, { transform: 'translateZ(-400px)' }], {
       duration: 520,
@@ -114,8 +117,8 @@
     display: grid;
     place-items: center;
     background: radial-gradient(ellipse at center, rgba(0, 10, 30, 0.55), rgba(0, 0, 0, 0.88));
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
     cursor: zoom-out;
     animation: dim 300ms ease-out;
   }

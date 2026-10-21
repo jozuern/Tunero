@@ -45,7 +45,8 @@
     return () => clearInterval(timer);
   });
   const locale = $derived(lang === 'de' ? 'de-DE' : 'en-US');
-  const time = $derived(now.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }));
+  // As Windows shows it: 4:08 PM in English, 16:08 in German.
+  const time = $derived(now.toLocaleTimeString(locale, { hour: lang === 'de' ? '2-digit' : 'numeric', minute: '2-digit' }));
   const date = $derived(now.toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' }));
 
   const pop = (node: Element) => scale(node, { start: 0.2, duration: reducedMotion() ? 0 : 280, opacity: 0 });
@@ -75,7 +76,7 @@
         store.startOpen = !store.startOpen;
       }}
     >
-      <TuneroMark size={24} />
+      <Icon name="grid" size={24} />
     </button>
     <button
       type="button"
@@ -87,7 +88,7 @@
       }}
     >
       <Icon name="search" size={16} />
-      <span class="search-text">{copy.searchPlaceholder}</span>
+      <span class="search-text">{copy.searchShort}</span>
       {#if store.active('search-highlights')}
         <span class="highlight" title={copy.searchHighlight}><Icon name="star" size={16} /></span>
       {/if}
@@ -123,7 +124,7 @@
         <span>{copy.install}</span>
       </a>
     {/if}
-    <span class="tray" data-anchor="tray">
+    <span class="tray" data-anchor="tray" style:--tray-slots={store.demo.startup.length + 3}>
       <span class="tray-icon" title={copy.trayMore}><Icon name="chevronUp" size={16} /></span>
       {#each trayItems as item (item.id)}
         <span class="tray-icon app" title={item.title} in:pop out:pop>
@@ -153,8 +154,8 @@
     align-items: center;
     padding: 0 8px;
     background: var(--acrylic);
-    backdrop-filter: blur(30px) saturate(1.6);
     -webkit-backdrop-filter: blur(30px) saturate(1.6);
+    backdrop-filter: blur(30px) saturate(1.6);
     border-top: 1px solid var(--stroke-strong);
     color: var(--ink);
   }
@@ -233,7 +234,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    width: 220px;
+    width: 168px;
     height: 32px;
     margin: 0 4px;
     padding: 0 8px 0 12px;
@@ -308,9 +309,12 @@
     filter: brightness(1.08);
   }
 
+  /* Room for every icon it starts with, so Install does not move when startup programs leave the tray. */
   .tray {
     display: flex;
     align-items: center;
+    justify-content: flex-end;
+    min-width: calc(var(--tray-slots) * 28px);
   }
 
   .tray-icon {
@@ -353,13 +357,6 @@
     .install {
       margin-right: 4px;
       padding: 0 10px;
-    }
-  }
-
-  /* The demo label needs the room more than the link's text; the arrow keeps its tooltip. */
-  @media (max-width: 1500px) {
-    .corner span {
-      display: none;
     }
   }
 

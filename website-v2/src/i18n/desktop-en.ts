@@ -18,6 +18,13 @@ const desktopEn = {
     moreApps: 'Preinstalled apps you can remove: {0}',
     impactNote: 'Rated for games on this PC, 0 to 5. No mark means no effect on frame rate: those tweaks stop the nagging instead.',
     noFpsEffect: 'No FPS effect',
+    closeDetails: 'Close details',
+    done: {
+      title: 'Everything on this PC is fixed.',
+      body: 'Tunero does the same on your PC: it shows every change before it makes it, backs up what it changes and can undo it.',
+      install: 'Install Tunero',
+      again: 'Undo all and watch it rewind',
+    },
   },
   dive: {
     title: 'Where this change writes',
@@ -33,7 +40,7 @@ const desktopEn = {
     folder: 'Why trust it',
     pick: 'Select a file to preview it.',
     open: 'Open',
-    syncAd: { title: 'Your files are not backed up', body: 'Turn on cloud backup to protect your Desktop, Documents and Pictures.', action: 'Turn on' },
+    syncAd: { title: 'Your files are not backed up', body: 'Turn on cloud backup to protect your Desktop, Documents and Pictures.', action: 'Turn on', hint: 'Opens Tunero on the tweak that turns this ad off' },
   },
   notepad: {
     file: 'Changelog.txt',
@@ -74,6 +81,7 @@ const desktopEn = {
     counts: '{0} checks, {1} tweaks, each with its sources',
     ready: 'Starting the demo PC',
     skip: 'Press any key to skip',
+    tap: 'Tap to skip',
   },
   phone: {
     install: 'Link for your PC',
@@ -81,6 +89,7 @@ const desktopEn = {
     notifications: 'Notifications: {0}',
     tray: 'Programs at startup: {0}',
     apps: 'Preinstalled apps: {0}',
+    short: { notifications: 'Alerts', tray: 'Startup', apps: 'Apps' },
   },
   watermark: ['Demo PC, Windows 11 Pro', 'Nothing here touches your computer.'],
   classicPage: 'Classic page',
@@ -88,6 +97,7 @@ const desktopEn = {
   installTitle: 'Download Tunero.exe, version {0}',
   start: 'Start',
   searchPlaceholder: 'Search for apps, settings and documents',
+  searchShort: 'Search',
   searchHighlight: 'Trending today',
   pinned: 'Pinned',
   recommended: 'Recommended',

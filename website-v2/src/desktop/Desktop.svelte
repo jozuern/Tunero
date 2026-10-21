@@ -84,7 +84,7 @@
 
   {#if store.windows.tunero.open}
     <Window id="tunero" title="Tunero" icon="tunero" labels={copy.window}>
-      <TuneroApp {app} copy={copy.app} tweakCount={facts.tweakCount} />
+      <TuneroApp {app} copy={copy.app} tweakCount={facts.tweakCount} download={facts.download} />
     </Window>
   {/if}
   {#if store.windows.trust.open}

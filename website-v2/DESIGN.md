@@ -35,7 +35,7 @@ watch it rewind. Doing it is the explanation; the rewind is the trust.
    turbo blocked by the power plan (both rated 5), plus many startup programs. Turbo is fixed by the tweak the catalog
    names for it, which on this PC carries the rating the catalog gives it when turbo is blocked (4, with the app's
    reason). As in the app, a rating of 0 shows no mark; the detail pane says "No FPS effect".
-3. **Fixing.** Fix one finding or apply the recommended set. Each change shows what it writes (registry key and value
+3. **Fixing.** Fix a finding, switch a tweak on, or turn on a whole category with the app's "Turn on" button. Each change shows what it writes (registry key and value
    from the catalog, or the service and its start type) and the desktop reacts at the same moment: the toast stops,
    the tray icon goes, the Start ad goes, the startup list shrinks, removed apps fly out of Start. Every desktop effect
    is something that tweak really does. No frame rates, no speed numbers.

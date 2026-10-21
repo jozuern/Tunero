@@ -20,21 +20,28 @@
   );
   const startup = $derived(store.demo.startup.filter((s) => !store.applied({ kind: 'startup', id: s.id })).length);
   const apps = $derived(store.demo.apps.filter((a) => !store.applied({ kind: 'app', id: a.id })).length);
+
+  // Windows and Start sit below the strip, whose height depends on how its text wraps.
+  let height = $state(64);
+  $effect(() => {
+    document.documentElement.style.setProperty('--strip', `${height}px`);
+    return () => document.documentElement.style.removeProperty('--strip');
+  });
 </script>
 
-<div class="strip">
+<div class="strip" bind:offsetHeight={height}>
   {#each [
-    { anchor: 'toasts', icon: 'chat', count: notifications, label: copy.notifications },
-    { anchor: 'tray', icon: 'desktop', count: startup, label: copy.tray },
-    { anchor: 'start', icon: 'apps', count: apps, label: copy.apps },
+    { anchor: 'toasts', icon: 'chat', count: notifications, label: copy.notifications, short: copy.short.notifications },
+    { anchor: 'tray', icon: 'desktop', count: startup, label: copy.tray, short: copy.short.tray },
+    { anchor: 'start', icon: 'apps', count: apps, label: copy.apps, short: copy.short.apps },
   ] as chip (chip.anchor)}
     {@const text = chip.label.replace('{0}', String(chip.count))}
     <span data-anchor={chip.anchor} class:clear={chip.count === 0} title={text} aria-label={text} role="img">
-      <Icon name={chip.icon as IconName} size={16} />{chip.count}
+      <Icon name={chip.icon as IconName} size={16} />{chip.short}<b>{chip.count}</b>
     </span>
   {/each}
+  <div class="label"><Watermark wrap lines={[`${watermark[0]}. ${watermark[1]}`]} /></div>
   <a href={classic.href}>{classic.label}</a>
-  <div class="label"><Watermark lines={[`${watermark[0]}. ${watermark[1]}`]} /></div>
 </div>
 
 <style>
@@ -49,8 +56,8 @@
     gap: 6px 8px;
     padding: 8px 12px 6px;
     background: var(--acrylic);
-    backdrop-filter: blur(30px) saturate(1.6);
     -webkit-backdrop-filter: blur(30px) saturate(1.6);
+    backdrop-filter: blur(30px) saturate(1.6);
     border-bottom: 1px solid var(--stroke-strong);
     color: var(--ink);
     font-size: 12px;
@@ -68,6 +75,10 @@
     transition: background 300ms;
   }
 
+  b {
+    font-weight: 600;
+  }
+
   a {
     flex: none;
     align-self: center;
@@ -77,7 +88,7 @@
   }
 
   .label {
-    flex-basis: 100%;
+    flex: 1 1 200px;
     min-width: 0;
   }
 

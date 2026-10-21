@@ -36,10 +36,10 @@ export interface WindowFrame {
 }
 
 const sizes: Record<WindowId, { width: number; height: number }> = {
-  tunero: { width: 1040, height: 700 },
+  tunero: { width: 1160, height: 700 },
   trust: { width: 860, height: 560 },
   notepad: { width: 720, height: 520 },
-  settings: { width: 820, height: 560 },
+  settings: { width: 820, height: 440 },
 };
 
 function readSaved(): DemoState {
@@ -66,6 +66,8 @@ export class DesktopStore {
   startOpen = $state(false);
   /** The change the dive is showing, or null. */
   dive = $state<{ title: string; write: Write } | null>(null);
+  /** A tweak the Tunero window should show next: its Tweaks page opens with it selected. */
+  showTweak = $state<string | null>(null);
   /** True while Undo all plays its steps. */
   rewinding = $state(false);
   get clutter() {
@@ -236,6 +238,12 @@ export class DesktopStore {
   }
 
   /** Taskbar button: open, bring to front, or minimize when already in front. */
+  /** Opens Tunero on the tweak that turns `effect` off. */
+  openTweakFor(effect: Effect) {
+    this.showTweak = this.demo.tweaks.find((t) => t.effect === effect)?.id ?? null;
+    this.open('tunero');
+  }
+
   toggle(id: WindowId) {
     const w = this.windows[id];
     if (w.open && !w.minimized && this.focused === id) this.minimize(id);

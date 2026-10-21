@@ -53,13 +53,13 @@
   <div class="page">
     <h1>{copy.nav[section]}</h1>
     {#if section === 'system'}
-      <section class="card">
-        <h2>{copy.display}</h2>
-        <div class="row">
-          <span>{copy.refresh}</span>
-          <strong data-anchor="settings">{(fixed ? refresh.writes[0].to : refresh.writes[0].from)}</strong>
-        </div>
-        {#if fixed}<p class="hint">{copy.refreshHint}</p>{/if}
+      <h2>{copy.display}</h2>
+      <section class="card row">
+        <span class="text">
+          <strong>{copy.refresh}</strong>
+          {#if fixed}<span>{copy.refreshHint}</span>{/if}
+        </span>
+        <span class="select" data-anchor="settings">{fixed ? refresh.writes[0].to : refresh.writes[0].from}<Icon name="chevronDown" size={16} /></span>
       </section>
     {:else if section === 'personalization'}
       <section class="card">
@@ -81,12 +81,12 @@
         </div>
       </section>
     {:else}
-      <section class="card">
-        <div class="row">
-          <span>{copy.animation}</span>
-          <Toggle checked={motion} label={copy.animation} on={copy.on} off={copy.off} onchange={setMotion} />
-        </div>
-        <p class="hint">{copy.animationHint}</p>
+      <section class="card row">
+        <span class="text">
+          <strong>{copy.animation}</strong>
+          <span>{copy.animationHint}</span>
+        </span>
+        <Toggle stateFirst checked={motion} label={copy.animation} on={copy.on} off={copy.off} onchange={setMotion} />
       </section>
     {/if}
   </div>
@@ -163,17 +163,33 @@
     gap: 16px;
   }
 
-  .row strong {
-    padding: 4px 12px;
-    border: 1px solid var(--stroke-strong);
-    border-radius: var(--radius-sm);
+  /* A Windows 11 settings row: what it is on the left, its control at the right edge. */
+  .text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .text strong {
     font-weight: 400;
   }
 
-  .hint {
-    margin: 12px 0 0;
+  .text span {
     color: var(--ink-2);
     font-size: 12px;
+  }
+
+  .select {
+    display: inline-flex;
+    align-items: center;
+    gap: 24px;
+    flex: none;
+    height: 32px;
+    padding: 0 8px 0 12px;
+    border: 1px solid var(--stroke-strong);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
   }
 
   .modes {

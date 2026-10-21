@@ -151,9 +151,9 @@
   @media (max-width: 899px) {
     .window {
       left: 0 !important;
-      top: 64px !important;
+      top: var(--strip, 64px) !important;
       width: 100% !important;
-      height: calc(100% - 64px - 48px) !important;
+      height: calc(100% - var(--strip, 64px) - 48px) !important;
       border-radius: 0;
       border-left: none;
       border-right: none;

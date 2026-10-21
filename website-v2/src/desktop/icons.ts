@@ -46,6 +46,8 @@ import desktop from '@fluentui/svg-icons/icons/desktop_20_regular.svg?raw';
 import question from '@fluentui/svg-icons/icons/question_circle_24_regular.svg?raw';
 import trophy from '@fluentui/svg-icons/icons/trophy_24_regular.svg?raw';
 import arrowLeft from '@fluentui/svg-icons/icons/arrow_left_20_regular.svg?raw';
+import briefcase from '@fluentui/svg-icons/icons/briefcase_24_regular.svg?raw';
+import chevronDown from '@fluentui/svg-icons/icons/chevron_down_16_regular.svg?raw';
 
-export const icons = {search, folder, notepad, settings, dismiss, minimize, maximize, restore, chevronUp, wifi, speaker, download, power, games, chat, lightbulb, cloud, sync, music, keyboard, camera, mic, person, shield, code, undo, history, home, wrench, apps, info, check, warning, open, globe, weather, news, lock, copy, grid, video, star, lightbulbBig, desktop, question, trophy, arrowLeft};
+export const icons = {search, folder, notepad, settings, dismiss, minimize, maximize, restore, chevronUp, wifi, speaker, download, power, games, chat, lightbulb, cloud, sync, music, keyboard, camera, mic, person, shield, code, undo, history, home, wrench, apps, info, check, warning, open, globe, weather, news, lock, copy, grid, video, star, lightbulbBig, desktop, question, trophy, arrowLeft, chevronDown, briefcase};
 export type IconName = keyof typeof icons;

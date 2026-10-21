@@ -3,6 +3,7 @@
   import type { DesktopStrings } from '../../i18n/desktop-en.ts';
   import { useStore } from '../store.svelte.ts';
   import Icon from '../Icon.svelte';
+  import { appIcons } from '../startup.ts';
   import { single } from '../clicks.ts';
   import { fill, type AppStrings } from './appKeys.ts';
 
@@ -18,7 +19,7 @@
 <ul>
   {#each installed as item (item.id)}
     <li class="card">
-      <Icon name="apps" size={20} />
+      <Icon name={appIcons[store.demo.apps.indexOf(item)]} size={20} />
       <strong>{item.title}</strong>
       <button type="button" class="btn" aria-label={fill(app.Debloat_RemoveName, item.title)} onclick={single(() => store.apply([{ kind: 'app', id: item.id }]))}>
         {app.Debloat_Remove}

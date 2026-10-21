@@ -35,7 +35,9 @@
       const source = sources[(next + i) % sources.length];
       if (!source.live() || shown.includes(source.key) || (quietUntil.get(source.key) ?? 0) > Date.now()) continue;
       next = (sources.indexOf(source) + 1) % sources.length;
-      shown = [...shown.slice(-1), source.key];
+      // Two at once only where they stay clear of the windows' buttons.
+      const room = innerWidth >= 1500 && innerHeight >= 960;
+      shown = [...(room ? shown.slice(-1) : []), source.key];
       setTimeout(() => hide(source.key, 12000), 7000);
       return;
     }
@@ -96,8 +98,8 @@
     border: 1px solid var(--stroke-strong);
     border-radius: var(--radius);
     background: var(--acrylic-strong);
-    backdrop-filter: blur(30px) saturate(1.6);
     -webkit-backdrop-filter: blur(30px) saturate(1.6);
+    backdrop-filter: blur(30px) saturate(1.6);
     box-shadow: var(--shadow);
     color: var(--ink);
   }

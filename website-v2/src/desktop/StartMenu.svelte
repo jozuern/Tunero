@@ -6,6 +6,7 @@
   import Icon from './Icon.svelte';
   import TuneroMark from './TuneroMark.svelte';
   import type { IconName } from './icons.ts';
+  import { appIcons } from './startup.ts';
 
   let { copy, links }: { copy: DesktopStrings; links: { download: string; faq: string; privacy: string } } = $props();
   const store = useStore();
@@ -16,7 +17,6 @@
     { id: 'notepad', icon: 'notepad', label: copy.icons.notepad },
     { id: 'settings', icon: 'settings', label: copy.icons.settings },
   ]);
-  const appIcons: IconName[] = ['news', 'weather', 'grid', 'star', 'video', 'globe'];
   const apps = $derived(store.demo.apps.map((app, i) => ({ ...app, icon: appIcons[i % appIcons.length] })));
   const recommendedIcons: IconName[] = ['lightbulbBig', 'star', 'notepad', 'folder'];
 
@@ -69,7 +69,7 @@
       <Icon name="search" size={16} />
       <input type="search" bind:value={query} placeholder={copy.searchPlaceholder} aria-label={copy.searchPlaceholder} use:focusNow />
       {#if store.active('search-highlights')}
-        <span class="trend" transition:appMotion><Icon name="star" size={16} />{copy.searchHighlight}</span>
+        <span class="trend" title={copy.searchHighlight} transition:appMotion><Icon name="star" size={16} /><span class="trend-text">{copy.searchHighlight}</span></span>
       {/if}
     </label>
 
@@ -159,8 +159,8 @@
     border: 1px solid var(--stroke-strong);
     border-radius: var(--radius);
     background: var(--acrylic-strong);
-    backdrop-filter: blur(40px) saturate(1.6);
     -webkit-backdrop-filter: blur(40px) saturate(1.6);
+    backdrop-filter: blur(40px) saturate(1.6);
     box-shadow: var(--shadow);
     color: var(--ink);
   }
@@ -361,5 +361,17 @@
     width: 36px;
     height: 36px;
     border-radius: var(--radius-sm);
+  }
+
+  /* Phones: below the status strip, as the windows are. */
+  @media (max-width: 899px) {
+    .start {
+      max-height: calc(100dvh - var(--strip, 64px) - 60px - 8px);
+    }
+
+    /* The search text needs the room: the highlight keeps only its star. */
+    .trend-text {
+      display: none;
+    }
   }
 </style>

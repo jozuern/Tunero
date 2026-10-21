@@ -7,6 +7,7 @@
   import Icon from '../Icon.svelte';
   import { single } from '../clicks.ts';
   import type { IconName } from '../icons.ts';
+  import { startupIcons } from '../startup.ts';
   import { fill, type AppStrings } from './appKeys.ts';
 
   let { app }: { app: AppStrings; copy: DesktopStrings['app'] } = $props();
@@ -14,6 +15,8 @@
   const demo = store.demo;
 
   const icons: Record<Change['kind'], IconName> = { finding: 'desktop', tweak: 'wrench', app: 'apps', startup: 'desktop' };
+  const icon = (change: Change): IconName =>
+    change.kind === 'startup' ? startupIcons[demo.startup.findIndex((s) => s.id === change.id)] : icons[change.kind];
   const lookup = (change: Change) => {
     const list = { finding: demo.findings, tweak: demo.tweaks, app: demo.apps, startup: demo.startup }[change.kind];
     return list.find((item) => item.id === change.id)!;
@@ -45,17 +48,18 @@
   <div class="result" role="status">{fill(app.Result_UndoAll, undone)}</div>
 {/if}
 
-{#if entries.length === 0}
+{#if entries.length === 0 && undone === null}
   <p class="empty">{app.Changes_LogEmpty}</p>
 {:else}
   <ul>
     {#each entries as change (`${change.kind}:${change.id}`)}
       {@const item = lookup(change)}
       <li class="card" out:motion>
-        <Icon name={icons[change.kind]} size={20} />
+        <Icon name={icon(change)} size={20} />
         <span class="text">
           <strong>{item.title}</strong>
-          {#if item.writes.length > 0}<span>{fill(app.Changes_Entries, item.writes.length)}</span>{/if}
+          {#if item.writes.length > 0}<span>{fill(app.Changes_Entries, item.writes.length)}</span>
+          {:else if change.kind === 'startup'}<span>{app.Startup_SignInKinds}: {app.Startup_Disabled}</span>{/if}
         </span>
         <button type="button" class="btn" onclick={single(() => store.undo(change))}>{app.Tweak_Undo}</button>
       </li>

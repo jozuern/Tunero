@@ -11,7 +11,7 @@
   import type { DemoFinding } from '../../lib/demo.ts';
   import type { Change } from '../../lib/demo-state.ts';
 
-  let { app, copy, go }: { app: AppStrings; copy: DesktopStrings['app']; go: (page: Page) => void } = $props();
+  let { app, copy, go, download }: { app: AppStrings; copy: DesktopStrings['app']; go: (page: Page) => void; download: string } = $props();
   const store = useStore();
   const demo = store.demo;
 
@@ -78,6 +78,19 @@
   </section>
 {:else}
   <h2 class="verdict">{verdict}</h2>
+  {#if store.clutter === 0}
+    <section class="done" aria-live="polite">
+      <Icon name="check" size={20} />
+      <div>
+        <strong>{copy.done.title}</strong>
+        <p>{copy.done.body}</p>
+        <div class="actions">
+          <a class="btn primary" href={download}><Icon name="download" size={16} />{copy.done.install}</a>
+          <button type="button" class="btn" disabled={store.rewinding} onclick={() => store.undoAll()}><Icon name="undo" size={16} />{copy.done.again}</button>
+        </div>
+      </div>
+    </section>
+  {/if}
   <ul class="findings">
     {#each fixable as finding (finding.id)}
       {@const done = fixed(finding)}
@@ -199,6 +212,38 @@
     display: block;
     height: 100%;
     background: var(--accent);
+  }
+
+  .done {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    margin-top: 16px;
+    padding: 16px;
+    border: 1px solid color-mix(in srgb, var(--ok) 45%, transparent);
+    border-radius: var(--radius);
+    background: color-mix(in srgb, var(--ok) 12%, var(--surface-2));
+  }
+
+  .done > :global(.icon) {
+    flex: none;
+    margin-top: 2px;
+    color: var(--ok);
+  }
+
+  .done p {
+    margin: 4px 0 12px;
+    color: var(--ink-2);
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .actions a {
+    text-decoration: none;
   }
 
   .findings {

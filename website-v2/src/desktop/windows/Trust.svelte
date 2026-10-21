@@ -26,7 +26,7 @@
       <div class="ad" transition:motion>
         <Icon name="cloud" size={20} />
         <span><strong>{copy.syncAd.title}</strong> {copy.syncAd.body}</span>
-        <span class="fake-btn">{copy.syncAd.action}</span>
+        <button type="button" class="fake-btn" title={copy.syncAd.hint} onclick={() => store.openTweakFor('explorer-sync-ad')}>{copy.syncAd.action}</button>
       </div>
     {/if}
     <div class="split">
@@ -116,6 +116,8 @@
   }
 
   .fake-btn {
+    border: none;
+    font: inherit;
     padding: 4px 12px;
     border-radius: var(--radius-sm);
     background: var(--accent);
@@ -208,6 +210,11 @@
 
     .split {
       grid-template-columns: 1fr;
+      grid-template-rows: auto minmax(0, 1fr);
+    }
+
+    .files {
+      overflow: visible;
     }
 
     .preview {

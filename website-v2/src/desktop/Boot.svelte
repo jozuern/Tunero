@@ -11,8 +11,10 @@
 
   const lines = $derived([fill(copy.version, version), copy.signed, fill(copy.counts, checks, tweaks), copy.ready]);
   let shown = $state(0);
+  let touch = $state(false);
 
   onMount(() => {
+    touch = matchMedia('(pointer: coarse)').matches;
     const timers = [400, 750, 1100, 1450].map((at, i) => setTimeout(() => (shown = i + 1), at));
     const end = setTimeout(finish, 2300);
     return () => {
@@ -37,7 +39,7 @@
   <ul>
     {#each lines.slice(0, shown) as line (line)}<li>{line}</li>{/each}
   </ul>
-  <p class="skip-hint">{copy.skip}</p>
+  <p class="skip-hint">{touch ? copy.tap : copy.skip}</p>
 </div>
 
 <style>

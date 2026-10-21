@@ -57,7 +57,7 @@ const en = {
   download: {
     title: 'Download',
     button: 'Download Tunero.exe',
-    facts: (version: string) => `Version ${version} for Windows 11 25H2 or newer, x64. In English and German. Free software under the GPL-3.0-only.`,
+    facts: (version: string) => `Version ${version} for Windows 11 25H2 or newer, x64. In English and German. Free software under the GPL‑3.0‑only.`,
     changes: 'What changed',
     signed: 'Tunero.exe is code signed from version 1.2.3 on. Windows SmartScreen may still warn on the first start.',
     signedLink: 'Why',
@@ -87,7 +87,7 @@ const en = {
         link: { label: 'Source code', href: repo },
       },
       {
-        title: 'Free software under the GPL-3.0-only',
+        title: 'Free software under the GPL‑3.0‑only',
         body: 'You can use, study, change and share it. Versions you share, changed or not, must stay under the same license and come with their source code. There is no paid version, and support unlocks nothing.',
         link: { label: 'License', href: `${repo}/blob/main/LICENSE` },
       },
@@ -173,7 +173,7 @@ const en = {
   },
   footer: {
     label: 'Project links',
-    license: 'Free software under the GPL-3.0-only.',
+    license: 'Free software under the GPL‑3.0‑only.',
     version: (version: string) => `Tunero ${version}.`,
     links: {
       releases: 'Releases',

@@ -1,10 +1,10 @@
 <script lang="ts">
   // The demo label, in the taskbar on wide screens and in the status bar on phones: always visible, never over a
   // window's title bar.
-  let { lines }: { lines: string[] } = $props();
+  let { lines, wrap = false }: { lines: string[]; wrap?: boolean } = $props();
 </script>
 
-<p class="watermark">
+<p class="watermark" class:wrap>
   {#each lines as line (line)}<span>{line}</span>{/each}
 </p>
 
@@ -19,6 +19,10 @@
     line-height: 1.3;
     white-space: nowrap;
     overflow: hidden;
+  }
+
+  .wrap {
+    white-space: normal;
   }
 
   span {

@@ -1,9 +1,16 @@
 <script lang="ts">
-  // A Fluent toggle switch with its state text beside it, as in the app.
-  let { checked, label, on, off, onchange }: { checked: boolean; label: string; on: string; off: string; onchange: (value: boolean) => void } = $props();
+  // A Fluent toggle switch with its state text beside it: after it in the app's lists, before it in Windows Settings.
+  let {
+    checked,
+    label,
+    on,
+    off,
+    onchange,
+    stateFirst = false,
+  }: { checked: boolean; label: string; on: string; off: string; onchange: (value: boolean) => void; stateFirst?: boolean } = $props();
 </script>
 
-<label class="toggle">
+<label class="toggle" class:state-first={stateFirst}>
   <input type="checkbox" role="switch" {checked} aria-label={label} onchange={(event) => onchange((event.currentTarget as HTMLInputElement).checked)} />
   <span class="track" aria-hidden="true"><span class="thumb"></span></span>
   <span class="state">{checked ? on : off}</span>
@@ -63,6 +70,15 @@
   .state {
     min-width: 96px;
     font-size: 14px;
+  }
+
+  .state-first {
+    flex-direction: row-reverse;
+  }
+
+  .state-first .state {
+    min-width: 0;
+    text-align: right;
   }
 
   :global([data-motion='reduce']) .track,

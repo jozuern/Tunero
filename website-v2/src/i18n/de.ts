@@ -21,7 +21,7 @@ const de: Strings = {
   demo: {
     notSet: 'nicht gesetzt',
     display: 'Bildschirm 1',
-    refreshWhere: 'Bildschirm 1: Bildwiederholrate',
+    refreshWhere: 'Bildschirm 1: Refresh-Rate',
     power: {
       maxState: 'Energiesparplan, Netzbetrieb: Maximaler Leistungszustand des Prozessors',
       boostMode: 'Energiesparplan, Netzbetrieb: Leistungssteigerungsmodus für Prozessoren',
@@ -43,13 +43,13 @@ const de: Strings = {
   download: {
     title: 'Download',
     button: 'Tunero.exe herunterladen',
-    facts: (version) => `Version ${version} für Windows 11 25H2 oder neuer, x64. Auf Deutsch und Englisch. Freie Software unter der GPL-3.0-only.`,
+    facts: (version) => `Version ${version} für Windows 11 25H2 oder neuer, x64. Auf Deutsch und Englisch. Freie Software unter der GPL‑3.0‑only.`,
     changes: 'Was neu ist',
     signed: 'Tunero.exe ist ab Version 1.2.3 signiert. Windows SmartScreen kann beim ersten Start trotzdem warnen.',
     signedLink: 'Warum',
     started: 'Der Download hat begonnen. Windows warnt beim Start?',
     startedLink: 'Hier steht, was zu tun ist',
-    firstStart: 'Beim ersten Start bietet sie an, sich im Ordner Programme mit einem Eintrag im Startmenü zu installieren, oder dort zu bleiben, wo sie liegt.',
+    firstStart: 'Beim ersten Start bietet Tunero an, sich im Ordner Programme mit einem Eintrag im Startmenü zu installieren, oder dort zu bleiben, wo die Datei liegt.',
     managers: 'Mit einem Paketmanager',
     copy: 'Kopieren',
     copied: 'Kopiert',
@@ -72,7 +72,7 @@ const de: Strings = {
         link: { label: 'Quellcode', href: repo },
       },
       {
-        title: 'Freie Software unter der GPL-3.0-only',
+        title: 'Freie Software unter der GPL‑3.0‑only',
         body: 'Du darfst es nutzen, untersuchen, ändern und weitergeben. Versionen, die du weitergibst, ob geändert oder nicht, müssen unter derselben Lizenz bleiben und ihren Quellcode mitbringen. Es gibt keine Bezahlversion, und eine Unterstützung schaltet nichts frei.',
         link: { label: 'Lizenz (Englisch)', href: `${repo}/blob/main/LICENSE` },
       },
@@ -156,7 +156,7 @@ const de: Strings = {
   },
   footer: {
     label: 'Projektlinks',
-    license: 'Freie Software unter der GPL-3.0-only.',
+    license: 'Freie Software unter der GPL‑3.0‑only.',
     version: (version) => `Tunero ${version}.`,
     links: {
       releases: 'Versionen',
