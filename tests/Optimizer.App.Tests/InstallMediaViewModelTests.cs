@@ -224,8 +224,11 @@ public sealed class InstallMediaViewModelTests : IDisposable
         await media.BuildCommand.ExecuteAsync(null);
 
         var r = Assert.Single(_requests);
-        var consumer = CatalogData.Current.Appx.Apps.Where(a => a.Group == "consumer").Select(a => a.Name).Order();
+        // The consumer apps the measured image of this build and edition holds (mediaimages.json), not the whole group.
+        var measured = MediaChoices.MeasuredApps(CatalogData.Current.MediaImages, r.Source.Download!)!;
+        var consumer = MediaChoices.PageApps(CatalogData.Current.Appx, measured).Where(a => a.Group == "consumer").Select(a => a.Name).Order();
         Assert.Equal(consumer, r.RemoveApps.Order());
+        Assert.DoesNotContain("Microsoft.People", r.RemoveApps);
         Assert.Equal("en-us", r.Source.Download?.LanguageCode);
         Assert.Equal("Professional", r.Edition);
         Assert.Null(r.IsoIndex);
@@ -382,7 +385,8 @@ public sealed class InstallMediaViewModelTests : IDisposable
     {
         var media = await WithCatalog();
         Assert.Equal(MediaChoices.InstallableApps(CatalogData.Current.Apps).Count(), media.InstallRows.Count);
-        Assert.DoesNotContain(media.InstallRows, r => r.App.Scope != "machine");
+        // Per-user apps too: the first sign-in installs them as the account that signed in.
+        Assert.Contains(media.InstallRows, r => r.App.Scope == "user");
         Assert.All(media.InstallRows, r => Assert.False(r.IsChecked));
         Assert.Equal(Loc.Instance["Media_Off"], media.InstallSummary);
 

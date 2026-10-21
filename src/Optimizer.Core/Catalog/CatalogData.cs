@@ -30,6 +30,7 @@ public sealed class CatalogData
     public required Tools.FeatureCatalog Features { get; init; }
     public required Profiles.ProfileCatalog Profiles { get; init; }
     public required NotIncludedCatalog NotIncluded { get; init; }
+    public required Media.MediaImageCatalog MediaImages { get; init; }
 
     public static CatalogData Load() => new()
     {
@@ -46,6 +47,7 @@ public sealed class CatalogData
         Storage = Read<StorageCatalog>("storage.json"),
         Extras = Read<ExtrasCatalog>("extras.json"),
         NotIncluded = Read<NotIncludedCatalog>("notincluded.json"),
+        MediaImages = Read<Media.MediaImageCatalog>("mediaimages.json"),
     };
 
     public static IEnumerable<string> ResourceNames(string prefix) =>

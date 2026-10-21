@@ -71,6 +71,80 @@ public static class DeElevatedLauncher
         }
     }
 
+    // ---------------- waiting for a program run as the user ----------------
+
+    /// <summary>
+    /// Runs <paramref name="exe"/> as the signed-in <paramref name="user"/>, not elevated, in that user's session, and waits
+    /// for it: a one-time scheduled task as in <see cref="Open"/>, watched until it is no longer running. Returns the
+    /// program's exit code (the task's last result), or null when it could not be started or ran longer than
+    /// <paramref name="limit"/> (then it is ended). The task is deleted afterwards in any case.
+    /// </summary>
+    public static async Task<int?> RunAsUserAndWaitAsync(string exe, string arguments, string user, TimeSpan limit, CancellationToken ct)
+    {
+        var name = $"Tunero-open-{Guid.NewGuid():N}";
+        lock (Pending) Pending.Add(name);
+        try
+        {
+            var service = TaskSchedulerCom.Connect();
+            var folder = service.GetFolder("\\");
+            var def = service.NewTask(0);
+            var principal = def.Principal;
+            principal.UserId = user;
+            principal.LogonType = TaskSchedulerCom.LogonInteractiveToken;
+            principal.RunLevel = TaskSchedulerCom.RunLevelLua;
+            var settings = def.Settings;
+            settings.DisallowStartIfOnBatteries = false;
+            settings.StopIfGoingOnBatteries = false;
+            // Task Scheduler ends the program itself when the watch below has given up.
+            settings.ExecutionTimeLimit = $"PT{(int)Math.Ceiling(limit.TotalMinutes) + 1}M";
+            var action = (TaskSchedulerCom.IExecAction)def.Actions.Create(TaskSchedulerCom.ActionExec);
+            action.Path = exe;
+            action.Arguments = arguments;
+            var task = folder.RegisterTaskDefinition(name, def, TaskSchedulerCom.CreateOrUpdate, null, null, TaskSchedulerCom.LogonInteractiveToken, null);
+            task.Run(null);
+            Logging.Log.Info("launcher", $"run as {user} and wait: {exe} {arguments}");
+            var started = false;
+            var clock = Stopwatch.StartNew();
+            while (clock.Elapsed < limit)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(1), ct);
+                var state = task.State;
+                if (state is TaskSchedulerCom.StateRunning or TaskSchedulerCom.StateQueued)
+                {
+                    started = true;
+                    continue;
+                }
+                // Ready again after it ran (a quick program may end before the first look: it has a last run time then).
+                if (state == TaskSchedulerCom.StateReady && (started || task.LastRunTime > 0)) return task.LastTaskResult;
+                if (!started && clock.Elapsed > TimeSpan.FromSeconds(30))
+                {
+                    Logging.Log.Warn("launcher", $"{exe} did not start as {user} (task state {state})");
+                    return null;
+                }
+            }
+            Logging.Log.Warn("launcher", $"{exe} ran longer than {limit} as {user}: ended");
+            task.Stop(0);
+            return null;
+        }
+        catch (Exception ex) when (ex is COMException or UnauthorizedAccessException or InvalidCastException or ArgumentException)
+        {
+            Logging.Log.Warn("launcher", $"run as {user} failed: {ex.Message}");
+            return null;
+        }
+        finally
+        {
+            try
+            {
+                TaskSchedulerCom.Connect().GetFolder("\\").DeleteTask(name, 0);
+            }
+            catch (Exception ex) when (ex is COMException or UnauthorizedAccessException or FileNotFoundException)
+            {
+                Logging.Log.Warn("launcher", $"one-time task {name} not deleted: {ex.Message}");
+            }
+            lock (Pending) Pending.Remove(name);
+        }
+    }
+
     // ---------------- scheduled-task fallback ----------------
 
     private static bool TryTask(string target, string? arguments, string user)

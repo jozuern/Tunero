@@ -169,22 +169,28 @@ public sealed partial class MainViewModel
     private async Task<IReadOnlyList<string>> InstallFirstSignInAppsAsync(IReadOnlyList<string> apps, WorkProgress.Scope work)
     {
         var done = new List<string>();
-        var winget = await Task.Run(Optimizer.Core.Apps.Winget.FindTrusted);
+        var profilePath = _services.ProfilePath;
+        var (winget, wingetForUser) = await Task.Run(() => (Optimizer.Core.Apps.Winget.FindTrusted(), Optimizer.Core.Apps.Winget.FindForUser(profilePath)));
         if (winget is null)
         {
             Log.Warn("firstsignin", "winget was not found: no app installed", new { apps });
             return done;
         }
+        // Machine-wide apps first (this elevated copy), then the per-user ones as the account that signed in.
         var offered = Optimizer.Core.Media.MediaChoices.InstallableApps(_catalog.Apps).ToList();
-        for (var i = 0; i < apps.Count; i++)
+        var ordered = apps.Select(id => offered.FirstOrDefault(a => a.Id == id)).OfType<Optimizer.Core.Apps.AppEntry>()
+            .OrderBy(a => a.Scope == "user").ToList();
+        for (var i = 0; i < ordered.Count; i++)
         {
-            if (offered.FirstOrDefault(a => a.Id == apps[i]) is not { } app) continue;
-            work.Step(i, apps.Count, Loc.Instance.Format("Media_FirstSignInInstalling", app.Name));
+            var app = ordered[i];
+            work.Step(i, ordered.Count, Loc.Instance.Format("Media_FirstSignInInstalling", app.Name));
             try
             {
-                var code = await Optimizer.Core.Apps.Winget.InstallAsync(winget, app, null, CancellationToken.None);
-                if (Optimizer.Core.Apps.Winget.IsSuccess(code)) done.Add(app.Id);
-                else Log.Warn("firstsignin", $"{app.Id} not installed: winget 0x{code:X8}");
+                int? code = app.Scope == "user"
+                    ? await Optimizer.Core.Apps.Winget.InstallForUserAndWaitAsync(wingetForUser ?? winget, app, _services.Elevation, TimeSpan.FromMinutes(20), CancellationToken.None)
+                    : await Optimizer.Core.Apps.Winget.InstallAsync(winget, app, null, CancellationToken.None);
+                if (code is { } c && Optimizer.Core.Apps.Winget.IsSuccess(c)) done.Add(app.Id);
+                else Log.Warn("firstsignin", code is { } failed ? $"{app.Id} not installed: winget 0x{failed:X8}" : $"{app.Id} not installed: winget did not run as the user or did not finish");
             }
             catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or System.IO.IOException or InvalidOperationException)
             {

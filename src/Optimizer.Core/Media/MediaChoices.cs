@@ -60,6 +60,17 @@ public sealed record MediaChoices(
     public static readonly IReadOnlySet<string> MicrosoftImageGroups = new HashSet<string>(StringComparer.Ordinal) { "consumer", "microsoft", "media", "xbox" };
 
     /// <summary>
+    /// The apps the download's image holds when that build and edition were measured (mediaimages.json), as package names;
+    /// null for a build or edition nobody measured.
+    /// </summary>
+    public static IReadOnlyList<string>? MeasuredApps(MediaImageCatalog images, EsdFile download) =>
+        int.TryParse(download.Build.Split('.')[0], out var build)
+        && images.Images.FirstOrDefault(i => i.Build == build) is { } image
+        && image.Editions.FirstOrDefault(e => string.Equals(e.Key, download.Edition, StringComparison.OrdinalIgnoreCase)).Value is { } apps
+            ? apps
+            : null;
+
+    /// <summary>
     /// The apps the page lists: with <paramref name="imageApps"/> (the full package names an own ISO's image holds, see
     /// <see cref="DismOutput.ImageAppFolder"/>) exactly the offered ones among them, else those of
     /// <see cref="MicrosoftImageGroups"/> (the download: its image is read only during the build).
@@ -80,10 +91,10 @@ public sealed record MediaChoices(
             .Select(name => new InstalledAppx(name, "", "", false))).Select(a => a.Name).ToList();
 
     /// <summary>
-    /// The apps the first sign-in can install: the app catalog's machine-wide ones. Per-user installers run as the signed-in
-    /// user in a window of their own, and nothing can wait for them there; they stay on Install &amp; update.
+    /// The apps the first sign-in can install: the whole app catalog. Machine-wide ones are installed by the elevated copy,
+    /// per-user ones as the account that signs in first (<see cref="Winget.InstallForUserAndWaitAsync"/>).
     /// </summary>
-    public static IEnumerable<AppEntry> InstallableApps(AppCatalog apps) => apps.Apps.Where(a => a.Scope == "machine" && Winget.IsSafeId(a.Id));
+    public static IEnumerable<AppEntry> InstallableApps(AppCatalog apps) => apps.Apps.Where(a => a.Scope is "machine" or "user" && Winget.IsSafeId(a.Id));
 
     /// <summary>Ticked when the page opens (and what a request file's "consumer" means): the consumer group.</summary>
     public static bool ChosenByDefault(AppxEntry app) => app.Group == "consumer";
@@ -135,4 +146,17 @@ public sealed record MediaChoices(
             return fallback;
         }
     }
+}
+
+/// <summary>mediaimages.json: the apps of Microsoft's image per build and edition, measured (see its comment).</summary>
+public sealed class MediaImageCatalog
+{
+    public List<MediaImageApps> Images { get; init; } = [];
+}
+
+/// <summary>One measured build: package names per EditionID.</summary>
+public sealed class MediaImageApps
+{
+    public int Build { get; init; }
+    public Dictionary<string, List<string>> Editions { get; init; } = [];
 }

@@ -76,11 +76,10 @@ public sealed class FirstSignInTests : IDisposable
 
     [Theory]
     [InlineData("Contoso.NotInTheCatalog")]
-    [InlineData("Playnite.Playnite")]
     [InlineData("Valve.Steam", "Valve.Steam")]
     public void AppsThePageDoesNotOfferAreIgnored(params string[] apps)
     {
-        // Unknown ids, per-user apps (the first sign-in cannot wait for them) and an id twice: the whole file is refused.
+        // Unknown ids and an id twice: the whole file is refused.
         Write(FirstSignIn.Serialize(new FirstSignInFile(ProfileId, "en", "System") { Apps = apps }));
         Assert.Null(FirstSignIn.Read(Exe, _ => true, _folder));
     }

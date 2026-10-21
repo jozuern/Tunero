@@ -127,7 +127,7 @@ public sealed record MediaRequestFile(
             throw new MediaRequestFileException("output", "is the source ISO itself");
 
         var install = Names(root, "installApps", id => MediaChoices.InstallableApps(CatalogData.Current.Apps).FirstOrDefault(a => a.Id == id)?.Id,
-            "is not a machine-wide app of the app catalog (apps.json)");
+            "is not an app of the app catalog (apps.json)");
         if (install.Count > 0 && profile is null) throw new MediaRequestFileException("installApps", "needs a profile: the copied Tunero installs them at the first sign-in");
         var appx = CatalogData.Current.Appx;
         var unreviewed = Names(root, "removeUnreviewed",
@@ -147,6 +147,7 @@ public sealed record MediaRequestFile(
     {
         CheckTuneroCopy(tuneroExe);
         MediaSource source;
+        var removeApps = RemoveApps;
         if (IsDownload)
         {
             var files = catalog ?? throw new ArgumentNullException(nameof(catalog), "A download needs the catalog.");
@@ -155,12 +156,15 @@ public sealed record MediaRequestFile(
             var esd = MediaCatalog.Pick(files, Language!, MediaChoices.CatalogArchitecture, Edition)
                       ?? throw new MediaRequestFileException("edition", $"Microsoft's catalog has no {Edition} image in {Language} (it has {string.Join(", ", editions)})");
             source = new MediaSource(esd, null, null);
+            // As on the page: of a measured image only the apps it holds (the build would skip the others anyway).
+            if (MediaChoices.MeasuredApps(CatalogData.Current.MediaImages, esd) is { } measured)
+                removeApps = MediaChoices.PageApps(CatalogData.Current.Appx, measured).Select(a => a.Name).Where(n => RemoveApps.Contains(n, StringComparer.OrdinalIgnoreCase)).ToList();
         }
         else
         {
             source = new MediaSource(null, Source, null);
         }
-        return new MediaChoices(source, Edition, null, null, AppLanguage ?? appLanguage, RemoveApps, SkipSetup is not null, SkipSetup?.AccountName,
+        return new MediaChoices(source, Edition, null, null, AppLanguage ?? appLanguage, removeApps, SkipSetup is not null, SkipSetup?.AccountName,
             SkipSetup?.Region, SkipSetup?.Keyboard, AllowUnsupported, Profile is { } profile ? new TuneroCopy(tuneroExe!, profile, Theme ?? theme) : null, Output)
         {
             InstallApps = InstallApps,

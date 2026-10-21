@@ -162,6 +162,24 @@ public static class Winget
         return DeElevatedLauncher.Open(winget, InstallArguments(app.Id, app.WingetScope, app.InstallerType), elevation);
     }
 
+    /// <summary>
+    /// Installs a per-user app for the signed-in user and waits for winget: run directly when this process is not elevated
+    /// (it is that user), else as that user through a one-time task (<see cref="DeElevatedLauncher.RunAsUserAndWaitAsync"/>),
+    /// so the app lands in the user's profile and installers that refuse administrator rights run. Returns winget's exit
+    /// code, or null when it could not be started or took longer than <paramref name="limit"/>.
+    /// </summary>
+    public static Task<int?> InstallForUserAndWaitAsync(string winget, AppEntry app, ElevationInfo? elevation, TimeSpan limit, CancellationToken ct)
+    {
+        if (!IsSafeId(app.Id)) throw new ArgumentException($"invalid winget id {app.Id}");
+        var arguments = InstallArguments(app.Id, app.WingetScope, app.InstallerType);
+        if (elevation is { IsElevated: false }) return RunDirectAsync();
+        return elevation?.SessionUser is { } user
+            ? Task.Run(() => DeElevatedLauncher.RunAsUserAndWaitAsync(winget, arguments, user, limit, ct), ct)
+            : Task.FromResult<int?>(null);
+
+        async Task<int?> RunDirectAsync() => await StreamingProcess.RunAsync(winget, arguments, null, ct);
+    }
+
     /// <summary>APPINSTALLER_CLI_ERROR_UPDATE_NOT_APPLICABLE: already installed, no newer version in the source.</summary>
     public const int UpdateNotApplicable = unchecked((int)0x8A15002B);
 

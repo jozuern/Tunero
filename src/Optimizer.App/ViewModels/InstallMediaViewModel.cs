@@ -286,6 +286,8 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     partial void OnLanguageChanged(FilterOption? value)
     {
         ShowEditions();
+        // The download's file changes with the language: its measured apps may differ.
+        if (!_buildingLists) UpdateImageApps();
         Changed();
     }
 
@@ -341,7 +343,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
 
     /// <summary>Where the list comes from: the apps a Microsoft image can hold (the download), or what the own ISO's edition holds.</summary>
     public string AppsSourceText =>
-        UseDownload ? Loc.Instance["Media_AppsFromDownload"]
+        UseDownload ? MeasuredDownloadApps() is not null ? Loc.Instance.Format("Media_AppsFromDownloadMeasured", AppRows.Count) : Loc.Instance["Media_AppsFromDownload"]
         : IsReadingIso || IsReadingApps ? Loc.Instance["Media_AppsReading"]
         : ImageAppsRead(out var read) ? read is null ? Loc.Instance["Media_AppsIsoFailed"] : Loc.Instance.Format("Media_AppsFromIso", AppRows.Count)
         : Loc.Instance["Media_AppsIsoNotRead"];
@@ -482,7 +484,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
 
     /// <summary>Only an own ISO's image is read before the build: the download's apps are known only while it builds.</summary>
     public string UnreviewedSourceText =>
-        UseDownload ? Loc.Instance["Media_UnreviewedDownload"]
+        UseDownload ? MeasuredDownloadApps() is not null ? Loc.Instance["Media_UnreviewedNoneDownload"] : Loc.Instance["Media_UnreviewedDownload"]
         : IsReadingIso || IsReadingApps ? Loc.Instance["Media_AppsReading"]
         : ImageAppsRead(out var read) ? read is null ? Loc.Instance["Media_AppsIsoFailed"]
             : UnreviewedRows.Count == 0 ? Loc.Instance["Media_UnreviewedNone"] : Loc.Instance.Format("Media_UnreviewedFound", UnreviewedRows.Count)
@@ -765,7 +767,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         var lang = Lang;
         var open = AppGroups.Where(g => g.IsExpanded).Select(g => g.Key).ToHashSet(StringComparer.Ordinal);
         var first = AppGroups.Count == 0;
-        var apps = !UseDownload && ImageAppsRead(out var read) ? read : null;
+        var apps = UseDownload ? MeasuredDownloadApps() : ImageAppsRead(out var read) ? read : null;
         AppGroups = MediaChoices.PageApps(CatalogData.Current.Appx, apps)
             .GroupBy(a => a.Group)
             .OrderBy(g => Array.IndexOf(GroupOrder, g.Key) is var i and >= 0 ? i : GroupOrder.Length)
@@ -787,6 +789,10 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         BuildUnreviewedRows();
         Changed();
     }
+
+    /// <summary>The apps the chosen download holds when its build and edition were measured (mediaimages.json), else null.</summary>
+    private IReadOnlyList<string>? MeasuredDownloadApps() =>
+        Download() is { } esd ? MediaChoices.MeasuredApps(CatalogData.Current.MediaImages, esd) : null;
 
     /// <summary>Whether the apps of the own ISO's chosen image were read; <paramref name="apps"/> is null when that read failed.</summary>
     private bool ImageAppsRead(out IReadOnlyList<string>? apps)
@@ -904,6 +910,8 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         Language = Pick(Languages, key) ?? Pick(Languages, "en-us") ?? Languages.FirstOrDefault();
         OnPropertyChanged(nameof(HasCatalog));
         ShowEditions();
+        // Now the download is known: the list follows what its image holds where that was measured.
+        UpdateImageApps();
         Changed();
     }
 

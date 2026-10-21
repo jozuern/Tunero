@@ -1739,9 +1739,9 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Media_RemoveAppsText" xml:space="preserve"><value>Die angehakten Apps werden aus dem Abbild entfernt, damit kein Konto auf dem neuen PC sie bekommt. Sobald der neue PC online ist, können Windows oder der Microsoft Store einige davon wieder installieren; Apps entfernen in Tunero entfernt sie dann erneut.</value></data>
   <data name="Media_AppsChosen" xml:space="preserve"><value>{0} von {1} ausgewählt</value></data>
   <data name="Media_AppsGroupAll" xml:space="preserve"><value>Alle auswählen: {0}</value></data>
-  <data name="Media_AppsFromDownload" xml:space="preserve"><value>Die Apps, die das Windows-11-Abbild von Microsoft enthalten kann. Der Download wird beim Erstellen gelesen: Apps, die er nicht enthält, werden übersprungen.</value></data>
+  <data name="Media_AppsFromDownload" xml:space="preserve"><value>Alle Apps, die ein Abbild von Microsoft enthalten kann: Tunero weiß noch nicht, welche davon dieser Download enthält. Es liest das Abbild beim Erstellen und überspringt Apps, die fehlen; eine App, die du hier nicht anhakst, ist also vielleicht trotzdem nicht auf dem neuen PC. Apps, die Teil von Windows sind (etwa der Store), stehen nie in der Liste und bleiben immer.</value></data>
   <data name="Media_AppsReading" xml:space="preserve"><value>Es wird gelesen, welche Apps diese Edition deiner ISO enthält</value></data>
-  <data name="Media_AppsFromIso" xml:space="preserve"><value>Apps, die diese Edition deiner ISO enthält: {0}. Was sie nicht enthält, steht nicht in der Liste.</value></data>
+  <data name="Media_AppsFromIso" xml:space="preserve"><value>Apps, die diese Edition deiner ISO enthält: {0}. Apps, die fehlen, stehen nicht in der Liste. Apps, die Teil von Windows sind (etwa der Store), stehen nie in der Liste und bleiben immer.</value></data>
   <data name="Media_AppsIsoFailed" xml:space="preserve"><value>Die Apps dieser Edition ließen sich nicht lesen. Die Liste zeigt, was ein Abbild von Microsoft enthalten kann; beim Erstellen werden Apps übersprungen, die deine ISO nicht enthält.</value></data>
   <data name="Media_AppsIsoNotRead" xml:space="preserve"><value>Sobald deine ISO gelesen ist, zeigt die Liste die Apps ihrer Edition.</value></data>
   <data name="Media_AppStore" xml:space="preserve"><value>Der Microsoft Store bietet diese App weiterhin an.</value></data>
@@ -1893,7 +1893,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
     <value>Apps installieren</value>
   </data>
   <data name="Media_InstallText" xml:space="preserve">
-    <value>Bei der ersten Anmeldung installiert Tunero nach dem Profil die angehakten Apps mit winget, aus derselben Liste wie Installieren &amp; aktualisieren. Der neue PC braucht dann Internet; Apps, die sich nicht installieren lassen, nennt das Ergebnis, und du kannst sie später unter Installieren &amp; aktualisieren installieren. Apps, die sich nur für einen Benutzer installieren (etwa Discord oder Spotify), stehen nicht in der Liste: Installiere sie unter Installieren &amp; aktualisieren.</value>
+    <value>Bei der ersten Anmeldung installiert Tunero nach dem Profil die angehakten Apps mit winget, aus derselben Liste wie Installieren &amp; aktualisieren. Apps, die sich für ein Konto installieren (etwa Discord oder Spotify), bekommt das Konto, das sich zuerst anmeldet. Der neue PC braucht dann Internet; Apps, die sich nicht installieren lassen, nennt das Ergebnis, und du kannst sie später unter Installieren &amp; aktualisieren installieren.</value>
   </data>
   <data name="Media_InstallNeedsProfile" xml:space="preserve">
     <value>Braucht Tunero auf der ISO: Schalte oben das Profil ein.</value>
@@ -1933,5 +1933,11 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   </data>
   <data name="Media_FirstSignInAppsMissing" xml:space="preserve">
     <value>Nicht installiert: {0}. Installiere sie unter Installieren &amp; aktualisieren, sobald der PC online ist.</value>
+  </data>
+  <data name="Media_AppsFromDownloadMeasured" xml:space="preserve">
+    <value>Apps, die diese Edition des Downloads enthält: {0}. Apps, die fehlen, stehen nicht in der Liste. Apps, die Teil von Windows sind (etwa der Store), stehen nie in der Liste und bleiben immer.</value>
+  </data>
+  <data name="Media_UnreviewedNoneDownload" xml:space="preserve">
+    <value>Microsofts Abbild dieser Edition enthält keine Apps über die geprüfte Liste hinaus: Das hier ist für deine eigene ISO, etwa eine vom PC-Hersteller.</value>
   </data>
 </root>

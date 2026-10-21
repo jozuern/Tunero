@@ -14,6 +14,9 @@ internal static class TaskSchedulerCom
     public const int EnumHidden = 1, CreateOrUpdate = 6, LogonInteractiveToken = 3, RunLevelLua = 0;
     public const int TriggerBoot = 8, TriggerLogon = 9, ActionExec = 0;
 
+    // TASK_STATE
+    public const int StateQueued = 2, StateReady = 3, StateRunning = 4;
+
     /// <summary>A connection to the local Task Scheduler.</summary>
     public static ITaskService Connect()
     {
@@ -86,6 +89,9 @@ internal static class TaskSchedulerCom
         double NextRunTime { get; }
         ITaskDefinition Definition { get; }
         string Xml { [return: MarshalAs(UnmanagedType.BStr)] get; }
+        void GetSecurityDescriptor();
+        void SetSecurityDescriptor();
+        void Stop(int flags);
     }
 
     [ComImport, Guid("F5BC8FC5-536D-4F77-B852-FBC1356FDEB6"), InterfaceType(ComInterfaceType.InterfaceIsDual)]

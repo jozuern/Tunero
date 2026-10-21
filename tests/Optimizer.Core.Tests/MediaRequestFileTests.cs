@@ -309,16 +309,15 @@ public sealed class MediaRequestFileTests : IDisposable
         Assert.Null(plain.FirstSignIn!.Apps);
         Assert.Empty(plain.RemoveUnreviewed);
 
-        json["installApps"] = new JsonArray("Valve.Steam", "Mozilla.Firefox", "Valve.Steam");
+        json["installApps"] = new JsonArray("Valve.Steam", "Mozilla.Firefox", "Valve.Steam", "Playnite.Playnite");
         json["removeUnreviewed"] = new JsonArray("Contoso.Notes");
         var request = Parse(json).ToChoices(Files, "en", Path.Combine(_root, "Tunero.exe"), "Dark").ToRequest();
-        Assert.Equal(["Valve.Steam", "Mozilla.Firefox"], request.FirstSignIn!.Apps);
+        Assert.Equal(["Valve.Steam", "Mozilla.Firefox", "Playnite.Playnite"], request.FirstSignIn!.Apps);
         Assert.Equal(["Contoso.Notes"], request.RemoveUnreviewed);
     }
 
     [Theory]
     [InlineData("installApps", "[\"Contoso.NotAnApp\"]", "Contoso.NotAnApp")]
-    [InlineData("installApps", "[\"Playnite.Playnite\"]", "machine-wide")]
     [InlineData("installApps", "\"Valve.Steam\"", "list")]
     [InlineData("removeUnreviewed", "[\"Microsoft.BingNews\"]", "reviewed list")]
     [InlineData("removeUnreviewed", "[\"Microsoft.WindowsStore\"]", "protected")]
@@ -329,6 +328,23 @@ public sealed class MediaRequestFileTests : IDisposable
         var refused = Refused(json);
         Assert.Equal(field, refused.Field);
         Assert.Contains(reason, refused.Message);
+    }
+
+    /// <summary>The download's list: the measured apps of its build and edition; nothing for a build nobody measured.</summary>
+    [Fact]
+    public void MeasuredImagesNameTheirApps()
+    {
+        var images = CatalogData.Current.MediaImages;
+        var pro = MediaChoices.MeasuredApps(images, Esd("26300.9711", "de-de", "Professional"))!;
+        var proN = MediaChoices.MeasuredApps(images, Esd("26300.9711", "de-de", "ProfessionalN"))!;
+        Assert.Contains("Microsoft.BingNews", pro);
+        Assert.DoesNotContain("Microsoft.People", pro);
+        // N editions lack the media apps.
+        Assert.Contains("Microsoft.ZuneMusic", pro);
+        Assert.DoesNotContain("Microsoft.ZuneMusic", proN);
+        Assert.Null(MediaChoices.MeasuredApps(images, Esd("26100.4000", "de-de", "Professional")));
+        // Every edition the page offers was measured for 26300.
+        Assert.All(MediaCatalog.OfferedEditions, e => Assert.NotNull(MediaChoices.MeasuredApps(images, Esd("26300.9711", "en-us", e))));
     }
 
     [Fact]
