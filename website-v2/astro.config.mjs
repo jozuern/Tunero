@@ -7,6 +7,7 @@ export default defineConfig({
   trailingSlash: 'ignore',
   build: { format: 'directory' },
   integrations: [svelte()],
+  devToolbar: { enabled: false },
   i18n: {
     locales: ['en', 'de'],
     defaultLocale: 'en',

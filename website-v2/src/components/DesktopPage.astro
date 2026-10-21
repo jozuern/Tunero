@@ -1,0 +1,32 @@
+---
+// The home page in either language: the demo desktop, with the facts it needs read at build time.
+import Base from '../layouts/Base.astro';
+import Desktop from '../desktop/Desktop.svelte';
+import { t, localPath, type Lang } from '../i18n/index.ts';
+import desktopEn from '../i18n/desktop-en.ts';
+import desktopDe from '../i18n/desktop-de.ts';
+import { buildDemo } from '../lib/demo.ts';
+import { download } from '../lib/repo.ts';
+import { latestRelease } from '../lib/release.ts';
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const copy = t(lang);
+const release = await latestRelease();
+const facts = {
+  version: release.version,
+  download,
+  classicHref: localPath(lang, '/classic/'),
+  otherHref: localPath(lang === 'en' ? 'de' : 'en', '/'),
+};
+---
+
+<Base lang={lang} title={copy.meta.title} description={copy.meta.description} path="/">
+  <main>
+    <h1 class="visually-hidden">{copy.meta.title}</h1>
+    <Desktop client:load demo={buildDemo(lang)} copy={lang === 'de' ? desktopDe : desktopEn} lang={lang} facts={facts} />
+  </main>
+</Base>

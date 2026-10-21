@@ -1,10 +1,5 @@
 ---
-import Base from '../../layouts/Base.astro';
-import { t } from '../../i18n/index.ts';
-
-const copy = t('de');
+import DesktopPage from '../../components/DesktopPage.astro';
 ---
 
-<Base lang="de" title={copy.meta.title} description={copy.meta.description} path="/">
-  <main><h1>{copy.meta.title}</h1></main>
-</Base>
+<DesktopPage lang="de" />

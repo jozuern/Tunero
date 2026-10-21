@@ -1,0 +1,310 @@
+<script lang="ts">
+  import { onMount } from 'svelte';
+  import type { WindowId } from '../lib/demo-state.ts';
+  import type { DesktopStrings } from '../i18n/desktop-en.ts';
+  import { useStore } from './store.svelte.ts';
+  import Icon from './Icon.svelte';
+  import TuneroMark from './TuneroMark.svelte';
+  import { startupIcons } from './startup.ts';
+  import type { IconName } from './icons.ts';
+
+  let {
+    copy,
+    lang,
+    download,
+    version,
+    classicHref,
+  }: { copy: DesktopStrings; lang: string; download: string; version: string; classicHref: string } = $props();
+
+  const store = useStore();
+  const pinned: { id: WindowId; icon: IconName | 'tunero'; label: string }[] = $derived([
+    { id: 'trust', icon: 'folder', label: copy.icons.explorer },
+    { id: 'tunero', icon: 'tunero', label: copy.icons.tunero },
+    { id: 'notepad', icon: 'notepad', label: copy.icons.notepad },
+    { id: 'settings', icon: 'settings', label: copy.icons.settings },
+  ]);
+
+  let now = $state(new Date());
+  onMount(() => {
+    const timer = setInterval(() => (now = new Date()), 15000);
+    return () => clearInterval(timer);
+  });
+  const locale = $derived(lang === 'de' ? 'de-DE' : 'en-US');
+  const time = $derived(now.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }));
+  const date = $derived(now.toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' }));
+
+  const trayItems = $derived(store.demo.startup.filter((item) => !store.applied({ kind: 'startup', id: item.id })));
+</script>
+
+<nav class="taskbar" aria-label="Taskbar">
+  <a class="corner" href={classicHref}>
+    <Icon name="arrowLeft" size={16} />
+    <span>{copy.classicPage}</span>
+  </a>
+
+  <div class="center">
+    <button
+      type="button"
+      class="tb start"
+      class:pressed={store.startOpen}
+      aria-label={copy.start}
+      aria-expanded={store.startOpen}
+      title={copy.start}
+      onclick={(event) => {
+        event.stopPropagation();
+        store.startOpen = !store.startOpen;
+      }}
+    >
+      <TuneroMark size={24} />
+    </button>
+    <button
+      type="button"
+      class="search"
+      onclick={(event) => {
+        event.stopPropagation();
+        store.startOpen = true;
+      }}
+    >
+      <Icon name="search" size={16} />
+      <span class="search-text">{copy.searchPlaceholder}</span>
+      {#if store.active('search-highlights')}
+        <span class="highlight" title={copy.searchHighlight}><Icon name="star" size={16} /></span>
+      {/if}
+    </button>
+    {#each pinned as app (app.id)}
+      {@const frame = store.windows[app.id]}
+      <button
+        type="button"
+        class="tb"
+        class:running={frame.open}
+        class:active={frame.open && !frame.minimized && store.focused === app.id}
+        aria-label={app.label}
+        title={app.label}
+        onclick={() => store.toggle(app.id)}
+      >
+        {#if app.icon === 'tunero'}<TuneroMark size={24} />{:else}<Icon name={app.icon} size={24} />{/if}
+      </button>
+    {/each}
+  </div>
+
+  <div class="right">
+    <a class="install" href={download} title={copy.installTitle.replace('{0}', version)}>
+      <Icon name="download" size={16} />
+      <span>{copy.install}</span>
+    </a>
+    <span class="tray">
+      <span class="tray-icon" title={copy.trayMore}><Icon name="chevronUp" size={16} /></span>
+      {#each trayItems as item (item.id)}
+        <span class="tray-icon app" title={item.title}>
+          <Icon name={startupIcons[store.demo.startup.indexOf(item)]} size={16} />
+        </span>
+      {/each}
+      <span class="tray-icon" title={copy.network}><Icon name="wifi" size={16} /></span>
+      <span class="tray-icon" title={copy.volume}><Icon name="speaker" size={16} /></span>
+    </span>
+    <span class="clock" aria-label={copy.clockLabel}>
+      <span>{time}</span>
+      <span>{date}</span>
+    </span>
+  </div>
+</nav>
+
+<style>
+  .taskbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 48px;
+    z-index: 9000;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    padding: 0 8px;
+    background: var(--acrylic);
+    backdrop-filter: blur(30px) saturate(1.6);
+    -webkit-backdrop-filter: blur(30px) saturate(1.6);
+    border-top: 1px solid var(--stroke-strong);
+    color: var(--ink);
+  }
+
+  .corner {
+    justify-self: start;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 40px;
+    padding: 0 12px;
+    border-radius: var(--radius-sm);
+    color: var(--ink);
+    text-decoration: none;
+    font-size: 12px;
+  }
+
+  .corner:hover,
+  .tb:hover,
+  .search:hover,
+  .tray-icon:hover,
+  .clock:hover {
+    background: var(--stroke);
+  }
+
+  .center {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .tb {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 40px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--ink);
+  }
+
+  .tb.pressed,
+  .tb.active {
+    background: var(--stroke-strong);
+  }
+
+  .tb.running::after {
+    content: '';
+    position: absolute;
+    bottom: 2px;
+    left: 50%;
+    width: 6px;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--ink-3);
+    transform: translateX(-50%);
+    transition: width 150ms;
+  }
+
+  .tb.active::after {
+    width: 16px;
+    background: var(--accent);
+  }
+
+  .search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 220px;
+    height: 32px;
+    margin: 0 4px;
+    padding: 0 8px 0 12px;
+    border: 1px solid var(--stroke-strong);
+    border-radius: 16px;
+    background: var(--stroke);
+    color: var(--ink-2);
+    font: inherit;
+    font-size: 12px;
+    text-align: left;
+  }
+
+  .search-text {
+    flex: 1;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .highlight {
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #f7b500, #e8590c);
+    color: #fff;
+  }
+
+  .right {
+    justify-self: end;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .install {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 32px;
+    margin-right: 8px;
+    padding: 0 12px;
+    border-radius: var(--radius-sm);
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-weight: 600;
+    font-size: 12px;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .install:hover {
+    filter: brightness(1.08);
+  }
+
+  .tray {
+    display: flex;
+    align-items: center;
+  }
+
+  .tray-icon {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 40px;
+    border-radius: var(--radius-sm);
+  }
+
+  .tray-icon.app {
+    animation: tray-in 300ms ease-out;
+  }
+
+  @keyframes tray-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+  }
+
+  .clock {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+    height: 40px;
+    padding: 0 8px;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    line-height: 1.3;
+  }
+
+  @media (max-width: 1180px) {
+    .search {
+      width: 44px;
+      padding: 0;
+      justify-content: center;
+      border: none;
+      background: transparent;
+    }
+
+    .search-text,
+    .corner span {
+      display: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tray-icon.app {
+      animation: none;
+    }
+  }
+</style>
