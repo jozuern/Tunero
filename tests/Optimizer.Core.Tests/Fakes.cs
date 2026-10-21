@@ -172,6 +172,55 @@ internal sealed class FakeProcesses : IProcessRunner
         return (0, "");
     }
 
+    /// <summary>A streaming run (<see cref="RunAsync"/>) as the fake was asked for it, with the environment it would get.</summary>
+    public sealed record StreamRun(string File, string Arguments, TimeSpan? Timeout, RunOptions? Options, IDictionary<string, string?> Environment);
+
+    public List<StreamRun> Streams { get; } = [];
+
+    /// <summary>Responder for streaming runs (it may write the files the tool would): exit code and printed lines; null: exit 0, nothing printed.</summary>
+    public Func<string, string, (int ExitCode, string[] Lines)?>? StreamHandler { get; set; }
+
+    /// <summary>The streaming tool does not end on its own: only a cancellation or its time limit end it, as with the real runner.</summary>
+    public bool Hangs { get; set; }
+
+    /// <summary>How often a hanging tool was ended (stopped or timed out).</summary>
+    public int Ended { get; private set; }
+
+    private readonly TaskCompletionSource _hanging = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    /// <summary>Completes once a hanging tool runs: the moment a test presses Stop.</summary>
+    public Task Hanging => _hanging.Task;
+
+    /// <summary>
+    /// The streaming run without a process: records it, calls <see cref="RunOptions.Started"/>, reports the handler's
+    /// lines and returns its exit code. With <see cref="Hangs"/> it keeps running until <paramref name="ct"/> is cancelled
+    /// (<see cref="OperationCanceledException"/>) or <paramref name="timeout"/> is up (<see cref="TimeoutException"/>).
+    /// </summary>
+    public async Task<int> RunAsync(string file, string arguments, TimeSpan? timeout, CancellationToken ct, IProgress<string>? lines, RunOptions? options = null)
+    {
+        Calls.Add($"{file} {arguments}");
+        var env = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        options?.Environment?.Invoke(env);
+        Streams.Add(new StreamRun(file, arguments, timeout, options, env));
+        ct.ThrowIfCancellationRequested();
+        options?.Started?.Invoke();
+        var (code, printed) = StreamHandler?.Invoke(file, arguments) ?? (0, []);
+        foreach (var line in printed) lines?.Report(line);
+        if (!Hangs) return code;
+        _hanging.TrySetResult();
+        try
+        {
+            await Task.Delay(timeout ?? Timeout.InfiniteTimeSpan, ct);
+        }
+        catch (OperationCanceledException)
+        {
+            Ended++;
+            throw;
+        }
+        Ended++;
+        throw new TimeoutException($"{Path.GetFileName(file)} {arguments} timed out");
+    }
+
     private void SetMemoryCompression(bool on)
     {
         if (MemoryCompressionAfterRestart) _pendingMemoryCompression = on;

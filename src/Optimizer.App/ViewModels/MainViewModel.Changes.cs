@@ -187,8 +187,8 @@ public sealed partial class MainViewModel
             try
             {
                 int? code = app.Scope == "user"
-                    ? await Optimizer.Core.Apps.Winget.InstallForUserAndWaitAsync(wingetForUser ?? winget, app, _services.Elevation, TimeSpan.FromMinutes(20), CancellationToken.None)
-                    : await Optimizer.Core.Apps.Winget.InstallAsync(winget, app, null, CancellationToken.None);
+                    ? await Optimizer.Core.Apps.Winget.InstallForUserAndWaitAsync(_services.Context.Processes, wingetForUser ?? winget, app, _services.Elevation, TimeSpan.FromMinutes(20), CancellationToken.None)
+                    : await Optimizer.Core.Apps.Winget.InstallAsync(_services.Context.Processes, winget, app, null, CancellationToken.None);
                 if (code is { } c && Optimizer.Core.Apps.Winget.IsSuccess(c)) done.Add(app.Id);
                 else Log.Warn("firstsignin", code is { } failed ? $"{app.Id} not installed: winget 0x{failed:X8}" : $"{app.Id} not installed: winget did not run as the user or did not finish");
             }

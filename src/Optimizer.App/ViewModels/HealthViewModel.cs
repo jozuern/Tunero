@@ -91,8 +91,12 @@ public sealed record RunRow(string Label, string AvgFps, string Low, string Fram
 }
 
 /// <param name="addPriorityRule">Opens the start priority rules with this exe name (Live readings' program details).</param>
-public sealed partial class HealthViewModel(IPageHost owner, IDialogs dialogs, Action<string>? addPriorityRule = null) : PageViewModel(owner)
+/// <param name="processes">Runs sfc, dism, PresentMon and winget; null: the app's own runner (tests pass a fake).</param>
+public sealed partial class HealthViewModel(IPageHost owner, IDialogs dialogs, Action<string>? addPriorityRule = null,
+    Optimizer.Core.Actions.IProcessRunner? processes = null) : PageViewModel(owner)
 {
+    private Optimizer.Core.Actions.IProcessRunner ToolRunner => processes ?? Owner.Services.Context.Processes;
+
     /// <summary>The disk rows come from the scan result: built again after every scan.</summary>
     protected override bool UsesProfile => true;
 
@@ -198,7 +202,7 @@ public sealed partial class HealthViewModel(IPageHost owner, IDialogs dialogs, A
 
     // SFC / DISM
 
-    private async Task RunToolAsync(Func<IProgress<string>, CancellationToken, Task<int>> run, string title)
+    private async Task RunToolAsync(Func<Optimizer.Core.Actions.IProcessRunner, IProgress<string>, CancellationToken, Task<int>> run, string title)
     {
         _toolCancel = new CancellationTokenSource();
         var token = _toolCancel.Token;
@@ -220,7 +224,7 @@ public sealed partial class HealthViewModel(IPageHost owner, IDialogs dialogs, A
                 banner = work;
                 try
                 {
-                    var code = await run(progress, token);
+                    var code = await run(ToolRunner, progress, token);
                     lines.Add(Loc.Instance.Format("Health_ExitCode", code));
                     ToolOutput = string.Join("\n", lines);
                 }
@@ -344,7 +348,7 @@ public sealed partial class HealthViewModel(IPageHost owner, IDialogs dialogs, A
         {
             var exe = await Task.Run(() => PresentMon.Extract(AppServices.ToolsFolder));
             BenchmarkStatus = Loc.Instance.Format("Bench_Capturing", SelectedProcess, CaptureSeconds);
-            var stats = await PresentMon.CaptureAsync(exe, SelectedProcess, CaptureSeconds, Optimizer.Core.Platform.DataPaths.Captures, null, _captureCancel.Token);
+            var stats = await PresentMon.CaptureAsync(ToolRunner, exe, SelectedProcess, CaptureSeconds, Optimizer.Core.Platform.DataPaths.Captures, null, _captureCancel.Token);
             if (stats is null)
             {
                 BenchmarkStatus = Loc.Instance["Bench_NoFrames"];
@@ -359,6 +363,10 @@ public sealed partial class HealthViewModel(IPageHost owner, IDialogs dialogs, A
         catch (OperationCanceledException)
         {
             BenchmarkStatus = Loc.Instance["Bench_Stopped"];
+        }
+        catch (TimeoutException)
+        {
+            BenchmarkStatus = Loc.Instance["Bench_TimedOut"];
         }
         catch (Exception ex)
         {
@@ -757,7 +765,7 @@ public sealed partial class HealthViewModel(IPageHost owner, IDialogs dialogs, A
         if (!dialogs.Ask(Loc.Instance["Sensors_PawnIoTitle"], Loc.Instance["Sensors_PawnIoText"], Loc.Instance["Apps_Install"])) return;
         await RunWorkAsync("install PawnIO", async () =>
         {
-            var code = await Winget.InstallAsync(winget, app, null, CancellationToken.None);
+            var code = await Winget.InstallAsync(ToolRunner, winget, app, null, CancellationToken.None);
             PawnIoText = Winget.IsSuccess(code) ? Loc.Instance["Sensors_PawnIoOn"] : Loc.Instance.Format("Apps_Failed", $"0x{code:X8}");
             CanInstallPawnIo = !Winget.IsSuccess(code);
         });

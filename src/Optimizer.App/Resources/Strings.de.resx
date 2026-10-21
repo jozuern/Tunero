@@ -1218,6 +1218,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Bench_Low" xml:space="preserve"><value>1-%-Low {0}</value></data>
   <data name="Bench_Fps" xml:space="preserve"><value>{0} FPS</value></data>
   <data name="Bench_Stopped" xml:space="preserve"><value>Aufzeichnung gestoppt. Dieser Durchlauf wurde nicht übernommen.</value></data>
+  <data name="Bench_TimedOut" xml:space="preserve"><value>PresentMon hat sich nach der Aufzeichnungszeit nicht beendet und wurde gestoppt. Dieser Durchlauf wurde nicht übernommen.</value></data>
   <data name="Quick_IpRenew" xml:space="preserve"><value>IP-Adresse erneuern</value></data>
   <data name="Quick_IpRenewHint" xml:space="preserve"><value>Gibt die IP-Adresse jedes Netzwerkadapters frei und fordert sie neu an (ipconfig). Hilft, wenn der PC nach einem Router-Neustart keine gültige Adresse hat.</value></data>
   <data name="Quick_IpRenewConfirm" xml:space="preserve"><value>Die Netzwerkverbindung bricht für einige Sekunden ab, während die Adresse erneuert wird. Downloads und Onlinespiele verlieren die Verbindung.</value></data>

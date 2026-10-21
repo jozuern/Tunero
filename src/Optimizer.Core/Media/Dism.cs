@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
+using Optimizer.Core.Actions;
 using Optimizer.Core.Platform;
 
 namespace Optimizer.Core.Media;
@@ -38,7 +39,7 @@ public sealed class DismException(int exitCode, string output) : Exception(Descr
     }
 }
 
-/// <summary>Reads the text dism.exe prints (run with /English). The parsers also accept the trimmed, blank-free lines StreamingProcess collects.</summary>
+/// <summary>Reads the text dism.exe prints (run with /English). The parsers also accept the trimmed, blank-free lines IProcessRunner.RunAsync reports.</summary>
 public static class DismOutput
 {
     private static readonly Regex KeyValue = new(@"^(?<key>[A-Za-z][A-Za-z ]*?) :[ ]?(?<value>.*)$", RegexOptions.Compiled);
@@ -257,10 +258,16 @@ public interface IDism
     Task RemountAsync(string mountDir, CancellationToken ct);
 }
 
-/// <summary>The real dism.exe from System32. Not covered by unit tests (it changes disks and images); the VM test drives it.</summary>
-public sealed class DismTool : IDism
+/// <summary>
+/// The real dism.exe from System32, run through <paramref name="processes"/> (the system runner when not given). No time
+/// limit: an export or a mount can take many minutes, and the build's Stop cancels <c>ct</c>. Not covered by unit tests
+/// (it changes disks and images); the VM test drives it.
+/// </summary>
+public sealed class DismTool(IProcessRunner? processes = null) : IDism
 {
     private static string Exe => Path.Combine(Environment.SystemDirectory, "dism.exe");
+
+    private readonly IProcessRunner _processes = processes ?? new SystemProcessRunner();
 
     public Task<string> GetWimInfoAsync(string image, int? index, CancellationToken ct) =>
         RunAsync(DismArgs.WimInfo(image, index), null, ct);
@@ -312,7 +319,7 @@ public sealed class DismTool : IDism
                 if (tail.Count > 40) tail.Dequeue();
             }
         });
-        var code = await StreamingProcess.RunAsync(Exe, DismArgs.ListImage(image, index), lines, ct, StreamingProcess.Oem);
+        var code = await _processes.RunAsync(Exe, DismArgs.ListImage(image, index), null, ct, lines, RunOptions.Oem);
         lock (apps)
         {
             if (code != 0) throw new DismException(code, string.Join(Environment.NewLine, tail));
@@ -320,7 +327,7 @@ public sealed class DismTool : IDism
         }
     }
 
-    private static async Task<string> RunAsync(string arguments, IProgress<double>? percent, CancellationToken ct)
+    private async Task<string> RunAsync(string arguments, IProgress<double>? percent, CancellationToken ct)
     {
         var text = new StringBuilder();
         var lines = new LineProgress(line =>
@@ -328,7 +335,7 @@ public sealed class DismTool : IDism
             lock (text) text.AppendLine(line);
             if (percent is not null && DismOutput.Percent(line) is { } p) percent.Report(p);
         });
-        var code = await StreamingProcess.RunAsync(Exe, arguments, lines, ct, StreamingProcess.Oem);
+        var code = await _processes.RunAsync(Exe, arguments, null, ct, lines, RunOptions.Oem);
         string output;
         lock (text) output = text.ToString();
         if (code != 0) throw new DismException(code, output);

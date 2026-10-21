@@ -69,7 +69,7 @@ public class WingetSearchTests
         """;
 
     /// <summary>
-    /// The first table only, also as StreamingProcess hands the lines over (no empty lines, so the pinned table follows
+    /// The first table only, also as IProcessRunner.RunAsync hands the lines over (no empty lines, so the pinned table follows
     /// the note directly); a longer translated note under it is no package.
     /// </summary>
     [Fact]

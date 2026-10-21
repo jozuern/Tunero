@@ -126,12 +126,62 @@ public interface ISystemParameters
     void Set(SystemParameter parameter, uint value);
 }
 
+/// <summary>
+/// Starts the tools the app runs (System32 tools by plain name, or a full path the caller checked: the trusted winget,
+/// the hash-checked PresentMon, Chocolatey from its admin-only folder), always through the hardened
+/// <see cref="Platform.ProcessLauncher"/>. One timeout policy for both: when the time is up the tool and everything it
+/// started are ended and a <see cref="TimeoutException"/> follows. <see cref="Run"/> waits <see cref="ToolTimeouts.Default"/>
+/// when no time is given; <see cref="RunAsync"/> has no limit then (a repair or an installer ended halfway can leave
+/// things broken), so reads that wait on the network pass one (<see cref="ToolTimeouts.PackageList"/>).
+/// </summary>
 public interface IProcessRunner
 {
     (int ExitCode, string Output) Run(string file, string arguments, TimeSpan? timeout = null);
 
     /// <summary>For a tool that writes UTF-8 (winget), not the OEM code page of Windows' console tools.</summary>
     (int ExitCode, string Output) RunUtf8(string file, string arguments, TimeSpan? timeout = null) => Run(file, arguments, timeout);
+
+    /// <summary>
+    /// Runs a long tool without a window and reports each output line to <paramref name="lines"/> while it runs (trimmed,
+    /// empty lines left out, the last segment of a line rewritten with carriage returns); returns the exit code.
+    /// Cancelling <paramref name="ct"/> (a Stop button) ends the process tree and throws
+    /// <see cref="OperationCanceledException"/> once the tool has exited; after <paramref name="timeout"/> (null: no
+    /// limit) the same happens with a <see cref="TimeoutException"/>. The output is read as UTF-8 unless
+    /// <paramref name="options"/> names another encoding.
+    /// </summary>
+    Task<int> RunAsync(string file, string arguments, TimeSpan? timeout, CancellationToken ct, IProgress<string>? lines, RunOptions? options = null);
+}
+
+/// <summary>How <see cref="IProcessRunner.RunAsync"/> starts a tool, beyond its command line.</summary>
+public sealed record RunOptions
+{
+    /// <summary>The encoding the tool writes; null reads UTF-8 (winget, PresentMon).</summary>
+    public System.Text.Encoding? Encoding { get; init; }
+
+    /// <summary>Called right after the process has started (PresentMon releases the file it held open since the hash check).</summary>
+    public Action? Started { get; init; }
+
+    /// <summary>Changes the hardened environment before the start (Chocolatey's root, <see cref="Apps.Chocolatey.HardenEnvironment"/>).</summary>
+    public Action<IDictionary<string, string?>>? Environment { get; init; }
+
+    /// <summary>A console tool that writes the OEM code page (dism, choco).</summary>
+    public static RunOptions Oem { get; } = new() { Encoding = Platform.ToolEncoding.Oem };
+
+    /// <summary>sfc, which writes UTF-16 to a redirected pipe.</summary>
+    public static RunOptions Utf16 { get; } = new() { Encoding = Platform.ToolEncoding.Utf16 };
+}
+
+/// <summary>The time limits of <see cref="IProcessRunner"/>, in one place.</summary>
+public static class ToolTimeouts
+{
+    /// <summary>What <see cref="IProcessRunner.Run"/> waits when no time is given: a quick read or switch of a console tool.</summary>
+    public static readonly TimeSpan Default = TimeSpan.FromSeconds(60);
+
+    /// <summary>A package list or search that reads a catalog from the network (winget search, winget upgrade without installing).</summary>
+    public static readonly TimeSpan PackageList = TimeSpan.FromMinutes(5);
+
+    /// <summary>How long PresentMon may run past its own capture time before it counts as hung.</summary>
+    public static readonly TimeSpan CaptureGrace = TimeSpan.FromSeconds(60);
 }
 
 /// <summary>Everything an action needs to read and write the system. Swappable for tests.</summary>

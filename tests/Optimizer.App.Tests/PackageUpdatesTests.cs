@@ -19,7 +19,8 @@ public sealed class PackageUpdatesTests
     private const string ChocoRoot = @"C:\ProgramData\chocolatey";
     private const string Scoop = @"C:\Users\a\scoop\shims\scoop.ps1";
 
-    private readonly List<(string File, string Arguments, IDictionary<string, string?> Env, System.Text.Encoding? Encoding)> _runs = [];
+    private readonly FakeToolRunner _tools = new();
+    private List<FakeToolRunner.ToolRun> _runs => _tools.Runs;
     private readonly List<(string File, string? Arguments)> _opened = [];
 
     /// <summary>Exit codes per program file name; lines each run prints.</summary>
@@ -27,8 +28,12 @@ public sealed class PackageUpdatesTests
     private readonly Dictionary<string, string[]> _printed = new(StringComparer.OrdinalIgnoreCase);
     private bool _openFails;
 
-    /// <summary>The fake Chocolatey never answers (until the time limit cancels it).</summary>
-    private bool _hangs;
+    public PackageUpdatesTests()
+    {
+        // What a user could have set: the elevated Chocolatey must not take its root or tools from there.
+        _tools.Environment = () => new(StringComparer.OrdinalIgnoreCase) { ["ChocolateyInstall"] = @"C:\Users\a\evil", ["ChocolateyToolsLocation"] = @"C:\Users\a\tools" };
+        _tools.Respond = (file, _) => (_codes.GetValueOrDefault(Path.GetFileName(file)), _printed.GetValueOrDefault(Path.GetFileName(file)) ?? []);
+    }
 
     private PackageUpdates Updates(TimeSpan? limit = null) => new(new Launch
     {
@@ -38,15 +43,7 @@ public sealed class PackageUpdatesTests
             _opened.Add((file, arguments));
             return !_openFails;
         },
-        RunStreaming = async (file, arguments, lines, encoding, environment, ct) =>
-        {
-            var env = new Dictionary<string, string?> { ["ChocolateyInstall"] = @"C:\Users\a\evil", ["ChocolateyToolsLocation"] = @"C:\Users\a\tools" };
-            environment?.Invoke(env);
-            _runs.Add((file, arguments, env, encoding));
-            if (_hangs) await Task.Delay(Timeout.Infinite, ct);
-            foreach (var line in _printed.GetValueOrDefault(Path.GetFileName(file)) ?? []) lines?.Report(line);
-            return _codes.GetValueOrDefault(Path.GetFileName(file));
-        },
+        Processes = _tools,
     }, null) { OutdatedTimeout = limit ?? TimeSpan.FromMinutes(2) };
 
     private static PackageManagerInfo Winget(string? user = WingetUser) => new(ManagerKind.Winget, "winget", WingetExe, ManagerRun.Elevated) { UserPath = user };
@@ -71,9 +68,11 @@ public sealed class PackageUpdatesTests
         Assert.Equal(Optimizer.Core.Apps.Winget.UpgradeAllArguments("machine"), _runs[0].Arguments);
         Assert.Equal(Chocolatey.UpgradeAllArguments, _runs[1].Arguments);
         Assert.EndsWith("--ignore-http-cache", _runs[1].Arguments);
-        Assert.Equal(ChocoRoot, _runs[1].Env["ChocolateyInstall"]);
-        Assert.False(_runs[1].Env.ContainsKey("ChocolateyToolsLocation"));
-        Assert.Same(StreamingProcess.Oem, _runs[1].Encoding);
+        Assert.Equal(ChocoRoot, _runs[1].Environment["ChocolateyInstall"]);
+        Assert.False(_runs[1].Environment.ContainsKey("ChocolateyToolsLocation"));
+        Assert.Same(ToolEncoding.Oem, _runs[1].Options?.Encoding);
+        // Updates have no time limit: an installer ended halfway can leave a program half updated.
+        Assert.All(_runs, r => Assert.Null(r.Timeout));
 
         // As the signed-in user: winget's per-user packages, Scoop in its window, the Store's updates page.
         Assert.Equal(3, _opened.Count);
@@ -161,7 +160,7 @@ public sealed class PackageUpdatesTests
         var list = await Updates().ChocolateyOutdatedAsync(Choco());
         Assert.Equal(["git", "jq"], list!.Select(p => p.Id));
         Assert.Equal(Chocolatey.OutdatedArguments, Assert.Single(_runs).Arguments);
-        Assert.Equal(ChocoRoot, _runs[0].Env["ChocolateyInstall"]);
+        Assert.Equal(ChocoRoot, _runs[0].Environment["ChocolateyInstall"]);
 
         _codes["choco.exe"] = 1;
         Assert.Null(await Updates().ChocolateyOutdatedAsync(Choco()));
@@ -178,8 +177,11 @@ public sealed class PackageUpdatesTests
     [Fact]
     public async Task TheOutdatedCheckHasATimeLimit()
     {
-        _hangs = true;
+        _tools.Hangs = true;
         await Assert.ThrowsAsync<TimeoutException>(() => Updates(TimeSpan.FromMilliseconds(50)).ChocolateyOutdatedAsync(Choco()));
+        Assert.Equal(TimeSpan.FromMilliseconds(50), Assert.Single(_runs).Timeout);
+        Assert.Equal(1, _tools.Ended);
+        Assert.Equal(TimeSpan.FromMinutes(2), new PackageUpdates(new Launch(), null).OutdatedTimeout);
     }
 
     // ---------------- the page ----------------
@@ -314,7 +316,7 @@ public sealed class PackageUpdatesTests
         var run = Assert.Single(_runs);
         Assert.Equal(Path.Combine(ChocoRoot, "choco.exe"), run.File);
         Assert.Equal("upgrade git --yes --no-progress --ignore-http-cache", run.Arguments);
-        Assert.Equal(ChocoRoot, run.Env["ChocolateyInstall"]);
+        Assert.Equal(ChocoRoot, run.Environment["ChocolateyInstall"]);
         await Assert.ThrowsAsync<ArgumentException>(() => Updates().ChocolateyUpgradeAsync(Choco(), "git & calc", new Lines()));
         await Assert.ThrowsAsync<InvalidOperationException>(() => Updates().ChocolateyUpgradeAsync(Choco(ManagerRun.NotRun), "git", new Lines()));
     }

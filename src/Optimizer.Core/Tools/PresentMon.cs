@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Security.Cryptography;
+using Optimizer.Core.Actions;
 using Optimizer.Core.Logging;
-using Optimizer.Core.Platform;
 
 namespace Optimizer.Core.Tools;
 
@@ -56,8 +56,12 @@ public static class PresentMon
     public static string Arguments(string processName, string csv, int seconds) =>
         $"--process_name \"{processName}\" --output_file \"{csv}\" --timed {seconds} --terminate_after_timed --stop_existing_session --no_console_stats --v1_metrics";
 
-    /// <summary>Captures one run of the running game. Needs administrator rights (ETW).</summary>
-    public static async Task<FrameStats?> CaptureAsync(string exe, string processName, int seconds, string outputFolder, IProgress<string>? lines, CancellationToken ct)
+    /// <summary>
+    /// Captures one run of the running game. Needs administrator rights (ETW). PresentMon ends itself after
+    /// <paramref name="seconds"/>; one that is still running <see cref="ToolTimeouts.CaptureGrace"/> later is ended
+    /// (<see cref="TimeoutException"/>).
+    /// </summary>
+    public static async Task<FrameStats?> CaptureAsync(IProcessRunner processes, string exe, string processName, int seconds, string outputFolder, IProgress<string>? lines, CancellationToken ct)
     {
         if (!IsSafeProcessName(processName)) throw new ArgumentException($"invalid process name {processName}");
         Directory.CreateDirectory(outputFolder);
@@ -69,7 +73,8 @@ public static class PresentMon
         try
         {
             if (Convert.ToHexString(SHA256.HashData(hold)) != Sha256) throw new InvalidDataException("PresentMon hash mismatch");
-            code = await StreamingProcess.RunAsync(exe, Arguments(processName, csv, seconds), lines, ct, started: hold.Dispose);
+            code = await processes.RunAsync(exe, Arguments(processName, csv, seconds), TimeSpan.FromSeconds(seconds) + ToolTimeouts.CaptureGrace, ct, lines,
+                new RunOptions { Started = hold.Dispose });
         }
         finally
         {

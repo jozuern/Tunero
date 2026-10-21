@@ -7,7 +7,7 @@ public class DismParsingTests
 {
     private static string Fixture(string name) => File.ReadAllText(Path.Combine(RepoPaths.Root, "tests", "Optimizer.Core.Tests", "Fixtures", "media", name));
 
-    // StreamingProcess hands over trimmed non-empty lines joined by newlines; the parsers must cope with that form too.
+    // IProcessRunner.RunAsync hands over trimmed non-empty lines joined by newlines; the parsers must cope with that form too.
     private static string Streamed(string text) =>
         string.Join("\n", text.Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0));
 

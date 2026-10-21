@@ -11,7 +11,7 @@ public partial class ArchitectureTests
     /// <summary>Tests that start a real process themselves, each reviewed: what they run changes nothing.</summary>
     private static readonly Dictionary<string, string> AllowedToolRuns = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["BenchmarkHealthTests.cs"] = "cmd.exe starting ping to 127.0.0.1 (the output pipe test)",
+        ["BenchmarkHealthTests.cs"] = "cmd.exe starting ping to 127.0.0.1 (the output pipe, timeout and stop tests; a batch file and its marker in a temp folder)",
         ["SelfUninstallTests.cs"] = "powershell.exe running the uninstall cleanup on temp folders only",
         ["TestFolders.cs"] = "cmd.exe mklink /J creating a junction inside a temp folder",
         ["StorageViewModelTests.cs"] = "cmd.exe mklink /J creating a junction inside the test's temp folder (removed again without touching its target)",
@@ -28,8 +28,8 @@ public partial class ArchitectureTests
             var text = File.ReadAllText(file);
             if (text.Contains("SystemNotify.CreateContext(", StringComparison.Ordinal)) problems.Add($"{name}: SystemNotify.CreateContext (use ReadOnlyContext.Create)");
             foreach (Match m in RealAdapter().Matches(text)) problems.Add($"{name}: {m.Value} (use ReadOnlyContext.Create)");
-            if (text.Contains("StreamingProcess.RunAsync(", StringComparison.Ordinal) && !AllowedToolRuns.ContainsKey(name))
-                problems.Add($"{name}: StreamingProcess.RunAsync (review it and list it in AllowedToolRuns)");
+            if (text.Contains("ProcessLauncher.RunStreamingAsync(", StringComparison.Ordinal) && !AllowedToolRuns.ContainsKey(name))
+                problems.Add($"{name}: ProcessLauncher.RunStreamingAsync (review it and list it in AllowedToolRuns)");
             if (text.Contains("Process.Start(", StringComparison.Ordinal) && !AllowedToolRuns.ContainsKey(name))
                 problems.Add($"{name}: Process.Start (review it and list it in AllowedToolRuns)");
         }

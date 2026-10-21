@@ -29,6 +29,8 @@
 - **Settings:** the Start menu switch says why it is off for a Scoop install or a build.
 - **One window, any file name:** starting a copy saved as "Tunero (1).exe" or renamed brings the open Tunero window to the front instead of opening a second one.
 - **Tools' temporary folder:** a renamed copy no longer empties it while another Tunero still uses it.
+- **Install & update:** a winget search or update check that gets no answer stops after five minutes with an error instead of waiting forever.
+- **Benchmark:** a PresentMon capture that does not end on its own is stopped a minute after its capture time and not kept.
 
 ## 1.4.0
 

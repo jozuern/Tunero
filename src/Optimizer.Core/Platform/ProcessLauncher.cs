@@ -15,7 +15,7 @@ public static class ProcessLauncher
 {
     /// <summary>
     /// Start info for <paramref name="file"/>, hardened and without a shell. <paramref name="capture"/> redirects both
-    /// outputs in that encoding (console tools write in the OEM code page: <see cref="StreamingProcess.Oem"/>).
+    /// outputs in that encoding (console tools write in the OEM code page: <see cref="ToolEncoding.Oem"/>).
     /// </summary>
     public static ProcessStartInfo Info(string file, string? arguments = null, bool hidden = true, Encoding? capture = null)
     {
@@ -68,4 +68,101 @@ public static class ProcessLauncher
         Log.Info("command", what, new { exitCode = p.ExitCode, ms = watch.ElapsedMilliseconds, output = output.Length > 2000 ? output[..2000] : output });
         return (p.ExitCode, output);
     }
+
+    /// <summary>
+    /// Runs a long tool (winget, sfc, dism, PresentMon) and reports every output line while it runs; returns its exit
+    /// code. <paramref name="psi"/> must capture the output (<see cref="Info(string, string?, bool, Encoding?)"/> with an
+    /// encoding). Cancelling <paramref name="ct"/> ends the process tree and throws <see cref="OperationCanceledException"/>
+    /// once the tool has exited; after <paramref name="timeout"/> (null: no limit) the same happens with a
+    /// <see cref="TimeoutException"/>. The output is logged once at the end (truncated).
+    /// </summary>
+    /// <param name="started">Called right after the process has started (for example to release a file held open until then).</param>
+    public static async Task<int> RunStreamingAsync(ProcessStartInfo psi, IProgress<string>? lines, TimeSpan? timeout, CancellationToken ct, Action? started = null)
+    {
+        if (!psi.RedirectStandardOutput || !psi.RedirectStandardError) throw new ArgumentException("the output must be captured", nameof(psi));
+        var what = $"{Path.GetFileName(psi.FileName)} {(psi.ArgumentList.Count > 0 ? string.Join(' ', psi.ArgumentList) : psi.Arguments)}".TrimEnd();
+        ct.ThrowIfCancellationRequested();
+        using var p = new Process { StartInfo = psi, EnableRaisingEvents = true };
+        var all = new List<string>();
+        void OnLine(string? line)
+        {
+            if (line is null) return;
+            // sfc and dism print progress with carriage returns; keep the last segment of each line.
+            var text = line.Split('\r').LastOrDefault(s => s.Trim().Length > 0)?.Trim() ?? "";
+            if (text.Length == 0) return;
+            lock (all) OutputLines.Add(all, text, int.MaxValue);
+            lines?.Report(text);
+        }
+        p.OutputDataReceived += (_, e) => OnLine(e.Data);
+        p.ErrorDataReceived += (_, e) => OnLine(e.Data);
+        var exited = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        p.Exited += (_, _) => exited.TrySetResult();
+        if (!p.Start()) throw new InvalidOperationException($"Cannot start {psi.FileName}");
+        try
+        {
+            started?.Invoke();
+        }
+        catch
+        {
+            // Nobody would read its output or wait for it: the tool does not keep running unobserved.
+            ProcessHardening.KillTree(p);
+            throw;
+        }
+        p.BeginOutputReadLine();
+        p.BeginErrorReadLine();
+        using var limit = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        if (timeout is { } t) limit.CancelAfter(t);
+        try
+        {
+            // The exit itself, not the end of the output: WaitForExitAsync also waits until the output pipes close, and a
+            // program the tool started (an installer launching the updated app) can keep them open for as long as it runs.
+            await exited.Task.WaitAsync(limit.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            await KillAndWaitAsync(p, exited.Task);
+            var stopped = ct.IsCancellationRequested;
+            Log.Warn("command", $"{what}: {(stopped ? "stopped" : $"timed out after {timeout?.TotalSeconds:0} s")}, process tree ended");
+            ct.ThrowIfCancellationRequested();
+            throw new TimeoutException($"{what} timed out");
+        }
+        try
+        {
+            using var rest = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            rest.CancelAfter(OutputGrace);
+            await p.WaitForExitAsync(rest.Token);
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            Log.Warn("command", $"{what}: output still open after the tool ended; using what was read");
+        }
+        string output;
+        lock (all) output = string.Join(Environment.NewLine, all);
+        Log.Info("command", what, new { exitCode = p.ExitCode, output = output.Length > 4000 ? output[^4000..] : output });
+        return p.ExitCode;
+    }
+
+    /// <summary>How long a stopped tool may take to end before the stop returns anyway.</summary>
+    internal static readonly TimeSpan KillWait = TimeSpan.FromSeconds(30);
+
+    /// <summary>
+    /// Ends the process tree and waits until the tool itself has exited (at most <see cref="KillWait"/>): killing only
+    /// starts the termination, and a caller cleaning up right after a Stop (discarding a DISM mount, deleting its files)
+    /// must not race a tool that still runs.
+    /// </summary>
+    internal static async Task KillAndWaitAsync(Process process, Task exited)
+    {
+        ProcessHardening.KillTree(process);
+        try
+        {
+            await exited.WaitAsync(KillWait, CancellationToken.None);
+        }
+        catch (TimeoutException)
+        {
+            Log.Warn("command", $"{process.StartInfo.FileName} had not ended {KillWait.TotalSeconds:0} s after it was stopped");
+        }
+    }
+
+    /// <summary>How long the rest of the output is awaited after the tool ended.</summary>
+    internal static TimeSpan OutputGrace { get; set; } = TimeSpan.FromSeconds(10);
 }

@@ -511,13 +511,18 @@ public sealed class SystemProcessRunner : IProcessRunner
     /// Console tools (ipconfig, chkdsk, netsh, net, reagentc, and Windows PowerShell when its output is redirected) write
     /// in the OEM code page of the system, not UTF-8: read as UTF-8, German umlauts come out garbled.
     /// </summary>
-    private static readonly Encoding ToolEncoding = StreamingProcess.Oem;
-
     public (int ExitCode, string Output) Run(string file, string arguments, TimeSpan? timeout = null) =>
-        ProcessLauncher.Run(ProcessLauncher.Info(file, arguments, capture: ToolEncoding), timeout ?? TimeSpan.FromSeconds(60));
+        ProcessLauncher.Run(ProcessLauncher.Info(file, arguments, capture: ToolEncoding.Oem), timeout ?? ToolTimeouts.Default);
 
     public (int ExitCode, string Output) RunUtf8(string file, string arguments, TimeSpan? timeout = null) =>
-        ProcessLauncher.Run(ProcessLauncher.Info(file, arguments, capture: Encoding.UTF8), timeout ?? TimeSpan.FromSeconds(60));
+        ProcessLauncher.Run(ProcessLauncher.Info(file, arguments, capture: Encoding.UTF8), timeout ?? ToolTimeouts.Default);
+
+    public Task<int> RunAsync(string file, string arguments, TimeSpan? timeout, CancellationToken ct, IProgress<string>? lines, RunOptions? options = null)
+    {
+        var psi = ProcessLauncher.Info(file, arguments, capture: options?.Encoding ?? Encoding.UTF8);
+        options?.Environment?.Invoke(psi.Environment);
+        return ProcessLauncher.RunStreamingAsync(psi, lines, timeout, ct, options?.Started);
+    }
 }
 
 /// <summary>

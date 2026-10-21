@@ -1,25 +1,28 @@
+using Optimizer.Core.Actions;
 using Optimizer.Core.Hardware;
-using Optimizer.Core.Platform;
 
 namespace Optimizer.Core.Tools;
 
-/// <summary>System file check and component store repair with live output.</summary>
+/// <summary>
+/// System file check and component store repair with live output. No time limit: /RestoreHealth can take an hour on a
+/// slow connection, so the page's Stop (cancelling <c>ct</c>) is what ends them early.
+/// </summary>
 public static class SystemRepair
 {
     public static string Sfc => Path.Combine(Environment.SystemDirectory, "sfc.exe");
     public static string Dism => Path.Combine(Environment.SystemDirectory, "dism.exe");
 
     /// <summary>sfc /scannow. Exit 0 = no violations or repaired; the last lines say which.</summary>
-    public static Task<int> ScanNowAsync(IProgress<string>? lines, CancellationToken ct) =>
-        StreamingProcess.RunAsync(Sfc, "/scannow", lines, ct, StreamingProcess.Utf16);
+    public static Task<int> ScanNowAsync(IProcessRunner processes, IProgress<string>? lines, CancellationToken ct) =>
+        processes.RunAsync(Sfc, "/scannow", null, ct, lines, RunOptions.Utf16);
 
     /// <summary>DISM /ScanHealth (read-only check of the component store).</summary>
-    public static Task<int> ScanHealthAsync(IProgress<string>? lines, CancellationToken ct) =>
-        StreamingProcess.RunAsync(Dism, "/Online /Cleanup-Image /ScanHealth", lines, ct, StreamingProcess.Oem);
+    public static Task<int> ScanHealthAsync(IProcessRunner processes, IProgress<string>? lines, CancellationToken ct) =>
+        processes.RunAsync(Dism, "/Online /Cleanup-Image /ScanHealth", null, ct, lines, RunOptions.Oem);
 
     /// <summary>DISM /RestoreHealth (repairs the component store from Windows Update). Run sfc again afterwards.</summary>
-    public static Task<int> RestoreHealthAsync(IProgress<string>? lines, CancellationToken ct) =>
-        StreamingProcess.RunAsync(Dism, "/Online /Cleanup-Image /RestoreHealth", lines, ct, StreamingProcess.Oem);
+    public static Task<int> RestoreHealthAsync(IProcessRunner processes, IProgress<string>? lines, CancellationToken ct) =>
+        processes.RunAsync(Dism, "/Online /Cleanup-Image /RestoreHealth", null, ct, lines, RunOptions.Oem);
 }
 
 public sealed record DiskHealth(

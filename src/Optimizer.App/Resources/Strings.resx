@@ -1218,6 +1218,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Bench_Low" xml:space="preserve"><value>1 % low {0}</value></data>
   <data name="Bench_Fps" xml:space="preserve"><value>{0} FPS</value></data>
   <data name="Bench_Stopped" xml:space="preserve"><value>Capture stopped. This run was not kept.</value></data>
+  <data name="Bench_TimedOut" xml:space="preserve"><value>PresentMon did not end after the capture time and was stopped. This run was not kept.</value></data>
   <data name="Quick_IpRenew" xml:space="preserve"><value>Renew IP address</value></data>
   <data name="Quick_IpRenewHint" xml:space="preserve"><value>Releases and requests the IP address of every network adapter again (ipconfig). Helps when the PC has no valid address after a router restart.</value></data>
   <data name="Quick_IpRenewConfirm" xml:space="preserve"><value>The network connection drops for a few seconds while the address is renewed. Downloads and online games lose their connection.</value></data>

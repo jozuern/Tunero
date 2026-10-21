@@ -20,7 +20,6 @@ What is still open: it needs a person, a VM image or hardware we do not have, or
 
 The audit's other findings are fixed (commits `dde41d6` to `2a931a0`, and `1de6875` for the docs). Left on purpose:
 
-- **One process runner in `ActionContext`:** `StreamingProcess` is static and called directly by the winget, SFC/DISM and PresentMon flows, and `IProcessRunner.Run` has a timeout but no cancellation. One `RunAsync(file, args, timeout, CancellationToken, IProgress<string>)` would give those flows fakes and tests, a Stop button for long DISM runs and one timeout policy.
 - **One path expander and one CLI verb table, with `ChangeSession` owning the change lock:** per-user strings are expanded four ways (`Programs.Command` and `ProgramLeftovers.CleanPath` use the elevated process's environment), and the cross-process `ChangeLock` is taken by the callers, so a new entry point could skip it.
 - **User-scope writes without a resolved SID** fall back to the elevated account without the "other account" banner (a domain account without a domain controller; cannot be tested here).
 - **Workflows:** the verify logic is copied inline into the workflows, and `pages.yml` does not wait for CI.

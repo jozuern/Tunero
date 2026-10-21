@@ -32,7 +32,7 @@ internal sealed class RecycleBinReachedException(string path)
     : Exception($"a test reached the Recycle Bin with {path}: nothing was moved, but a refusal the test relies on is gone");
 
 /// <summary>
-/// Test classes that change a process-wide setting for a moment (ProcessHardening.TempFolder, StreamingProcess.OutputGrace,
+/// Test classes that change a process-wide setting for a moment (ProcessHardening.TempFolder, ProcessLauncher.OutputGrace,
 /// an environment variable) run alone, after the others: a parallel test would otherwise see the changed value.
 /// </summary>
 [CollectionDefinition(Name, DisableParallelization = true)]

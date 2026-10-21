@@ -677,10 +677,10 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
         UpdatesText = Loc.Instance["Apps_CheckingUpdates"];
         try
         {
-            _upgrades = await Task.Run(() => Winget.ListUpgradesAsync(winget, CancellationToken.None));
+            _upgrades = await Task.Run(() => Winget.ListUpgradesAsync(services.Context.Processes, winget, CancellationToken.None));
             ShowUpgrades();
         }
-        catch (Exception ex) when (ex is InvalidOperationException or IOException or System.ComponentModel.Win32Exception)
+        catch (Exception ex) when (ex is InvalidOperationException or IOException or System.ComponentModel.Win32Exception or TimeoutException)
         {
             Optimizer.Core.Logging.Log.Warn("apps", $"update check failed: {ex.Message}");
             UpdatesText = Loc.Instance.Format("Apps_CheckUpdatesFailed", ex.Message);
@@ -762,7 +762,7 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
     private bool _managerDemo;
     private PackageUpdates? _packageRuns = packageRuns;
 
-    private PackageUpdates PackageRuns => _packageRuns ??= new PackageUpdates(new Launch(), services.Elevation);
+    private PackageUpdates PackageRuns => _packageRuns ??= new PackageUpdates(new Launch { Processes = services.Context.Processes }, services.Elevation);
 
     public ObservableCollection<ManagerRow> Managers { get; } = [];
     public ObservableCollection<ManagerRow> DeveloperTools { get; } = [];
@@ -1067,7 +1067,7 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
             var winget = _winget;
             if (!await RunWorkAsync($"install {row.App.Id}", async () =>
                 {
-                    var code = await Winget.InstallAsync(winget, row.App, progress, CancellationToken.None);
+                    var code = await Winget.InstallAsync(services.Context.Processes, winget, row.App, progress, CancellationToken.None);
                     row.Installed = Winget.IsSuccess(code);
                     row.StateText = row.Installed ? Loc.Instance["Apps_Installed"] : Loc.Instance.Format("Apps_Failed", $"0x{code:X8}");
                 }))
@@ -1103,7 +1103,7 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
             var winget = _winget;
             if (!await RunWorkAsync($"update {row.App.Id}", async () =>
                 {
-                    var code = await Winget.UpgradeAsync(winget, row.App, progress, CancellationToken.None);
+                    var code = await Winget.UpgradeAsync(services.Context.Processes, winget, row.App, progress, CancellationToken.None);
                     row.StateText = code == Winget.UpdateNotApplicable ? Loc.Instance["Apps_UpToDate"]
                         : Winget.IsSuccess(code) ? Loc.Instance["Apps_Updated"]
                         : Loc.Instance.Format("Apps_UpdateFailed", $"0x{code:X8}");
@@ -1155,11 +1155,11 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
         SearchResults.Clear();
         try
         {
-            var found = await Winget.SearchAsync(_winget, query, CancellationToken.None);
+            var found = await Winget.SearchAsync(services.Context.Processes, _winget, query, CancellationToken.None);
             foreach (var p in found) SearchResults.Add(new WingetResultRow(p));
             SearchNote = found.Count == 0 ? Loc.Instance.Format("Apps_SearchNone", query) : Loc.Instance.Format("Apps_SearchCount", found.Count);
         }
-        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or IOException)
+        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or IOException or TimeoutException)
         {
             SearchNote = Loc.Instance.Format("Result_Error", ex.Message);
         }
@@ -1199,7 +1199,7 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
             var winget = _winget;
             if (!await RunWorkAsync($"install {app.Id} (search)", async () =>
                 {
-                    var code = await Winget.InstallAsync(winget, app, progress, CancellationToken.None);
+                    var code = await Winget.InstallAsync(services.Context.Processes, winget, app, progress, CancellationToken.None);
                     if (code == Winget.NoApplicableInstaller && _wingetForUser is { } forUser)
                     {
                         // Only a per-user installer: it runs as the signed-in user, in winget's own window.

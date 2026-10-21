@@ -207,10 +207,10 @@ public class BenchmarkHealthTests
     [Fact]
     public void DismOutputIsReadInTheOemCodePage()
     {
-        var cp = Optimizer.Core.Platform.StreamingProcess.Oem.CodePage;
+        var cp = Optimizer.Core.Platform.ToolEncoding.Oem.CodePage;
         if (cp is not (437 or 850)) return;
         byte[] dism = [0x41, 0x75, 0x73, 0x66, 0x81, 0x68, 0x72, 0x65, 0x6E, 0x20, 0x65, 0x72, 0x68, 0x94, 0x68, 0x74, 0x65, 0x20, 0xE1];
-        Assert.Equal("Ausführen erhöhte ß", Optimizer.Core.Platform.StreamingProcess.Oem.GetString(dism));
+        Assert.Equal("Ausführen erhöhte ß", Optimizer.Core.Platform.ToolEncoding.Oem.GetString(dism));
     }
 
     /// <summary>
@@ -220,18 +220,18 @@ public class BenchmarkHealthTests
     [Fact]
     public async Task AToolEndsAlthoughAProgramItStartedKeepsTheOutputOpen()
     {
-        var before = Optimizer.Core.Platform.StreamingProcess.OutputGrace;
-        Optimizer.Core.Platform.StreamingProcess.OutputGrace = TimeSpan.FromSeconds(1);
+        var before = Optimizer.Core.Platform.ProcessLauncher.OutputGrace;
+        Optimizer.Core.Platform.ProcessLauncher.OutputGrace = TimeSpan.FromSeconds(1);
         try
         {
             var watch = System.Diagnostics.Stopwatch.StartNew();
-            var exit = await Optimizer.Core.Platform.StreamingProcess.RunAsync("cmd.exe", "/c start /b ping -n 20 127.0.0.1", null);
+            var exit = await Optimizer.Core.Platform.ProcessLauncher.RunStreamingAsync(Cmd("/c start /b ping -n 20 127.0.0.1"), null, null, CancellationToken.None);
             Assert.Equal(0, exit);
             Assert.True(watch.Elapsed < TimeSpan.FromSeconds(10), $"took {watch.Elapsed}");
         }
         finally
         {
-            Optimizer.Core.Platform.StreamingProcess.OutputGrace = before;
+            Optimizer.Core.Platform.ProcessLauncher.OutputGrace = before;
         }
     }
 
@@ -245,11 +245,84 @@ public class BenchmarkHealthTests
     {
         using var notStarted = new Process();
         var exited = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var stop = Optimizer.Core.Platform.StreamingProcess.KillAndWaitAsync(notStarted, exited.Task);
+        var stop = Optimizer.Core.Platform.ProcessLauncher.KillAndWaitAsync(notStarted, exited.Task);
         await Task.Delay(300);
         Assert.False(stop.IsCompleted, "the stop returned before the tool had exited");
         exited.SetResult();
         await stop.WaitAsync(TimeSpan.FromSeconds(10));
+    }
+
+    private static ProcessStartInfo Cmd(string arguments) => Optimizer.Core.Platform.ProcessLauncher.Info("cmd.exe", arguments, capture: System.Text.Encoding.UTF8);
+
+    private sealed class Lines : IProgress<string>
+    {
+        public List<string> All { get; } = [];
+
+        public void Report(string value)
+        {
+            lock (All) All.Add(value);
+        }
+    }
+
+    /// <summary>Each line arrives while the tool runs, trimmed and without empty lines; the exit code comes back. Only cmd.exe runs.</summary>
+    [Fact]
+    public async Task TheRunnerStreamsEachLineAndReturnsTheExitCode()
+    {
+        var lines = new Lines();
+        var exit = await Optimizer.Core.Platform.ProcessLauncher.RunStreamingAsync(Cmd("/c echo one& echo.& echo   two  & exit /b 3"), lines, TimeSpan.FromSeconds(30), CancellationToken.None);
+        Assert.Equal(3, exit);
+        Assert.Equal(["one", "two"], lines.All);
+    }
+
+    /// <summary>
+    /// A time limit and a Stop both end the whole process tree, not only the tool: a program the tool started (DismHost
+    /// for dism, an installer for winget) must not run on. The batch file starts a second cmd that would write a marker
+    /// after about three seconds; the run is ended after one. Only cmd.exe and ping to the loopback address run, in a temp folder.
+    /// </summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task TimeoutAndStopEndTheWholeProcessTree(bool timeout)
+    {
+        var folder = TestFolders.Create("tree");
+        try
+        {
+            var batch = Path.Combine(folder, "tree.cmd");
+            File.WriteAllText(batch, string.Join("\r\n",
+                "@echo off",
+                "cd /d \"%~dp0\"",
+                "start /b cmd /c \"ping -n 4 127.0.0.1 >nul & echo done>marker.txt\"",
+                "echo started",
+                "ping -n 30 127.0.0.1 >nul", ""));
+            var lines = new Lines();
+            using var stop = new CancellationTokenSource();
+            if (!timeout) stop.CancelAfter(TimeSpan.FromSeconds(1));
+            var watch = Stopwatch.StartNew();
+            var run = Optimizer.Core.Platform.ProcessLauncher.RunStreamingAsync(Cmd($"/c \"{batch}\""), lines, timeout ? TimeSpan.FromSeconds(1) : null, stop.Token);
+            if (timeout) await Assert.ThrowsAsync<TimeoutException>(() => run);
+            else await Assert.ThrowsAnyAsync<OperationCanceledException>(() => run);
+            Assert.True(watch.Elapsed < TimeSpan.FromSeconds(15), $"took {watch.Elapsed}");
+            Assert.Contains("started", lines.All);
+
+            // Past the time the started cmd would have written its marker.
+            var rest = TimeSpan.FromSeconds(5) - watch.Elapsed;
+            if (rest > TimeSpan.Zero) await Task.Delay(rest);
+            Assert.False(File.Exists(Path.Combine(folder, "marker.txt")), "a program the tool started kept running");
+        }
+        finally
+        {
+            TestFolders.Delete(folder);
+        }
+    }
+
+    /// <summary>A Stop pressed before the start starts nothing.</summary>
+    [Fact]
+    public async Task AStopBeforeTheStartRunsNothing()
+    {
+        using var stop = new CancellationTokenSource();
+        stop.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            Optimizer.Core.Platform.ProcessLauncher.RunStreamingAsync(Cmd("/c echo never"), null, null, stop.Token));
     }
 
     [Theory]

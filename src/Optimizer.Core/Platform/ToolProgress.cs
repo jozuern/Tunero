@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 namespace Optimizer.Core.Platform;
 
 /// <summary>
-/// How far a long tool is, read from the lines it prints (<see cref="StreamingProcess"/>): sfc and dism print a
+/// How far a long tool is, read from the lines it prints (<see cref="Actions.IProcessRunner.RunAsync"/>): sfc and dism print a
 /// percentage, winget upgrade --all numbers the packages it updates.
 /// </summary>
 public static partial class ToolProgress

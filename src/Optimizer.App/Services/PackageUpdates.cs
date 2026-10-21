@@ -1,3 +1,4 @@
+using Optimizer.Core.Actions;
 using Optimizer.Core.Apps;
 using Optimizer.Core.Logging;
 using Optimizer.Core.Platform;
@@ -51,7 +52,7 @@ public sealed class PackageUpdates(Launch launch, ElevationInfo? elevation)
                 case ManagerKind.Winget:
                     if (m.Run == ManagerRun.Elevated)
                     {
-                        var code = await launch.RunStreaming(m.Path, Winget.UpgradeAllArguments("machine"), lines, null, null, CancellationToken.None);
+                        var code = await launch.Processes.RunAsync(m.Path, Winget.UpgradeAllArguments("machine"), null, CancellationToken.None, lines);
                         results.Add(Winget.IsSuccess(code) ? l["Apps_UpdateAllDone"] : l.Format("Apps_UpdateFailed", $"0x{code:X8}"));
                     }
                     // Per-user programs update as the signed-in user, in a window of their own.
@@ -60,7 +61,7 @@ public sealed class PackageUpdates(Launch launch, ElevationInfo? elevation)
                         results.Add(l["Apps_UpdateAllUser"]);
                     break;
                 case ManagerKind.Chocolatey when m.Run == ManagerRun.Elevated && m.Root is { } root:
-                    var choco = await launch.RunStreaming(m.Path, Chocolatey.UpgradeAllArguments, lines, StreamingProcess.Oem, env => Chocolatey.HardenEnvironment(env, root), CancellationToken.None);
+                    var choco = await launch.Processes.RunAsync(m.Path, Chocolatey.UpgradeAllArguments, null, CancellationToken.None, lines, ChocolateyRun(root));
                     Log.Info("apps", "chocolatey upgrade all", new { exitCode = choco });
                     results.Add(Chocolatey.IsSuccess(choco) ? l["Apps_ChocoDone"] : l.Format("Apps_ChocoUpdateFailed", choco));
                     break;
@@ -86,16 +87,7 @@ public sealed class PackageUpdates(Launch launch, ElevationInfo? elevation)
     {
         var root = TrustedRoot(choco);
         var output = new Collected();
-        using var limit = new CancellationTokenSource(OutdatedTimeout);
-        int code;
-        try
-        {
-            code = await launch.RunStreaming(choco.Path, Chocolatey.OutdatedArguments, output, StreamingProcess.Oem, env => Chocolatey.HardenEnvironment(env, root), limit.Token);
-        }
-        catch (OperationCanceledException) when (limit.IsCancellationRequested)
-        {
-            throw new TimeoutException($"choco outdated did not end within {OutdatedTimeout.TotalSeconds:0} s");
-        }
+        var code = await launch.Processes.RunAsync(choco.Path, Chocolatey.OutdatedArguments, OutdatedTimeout, CancellationToken.None, output, ChocolateyRun(root));
         return Chocolatey.OutdatedResult(code, output.Text);
     }
 
@@ -105,8 +97,11 @@ public sealed class PackageUpdates(Launch launch, ElevationInfo? elevation)
         var arguments = Chocolatey.UpgradeArguments(id);
         var root = TrustedRoot(choco);
         // No time limit: ending an installer in the middle can leave a program half updated.
-        return launch.RunStreaming(choco.Path, arguments, lines, StreamingProcess.Oem, env => Chocolatey.HardenEnvironment(env, root), CancellationToken.None);
+        return launch.Processes.RunAsync(choco.Path, arguments, null, CancellationToken.None, lines, ChocolateyRun(root));
     }
+
+    /// <summary>Chocolatey writes the OEM code page and runs with its root set to the checked folder.</summary>
+    private static RunOptions ChocolateyRun(string root) => RunOptions.Oem with { Environment = env => Chocolatey.HardenEnvironment(env, root) };
 
     private static string TrustedRoot(PackageManagerInfo choco) =>
         choco is { Kind: ManagerKind.Chocolatey, Run: ManagerRun.Elevated, Root: { } root } ? root

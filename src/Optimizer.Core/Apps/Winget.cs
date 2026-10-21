@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Optimizer.Core.Actions;
 using Optimizer.Core.Hardware.Probes;
 using Optimizer.Core.Platform;
 
@@ -120,11 +121,14 @@ public static class Winget
     public static string UpgradeArguments(string id) =>
         $"upgrade --id {id} --exact --source winget --accept-package-agreements --accept-source-agreements --silent --disable-interactivity";
 
-    /// <summary>Updates a machine-scope app with progress lines. Returns winget's exit code (0 = updated or already current).</summary>
-    public static Task<int> UpgradeAsync(string winget, AppEntry app, IProgress<string>? lines, CancellationToken ct)
+    /// <summary>
+    /// Updates a machine-scope app with progress lines. Returns winget's exit code (0 = updated or already current). No
+    /// time limit: ending an installer halfway can leave the app half updated.
+    /// </summary>
+    public static Task<int> UpgradeAsync(IProcessRunner processes, string winget, AppEntry app, IProgress<string>? lines, CancellationToken ct)
     {
         if (!IsSafeId(app.Id)) throw new ArgumentException($"invalid winget id {app.Id}");
-        return StreamingProcess.RunAsync(winget, UpgradeArguments(app.Id), lines, ct);
+        return processes.RunAsync(winget, UpgradeArguments(app.Id), null, ct, lines);
     }
 
     /// <summary>
@@ -147,12 +151,12 @@ public static class Winget
     private static string InstallerTypeArgument(string? type) =>
         type is "exe" or "msi" or "msix" or "inno" or "nullsoft" or "wix" or "burn" ? $" --installer-type {type}" : "";
 
-    /// <summary>Installs a machine-scope app with progress lines. Returns winget's exit code (0 = success).</summary>
-    public static Task<int> InstallAsync(string winget, AppEntry app, IProgress<string>? lines, CancellationToken ct)
+    /// <summary>Installs a machine-scope app with progress lines. Returns winget's exit code (0 = success). No time limit, as for <see cref="UpgradeAsync"/>.</summary>
+    public static Task<int> InstallAsync(IProcessRunner processes, string winget, AppEntry app, IProgress<string>? lines, CancellationToken ct)
     {
         if (!IsSafeId(app.Id)) throw new ArgumentException($"invalid winget id {app.Id}");
         if (app.Scope == "user") throw new InvalidOperationException("per-user apps are started with InstallForUser");
-        return StreamingProcess.RunAsync(winget, InstallArguments(app.Id, app.WingetScope, app.InstallerType), lines, ct);
+        return processes.RunAsync(winget, InstallArguments(app.Id, app.WingetScope, app.InstallerType), null, ct, lines);
     }
 
     /// <summary>Starts a per-user installer as the signed-in user (window visible; the result shows on the next scan).</summary>
@@ -168,7 +172,7 @@ public static class Winget
     /// so the app lands in the user's profile and installers that refuse administrator rights run. Returns winget's exit
     /// code, or null when it could not be started or took longer than <paramref name="limit"/>.
     /// </summary>
-    public static Task<int?> InstallForUserAndWaitAsync(string winget, AppEntry app, ElevationInfo? elevation, TimeSpan limit, CancellationToken ct)
+    public static Task<int?> InstallForUserAndWaitAsync(IProcessRunner processes, string winget, AppEntry app, ElevationInfo? elevation, TimeSpan limit, CancellationToken ct)
     {
         if (!IsSafeId(app.Id)) throw new ArgumentException($"invalid winget id {app.Id}");
         var arguments = InstallArguments(app.Id, app.WingetScope, app.InstallerType);
@@ -177,7 +181,17 @@ public static class Winget
             ? Task.Run(() => DeElevatedLauncher.RunAsUserAndWaitAsync(winget, arguments, user, limit, ct), ct)
             : Task.FromResult<int?>(null);
 
-        async Task<int?> RunDirectAsync() => await StreamingProcess.RunAsync(winget, arguments, null, ct);
+        async Task<int?> RunDirectAsync()
+        {
+            try
+            {
+                return await processes.RunAsync(winget, arguments, limit, ct, null);
+            }
+            catch (TimeoutException)
+            {
+                return null;
+            }
+        }
     }
 
     /// <summary>APPINSTALLER_CLI_ERROR_UPDATE_NOT_APPLICABLE: already installed, no newer version in the source.</summary>
@@ -209,7 +223,7 @@ public static class Winget
     /// The table winget search prints: a header, a line of dashes, then one package per line in fixed-width columns. The
     /// headers are translated, so the columns are found by where the header words start; the first three are always name,
     /// id and version. Rows whose id winget shortened (ending in an ellipsis) or that hold anything but id characters are left out, and so
-    /// are the notes below the table (empty lines are already gone when the lines come from <see cref="StreamingProcess"/>).
+    /// are the notes below the table (empty lines are already gone when the lines come from <see cref="IProcessRunner.RunAsync"/>).
     /// </summary>
     public static IReadOnlyList<WingetSearchResult> ParseSearch(string output) =>
         Table(output, 3).Select(c => new WingetSearchResult(c[0], c[1], c[2])).ToList();
@@ -291,12 +305,13 @@ public static class Winget
 
     /// <summary>
     /// Runs the search with the trusted winget; the packages it found (empty when none). A failed search (the source
-    /// could not be opened) throws with winget's own last line, instead of reading as "nothing found".
+    /// could not be opened) throws with winget's own last line, instead of reading as "nothing found". A winget that has
+    /// not answered within <see cref="ToolTimeouts.PackageList"/> is ended (<see cref="TimeoutException"/>).
     /// </summary>
-    public static async Task<IReadOnlyList<WingetSearchResult>> SearchAsync(string winget, string query, CancellationToken ct)
+    public static async Task<IReadOnlyList<WingetSearchResult>> SearchAsync(IProcessRunner processes, string winget, string query, CancellationToken ct)
     {
         var output = new System.Text.StringBuilder();
-        var code = await StreamingProcess.RunAsync(winget, SearchArguments(query), new SynchronousProgress(l => { lock (output) output.AppendLine(l); }), ct);
+        var code = await processes.RunAsync(winget, SearchArguments(query), ToolTimeouts.PackageList, ct, new SynchronousProgress(l => { lock (output) output.AppendLine(l); }));
         string text;
         lock (output) text = output.ToString();
         var found = ParseSearch(text);
@@ -307,12 +322,13 @@ public static class Winget
 
     /// <summary>
     /// Runs winget upgrade (the list only) with the trusted winget: the packages with a newer version in its repository.
-    /// A failed run (the source could not be opened) throws with winget's own last line, as <see cref="SearchAsync"/> does.
+    /// A failed run (the source could not be opened) throws with winget's own last line, and a winget that does not answer
+    /// is ended, as <see cref="SearchAsync"/> does.
     /// </summary>
-    public static async Task<IReadOnlyList<WingetUpgrade>> ListUpgradesAsync(string winget, CancellationToken ct)
+    public static async Task<IReadOnlyList<WingetUpgrade>> ListUpgradesAsync(IProcessRunner processes, string winget, CancellationToken ct)
     {
         var output = new System.Text.StringBuilder();
-        var code = await StreamingProcess.RunAsync(winget, UpgradesArguments, new SynchronousProgress(l => { lock (output) output.AppendLine(l); }), ct);
+        var code = await processes.RunAsync(winget, UpgradesArguments, ToolTimeouts.PackageList, ct, new SynchronousProgress(l => { lock (output) output.AppendLine(l); }));
         string text;
         lock (output) text = output.ToString();
         var found = ParseUpgrades(text);

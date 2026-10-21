@@ -174,4 +174,9 @@ internal sealed class ReadOnlyProcesses(IProcessRunner real) : IProcessRunner
         LooksLikeAWrite(file, arguments)
             ? throw new InvalidOperationException($"read-only test context: {file} {arguments} looks like a change to this PC")
             : real.Run(file, arguments, timeout);
+
+    public Task<int> RunAsync(string file, string arguments, TimeSpan? timeout, CancellationToken ct, IProgress<string>? lines, RunOptions? options = null) =>
+        LooksLikeAWrite(file, arguments)
+            ? throw new InvalidOperationException($"read-only test context: {file} {arguments} looks like a change to this PC")
+            : real.RunAsync(file, arguments, timeout, ct, lines, options);
 }
