@@ -33,7 +33,7 @@ public sealed partial class ReservedStorageAction : TweakAction
     private void Set(ActionContext c, bool enabled) => ReadCache.Writing(c, TargetKey, () =>
     {
         var (code, output) = c.Processes.Run("dism.exe", $"/Online /English /Set-ReservedStorageState /State:{(enabled ? "Enabled" : "Disabled")}", TimeSpan.FromMinutes(5));
-        if (code != 0) throw new InvalidOperationException($"DISM failed ({code}): {output.Trim()}");
+        if (code != 0) throw new InvalidOperationException(Optimizer.Core.Media.DismOutput.Failure(code, output));
     });
 
     [GeneratedRegex(@"Reserved storage is (enabled|disabled)", RegexOptions.IgnoreCase)]

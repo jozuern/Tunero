@@ -51,7 +51,7 @@ public sealed partial class OptionalCapabilityAction : TweakAction
         if (!IsSafeName(capability)) throw new ArgumentException($"invalid capability name {capability}");
         var args = installed ? $"/Online /English /Add-Capability /CapabilityName:{capability} /NoRestart" : $"/Online /English /Remove-Capability /CapabilityName:{capability} /NoRestart";
         var (code, output) = processes.Run("dism.exe", args, TimeSpan.FromMinutes(30));
-        if (code is not (0 or 3010)) throw new InvalidOperationException($"DISM failed ({code}): {output.Trim()}");
+        if (code is not (0 or 3010)) throw new InvalidOperationException(Optimizer.Core.Media.DismOutput.Failure(code, output));
     }
 
     /// <summary>All capability states in one DISM call (/Get-Capabilities /Format:Table): "Capability Identity | State" rows.</summary>

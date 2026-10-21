@@ -11,6 +11,18 @@ public class DismParsingTests
     private static string Streamed(string text) =>
         string.Join("\n", text.Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0));
 
+    /// <summary>A failure keeps the error code and DISM's reason, not its version header or the dism.log pointer (PCO-Test, 2026-10-21).</summary>
+    [Fact]
+    public void FailureKeepsTheCodeAndTheReason()
+    {
+        const string output = "\r\nDeployment Image Servicing and Management tool\r\nVersion: 10.0.26100.9549\r\n\r\nImage Version: 10.0.26300.9711\r\n\r\n\r\n" +
+            "Error: 0x800f0975\r\n\r\nThis operation is not supported when reserved storage is in use. Please\r\nwait for any servicing operations to complete and then try again later.\r\n\r\n" +
+            "The DISM log file can be found at C:\\WINDOWS\\Logs\\DISM\\dism.log\r\n";
+        Assert.Equal("DISM failed (0x800f0975): This operation is not supported when reserved storage is in use. Please wait for any servicing operations to complete and then try again later.",
+            DismOutput.Failure(-2146498187, output));
+        Assert.Equal("DISM failed (5): Access is denied.", DismOutput.Failure(5, "Access is denied."));
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

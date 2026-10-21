@@ -36,6 +36,8 @@
 - **Tools:** Flush DNS cache and Reset Winsock work like the other quick fixes; the Winsock confirmation carries the card's title.
 - **Installed programs:** a program installed for your account alone runs your own uninstaller and its leftovers are looked for in your profile, also when Tunero runs as a separate administrator account.
 - **Other account:** when Windows cannot look up the signed-in account (a domain account while the domain cannot be reached), a banner says that user settings go to the account Tunero runs as.
+- **Command line:** every result line names its tweak, also when a change was not applied, conflicted or failed.
+- **Windows features, capabilities and reserved storage:** a DISM failure shows its error code and DISM's reason without DISM's version header.
 
 ## 1.4.0
 

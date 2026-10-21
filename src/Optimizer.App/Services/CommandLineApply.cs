@@ -108,7 +108,7 @@ public static class CommandLineApply
             return Done;
         }
         var lang = Loc.Instance.Language;
-        foreach (var r in outcome.Results) lines.Add(ChangeRunner.ResultText(r.Tweak, ChangeRunner.TitleOf(r.Tweak, lang), r.Result));
+        foreach (var r in outcome.Results) lines.Add(ChangeRunner.ResultLine(r.Tweak, ChangeRunner.TitleOf(r.Tweak, lang), r.Result));
         lines.Add(Loc.Instance.Format("Cli_ReapplySummary", outcome.Applied, outcome.Failed));
         return outcome.Failed > 0 ? SomeFailed : Done;
     }
@@ -302,7 +302,7 @@ public static class CommandLineApply
             lines.Add(Loc.Instance["Cli_NoRestorePoint"]);
             return NoRestorePoint;
         }
-        foreach (var r in outcome.Results) lines.Add(ChangeRunner.ResultText(r.Tweak, ChangeRunner.TitleOf(r.Tweak, lang), r.Result));
+        foreach (var r in outcome.Results) lines.Add(ChangeRunner.ResultLine(r.Tweak, ChangeRunner.TitleOf(r.Tweak, lang), r.Result));
         foreach (var t in inApp) lines.Add(Loc.Instance.Format("Cli_NeedsApp", ChangeRunner.TitleOf(t, lang)));
         lines.Add(summary(outcome.Applied, outcome.Failed, outcome.Skipped + inApp.Count));
         return outcome.Failed > 0 ? SomeFailed : Done;

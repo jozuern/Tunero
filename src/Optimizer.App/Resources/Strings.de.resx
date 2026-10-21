@@ -1614,6 +1614,8 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Cli_FileUnreadable" xml:space="preserve"><value>{0} konnte nicht gelesen werden: {1}</value></data>
   <data name="Cli_FileInvalid" xml:space="preserve"><value>{0} ist keine Änderungsdatei von Tunero, oder sie stammt aus einer neueren Version der App.</value></data>
   <data name="Cli_NoRestorePoint" xml:space="preserve"><value>Es konnte kein Wiederherstellungspunkt erstellt werden, deshalb wurde nichts geändert. Schalte den Computerschutz ein oder ergänze --no-restore-point, um ohne fortzufahren.</value></data>
+  <data name="Cli_NotAppliedNamed" xml:space="preserve"><value>Nicht angewendet: {0}. {1}</value></data>
+  <data name="Cli_FailedNamed" xml:space="preserve"><value>Nicht angewendet: {0}. Es bleibt nichts halb geändert zurück. Grund: {1}</value></data>
   <data name="Cli_NeedsApp" xml:space="preserve"><value>Nicht angewendet, braucht eine eigene Bestätigung in der App: {0}</value></data>
   <data name="Cli_Summary" xml:space="preserve"><value>Angewendet: {0}. Fehlgeschlagen: {1}. Nicht angewendet: {2}. Schon an: {3}. Nicht für diesen PC: {4}. Dieser Version unbekannt: {5}.</value></data>
   <data name="Cli_UnknownProfile" xml:space="preserve"><value>Unbekanntes Profil "{0}", oder eines, das dieser PC nicht anbietet. Profile hier: {1}</value></data>

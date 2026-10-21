@@ -74,7 +74,7 @@ public sealed partial class OptionalFeatureAction : TweakAction
     private static void Set(IProcessRunner processes, string feature, bool enabled)
     {
         var (code, output) = Run(processes, feature, enabled, withParents: true);
-        if (code is not (0 or 3010)) throw new InvalidOperationException($"DISM failed ({code}): {output.Trim()}");
+        if (code is not (0 or 3010)) throw new InvalidOperationException(Optimizer.Core.Media.DismOutput.Failure(code, output));
     }
 
     private static bool TrySet(IProcessRunner processes, string feature, bool enabled, bool withParents) =>

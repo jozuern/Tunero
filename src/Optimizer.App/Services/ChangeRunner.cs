@@ -394,6 +394,17 @@ public sealed class ChangeRunner(AppServices services, IDialogs dialogs, Func<Fa
         return result.BackupNotUpdated ? $"{text} {Loc.Instance["Result_BackupNotUpdated"]}" : text;
     }
 
+    /// <summary>
+    /// <see cref="ResultText"/> for a list of results (the command line): a result that does not name its tweak (nothing
+    /// to do, blocked, failed) gets the title in front, since the line stands on its own there.
+    /// </summary>
+    public static string ResultLine(TweakDefinition t, string title, ApplyResult result) => result.Outcome switch
+    {
+        ApplyOutcome.NothingToDo or ApplyOutcome.Blocked or ApplyOutcome.NeedsRestorePointDecision => Loc.Instance.Format("Cli_NotAppliedNamed", title, ResultText(t, title, result)),
+        ApplyOutcome.Failed when !result.LeftChanged => Loc.Instance.Format("Cli_FailedNamed", title, result.Error ?? "?"),
+        _ => ResultText(t, title, result),
+    };
+
     private static string OutcomeText(TweakDefinition t, string title, ApplyResult result)
     {
         var lang = Loc.Instance.Language;

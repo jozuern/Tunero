@@ -169,6 +169,20 @@ public static class DismOutput
         return list;
     }
 
+    /// <summary>
+    /// What a failed dism.exe run says, for a message: the error code and DISM's explanation after it, without the version
+    /// header and the pointer to dism.log (both the same in every failure). The whole output when it has no "Error:" line.
+    /// </summary>
+    public static string Failure(int exitCode, string output)
+    {
+        var lines = output.Replace("\r", "").Split('\n').Select(l => l.Trim()).ToList();
+        var error = lines.FindIndex(l => l.StartsWith("Error:", StringComparison.OrdinalIgnoreCase));
+        var reason = error < 0 ? "" : string.Join(" ", lines.Skip(error + 1)
+            .TakeWhile(l => !l.StartsWith("The DISM log file", StringComparison.OrdinalIgnoreCase)).Where(l => l.Length > 0));
+        var code = ErrorCode(output) is { } c ? $"0x{c:x8}" : exitCode.ToString(CultureInfo.InvariantCulture);
+        return error < 0 ? $"DISM failed ({code}): {output.Trim()}" : $"DISM failed ({code}): {reason}".TrimEnd(' ', ':');
+    }
+
     /// <summary>The number of an "Error: 0x800f081f" or "Error: 87" line, or null when there is none.</summary>
     public static int? ErrorCode(string output)
     {

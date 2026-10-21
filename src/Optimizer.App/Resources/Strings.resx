@@ -1614,6 +1614,8 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Cli_FileUnreadable" xml:space="preserve"><value>{0} could not be read: {1}</value></data>
   <data name="Cli_FileInvalid" xml:space="preserve"><value>{0} is not a Tunero changes file, or it comes from a newer version of the app.</value></data>
   <data name="Cli_NoRestorePoint" xml:space="preserve"><value>No restore point could be created, so nothing was changed. Turn on System Protection, or add --no-restore-point to continue without one.</value></data>
+  <data name="Cli_NotAppliedNamed" xml:space="preserve"><value>Not applied: {0}. {1}</value></data>
+  <data name="Cli_FailedNamed" xml:space="preserve"><value>Not applied: {0}. Nothing was left half-changed. Reason: {1}</value></data>
   <data name="Cli_NeedsApp" xml:space="preserve"><value>Not applied, needs its own confirmation in the app: {0}</value></data>
   <data name="Cli_Summary" xml:space="preserve"><value>Applied: {0}. Failed: {1}. Not applied: {2}. Already on: {3}. Not for this PC: {4}. Unknown to this version: {5}.</value></data>
   <data name="Cli_UnknownProfile" xml:space="preserve"><value>Unknown profile "{0}", or one this PC does not offer. Profiles here: {1}</value></data>
