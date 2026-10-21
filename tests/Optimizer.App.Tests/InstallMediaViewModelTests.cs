@@ -28,7 +28,12 @@ public sealed class InstallMediaViewModelTests : IDisposable
     /// <summary>What the fake ISO reader finds in an own ISO.</summary>
     private IsoInfo _iso = Iso(Image(1, "Core", "Windows 11 Home"), Image(2, "Professional", "Windows 11 Pro"));
 
-    public InstallMediaViewModelTests() => Directory.CreateDirectory(_root);
+    public InstallMediaViewModelTests()
+    {
+        Directory.CreateDirectory(_root);
+        // The review before a build is confirmed unless a test cancels it.
+        _dialogs.ConfirmApplyResult = new ConfirmResult(false);
+    }
 
     public void Dispose()
     {
@@ -206,6 +211,48 @@ public sealed class InstallMediaViewModelTests : IDisposable
         var media = await WithOwnIso(Media(system: system));
         Assert.False(media.CanBuild);
         Assert.Equal(Loc.Instance["Media_IsoInUse"], media.BuildNote);
+    }
+
+    [Fact]
+    public async Task BuildAsksForTheReviewAndCancelBuildsNothing()
+    {
+        var media = await WithCatalog();
+        _dialogs.ConfirmApplyResult = null;
+        await media.BuildCommand.ExecuteAsync(null);
+        Assert.Equal(1, _dialogs.ConfirmApplyCalls);
+        Assert.Empty(_requests);
+        Assert.False(media.IsBuilding);
+
+        _dialogs.ConfirmApplyResult = new ConfirmResult(false);
+        await media.BuildCommand.ExecuteAsync(null);
+        Assert.Equal(2, _dialogs.ConfirmApplyCalls);
+        Assert.Single(_requests);
+        Assert.Equal(Loc.Instance["Media_BuildButton"], _dialogs.ConfirmApplyRequests[1].Primary);
+    }
+
+    [Fact]
+    public async Task SummaryTextFollowsTheChoices()
+    {
+        var media = await WithCatalog();
+        var changed = new List<string?>();
+        media.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+        var before = media.SummaryText;
+        Assert.Contains("Windows 11 ", before);
+        Assert.Contains("26300.9711", before);
+        Assert.Contains("Anna", before);
+        var count = media.AppRows.Count(r => r.IsChecked);
+        Assert.True(count > 0);
+        Assert.Contains(Loc.Instance.Format("Media_Summary_Apps", count), before);
+
+        media.AppGroups.First(g => g.Rows.Any(r => r.IsChecked)).AllChecked = false;
+        Assert.Contains(nameof(InstallMediaViewModel.SummaryText), changed);
+        Assert.NotEqual(before, media.SummaryText);
+        Assert.DoesNotContain(Loc.Instance.Format("Media_Summary_Apps", count), media.SummaryText);
+
+        changed.Clear();
+        media.AccountNameText = "Berta";
+        Assert.Contains(nameof(InstallMediaViewModel.SummaryText), changed);
+        Assert.Contains("Berta", media.SummaryText);
     }
 
     [Fact]

@@ -182,6 +182,12 @@ public sealed record ConfirmRequest(
 
     /// <summary>How long the change can take when that is minutes (a Windows feature): the dialog says it with a clock under the tags.</summary>
     public string? Duration { get; init; }
+
+    /// <summary>The text of the main button (null: "Apply", or "Undo" for an undo).</summary>
+    public string? Primary { get; init; }
+
+    /// <summary>The line left of the buttons (null: the note about the saved original values).</summary>
+    public string? Footer { get; init; }
 }
 
 public sealed record ConfirmResult(bool AcknowledgedAntiCheat);

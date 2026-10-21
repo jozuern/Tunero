@@ -17,6 +17,7 @@
 
 ### Changed
 
+- **Windows install media:** a summary bar stays at the bottom of the page with the image, your choices, the space needed and Build (Stop while it runs). Build first shows what goes into the ISO, with a warning for each Expert option that is on. Every card has an icon.
 - **Windows install media:** every change to the install image happens in one mount, then a component cleanup without `/ResetBase` (installed updates stay removable) before the one commit; pending operations skip the cleanup and the build goes on. Size gain not yet measured in the test VM.
 - **Long work says so:** SFC and DISM, the drive check, Windows features, the component store cleanup, Update all apps, a long VirusTotal check and the install media build (half an hour or longer) show a clock line where you start them, in the confirmation and in the progress banner; tweaks that run DISM carry a "Can take minutes" tag. DISM work adds that it takes longer while Windows is installing updates.
 - **Startup:** tabs for apps at sign-in, scheduled tasks, services, drivers and advanced places, each with its count; a summary for the open tab; plainer cards with Show file, Copy location and Delete entry under More options.

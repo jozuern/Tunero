@@ -464,6 +464,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
                 if (row.IsChecked) _installTicks.Add(row.Key);
                 else _installTicks.Remove(row.Key);
                 OnPropertyChanged(nameof(InstallSummary));
+                OnPropertyChanged(nameof(SummaryText));
             };
         OnPropertyChanged(nameof(InstallRows));
     }
@@ -504,6 +505,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
                 if (row.IsChecked) _unreviewedTicks.Add(row.Key);
                 else _unreviewedTicks.Remove(row.Key);
                 OnPropertyChanged(nameof(UnreviewedSummary));
+                OnPropertyChanged(nameof(SummaryText));
             };
     }
 
@@ -545,6 +547,18 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     /// <summary>Why Build is off (the first choice that is missing or wrong), or null when it can start.</summary>
     public string? BuildNote => Problem() is { } key ? Loc.Instance[key] : IsCleaning ? Loc.Instance["Media_CleanupRunning"] : null;
 
+    /// <summary>
+    /// The bar at the bottom of the page: the image and what goes into it, in one line (<see cref="InstallMediaSummary.Bar"/>).
+    /// Before there is an image to build from it says what is missing.
+    /// </summary>
+    public string SummaryText => Choices() is { } choices
+        ? InstallMediaSummary.Bar(choices, Edition!.Text, BuildLabel(), Needed() ?? 0)
+        : Loc.Instance["Media_NeedsCatalog"];
+
+    /// <summary>The build of the chosen image as the page names it: the download's "26300.9711", or the own ISO's.</summary>
+    private string? BuildLabel() =>
+        UseDownload ? Download()?.Build : SelectedImage() is { } image ? BuildText(image) : null;
+
     /// <summary>The start cleanup of earlier builds is still running (a build waits for it).</summary>
     private bool IsCleaning => _cleanup is { IsCompleted: false };
 
@@ -578,6 +592,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     {
         OnPropertyChanged(nameof(AccountProblem));
         OnPropertyChanged(nameof(NeededText));
+        OnPropertyChanged(nameof(SummaryText));
         OnPropertyChanged(nameof(BuildNote));
         OnPropertyChanged(nameof(CanBuild));
         OnPropertyChanged(nameof(AppsSummary));
@@ -785,6 +800,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
                 if (e.PropertyName != nameof(MediaAppRow.IsChecked)) return;
                 _ticks[row.Entry.Name] = row.IsChecked;
                 OnPropertyChanged(nameof(AppsSummary));
+                OnPropertyChanged(nameof(SummaryText));
             };
         OnPropertyChanged(nameof(AppRows));
         BuildUnreviewedRows();
@@ -1108,27 +1124,36 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     /// The request from the page's choices (the mapping --build-media shares, <see cref="MediaChoices.ToRequest"/>); null
     /// when they do not make one (Build is off then).
     /// </summary>
-    private MediaRequest? Request()
+    private MediaRequest? Request() => Problem() is null ? Choices()?.ToRequest() : null;
+
+    /// <summary>The page's choices as they stand, whether or not Build is on; null without a source and an edition.</summary>
+    private MediaChoices? Choices()
     {
-        if (Problem() is not null || Source() is not { } source) return null;
+        if (Source() is not { } source || Edition is null) return null;
         var image = UseDownload ? null : SelectedImage();
         var tunero = ApplyProfile && CanApplyProfile && _system.ExePath is { } exe
             ? new TuneroCopy(exe, Profile?.Key ?? _system.ProfileId(), _system.Theme())
             : null;
-        return new MediaChoices(source, image is not null ? image.Edition ?? image.Name : Edition!.Key, image?.Index,
+        return new MediaChoices(source, image is not null ? image.Edition ?? image.Name : Edition.Key, image?.Index,
             image?.DefaultLanguage ?? image?.Languages.FirstOrDefault(), Lang,
             RemoveApps ? AppRows.Where(r => r.IsChecked).Select(r => r.Entry.Name).ToList() : [],
             SkipSetup, AccountNameText, Region?.Key, Keyboard?.Key, AllowUnsupported, tunero, OutputPath!)
         {
             RemoveUnreviewed = RemoveUnreviewed && !UseDownload ? UnreviewedRows.Where(r => r.IsChecked).Select(r => r.Key).ToList() : [],
             InstallApps = InstallApps && tunero is not null ? InstallRows.Where(r => r.IsChecked).Select(r => r.Key).ToList() : [],
-        }.ToRequest();
+        };
     }
+
+    /// <summary>The question before the build (what goes into the ISO); null when the choices do not make a request. Also rendered by --media-demo review.</summary>
+    internal ConfirmRequest? ReviewRequest() =>
+        Problem() is null && Choices() is { } choices ? InstallMediaSummary.Review(choices, Edition!.Text, BuildLabel(), Needed() ?? 0) : null;
 
     [RelayCommand(CanExecute = nameof(CanBuild))]
     private Task BuildAsync()
     {
-        if (Request() is not { } request) return Task.CompletedTask;
+        if (Request() is not { } request || ReviewRequest() is not { } review) return Task.CompletedTask;
+        // The review shows every choice once more; cancelling it builds nothing.
+        if (_dialogs.ConfirmApply(review) is null) return Task.CompletedTask;
         return _running = RunBuildAsync(request);
     }
 
@@ -1314,7 +1339,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     /// Developer aid: the sample catalog instead of Microsoft's, a sample own ISO, and a build that only shows its stages,
     /// then a sample failure and the next time a sample success. Nothing goes to the network, attaches or runs.
     /// <paramref name="show"/>, comma-separated: "fail" or "done" shows that result at once, "expand" unfolds the change
-    /// cards, "iso" chooses the sample own ISO, "umlaut" types an account name Setup cannot create, "cleanup" shows the Build card while the start cleanup
+    /// cards, "review" turns on the Expert option that warns in the review, "iso" chooses the sample own ISO, "umlaut" types an account name Setup cannot create, "cleanup" shows the Build card while the start cleanup
     /// runs (for screenshots).
     /// </summary>
     public void UseDemo(string? show)
@@ -1327,6 +1352,8 @@ public sealed partial class InstallMediaViewModel : PageViewModel
             InstallApps = true;
             _installTicks.UnionWith(["Valve.Steam", "Mozilla.Firefox"]);
         }
+        // "review": the choices a review has something to warn about (the review itself is shown by --confirm-shot).
+        AllowUnsupported = shows.Contains("review");
         _demo = true;
         _catalog = new InstallMediaDemo.Catalog();
         var demo = new InstallMediaDemo.Build();

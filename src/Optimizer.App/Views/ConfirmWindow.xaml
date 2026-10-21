@@ -58,7 +58,7 @@
                           Checked="AntiCheat_Changed" Unchecked="AntiCheat_Changed" />
 
                 <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Confirm_Changes}" Margin="0,24,0,8" />
-                <Grid Margin="0,0,0,4">
+                <Grid x:Name="ColumnHeader" Margin="0,0,0,4">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="180" />
@@ -84,7 +84,7 @@
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="{Binding Target}" Style="{StaticResource Mono}" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,0,16,0" />
                                     <TextBlock Grid.Column="1" Text="{Binding Before}" Style="{StaticResource Mono}" Margin="0,0,12,0" />
-                                    <TextBlock x:Name="After" Grid.Column="2" Text="{Binding After}" Style="{StaticResource Mono}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                                    <TextBlock x:Name="After" Grid.Column="{Binding AfterColumn}" Grid.ColumnSpan="{Binding AfterSpan}" Text="{Binding After}" Style="{StaticResource Mono}" TextWrapping="Wrap" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
                                 </Grid>
                             </Border>
                             <!-- A value that already is what the change writes ("Already set"): not bold, so the real changes stand out -->

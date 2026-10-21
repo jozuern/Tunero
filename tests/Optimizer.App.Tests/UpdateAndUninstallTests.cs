@@ -245,7 +245,16 @@ internal sealed class FakeDialogs : IDialogs
     public List<string> Asked { get; } = [];
     public List<int> Uninstalls { get; } = [];
 
-    public ConfirmResult? ConfirmApply(ConfirmRequest request) => null;
+    /// <summary>What the confirmation returns (null: cancelled), and what it was asked.</summary>
+    public ConfirmResult? ConfirmApplyResult { get; set; }
+    public List<ConfirmRequest> ConfirmApplyRequests { get; } = [];
+    public int ConfirmApplyCalls => ConfirmApplyRequests.Count;
+
+    public ConfirmResult? ConfirmApply(ConfirmRequest request)
+    {
+        ConfirmApplyRequests.Add(request);
+        return ConfirmApplyResult;
+    }
     public RestorePointChoice AskRestorePoint() => RestorePointChoice.Cancel;
     public bool ConfirmExpertMode() => false;
     public bool ConfirmUndoAll(int count) => false;

@@ -121,7 +121,7 @@ public sealed class CommandLineMediaTests : IDisposable
         _requests.Clear();
 
         // The page with the same choices: German download, Pro, the default apps, setup skipped, office, unsupported PCs.
-        var page = new InstallMediaViewModel(new FakePageHost(), new FakeDialogs(), new FakeCatalog(() => Files),
+        var page = new InstallMediaViewModel(new FakePageHost(), new FakeDialogs { ConfirmApplyResult = new ConfirmResult(false) }, new FakeCatalog(() => Files),
             (request, _, _) =>
             {
                 _requests.Add(request);

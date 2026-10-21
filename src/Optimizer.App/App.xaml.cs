@@ -198,7 +198,8 @@ public partial class App : Application
         // Developer aid for screenshots: the simple or the technical view of the lists for this run (never saved).
         if (args.Value("--technical") is "on" or "off") vm.ShowTechnicalForSession(args.Value("--technical") == "on");
         // Developer aid: the install media page with a sample catalog and a build that only shows its stages (no network,
-        // nothing runs). --media-demo fail, done or expand (comma separated) shows a result or unfolds the cards.
+        // nothing runs). --media-demo fail, done or expand (comma separated) shows a result or unfolds the cards; review also turns on an Expert option
+        // and, with --confirm-shot, saves the review before the build.
         if (args.Has("--media-demo")) vm.InstallMedia.UseDemo(args.Value("--media-demo") is { } demo && !demo.StartsWith("--", StringComparison.Ordinal) ? demo : null);
         // Developer aid: Install and update with fixed package managers and a sample Chocolatey update list (nothing is read or
         // run); --pm-demo expand opens the folded card.
@@ -455,6 +456,19 @@ public partial class App : Application
             await Task.Delay(400);
             SaveScreenshot(dlg, confirmShot);
             if (args.Value("--tab-order") is { } confirmTabs) WriteTabOrder(dlg, System.IO.Path.ChangeExtension(confirmTabs, null) + "-confirm.txt");
+            dlg.Close();
+        }
+
+        // Developer aid: with --media-demo review, the review before the install media build (nothing is built).
+        if (args.Value("--media-demo") is { } demoShows && demoShows.Split(',', StringSplitOptions.TrimEntries).Contains("review")
+            && args.Value("--confirm-shot") is { } reviewShot && vm.InstallMedia.ReviewRequest() is { } review)
+        {
+            var dlg = new ConfirmWindow(review) { Owner = window };
+            KeepOffScreen(dlg);
+            dlg.Show();
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+            await Task.Delay(400);
+            SaveScreenshot(dlg, reviewShot);
             dlg.Close();
         }
 

@@ -1979,4 +1979,18 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Media_UnreviewedNoneDownload" xml:space="preserve">
     <value>Microsoft's image of this edition holds no apps beyond the reviewed list: this is for your own ISO, such as one from a PC maker.</value>
   </data>
+  <data name="Media_Summary_Edition" xml:space="preserve"><value>{0} {1}</value></data>
+  <data name="Media_Summary_Language" xml:space="preserve"><value>Language {0}</value></data>
+  <data name="Media_Summary_Apps" xml:space="preserve"><value>Apps to remove: {0}</value></data>
+  <data name="Media_Summary_Account" xml:space="preserve"><value>Account {0}</value></data>
+  <data name="Media_Summary_Profile" xml:space="preserve"><value>Profile {0}</value></data>
+  <data name="Media_Summary_Needed" xml:space="preserve"><value>{0} needed</value></data>
+  <data name="Media_Review_Title" xml:space="preserve"><value>Build this ISO?</value></data>
+  <data name="Media_Review_Summary" xml:space="preserve"><value>Source: {0}. Output file: {1}</value></data>
+  <data name="Media_Review_SourceDownload" xml:space="preserve"><value>download from Microsoft</value></data>
+  <data name="Media_Review_Warning" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="Media_Review_AppsGroup" xml:space="preserve"><value>Remove apps: {0}</value></data>
+  <data name="Media_Review_AppsOther" xml:space="preserve"><value>Other apps</value></data>
+  <data name="Media_Review_On" xml:space="preserve"><value>On</value></data>
+  <data name="Media_Review_Footer" xml:space="preserve"><value>Nothing is built until you choose Build ISO.</value></data>
 </root>

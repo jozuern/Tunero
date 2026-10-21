@@ -26,8 +26,12 @@ public partial class ConfirmWindow : FluentWindow
         if (Top + ActualHeight > area.Bottom) Top = Math.Max(area.Top, area.Bottom - ActualHeight);
     }
 
-    private sealed record Row(string Target, string Before, string After, bool Unchanged)
+    /// <summary>A list of choices (the review before a build) has no "now" values: the new value then takes the room of both columns.</summary>
+    private sealed record Row(string Target, string Before, string After, bool Unchanged, bool ListOnly = false)
     {
+        public int AfterColumn => ListOnly ? 1 : 2;
+        public int AfterSpan => ListOnly ? 2 : 1;
+
         // What screen readers announce for this item in a list.
         public override string ToString() => $"{Target}: {Before}, {After}";
     }
@@ -55,8 +59,14 @@ public partial class ConfirmWindow : FluentWindow
             .OrderBy(r => r.Unchanged)
             .ToList();
         ChangeList.ItemsSource = rows;
+        var listOnly = request.Changes.Count > 0 && request.Changes.All(c => c.Before.Length == 0);
+        if (listOnly)
+        {
+            ChangeList.ItemsSource = rows = rows.Select(r => r with { ListOnly = true }).ToList();
+            ColumnHeader.Visibility = Visibility.Collapsed;
+        }
         NewHeader.Text = Loc.Instance[request.IsUndo ? "Confirm_Restore" : "Confirm_New"];
-        ApplyButton.Content = Loc.Instance[request.IsUndo ? "Confirm_Undo" : "Confirm_Apply"];
+        ApplyButton.Content = request.Primary ?? Loc.Instance[request.IsUndo ? "Confirm_Undo" : "Confirm_Apply"];
         // Every value already is what the change writes: applying would only save a backup of the same values.
         var nothingToDo = !request.IsUndo && rows.Count > 0 && rows.All(r => r.Unchanged);
         NothingToDo.IsOpen = nothingToDo;
@@ -64,7 +74,7 @@ public partial class ConfirmWindow : FluentWindow
         ApplyButton.Visibility = nothingToDo ? Visibility.Collapsed : Visibility.Visible;
         FooterText.Text = request.Blocks.Count > 0 ? Loc.Instance["Confirm_Blocked"]
             : nothingToDo ? ""
-            : Loc.Instance[request.IsUndo ? "Confirm_UndoKeeps" : "Confirm_Backup"];
+            : request.Footer ?? Loc.Instance[request.IsUndo ? "Confirm_UndoKeeps" : "Confirm_Backup"];
         _needsAck = request.AntiCheatWarning is not null;
         // The acknowledgement only matters while the change can be made at all.
         AntiCheatAck.Visibility = _needsAck && _canApply ? Visibility.Visible : Visibility.Collapsed;

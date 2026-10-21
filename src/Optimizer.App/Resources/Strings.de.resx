@@ -1979,4 +1979,18 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Media_UnreviewedNoneDownload" xml:space="preserve">
     <value>Microsofts Abbild dieser Edition enthält keine Apps über die geprüfte Liste hinaus: Das hier ist für deine eigene ISO, etwa eine vom PC-Hersteller.</value>
   </data>
+  <data name="Media_Summary_Edition" xml:space="preserve"><value>{0} {1}</value></data>
+  <data name="Media_Summary_Language" xml:space="preserve"><value>Sprache {0}</value></data>
+  <data name="Media_Summary_Apps" xml:space="preserve"><value>Zu entfernende Apps: {0}</value></data>
+  <data name="Media_Summary_Account" xml:space="preserve"><value>Konto {0}</value></data>
+  <data name="Media_Summary_Profile" xml:space="preserve"><value>Profil {0}</value></data>
+  <data name="Media_Summary_Needed" xml:space="preserve"><value>{0} nötig</value></data>
+  <data name="Media_Review_Title" xml:space="preserve"><value>Diese ISO erstellen?</value></data>
+  <data name="Media_Review_Summary" xml:space="preserve"><value>Quelle: {0}. Ausgabedatei: {1}</value></data>
+  <data name="Media_Review_SourceDownload" xml:space="preserve"><value>Download von Microsoft</value></data>
+  <data name="Media_Review_Warning" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="Media_Review_AppsGroup" xml:space="preserve"><value>Apps entfernen: {0}</value></data>
+  <data name="Media_Review_AppsOther" xml:space="preserve"><value>Weitere Apps</value></data>
+  <data name="Media_Review_On" xml:space="preserve"><value>An</value></data>
+  <data name="Media_Review_Footer" xml:space="preserve"><value>Es wird nichts erstellt, bevor du ISO erstellen wählst.</value></data>
 </root>
