@@ -122,15 +122,23 @@
                                        Visibility="{Binding Debloat.OneDriveInstalled, Converter={StaticResource BoolToVisibility}}" />
                         </ui:CardControl>
 
-                        <!-- Edge: guided only -->
+                        <!-- Edge: Windows removes it in Settings (its uninstaller refuses other callers); WebView2 stays -->
                         <ui:TextBlock Style="{StaticResource SectionHeader}" Text="Microsoft Edge" />
                         <ui:CardControl Padding="{StaticResource CardPadding}">
                             <ui:CardControl.Icon>
-                                <ui:SymbolIcon Symbol="Info24" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+                                <ui:SymbolIcon Symbol="Globe24" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
                             </ui:CardControl.Icon>
                             <ui:CardControl.Header>
-                                <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Debloat_EdgeText}" />
+                                <StackPanel>
+                                    <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Debloat_EdgeTitle}" />
+                                    <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Debloat_EdgeText}" Margin="0,4,0,0" />
+                                    <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding Debloat.EdgeMissing}" Margin="0,4,0,0" Visibility="{Binding Debloat.EdgeMissing, Converter={StaticResource NullToVisibility}}" />
+                                    <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource SystemFillColorCautionBrush}" Text="{Binding Debloat.EdgeBlock}" TextWrapping="Wrap"
+                                                  Margin="0,4,0,0" Visibility="{Binding Debloat.EdgeBlock, Converter={StaticResource NullToVisibility}}" />
+                                </StackPanel>
                             </ui:CardControl.Header>
+                            <ui:Button Content="{l:Tr Debloat_EdgeOpen}" Icon="{ui:SymbolIcon Open20}" Appearance="Secondary" IsEnabled="{Binding Debloat.CanRemoveEdge}" Command="{Binding Debloat.RemoveEdgeCommand}"
+                                       Visibility="{Binding Debloat.EdgeInstalled, Converter={StaticResource BoolToVisibility}}" />
                         </ui:CardControl>
 
                         <!-- Removed apps -->

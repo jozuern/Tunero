@@ -594,6 +594,12 @@ public sealed partial class DebloatViewModel(IPageHost owner, AppServices servic
     [ObservableProperty] private bool _canUninstallOneDrive;
     [ObservableProperty] private bool _oneDriveInstalled;
 
+    /// <summary>Why Windows does not let the user remove Edge here (not installed, region), or null.</summary>
+    [ObservableProperty] private string? _edgeBlock;
+    [ObservableProperty] private bool _canRemoveEdge;
+    [ObservableProperty] private bool _edgeInstalled;
+    [ObservableProperty] private string? _edgeMissing;
+
     public bool ItemsEmpty => !IsLoading && Items.Count == 0;
 
     /// <summary>Apps ticked for "Remove selected", as on Installed programs.</summary>
@@ -622,6 +628,7 @@ public sealed partial class DebloatViewModel(IPageHost owner, AppServices servic
         IReadOnlyList<Optimizer.Core.Debloat.DebloatItem> Offered,
         IReadOnlyList<Optimizer.Core.Debloat.RemovedApp> Removed,
         Optimizer.Core.Debloat.OneDriveState OneDrive,
+        Optimizer.Core.Debloat.EdgeState Edge,
         IReadOnlyList<Optimizer.Core.Debloat.RemovedApp> CameBack,
         IReadOnlyList<Optimizer.Core.Debloat.InstalledAppx> Unreviewed);
 
@@ -638,7 +645,8 @@ public sealed partial class DebloatViewModel(IPageHost owner, AppServices servic
             var offer = profile is null ? [] : Optimizer.Core.Debloat.DebloatService.Offer(Optimizer.Core.Catalog.CatalogData.Current.Appx, installed, profile, Optimizer.Core.Catalog.CatalogData.Current);
             var state = Optimizer.Core.Debloat.OneDrive.Read(services.Context.Registry, services.ProfilePath);
             var removedList = service.Removed();
-            return new DebloatData(offer, removedList, state, Optimizer.Core.Debloat.DebloatService.CameBack(removedList, installed),
+            var edge = Optimizer.Core.Debloat.Edge.Read(services.Context.Registry);
+            return new DebloatData(offer, removedList, state, edge, Optimizer.Core.Debloat.DebloatService.CameBack(removedList, installed),
                 Optimizer.Core.Debloat.DebloatService.Unreviewed(Optimizer.Core.Catalog.CatalogData.Current.Appx, installed));
         });
         Show(_data);
@@ -656,7 +664,7 @@ public sealed partial class DebloatViewModel(IPageHost owner, AppServices servic
     {
         var lang = Lang;
         var elevated = services.Elevation.IsElevated;
-        var (offered, removed, oneDrive, cameBack, _) = data;
+        var (offered, removed, oneDrive, edge, cameBack, _) = data;
         // The ticks survive a reload and a language switch for the apps that are still listed.
         var ticked = Items.Where(i => i.IsSelected).Select(i => i.PackageName).ToHashSet(StringComparer.OrdinalIgnoreCase);
         Items.Clear();
@@ -683,6 +691,11 @@ public sealed partial class DebloatViewModel(IPageHost owner, AppServices servic
         OneDriveText = oneDrive.Installed
             ? Loc.Instance.Format("Debloat_OneDriveInstalled", oneDrive.UserFolder ?? Loc.Instance["Debloat_OneDriveNotSignedIn"])
             : Loc.Instance["Debloat_OneDriveMissing"];
+        // As for OneDrive: "not installed" is plain text, only a reason Windows gives is a warning.
+        EdgeBlock = edge.Installed && edge.BlockKey is { } eb ? Labels.Current.Get(lang, eb) : null;
+        EdgeMissing = edge.Installed ? null : Labels.Current.Get(lang, "block.edgeNotInstalled");
+        CanRemoveEdge = edge.WindowsAllows;
+        EdgeInstalled = edge.Installed;
         OnPropertyChanged(nameof(ItemsEmpty));
         OnPropertyChanged(nameof(RemovedEmpty));
         ShowUnreviewedRows(data);
@@ -805,6 +818,33 @@ public sealed partial class DebloatViewModel(IPageHost owner, AppServices servic
             }
             return Task.CompletedTask;
         });
+    }
+
+    /// <summary>
+    /// Opens Installed apps in Settings: Edge's uninstaller refuses to run for Tunero (Optimizer.Core.Debloat.Edge), so
+    /// Windows removes it there. Read again first: the page may have been open for a while.
+    /// </summary>
+    [RelayCommand]
+    private async Task RemoveEdgeAsync()
+    {
+        var state = await Task.Run(() => Optimizer.Core.Debloat.Edge.Read(services.Context.Registry));
+        if (state.BlockKey is { } block)
+        {
+            Owner.ShowResult(Labels.Current.Get(Lang, block));
+            await ReloadAsync();
+            return;
+        }
+        try
+        {
+            var path = Optimizer.Core.Platform.DeElevatedLauncher.Open(Optimizer.Core.Debloat.Edge.InstalledAppsPage, null, services.Elevation);
+            Owner.ShowResult(path == Optimizer.Core.Platform.DeElevatedLauncher.Path.Failed
+                ? Loc.Instance.Format("Result_Error", Optimizer.Core.Debloat.Edge.InstalledAppsPage)
+                : Loc.Instance["Debloat_EdgeOpened"]);
+        }
+        catch (System.ComponentModel.Win32Exception ex)
+        {
+            Owner.ShowResult(Loc.Instance.Format("Result_Error", $"{Optimizer.Core.Debloat.Edge.InstalledAppsPage}: {ex.Message}"), Wpf.Ui.Controls.InfoBarSeverity.Error);
+        }
     }
 
     [RelayCommand]

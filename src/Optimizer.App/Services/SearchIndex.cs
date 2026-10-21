@@ -76,6 +76,7 @@ public sealed class SearchIndex(TweakCatalog tweaks, CatalogData catalog) : ISea
             (SearchKind.Tool, "Cleanup", "Cleanup_ComponentTitle", "Cleanup_ComponentHint", ["winsxs", "component store", "komponentenspeicher"]),
             (SearchKind.Tool, "Debloat", "Debloat_Title", "Debloat_Hint", ["bloatware", "preinstalled apps", "remove apps", "apps entfernen", "vorinstalliert"]),
             (SearchKind.Tool, "Debloat", "Debloat_OneDriveTitle", null, ["onedrive", "uninstall onedrive"]),
+            (SearchKind.Tool, "Debloat", "Debloat_EdgeTitle", "Debloat_EdgeText", ["edge", "microsoft edge", "uninstall edge", "edge entfernen", "edge deinstallieren", "browser"]),
             (SearchKind.Tool, "Debloat", "Programs_Title", "Programs_Hint", ["uninstall program", "programme deinstallieren", "installed apps", "bulk uninstall", "bulk crap uninstaller", "quiet uninstall", "leftovers", "mehrere deinstallieren", "reste"]),
             (SearchKind.Tool, "Apps", "Apps_UpdateAll", null, ["winget upgrade", "update apps", "apps aktualisieren"]),
             (SearchKind.Tool, "Apps", "Apps_SearchTitle", "Apps_SearchHint", ["winget search", "find app", "install any app", "app suchen", "winget suche"]),

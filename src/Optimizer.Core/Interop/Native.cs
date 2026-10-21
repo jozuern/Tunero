@@ -18,6 +18,11 @@ internal static partial class Native
 
     internal const ushort ImageFileMachineAmd64 = 0x8664, ImageFileMachineArm64 = 0xAA64;
 
+    [LibraryImport("kernel32.dll", EntryPoint = "GetGeoInfoW", SetLastError = true)]
+    internal static unsafe partial int GetGeoInfo(int location, int geoType, char* data, int dataCount, ushort langId);
+
+    internal const int GeoIso2 = 4;
+
     [LibraryImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static partial bool GetLogicalProcessorInformationEx(int relationshipType, IntPtr buffer, ref uint returnedLength);

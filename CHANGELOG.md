@@ -13,6 +13,7 @@
 
 ### Changed
 
+- **Remove apps:** the Microsoft Edge card says whether Windows lets you remove Edge on this PC (set up with a region in the European Economic Area or Switzerland) and opens Installed apps, where Windows removes it. Apps that show web content keep working: WebView2 is a separate program and stays, unlike what the old note said.
 - **Windows install media:** the app list shows what the image can actually hold. For your own ISO Tunero reads the chosen edition's apps (a few seconds); for the download it lists only Microsoft's apps, without manufacturer, third-party and Windows 10 apps that a Microsoft image never contains.
 
 ### Fixed

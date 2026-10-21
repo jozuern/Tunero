@@ -336,7 +336,16 @@ Diese Apps werden für alle Benutzer und neue Konten entfernt. Was der Microsoft
     <value>Deinstallieren</value>
   </data>
   <data name="Debloat_EdgeText" xml:space="preserve">
-    <value>Tunero entfernt Microsoft Edge nicht: Windows und viele Apps brauchen die WebView2-Komponente von Edge. Im Europäischen Wirtschaftsraum kannst du Edge unter Einstellungen &gt; Apps &gt; Installierte Apps deinstallieren. Um es nicht mehr zu nutzen, wähle unter Einstellungen &gt; Apps &gt; Standard-Apps einen anderen Standardbrowser.</value>
+    <value>Der Browser. Apps, die Webinhalte anzeigen, laufen weiter: Sie nutzen die WebView2-Runtime, ein eigenes Programm, das bleibt. Web-Apps, die mit Edge installiert wurden, funktionieren nicht mehr. Lege vorher unter Einstellungen &gt; Apps &gt; Standard-Apps einen anderen Standardbrowser fest.</value>
+  </data>
+  <data name="Debloat_EdgeTitle" xml:space="preserve">
+    <value>Microsoft Edge entfernen</value>
+  </data>
+  <data name="Debloat_EdgeOpen" xml:space="preserve">
+    <value>Installierte Apps öffnen</value>
+  </data>
+  <data name="Debloat_EdgeOpened" xml:space="preserve">
+    <value>Installierte Apps ist geöffnet: Wähle im Menü neben Microsoft Edge „Deinstallieren“. Windows entfernt Edge selbst und lässt das andere Programme nicht tun.</value>
   </data>
   <data name="Cleanup_Title" xml:space="preserve">
     <value>Bereinigen</value>

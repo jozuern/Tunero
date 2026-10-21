@@ -336,7 +336,16 @@ These apps are removed for all users and new accounts. Apps the Microsoft Store 
     <value>Uninstall</value>
   </data>
   <data name="Debloat_EdgeText" xml:space="preserve">
-    <value>Microsoft Edge is not removed by this app: Windows and many apps use its WebView2 component. In the European Economic Area you can uninstall Edge in Settings &gt; Apps &gt; Installed apps. To stop using it, set another default browser in Settings &gt; Apps &gt; Default apps.</value>
+    <value>The browser. Apps that show web content keep working: they use the WebView2 Runtime, a separate program that stays. Web apps installed with Edge stop working. Set another default browser first in Settings &gt; Apps &gt; Default apps.</value>
+  </data>
+  <data name="Debloat_EdgeTitle" xml:space="preserve">
+    <value>Remove Microsoft Edge</value>
+  </data>
+  <data name="Debloat_EdgeOpen" xml:space="preserve">
+    <value>Open Installed apps</value>
+  </data>
+  <data name="Debloat_EdgeOpened" xml:space="preserve">
+    <value>Installed apps is open: choose Uninstall in the menu next to Microsoft Edge. Windows removes Edge itself; it does not let other programs do it.</value>
   </data>
   <data name="Cleanup_Title" xml:space="preserve">
     <value>Cleanup</value>
