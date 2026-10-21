@@ -46,10 +46,10 @@ const canonical = lang === 'de' ? german : english;
         try { theme = localStorage.getItem('theme'); } catch {}
         if (theme !== 'light' && theme !== 'dark') theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
         document.documentElement.dataset.theme = theme;
-        // Animation: the visitor's choice in the demo's Settings, else the system's reduced motion setting.
+        // Animation: on unless the visitor turned it off in the demo's Settings (desktop/motion.ts).
         let motion = null;
         try { motion = localStorage.getItem('motion'); } catch {}
-        const reduce = motion === 'off' || (motion !== 'on' && matchMedia('(prefers-reduced-motion: reduce)').matches);
+        const reduce = motion === 'off';
         document.documentElement.dataset.motion = reduce ? 'reduce' : 'full';
       })();
     </script>

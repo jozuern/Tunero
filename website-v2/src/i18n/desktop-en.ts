@@ -57,7 +57,7 @@ const desktopEn = {
     dark: 'Dark',
     language: 'Language of this website',
     animation: 'Animation effects',
-    animationHint: 'Boot, wallpaper motion, the trails and the dive. Off follows your system setting for reduced motion until you choose here.',
+    animationHint: 'Boot, wallpaper motion, the shatter, the guided fix and the dive. Turn it off if motion on screen bothers you.',
     on: 'On',
     off: 'Off',
   },

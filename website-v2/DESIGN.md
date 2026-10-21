@@ -19,8 +19,8 @@ watch it rewind. Doing it is the explanation; the rewind is the trust.
 
 ## The experience
 
-0. **Boot.** About 2 s, first visit of a session only (remembered in `sessionStorage` with the demo state), skipped by any key or click and under
-   `prefers-reduced-motion`. Black screen, the Tunero mark, then a few boot lines that are true and read at build
+0. **Boot.** About 2 s, first visit of a session only (remembered in `sessionStorage` with the demo state), skipped by any key or click and when
+   the visitor turned animation effects off. Black screen, the Tunero mark, then a few boot lines that are true and read at build
    time: version, the signature, the number of checks and tweaks. Hard cut to the desktop.
 1. **The demo PC.** A desktop full of the clutter Tunero removes: toasts (cloud sync nag, "get more out of Windows"
    style suggestions, a feedback request), a crowded tray, recommendations and an account nag in Start, trending
@@ -54,7 +54,7 @@ watch it rewind. Doing it is the explanation; the rewind is the trust.
   `clutter` value from 1 (demo state) to 0 (everything fixed), eased, so fixing calms it and undo stirs it up again.
   Neglect shows as muddy colour, grain, a wobble and faster motion, never as dropped frames or glitches: on a site
   about a faster PC, anything that looks like lag reads as the site being slow.
-  Paused when the tab is hidden, rendered once and frozen under reduced motion, capped at 1.5 device pixel ratio.
+  Paused when the tab is hidden, rendered once and frozen with animation effects off, capped at 1.5 device pixel ratio.
   Without WebGL2 a static CSS background stands in.
 - **The arrival:** on an untouched demo PC three notifications pile up at once, then come one at a time. A headline
   sits on the wallpaper like the clock of a lock screen, with "Watch Tunero fix it", "Fix it yourself" and a link to
@@ -101,8 +101,9 @@ sheets.
 
 ## Accessibility and motion
 
-- `prefers-reduced-motion`: no boot, a still wallpaper, instant window and rewind transitions (the state still
-  changes, step by step, so undo still reads).
+- Motion: the demo animates whatever the system's reduced motion setting says (owner, 2026-10-21: the show is the
+  point). Settings > Accessibility > Animation effects turns it off (localStorage `motion`): no boot, a still
+  wallpaper, no shatter, the guided fix applies at once, instant window and rewind transitions.
 - Every window, icon and control is reachable by keyboard; Esc closes the active window; focus moves into a window
   when it opens. Windows are `role="dialog"` with their title as label.
 - Text contrast meets WCAG AA in both themes; the shader never sits behind body text without a solid surface.

@@ -1,6 +1,7 @@
-// Whether the desktop animates. The system's reduced motion setting decides, unless the visitor chose otherwise in
-// the demo's Settings ("Animation effects", saved in localStorage as motion = on or off). CSS follows data-motion on
-// <html> (reduce or full), which Base.astro sets before the first paint.
+// Whether the desktop animates: always, unless the visitor turned it off in the demo's Settings ("Animation effects",
+// saved in localStorage as motion = on or off). The system's reduced motion setting is not followed (owner,
+// 2026-10-21): the demo is the show. CSS follows data-motion on <html> (reduce or full), which Base.astro sets before
+// the first paint.
 const key = 'motion';
 
 export function motionChoice(): 'on' | 'off' | null {
@@ -34,6 +35,5 @@ export function onMotionChange(listener: () => void) {
 
 export function reducedMotion(): boolean {
   const choice = override ?? motionChoice();
-  if (choice) return choice === 'off';
-  return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  return choice === 'off';
 }

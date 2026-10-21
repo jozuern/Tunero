@@ -108,11 +108,9 @@
       filter 1.2s ease;
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .fallback,
-    .fallback.live,
-    .fallback::after {
-      transition: none;
-    }
+  :global([data-motion='reduce']) .fallback,
+  :global([data-motion='reduce']) .fallback.live,
+  :global([data-motion='reduce']) .fallback::after {
+    transition: none;
   }
 </style>

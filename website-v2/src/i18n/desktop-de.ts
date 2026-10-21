@@ -58,7 +58,7 @@ const desktopDe: DesktopStrings = {
     dark: 'Dunkel',
     language: 'Sprache dieser Website',
     animation: 'Animationseffekte',
-    animationHint: 'Start, bewegtes Hintergrundbild, die Lichtspuren und der Tauchgang. Aus folgt deiner Systemeinstellung für reduzierte Bewegung, bis du hier wählst.',
+    animationHint: 'Start, bewegtes Hintergrundbild, das Zerspringen, die Vorführung und der Tauchgang. Schalte sie aus, wenn dich Bewegung auf dem Bildschirm stört.',
     on: 'Ein',
     off: 'Aus',
   },
