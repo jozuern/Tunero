@@ -18,6 +18,10 @@ test('finding ratings are ones the check code can give', () => {
   for (const f of buildDemo('en').findings) assert.ok(checkImpacts(f.id).includes(f.impact), f.id);
 });
 
+test('every demo tweak rates 0, as the Tweaks page copy says', () => {
+  for (const t of buildDemo('en').tweaks) assert.equal(t.impact, 0, t.id);
+});
+
 test('tweak ratings and writes come from the catalog', () => {
   for (const t of buildDemo('en').tweaks) {
     assert.equal(t.impact, tweak(t.id).impact, t.id);

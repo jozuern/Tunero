@@ -5,6 +5,7 @@
   import type { Change } from '../../lib/demo-state.ts';
   import { useStore, reducedMotion } from '../store.svelte.ts';
   import Icon from '../Icon.svelte';
+  import { single } from '../clicks.ts';
   import type { IconName } from '../icons.ts';
   import { fill, type AppStrings } from './appKeys.ts';
 
@@ -56,7 +57,7 @@
           <strong>{item.title}</strong>
           {#if item.writes.length > 0}<span>{fill(app.Changes_Entries, item.writes.length)}</span>{/if}
         </span>
-        <button type="button" class="btn" onclick={() => store.undo(change)}>{app.Tweak_Undo}</button>
+        <button type="button" class="btn" onclick={single(() => store.undo(change))}>{app.Tweak_Undo}</button>
       </li>
     {/each}
   </ul>
@@ -65,9 +66,10 @@
 <style>
   .head {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     align-items: flex-start;
-    gap: 16px;
+    gap: 8px 16px;
   }
 
   ul {

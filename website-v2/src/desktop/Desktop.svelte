@@ -8,7 +8,6 @@
   import StartMenu from './StartMenu.svelte';
   import Toasts from './Toasts.svelte';
   import DesktopIcons from './DesktopIcons.svelte';
-  import Watermark from './Watermark.svelte';
   import Window from './Window.svelte';
   import TuneroApp from './app/TuneroApp.svelte';
   import Wallpaper from './wallpaper/Wallpaper.svelte';
@@ -63,6 +62,8 @@
     const onWidth = () => (phone = narrow.matches);
     onWidth();
     narrow.addEventListener('change', onWidth);
+    const onResize = () => store.fit();
+    window.addEventListener('resize', onResize);
     // The theme lives on <html> (Base.astro sets it, Settings changes it); the wallpaper follows it.
     const root = document.documentElement;
     const read = () => (theme = root.dataset.theme === 'light' ? 'light' : 'dark');
@@ -72,6 +73,7 @@
     return () => {
       observer.disconnect();
       narrow.removeEventListener('change', onWidth);
+      window.removeEventListener('resize', onResize);
     };
   });
 </script>
@@ -101,12 +103,11 @@
     </Window>
   {/if}
 
-  <Watermark lines={copy.watermark} />
   {#if store.dive}
     <Dive write={store.dive.write} title={store.dive.title} copy={copy.dive} onclose={() => (store.dive = null)} />
   {/if}
   {#if phone}
-    <PhoneStrip copy={copy.phone} classic={{ href: facts.classicHref, label: copy.classicPage }} />
+    <PhoneStrip copy={copy.phone} classic={{ href: facts.classicHref, label: copy.classicPage }} watermark={copy.watermark} />
   {:else}
     <Toasts {copy} running={ready && !booting} />
   {/if}

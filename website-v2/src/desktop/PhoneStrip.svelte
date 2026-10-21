@@ -5,9 +5,10 @@
   import { useStore } from './store.svelte.ts';
   import { toastingStartup } from './startup.ts';
   import Icon from './Icon.svelte';
+  import Watermark from './Watermark.svelte';
   import type { IconName } from './icons.ts';
 
-  let { copy, classic }: { copy: DesktopStrings['phone']; classic: { href: string; label: string } } = $props();
+  let { copy, classic, watermark }: { copy: DesktopStrings['phone']; classic: { href: string; label: string }; watermark: string[] } = $props();
   const store = useStore();
 
   const notifications = $derived(
@@ -33,6 +34,7 @@
     </span>
   {/each}
   <a href={classic.href}>{classic.label}</a>
+  <div class="label"><Watermark lines={[`${watermark[0]}. ${watermark[1]}`]} /></div>
 </div>
 
 <style>
@@ -43,9 +45,9 @@
     top: 0;
     z-index: 9000;
     display: flex;
-    gap: 8px;
-    padding: 8px 12px;
-    overflow-x: auto;
+    flex-wrap: wrap;
+    gap: 6px 8px;
+    padding: 8px 12px 6px;
     background: var(--acrylic);
     backdrop-filter: blur(30px) saturate(1.6);
     -webkit-backdrop-filter: blur(30px) saturate(1.6);
@@ -72,6 +74,11 @@
     margin-left: auto;
     padding: 0 4px;
     color: var(--ink);
+  }
+
+  .label {
+    flex-basis: 100%;
+    min-width: 0;
   }
 
   span.clear {

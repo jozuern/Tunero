@@ -3,6 +3,7 @@
   import type { DesktopStrings } from '../../i18n/desktop-en.ts';
   import { useStore } from '../store.svelte.ts';
   import Icon from '../Icon.svelte';
+  import { single } from '../clicks.ts';
   import { fill, type AppStrings } from './appKeys.ts';
 
   let { app, copy }: { app: AppStrings; copy: DesktopStrings['app'] } = $props();
@@ -19,7 +20,7 @@
     <li class="card">
       <Icon name="apps" size={20} />
       <strong>{item.title}</strong>
-      <button type="button" class="btn" aria-label={fill(app.Debloat_RemoveName, item.title)} onclick={() => store.apply([{ kind: 'app', id: item.id }])}>
+      <button type="button" class="btn" aria-label={fill(app.Debloat_RemoveName, item.title)} onclick={single(() => store.apply([{ kind: 'app', id: item.id }]))}>
         {app.Debloat_Remove}
       </button>
     </li>
@@ -36,7 +37,7 @@
         <Icon name="check" size={20} />
         <strong>{item.title}</strong>
         <span>{copy.removed}</span>
-        <button type="button" class="btn" onclick={() => store.undo({ kind: 'app', id: item.id })}>{app.Debloat_Reinstall}</button>
+        <button type="button" class="btn" onclick={single(() => store.undo({ kind: 'app', id: item.id }))}>{app.Debloat_Reinstall}</button>
       </li>
     {/each}
   </ul>

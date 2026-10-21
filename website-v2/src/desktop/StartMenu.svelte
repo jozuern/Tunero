@@ -51,7 +51,10 @@
   }
 
   function onKeydown(event: KeyboardEvent) {
-    if (store.startOpen && event.key === 'Escape') store.startOpen = false;
+    if (store.startOpen && event.key === 'Escape') {
+      store.startOpen = false;
+      (document.querySelector('.taskbar .start') as HTMLElement | null)?.focus();
+    }
   }
 
   const motion = (node: Element) => fly(node, { y: reducedMotion() ? 0 : 40, duration: reducedMotion() ? 0 : 200, opacity: 0 });

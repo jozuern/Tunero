@@ -6,6 +6,7 @@
   import Icon from '../Icon.svelte';
   import Rating from './Rating.svelte';
   import Writes from './Writes.svelte';
+  import { single } from '../clicks.ts';
   import { fill, type AppStrings, type Page } from './appKeys.ts';
 
   let { app, copy, go }: { app: AppStrings; copy: DesktopStrings['app']; go: (page: Page) => void } = $props();
@@ -83,9 +84,9 @@
       </div>
       <Rating value={refresh.impact} label={fill(app.Impact_Short, refresh.impact)} />
       {#if refreshFixed}
-        <button type="button" class="btn" onclick={() => store.undo({ kind: 'finding', id: refresh.id })}>{app.Tweak_Undo}</button>
+        <button type="button" class="btn" onclick={single(() => store.undo({ kind: 'finding', id: refresh.id }))}>{app.Tweak_Undo}</button>
       {:else}
-        <button type="button" class="btn primary" onclick={() => store.apply([{ kind: 'finding', id: refresh.id }])}>{app.Fix_Apply}</button>
+        <button type="button" class="btn primary" onclick={single(() => store.apply([{ kind: 'finding', id: refresh.id }]))}>{app.Fix_Apply}</button>
       {/if}
     </li>
     {#if enabledStartup > startupThreshold}

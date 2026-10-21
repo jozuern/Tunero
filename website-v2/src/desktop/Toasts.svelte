@@ -57,11 +57,12 @@
   const motion = (node: Element) => fly(node, { x: reducedMotion() ? 0 : 360, duration: reducedMotion() ? 0 : 260, opacity: 0 });
 </script>
 
-<div class="toasts" aria-live="polite" data-anchor="toasts">
+<!-- Not a live region: the demo's nags would be read out every few seconds. -->
+<div class="toasts" data-anchor="toasts">
   {#each visible as key (key)}
     {@const toast = copy.toasts[key]}
     {@const source = sources.find((s) => s.key === key)!}
-    <div class="toast" role="status" in:motion out:motion>
+    <div class="toast" in:motion out:motion>
       <div class="head">
         <Icon name={source.icon} size={16} />
         <span>{toast.app}</span>

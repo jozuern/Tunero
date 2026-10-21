@@ -23,6 +23,7 @@ const en = {
     classicTitle: 'Tunero, the PC optimizer for Windows 11 (classic page)',
   },
   skip: 'Skip to classic page',
+  noscript: 'The demo PC needs JavaScript. Everything about Tunero is also on the classic page:',
   /** The skip link on a page that is already the classic page or one of its neighbours. */
   skipContent: 'Skip to content',
   notFound: {
@@ -194,7 +195,7 @@ const en = {
         heading: 'In short',
         paragraphs: [
           ['This website sets no cookies, uses no analytics and no ads, and loads no fonts, scripts or images from other servers. It is made of static files.'],
-          ['The demo PC on the start page keeps the theme you pick, whether you have seen its start animation, and what you changed on it in the storage of your browser. That stays in your browser and is never sent anywhere.'],
+          ['The demo PC on the start page keeps the theme you pick, whether you turned its animation effects on or off, whether you have seen its start animation, and what you changed on it in the storage of your browser. That stays in your browser and is never sent anywhere.'],
         ],
       },
       {

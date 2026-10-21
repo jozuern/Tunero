@@ -7,6 +7,7 @@
   import Icon from './Icon.svelte';
   import TuneroMark from './TuneroMark.svelte';
   import { startupIcons } from './startup.ts';
+  import Watermark from './Watermark.svelte';
   import type { IconName } from './icons.ts';
 
   let {
@@ -52,10 +53,13 @@
 </script>
 
 <nav class="taskbar" aria-label="Taskbar">
-  <a class="corner" href={classicHref}>
-    <Icon name="arrowLeft" size={16} />
-    <span>{copy.classicPage}</span>
-  </a>
+  <div class="left">
+    <a class="corner" href={classicHref} title={copy.classicPage}>
+      <Icon name="arrowLeft" size={16} />
+      <span>{copy.classicPage}</span>
+    </a>
+    <Watermark lines={copy.watermark} />
+  </div>
 
   <div class="center">
     <button
@@ -94,6 +98,7 @@
         type="button"
         class="tb"
         data-anchor={app.id === 'trust' ? 'explorer' : app.id}
+        data-taskbar={app.id}
         class:running={frame.open}
         class:active={frame.open && !frame.minimized && store.focused === app.id}
         aria-label={app.label}
@@ -154,8 +159,16 @@
     color: var(--ink);
   }
 
-  .corner {
+  .left {
     justify-self: start;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .corner {
+    flex: none;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -326,7 +339,7 @@
       padding: 0 4px;
     }
 
-    .corner,
+    .left,
     .search,
     .tray,
     .clock {
@@ -340,6 +353,13 @@
     .install {
       margin-right: 4px;
       padding: 0 10px;
+    }
+  }
+
+  /* The demo label needs the room more than the link's text; the arrow keeps its tooltip. */
+  @media (max-width: 1500px) {
+    .corner span {
+      display: none;
     }
   }
 

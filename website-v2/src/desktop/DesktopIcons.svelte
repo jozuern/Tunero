@@ -57,7 +57,7 @@
 
   @media (max-width: 899px) {
     .icons {
-      top: 56px;
+      top: 76px;
     }
   }
 

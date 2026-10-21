@@ -11,6 +11,7 @@ const de: Strings = {
     classicTitle: 'Tunero, der PC-Optimierer für Windows 11 (klassische Seite)',
   },
   skip: 'Zur klassischen Seite',
+  noscript: 'Der Demo-PC braucht JavaScript. Alles über Tunero steht auch auf der klassischen Seite:',
   skipContent: 'Zum Inhalt',
   notFound: {
     title: 'Seite nicht gefunden',
@@ -177,7 +178,7 @@ const de: Strings = {
         heading: 'Kurz gesagt',
         paragraphs: [
           ['Diese Website setzt keine Cookies, nutzt keine Analyse und keine Werbung und lädt keine Schriften, Skripte oder Bilder von anderen Servern. Sie besteht aus statischen Dateien.'],
-          ['Der Demo-PC auf der Startseite merkt sich den Farbmodus, den du wählst, ob du seine Startanimation schon gesehen hast, und was du an ihm geändert hast, im Speicher deines Browsers. Das bleibt in deinem Browser und wird nirgendwohin gesendet.'],
+          ['Der Demo-PC auf der Startseite merkt sich den Farbmodus, den du wählst, ob du seine Animationseffekte ein- oder ausgeschaltet hast, ob du seine Startanimation schon gesehen hast, und was du an ihm geändert hast, im Speicher deines Browsers. Das bleibt in deinem Browser und wird nirgendwohin gesendet.'],
         ],
       },
       {

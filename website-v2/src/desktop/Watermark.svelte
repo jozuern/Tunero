@@ -1,4 +1,6 @@
 <script lang="ts">
+  // The demo label, in the taskbar on wide screens and in the status bar on phones: always visible, never over a
+  // window's title bar.
   let { lines }: { lines: string[] } = $props();
 </script>
 
@@ -8,40 +10,23 @@
 
 <style>
   .watermark {
-    position: fixed;
-    right: 24px;
-    top: 16px;
-    /* Above the windows, below Start and the taskbar: the demo label must stay readable. */
-    z-index: 7000;
     display: flex;
     flex-direction: column;
-    align-items: flex-end;
+    justify-content: center;
     margin: 0;
-    color: rgba(255, 255, 255, 0.72);
-    font-size: 13px;
-    line-height: 1.4;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
-    pointer-events: none;
+    color: var(--ink-2);
+    font-size: 11px;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
   }
 
-  :global([data-theme='light']) .watermark {
-    color: rgba(0, 0, 0, 0.62);
-    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.6);
-  }
-
-  @media (max-width: 899px) {
-    .watermark {
-      top: 52px;
-      right: 12px;
-      font-size: 11px;
-    }
-
-    span:first-child {
-      font-size: 13px !important;
-    }
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   span:first-child {
-    font-size: 16px;
+    color: var(--ink);
   }
 </style>

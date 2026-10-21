@@ -19,7 +19,7 @@ watch it rewind. Doing it is the explanation; the rewind is the trust.
 
 ## The experience
 
-0. **Boot.** About 2 s, first visit only (remembered in `localStorage`), skipped by any key or click and under
+0. **Boot.** About 2 s, first visit of a session only (remembered in `sessionStorage` with the demo state), skipped by any key or click and under
    `prefers-reduced-motion`. Black screen, the Tunero mark, then a few boot lines that are true and read at build
    time: version, the signature, the number of checks and tweaks. Hard cut to the desktop.
 1. **The demo PC.** A desktop full of the clutter Tunero removes: toasts (cloud sync nag, "get more out of Windows"

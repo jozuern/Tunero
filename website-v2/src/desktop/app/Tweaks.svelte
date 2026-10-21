@@ -48,7 +48,7 @@
             type="button"
             class="btn"
             disabled={off.length === 0}
-            onclick={() => store.apply(off.map((item) => ({ kind: 'tweak' as const, id: item.id })))}
+            onclick={() => store.apply(group.items.map((item) => ({ kind: 'tweak' as const, id: item.id })))}
           >
             {fill(app.Tweaks_GroupApply, off.length)}
           </button>

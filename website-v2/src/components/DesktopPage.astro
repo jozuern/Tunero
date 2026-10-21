@@ -40,6 +40,9 @@ const facts = {
 <Base lang={lang} title={copy.meta.title} description={copy.meta.description} path="/">
   <main>
     <h1 class="visually-hidden">{copy.meta.title}</h1>
+    <noscript>
+      <p class="noscript">{copy.noscript} <a href={localPath(lang, '/classic/')}>{copy.skip}</a></p>
+    </noscript>
     <script is:inline>
       // Before the desktop paints: on the first visit of a session, keep it hidden for the boot (Boot.svelte ends it).
       (() => {

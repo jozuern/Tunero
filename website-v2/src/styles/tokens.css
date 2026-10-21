@@ -148,4 +148,27 @@ html[data-boot='pending'] body {
 
 html[data-boot='pending'] .desktop {
   visibility: hidden;
+  /* If the boot never runs (the script failed to load), the desktop shows after 4 s anyway. */
+  animation: boot-fallback 0s 4s forwards;
+}
+
+@keyframes boot-fallback {
+  to {
+    visibility: visible;
+  }
+}
+
+.noscript {
+  position: fixed;
+  left: 50%;
+  top: 40%;
+  z-index: 10001;
+  max-width: calc(100vw - 32px);
+  margin: 0;
+  padding: 16px 20px;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+  transform: translateX(-50%);
 }

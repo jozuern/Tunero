@@ -58,7 +58,18 @@
   }
 </script>
 
-<svelte:window onkeydown={(event) => event.key === 'Escape' && (event.stopPropagation(), close())} />
+<svelte:window
+  onkeydown={(event) => {
+    if (event.key === 'Escape') {
+      event.stopPropagation();
+      close();
+    } else if (event.key === 'Tab') {
+      // Focus stays in the card: Back is its only control.
+      event.preventDefault();
+      (card.querySelector('.back') as HTMLElement).focus();
+    }
+  }}
+/>
 
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 <div class="dive" onclick={close}>

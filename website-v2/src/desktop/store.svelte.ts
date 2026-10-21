@@ -76,6 +76,8 @@ export class DesktopStore {
     const open = (Object.entries(this.windows) as [WindowId, WindowFrame][]).filter(([, w]) => w.open && !w.minimized);
     return open.length === 0 ? null : open.reduce((a, b) => (b[1].z > a[1].z ? b : a))[0];
   });
+  /** While Undo all plays, the state it ends in: that is what gets saved, so leaving mid-rewind keeps it. */
+  private rewindEnd: DemoState | null = null;
   private topZ = 10;
   private rewindRun = 0;
 
@@ -95,7 +97,7 @@ export class DesktopStore {
 
   private save() {
     try {
-      sessionStorage.setItem(storageKey, serialize({ ...$state.snapshot(this.state), window: this.focused }));
+      sessionStorage.setItem(storageKey, serialize({ ...$state.snapshot(this.rewindEnd ?? this.state), window: this.focused }));
     } catch {
       // Storage blocked: the demo still works, it just does not survive a reload.
     }
@@ -133,6 +135,7 @@ export class DesktopStore {
   }
 
   undo(change: Change) {
+    if (!isApplied(this.state, change)) return;
     this.stopRewind();
     this.state = undo(this.state, change);
     this.save();
@@ -150,20 +153,25 @@ export class DesktopStore {
       return;
     }
     this.rewinding = true;
+    this.rewindEnd = undoAll(this.state).state;
+    this.save();
     for (const step of steps) {
       if (run !== this.rewindRun) return;
       this.state = undo(this.state, step);
-      this.save();
       this.show([step], 'undo');
       await wait(rewindStep);
     }
-    if (run === this.rewindRun) this.rewinding = false;
+    if (run === this.rewindRun) {
+      this.rewinding = false;
+      this.rewindEnd = null;
+    }
   }
 
   private stopRewind() {
     if (!this.rewinding) return;
     this.rewindRun++;
     this.rewinding = false;
+    this.rewindEnd = null;
     this.state = undoAll(this.state).state;
   }
 
@@ -194,6 +202,16 @@ export class DesktopStore {
     this.startOpen = false;
   }
 
+  /** Keeps every window on screen and as large as it should be after the browser window changed size. */
+  fit() {
+    for (const [id, w] of Object.entries(this.windows) as [WindowId, WindowFrame][]) {
+      w.width = Math.min(sizes[id].width, innerWidth - 32);
+      w.height = Math.min(sizes[id].height, innerHeight - 48 - 32);
+      w.x = Math.min(Math.max(w.x, 0), Math.max(0, innerWidth - w.width));
+      w.y = Math.min(Math.max(w.y, 0), Math.max(0, innerHeight - 48 - w.height));
+    }
+  }
+
   focus(id: WindowId) {
     this.windows[id].z = ++this.topZ;
     this.save();
@@ -208,6 +226,8 @@ export class DesktopStore {
   minimize(id: WindowId) {
     this.windows[id].minimized = true;
     this.save();
+    // Focus goes to the window's taskbar button, not to the page.
+    (document.querySelector(`[data-taskbar="${id}"]`) as HTMLElement | null)?.focus();
   }
 
   toggleMaximize(id: WindowId) {
