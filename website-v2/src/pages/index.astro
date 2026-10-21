@@ -1,0 +1,10 @@
+---
+import Base from '../layouts/Base.astro';
+import { t } from '../i18n/index.ts';
+
+const copy = t('en');
+---
+
+<Base lang="en" title={copy.meta.title} description={copy.meta.description} path="/">
+  <main><h1>{copy.meta.title}</h1></main>
+</Base>

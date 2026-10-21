@@ -1,0 +1,61 @@
+---
+import '../styles/tokens.css';
+import { t, localPath, type Lang } from '../i18n/index.ts';
+
+interface Props {
+  lang: Lang;
+  title: string;
+  description: string;
+  /** The English path of this page ("/", "/classic/"); the German one is /de in front. */
+  path: string;
+  /** False for the 404 page: no canonical address or language versions, and search engines leave it out. */
+  indexed?: boolean;
+  /** Where "Skip to classic page" leads; the classic page itself skips to its own content. */
+  skipTo?: string;
+}
+
+const { lang, title, description, path, indexed = true, skipTo } = Astro.props;
+const copy = t(lang);
+const canonical = new URL(localPath(lang, path), Astro.site);
+const english = new URL(path, Astro.site);
+const german = new URL(localPath('de', path), Astro.site);
+---
+
+<!doctype html>
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <script is:inline>
+      // The theme before first paint: the visitor's choice in Settings, else the system's.
+      (() => {
+        let theme = null;
+        try { theme = localStorage.getItem('theme'); } catch {}
+        if (theme !== 'light' && theme !== 'dark') theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        document.documentElement.dataset.theme = theme;
+      })();
+    </script>
+    {indexed ? (
+      <>
+        <link rel="canonical" href={canonical} />
+        <link rel="alternate" hreflang="en" href={english} />
+        <link rel="alternate" hreflang="de" href={german} />
+        <link rel="alternate" hreflang="x-default" href={english} />
+      </>
+    ) : <meta name="robots" content="noindex" />}
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta name="theme-color" content="#f3f3f3" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#202020" media="(prefers-color-scheme: dark)" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:locale" content={lang === 'en' ? 'en_US' : 'de_DE'} />
+  </head>
+  <body>
+    <a class="skip" href={skipTo ?? localPath(lang, '/classic/')}>{copy.skip}</a>
+    <slot />
+  </body>
+</html>

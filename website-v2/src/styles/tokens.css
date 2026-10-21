@@ -1,0 +1,98 @@
+/* Colors of the Windows 11 Fluent surfaces, light and dark. The theme is data-theme on <html>, set before first paint
+   from the saved choice or prefers-color-scheme (Base.astro). */
+:root,
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #f3f3f3;
+  --surface: #fbfbfb;
+  --surface-2: #ffffff;
+  --stroke: rgba(0, 0, 0, 0.0578);
+  --stroke-strong: rgba(0, 0, 0, 0.1622);
+  --ink: #1a1a1a;
+  --ink-2: #5d5d5d;
+  --ink-3: #6f6f6f;
+  --accent: #005fb8;
+  --accent-ink: #ffffff;
+  --danger: #c42b1c;
+  --ok: #0f7b0f;
+  --shadow: 0 8px 32px rgba(0, 0, 0, 0.14), 0 2px 8px rgba(0, 0, 0, 0.08);
+  --acrylic: rgba(243, 243, 243, 0.82);
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #202020;
+  --surface: #2c2c2c;
+  --surface-2: #323232;
+  --stroke: rgba(255, 255, 255, 0.0698);
+  --stroke-strong: rgba(255, 255, 255, 0.1395);
+  --ink: #ffffff;
+  --ink-2: #c5c5c5;
+  --ink-3: #9d9d9d;
+  --accent: #60cdff;
+  --accent-ink: #000000;
+  --danger: #ff99a4;
+  --ok: #6ccb5f;
+  --shadow: 0 8px 32px rgba(0, 0, 0, 0.42), 0 2px 8px rgba(0, 0, 0, 0.3);
+  --acrylic: rgba(32, 32, 32, 0.8);
+}
+
+:root {
+  --font: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-display: 'Segoe UI Variable Display', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --mono: 'Cascadia Mono', 'Cascadia Code', Consolas, ui-monospace, monospace;
+  --radius: 8px;
+  --radius-sm: 4px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--accent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.skip {
+  position: absolute;
+  left: 8px;
+  top: -48px;
+  z-index: 1000;
+  padding: 8px 12px;
+  background: var(--surface-2);
+  color: var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.skip:focus {
+  top: 8px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

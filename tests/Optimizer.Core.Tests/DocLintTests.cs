@@ -194,10 +194,14 @@ public partial class DocLintTests(ITestOutputHelper output)
     private static bool IsQuotedReference(string file) =>
         file.EndsWith("Windows_Optimizer_Tools_Feature_Reference.md", StringComparison.Ordinal);
 
-    /// <summary>The text of tunero.dev: its English and German copy and its pages (website/src).</summary>
+    /// <summary>
+    /// The text of tunero.dev: its English and German copy and its pages and components, of the current site
+    /// (website/src) and of the next one (website-v2/src).
+    /// </summary>
     private static IEnumerable<string> WebsiteCopy() =>
-        RepositoryFiles("*.ts").Concat(RepositoryFiles("*.astro"))
-            .Where(f => Path.GetRelativePath(RepoPaths.Root, f).Replace('\\', '/').StartsWith("website/src/", StringComparison.Ordinal));
+        RepositoryFiles("*.ts").Concat(RepositoryFiles("*.astro")).Concat(RepositoryFiles("*.svelte"))
+            .Where(f => Path.GetRelativePath(RepoPaths.Root, f).Replace('\\', '/') is var p
+                        && (p.StartsWith("website/src/", StringComparison.Ordinal) || p.StartsWith("website-v2/src/", StringComparison.Ordinal)));
 
     private static readonly char[] Banned = ['\u2013', '\u2014', '\u2022', '\u00B7', '\u2026'];
 
