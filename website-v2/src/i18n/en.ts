@@ -195,7 +195,7 @@ const en = {
         heading: 'In short',
         paragraphs: [
           ['This website sets no cookies, uses no analytics and no ads, and loads no fonts, scripts or images from other servers. It is made of static files.'],
-          ['The demo PC on the start page keeps the theme you pick, whether you turned its animation effects on or off, whether you have seen its start animation, and what you changed on it in the storage of your browser. That stays in your browser and is never sent anywhere.'],
+          ['The demo PC on the start page keeps the theme you pick, whether you turned its animation effects on or off, whether you have seen its start animation, and what you changed on it in the storage of your browser. That stays in your browser and is never sent anywhere. Storing it needs no consent under § 25 (2) no. 2 TDDDG, because the demo needs it to work the way you set it; you can delete it at any time in your browser's site data.'],
         ],
       },
       {
