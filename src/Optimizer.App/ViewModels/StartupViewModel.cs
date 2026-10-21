@@ -200,14 +200,25 @@ public sealed partial class StartupViewModel(IPageHost owner, AppServices servic
 #pragma warning restore MVVMTK0034
             OnPropertyChanged(nameof(SelectedKind));
         }
+        // Signatures in the background, shown together: Microsoft entries are hidden once verified. Until then the counts
+        // of other vendors and of what needs attention would be wrong (every entry still unverified): the summary waits.
+        _checkingSignatures = true;
         Filter();
-        // Signatures in the background, shown together: Microsoft entries are hidden once verified.
         var rows = _all.ToList();
-        var signatures = await Task.Run(() => rows.AsParallel().AsOrdered().WithDegreeOfParallelism(4)
-            .Select(row => (Signature: SignatureVerifier.Verify(row.Entry.ImagePath), ScriptHost: row.Entry.RunsScriptHost)).ToList());
-        for (var i = 0; i < rows.Count; i++) rows[i].SetSignature(signatures[i].Signature, signatures[i].ScriptHost, lang);
+        try
+        {
+            var signatures = await Task.Run(() => rows.AsParallel().AsOrdered().WithDegreeOfParallelism(4)
+                .Select(row => (Signature: SignatureVerifier.Verify(row.Entry.ImagePath), ScriptHost: row.Entry.RunsScriptHost)).ToList());
+            for (var i = 0; i < rows.Count; i++) rows[i].SetSignature(signatures[i].Signature, signatures[i].ScriptHost, lang);
+        }
+        finally
+        {
+            _checkingSignatures = false;
+        }
         Filter();
     }
+
+    private bool _checkingSignatures;
 
     private const string SignInKey = "signIn";
 
@@ -225,13 +236,18 @@ public sealed partial class StartupViewModel(IPageHost owner, AppServices servic
         foreach (var r in _all.Where(r => (kind.Length == 0 || (kind == SignInKey ? IsSignIn(r.Entry) : r.Entry.Kind.ToString() == kind)) && !(HideMicrosoft && r.IsPlainMicrosoft) && (!OnlyNew || r.IsNew) && (!OnlyAttention || r.NeedsAttention) && Matches(r))
                      .OrderByDescending(r => r.IsNew).ThenByDescending(r => r.NeedsAttention).ThenBy(r => r.Entry.Kind).ThenBy(r => r.Name, StringComparer.CurrentCultureIgnoreCase))
             Rows.Add(r);
+        OnPropertyChanged(nameof(NoMatch));
         var atLogon = _all.Count(r => StartupTweaks.CountsForF16(r.Entry) && !r.IsPlainMicrosoft);
-        SummaryText = Loc.Instance.Format("Startup_Summary", _all.Count, atLogon, _all.Count(r => r.NeedsAttention));
+        SummaryText = _checkingSignatures ? Loc.Instance.Format("Startup_SummaryChecking", _all.Count)
+            : Loc.Instance.Format("Startup_Summary", _all.Count, atLogon, _all.Count(r => r.NeedsAttention));
         OnPropertyChanged(nameof(ServicesHintTab));
         OnPropertyChanged(nameof(ShowServicesHint));
     }
 
     public bool ShowServicesHint => ServicesHintTab >= 0;
+
+    /// <summary>Entries were read but the search and filters leave none: the page says so.</summary>
+    public bool NoMatch => _all.Count > 0 && Rows.Count == 0;
 
     /// <summary>
     /// Services and scheduled tasks are listed here too (everything that starts), but their own page has the start types

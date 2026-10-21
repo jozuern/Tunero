@@ -536,6 +536,16 @@ public sealed partial class DebloatItem(Optimizer.Core.Debloat.DebloatItem item,
     // shows reasons that belong to this app.
     public string? BlockText { get; } = item.BlockKey is { } k ? Labels.Current.Get(lang, k) : null;
     public bool CanRemove => BlockText is null && elevated;
+
+    /// <summary>Ticked for "Remove selected"; only an app that can be removed can be ticked.</summary>
+    [ObservableProperty] private bool _isSelected;
+
+    partial void OnIsSelectedChanged(bool value) => SelectionChanged?.Invoke();
+
+    /// <summary>Tells the page that the number of ticked apps changed.</summary>
+    internal Action? SelectionChanged { get; set; }
+
+    public string SelectLabel => Optimizer.App.Services.Loc.Instance.Format("Programs_SelectName", Name);
 }
 
 /// <summary>An installed package the reviewed list does not cover: its package name is all the app knows about it.</summary>
@@ -586,6 +596,21 @@ public sealed partial class DebloatViewModel(IPageHost owner, AppServices servic
 
     public bool ItemsEmpty => !IsLoading && Items.Count == 0;
 
+    /// <summary>Apps ticked for "Remove selected", as on Installed programs.</summary>
+    [ObservableProperty] private int _selectedCount;
+
+    public bool HasSelection => SelectedCount > 0;
+
+    public string RemoveSelectedText => Loc.Instance.Format("Debloat_RemoveSelected", SelectedCount);
+
+    partial void OnSelectedCountChanged(int value)
+    {
+        OnPropertyChanged(nameof(HasSelection));
+        OnPropertyChanged(nameof(RemoveSelectedText));
+    }
+
+    private void UpdateSelection() => SelectedCount = Items.Count(i => i.IsSelected);
+
     protected override void LoadingChanged()
     {
         OnPropertyChanged(nameof(ItemsEmpty));
@@ -632,8 +657,17 @@ public sealed partial class DebloatViewModel(IPageHost owner, AppServices servic
         var lang = Lang;
         var elevated = services.Elevation.IsElevated;
         var (offered, removed, oneDrive, cameBack, _) = data;
+        // The ticks survive a reload and a language switch for the apps that are still listed.
+        var ticked = Items.Where(i => i.IsSelected).Select(i => i.PackageName).ToHashSet(StringComparer.OrdinalIgnoreCase);
         Items.Clear();
-        foreach (var i in offered.OrderBy(i => i.Entry.Group).ThenBy(i => i.Entry.Label(lang))) Items.Add(new DebloatItem(i, lang, elevated));
+        foreach (var i in offered.OrderBy(i => i.Entry.Group).ThenBy(i => i.Entry.Label(lang)))
+        {
+            var item = new DebloatItem(i, lang, elevated);
+            item.IsSelected = item.CanRemove && ticked.Contains(item.PackageName);
+            item.SelectionChanged = UpdateSelection;
+            Items.Add(item);
+        }
+        UpdateSelection();
         _cameBack = cameBack.Select(r => r.Name).ToList();
         CameBackText = cameBack.Count == 0 ? null : Loc.Instance.Format("Debloat_CameBack", string.Join(", ", cameBack.Select(r => r.Name)));
         Removed.Clear();
@@ -692,6 +726,45 @@ public sealed partial class DebloatViewModel(IPageHost owner, AppServices servic
             Owner.ShowResult(error is null ? Loc.Instance.Format("Debloat_Removed", item.Name) : Loc.Instance.Format("Result_Error", error),
                 error is null ? Wpf.Ui.Controls.InfoBarSeverity.Success : Wpf.Ui.Controls.InfoBarSeverity.Error);
         });
+        await ReloadAsync();
+    }
+
+    /// <summary>
+    /// Removes the ticked apps one after the other after one confirmation that names each of them (and the ones the Store
+    /// no longer offers). An app that fails does not stop the others; the result names it, the log has the reason.
+    /// </summary>
+    [RelayCommand]
+    private async Task RemoveSelectedAsync()
+    {
+        var picked = Items.Where(i => i.IsSelected && i.CanRemove).ToList();
+        if (picked.Count == 0) return;
+        var text = Loc.Instance.Format("Debloat_ConfirmSelected", string.Join(", ", picked.Select(i => i.Name)));
+        if (picked.Where(i => !i.Item.Entry.CanReinstall).Select(i => i.Name).ToList() is { Count: > 0 } noStore)
+            text += "\n\n" + Loc.Instance.Format("Debloat_ConfirmSelectedNoStore", string.Join(", ", noStore));
+        if (!dialogs.Ask(Loc.Instance["Debloat_ConfirmSelectedTitle"], text, Loc.Instance["Debloat_Remove"])) return;
+        var removed = 0;
+        var failed = new List<string>();
+        var ran = await RunWorkAsync("remove selected apps", Loc.Instance["Debloat_Removing"], async scope =>
+        {
+            for (var i = 0; i < picked.Count; i++)
+            {
+                var item = picked[i];
+                scope.Step(i, picked.Count, item.Name);
+                var error = await Task.Run(() => Service.Remove(item.Item.Installed, item.Item.Entry));
+                if (error is null)
+                {
+                    removed++;
+                }
+                else
+                {
+                    failed.Add(item.Name);
+                    Optimizer.Core.Logging.Log.Warn("debloat", $"{item.Item.Entry.Name} not removed: {error}");
+                }
+            }
+        });
+        if (ran)
+            Owner.ShowResult(failed.Count == 0 ? Loc.Instance.Format("Debloat_RemovedCount", removed) : Loc.Instance.Format("Debloat_RemovedSome", removed, string.Join(", ", failed)),
+                failed.Count == 0 ? Wpf.Ui.Controls.InfoBarSeverity.Success : Wpf.Ui.Controls.InfoBarSeverity.Warning);
         await ReloadAsync();
     }
 

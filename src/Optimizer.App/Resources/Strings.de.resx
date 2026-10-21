@@ -296,6 +296,15 @@ Die App wird für alle Benutzer und neue Konten entfernt. Für sie ist kein Eint
   <data name="Debloat_Removed" xml:space="preserve">
     <value>{0} wurde entfernt.</value>
   </data>
+  <data name="Debloat_RemoveSelected" xml:space="preserve"><value>Auswahl entfernen ({0})</value></data>
+  <data name="Debloat_ConfirmSelectedTitle" xml:space="preserve"><value>Ausgewählte Apps entfernen?</value></data>
+  <data name="Debloat_ConfirmSelected" xml:space="preserve"><value>{0}
+
+Diese Apps werden für alle Benutzer und neue Konten entfernt. Was der Microsoft Store anbietet, lässt sich dort neu installieren.</value></data>
+  <data name="Debloat_ConfirmSelectedNoStore" xml:space="preserve"><value>Für diese ist kein Eintrag im Microsoft Store bestätigt, eine Neuinstallation ist also eventuell nicht möglich: {0}</value></data>
+  <data name="Debloat_Removing" xml:space="preserve"><value>Apps werden entfernt</value></data>
+  <data name="Debloat_RemovedCount" xml:space="preserve"><value>Entfernte Apps: {0}.</value></data>
+  <data name="Debloat_RemovedSome" xml:space="preserve"><value>Entfernte Apps: {0}. Nicht entfernt: {1}. Das Protokoll nennt den Grund.</value></data>
   <data name="Debloat_RemovedTitle" xml:space="preserve">
     <value>Entfernte Apps</value>
   </data>
@@ -397,6 +406,8 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Startup_Summary" xml:space="preserve">
     <value>{0} Einträge, davon {1} Programme anderer Hersteller bei der Anmeldung. {2} auffällig: nicht signiert oder ungewöhnlich.</value>
   </data>
+  <data name="Startup_SummaryChecking" xml:space="preserve"><value>{0} Einträge. Die Signaturen werden geprüft, bevor gezählt wird, was von anderen Herstellern kommt und was Aufmerksamkeit braucht.</value></data>
+  <data name="Startup_Loading" xml:space="preserve"><value>Die Einträge werden gelesen und ihre Signaturen geprüft. Danach sortiert sich die Liste neu.</value></data>
   <data name="Startup_NoPublisher" xml:space="preserve">
     <value>Kein Herausgeber</value>
   </data>
@@ -445,6 +456,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Svc_Search" xml:space="preserve">
     <value>Dienste suchen</value>
   </data>
+  <data name="Svc_Loading" xml:space="preserve"><value>Die Dienste und geplanten Aufgaben werden gelesen und ihre Signaturen geprüft.</value></data>
   <data name="Svc_ShowWindows" xml:space="preserve">
     <value>Alle Windows-Dienste zeigen</value>
   </data>
@@ -1167,6 +1179,8 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Update_PackageManual" xml:space="preserve"><value>{0} konnte nicht aus Tunero gestartet werden. Schließe Tunero und führe {1} in einem Terminal aus.</value></data>
   <data name="StartMenu_Setting" xml:space="preserve"><value>Eintrag im Startmenü</value></data>
   <data name="StartMenu_Hint" xml:space="preserve"><value>Die Windows-Suche findet Tunero nur über einen Eintrag im Startmenü. Der Eintrag startet diese exe an ihrem jetzigen Ort.</value></data>
+  <data name="StartMenu_Scoop" xml:space="preserve"><value>Scoop legt unter Scoop Apps einen eigenen Eintrag an und entfernt ihn mit Tunero, daher legt Tunero keinen an.</value></data>
+  <data name="StartMenu_NotHere" xml:space="preserve"><value>Einen Eintrag bekommt nur die veröffentlichte Tunero.exe. Diese Kopie läuft aus einem Build-Ordner.</value></data>
   <data name="StartMenu_AskTitle" xml:space="preserve"><value>Tunero zum Startmenü hinzufügen?</value></data>
   <data name="StartMenu_AskText" xml:space="preserve"><value>Mit einem Eintrag im Startmenü findet die Windows-Suche Tunero. Der Eintrag startet diese exe an ihrem jetzigen Ort. Du kannst ihn jederzeit in den Einstellungen entfernen.</value></data>
   <data name="StartMenu_Add" xml:space="preserve"><value>Zum Startmenü hinzufügen</value></data>
@@ -1248,6 +1262,13 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Programs_Hint" xml:space="preserve"><value>Desktopprogramme aus der Deinstallationsliste von Windows. Deinstallieren startet das eigene Deinstallationsprogramm mit seinem Fenster. Hake mehrere an, um sie nacheinander zu deinstallieren, ohne Rückfragen, wo das Programm es anbietet, und zu sehen, was sie zurücklassen. Vor der ersten Deinstallation einer Sitzung legt die App einen Wiederherstellungspunkt an, wenn der Computerschutz an ist.</value></data>
   <data name="Programs_Search" xml:space="preserve"><value>Programme suchen</value></data>
   <data name="Programs_Count" xml:space="preserve"><value>{0} Programme</value></data>
+  <data name="Programs_Sort" xml:space="preserve"><value>Programme sortieren</value></data>
+  <data name="Programs_SortName" xml:space="preserve"><value>Nach Name</value></data>
+  <data name="Programs_SortSize" xml:space="preserve"><value>Größte zuerst</value></data>
+  <data name="Programs_SortDate" xml:space="preserve"><value>Neueste zuerst</value></data>
+  <data name="List_NoMatch" xml:space="preserve"><value>Nichts passt zur Suche oder zu den Filtern.</value></data>
+  <data name="Task_Search" xml:space="preserve"><value>Aufgaben suchen</value></data>
+  <data name="Programs_CountFiltered" xml:space="preserve"><value>{0} von {1} Programmen</value></data>
   <data name="Programs_Uninstall" xml:space="preserve"><value>Deinstallieren</value></data>
   <data name="Programs_ConfirmTitle" xml:space="preserve"><value>Programm deinstallieren?</value></data>
   <data name="Programs_ConfirmText" xml:space="preserve"><value>Startet das Deinstallationsprogramm von {0}. Folge seinem Fenster; es entscheidet, was entfernt wird, auch deine Einstellungen für dieses Programm.</value></data>
@@ -1562,6 +1583,13 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Apps_Updating" xml:space="preserve"><value>Wird aktualisiert</value></data>
   <data name="Apps_UpToDate" xml:space="preserve"><value>Aktuell</value></data>
   <data name="Apps_Updated" xml:space="preserve"><value>Aktualisiert</value></data>
+  <data name="Apps_CheckUpdates" xml:space="preserve"><value>Nach Updates suchen</value></data>
+  <data name="Apps_CheckUpdatesHint" xml:space="preserve"><value>winget liest seinen Katalog von Microsoft und vergleicht ihn mit dem, was installiert ist. Nichts wird installiert.</value></data>
+  <data name="Apps_CheckingUpdates" xml:space="preserve"><value>winget sucht nach Updates</value></data>
+  <data name="Apps_CheckUpdatesFailed" xml:space="preserve"><value>Die Suche nach Updates ist fehlgeschlagen: {0}</value></data>
+  <data name="Apps_NoUpdates" xml:space="preserve"><value>winget hat keine Updates für die installierten Apps.</value></data>
+  <data name="Apps_UpdatesFound" xml:space="preserve"><value>Verfügbare Updates: {0}, davon in dieser Liste: {1}. „Alle Apps aktualisieren“ installiert alle.</value></data>
+  <data name="Apps_UpdateAvailable" xml:space="preserve"><value>Update: {0} auf {1}</value></data>
   <!-- 4a -->
   <data name="Cli_NotElevated" xml:space="preserve"><value>Tunero braucht Administratorrechte, um etwas zu ändern oder rückgängig zu machen.</value></data>
   <data name="Cli_Busy" xml:space="preserve"><value>Ein anderes Tunero-Fenster oder ein anderer Befehlszeilenlauf hat diesen PC 5 Minuten lang geändert, deshalb wurde nichts geändert. Führe den Befehl erneut aus, wenn er fertig ist.</value></data>

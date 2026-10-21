@@ -48,8 +48,38 @@ public sealed partial class AppRow(AppEntry app, string lang, bool installed) : 
 
     public string UpdateLabel => Loc.Instance.Format("Apps_UpdateName", Name);
 
-    /// <summary>Installed for the whole PC: winget can update it from here (per-user apps update in their own installer).</summary>
-    public bool CanUpdate => Installed && !PerUser;
+    /// <summary>
+    /// Installed for the whole PC: winget can update it from here (per-user apps update in their own installer). After
+    /// "Check for updates" only where winget offers a newer version.
+    /// </summary>
+    public bool CanUpdate => Installed && !PerUser && (!_updatesChecked || AvailableVersion is not null);
+
+    private bool _updatesChecked;
+
+    /// <summary>The newer version winget offers, after "Check for updates".</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanUpdate))]
+    private string? _availableVersion;
+
+    /// <summary>What the update check found for this app: a newer version ("23.01 to 26.04"), or none.</summary>
+    public void ShowUpdate(WingetUpgrade? upgrade)
+    {
+        if (!Installed || PerUser) return;
+        _updatesChecked = true;
+        AvailableVersion = upgrade?.Available;
+        StateText = upgrade is null ? Loc.Instance["Apps_UpToDate"] : Loc.Instance.Format("Apps_UpdateAvailable", upgrade.Version, upgrade.Available);
+        OnPropertyChanged(nameof(CanUpdate));
+    }
+
+    /// <summary>Back to the state before a check (after Update all): Update shows again.</summary>
+    public void ForgetUpdateCheck()
+    {
+        if (!_updatesChecked) return;
+        _updatesChecked = false;
+        AvailableVersion = null;
+        StateText = Installed ? Loc.Instance["Apps_Installed"] : "";
+        OnPropertyChanged(nameof(CanUpdate));
+    }
 
     partial void OnInstalledChanged(bool value) => OnPropertyChanged(nameof(CanUpdate));
     [ObservableProperty] private bool _isInstalling;
@@ -251,6 +281,9 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
     private TaskCompletionSource? _skipWait;
 
     public bool HasSelection => SelectedCount > 0;
+
+    /// <summary>Programs were read but the search leaves none: the page says so.</summary>
+    public bool ProgramsNoMatch => _allPrograms.Count > 0 && ProgramRows.Count == 0;
     public string UninstallSelectedText => Loc.Instance.Format("Programs_UninstallSelected", SelectedCount);
 
     partial void OnSelectedCountChanged(int value)
@@ -263,14 +296,35 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
 
     partial void OnProgramSearchChanged(string value) => FilterPrograms();
 
+    /// <summary>Installed programs by name (the default), size (largest first) or install date (newest first). Not saved.</summary>
+    [ObservableProperty] private string _programSort = "name";
+
+    partial void OnProgramSortChanged(string value) => FilterPrograms();
+
+    public IReadOnlyList<FilterOption> ProgramSorts =>
+    [
+        new("name", Loc.Instance["Programs_SortName"]),
+        new("size", Loc.Instance["Programs_SortSize"]),
+        new("date", Loc.Instance["Programs_SortDate"]),
+    ];
+
     private void FilterPrograms()
     {
         ProgramRows.Clear();
         var q = ProgramSearch.Trim();
-        foreach (var r in _allPrograms.Where(r => q.Length == 0 || r.Name.Contains(q, StringComparison.CurrentCultureIgnoreCase)
-                                                  || (r.Program.Publisher?.Contains(q, StringComparison.CurrentCultureIgnoreCase) ?? false)))
-            ProgramRows.Add(r);
-        ProgramsText = Loc.Instance.Format("Programs_Count", _allPrograms.Count);
+        var shown = _allPrograms.Where(r => q.Length == 0 || r.Name.Contains(q, StringComparison.CurrentCultureIgnoreCase)
+                                            || (r.Program.Publisher?.Contains(q, StringComparison.CurrentCultureIgnoreCase) ?? false));
+        // Programs without a size or date go last; the list itself is by name, so ties stay in name order.
+        shown = ProgramSort switch
+        {
+            "size" => shown.OrderByDescending(r => r.Program.SizeKb ?? -1),
+            "date" => shown.OrderByDescending(r => r.Program.InstallDate ?? DateTime.MinValue),
+            _ => shown,
+        };
+        foreach (var r in shown) ProgramRows.Add(r);
+        ProgramsText = ProgramRows.Count == _allPrograms.Count ? Loc.Instance.Format("Programs_Count", _allPrograms.Count)
+            : Loc.Instance.Format("Programs_CountFiltered", ProgramRows.Count, _allPrograms.Count);
+        OnPropertyChanged(nameof(ProgramsNoMatch));
     }
 
     [RelayCommand]
@@ -603,6 +657,51 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
             System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonPrograms), "Contoso Tool.lnk"), 0), "Contoso Tool"));
     }
 
+    /// <summary>The packages winget can update, from the last "Check for updates" (null: not checked in this session).</summary>
+    private IReadOnlyList<WingetUpgrade>? _upgrades;
+
+    [ObservableProperty] private bool _isCheckingUpdates;
+
+    /// <summary>"Updates available: 2", "All installed apps of the list are up to date", or why the check failed.</summary>
+    [ObservableProperty] private string? _updatesText;
+
+    /// <summary>
+    /// Asks winget which installed packages have a newer version in its repository (it reads its catalog from Microsoft;
+    /// started by the user, nothing is installed) and marks the list's apps: Update stays only where there is one.
+    /// </summary>
+    [RelayCommand]
+    private async Task CheckUpdatesAsync()
+    {
+        if (_winget is not { } winget || IsCheckingUpdates) return;
+        IsCheckingUpdates = true;
+        UpdatesText = Loc.Instance["Apps_CheckingUpdates"];
+        try
+        {
+            _upgrades = await Task.Run(() => Winget.ListUpgradesAsync(winget, CancellationToken.None));
+            ShowUpgrades();
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or IOException or System.ComponentModel.Win32Exception)
+        {
+            Optimizer.Core.Logging.Log.Warn("apps", $"update check failed: {ex.Message}");
+            UpdatesText = Loc.Instance.Format("Apps_CheckUpdatesFailed", ex.Message);
+        }
+        finally
+        {
+            IsCheckingUpdates = false;
+        }
+    }
+
+    private void ShowUpgrades()
+    {
+        if (_upgrades is not { } upgrades) return;
+        foreach (var row in Apps)
+            row.ShowUpdate(upgrades.FirstOrDefault(u => string.Equals(u.Id, row.App.Id, StringComparison.OrdinalIgnoreCase)));
+        var listed = Apps.Count(r => r.AvailableVersion is not null);
+        // Update all also updates what winget installed outside this list: the count names both.
+        UpdatesText = upgrades.Count == 0 ? Loc.Instance["Apps_NoUpdates"]
+            : Loc.Instance.Format("Apps_UpdatesFound", upgrades.Count, listed);
+    }
+
     /// <summary>
     /// Every package manager Update all may run, one after the other (<see cref="PackageUpdates"/>): winget, Chocolatey from
     /// its checked folder, Scoop as the signed-in user, then the Store's updates page. One question names them all.
@@ -647,6 +746,13 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
         finally
         {
             IsUpdatingAll = false;
+            // What the last check found is out of date now: the rows show their buttons again until the next check.
+            if (_upgrades is not null)
+            {
+                _upgrades = null;
+                UpdatesText = null;
+                foreach (var row in Apps) row.ForgetUpdateCheck();
+            }
         }
     }
 
@@ -870,6 +976,8 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
         if (_drivers is null) return LoadAsync();
         ShowManagers();
         ShowApps();
+        OnPropertyChanged(nameof(ProgramSorts));
+        OnPropertyChanged(nameof(ProgramSort));
         FilterPrograms();
         ShowDrivers(_drivers);
         for (var i = 0; i < Leftovers.Count; i++)
@@ -891,6 +999,7 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
             Apps.Add(new AppRow(a, lang, a.IsInstalled(programs)) { GroupHeader = a.Category == last ? null : Labels.Current.Get(lang, $"appCategory.{a.Category}") });
             last = a.Category;
         }
+        ShowUpgrades();
     }
 
     private void ShowDrivers(IReadOnlyList<DriverRow> drivers)
@@ -998,6 +1107,14 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
                     row.StateText = code == Winget.UpdateNotApplicable ? Loc.Instance["Apps_UpToDate"]
                         : Winget.IsSuccess(code) ? Loc.Instance["Apps_Updated"]
                         : Loc.Instance.Format("Apps_UpdateFailed", $"0x{code:X8}");
+                    // Updated (or nothing to update): the button goes; the line keeps what happened.
+                    if (code == Winget.UpdateNotApplicable || Winget.IsSuccess(code))
+                    {
+                        _upgrades = _upgrades?.Where(u => !string.Equals(u.Id, row.App.Id, StringComparison.OrdinalIgnoreCase)).ToList();
+                        var text = row.StateText;
+                        row.ShowUpdate(null);
+                        row.StateText = text;
+                    }
                 }))
                 row.StateText = Loc.Instance["Apps_Installed"];
         }

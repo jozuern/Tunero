@@ -150,6 +150,7 @@ public sealed partial class MainViewModel
             case SearchKind.ScheduledTask:
                 ServicesTab = 1;
                 if (r.ItemId?.StartsWith(@"\Microsoft\", StringComparison.OrdinalIgnoreCase) == true) ServicesPage.ShowMicrosoftTasks = true;
+                ServicesPage.TaskSearch = r.Title;
                 break;
             case SearchKind.StartupEntry:
                 Startup.HideMicrosoft = false;

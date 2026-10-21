@@ -323,6 +323,14 @@ public partial class App : Application
             await vm.InstallMedia.AppsLoading;
         }
         if (args.Value("--pane") is "closed") window.Nav.IsPaneOpen = false;
+        // The tab of a page with tabs (Services & tasks, Remove apps, Install & update, Tools), counted from 0.
+        if (int.TryParse(args.Value("--page-tab"), CultureInfo.InvariantCulture, out var pageTab))
+        {
+            if (vm.CurrentPage == Page.Services) vm.ServicesTab = pageTab;
+            else if (vm.CurrentPage == Page.Debloat) vm.DebloatTab = pageTab;
+            else if (vm.CurrentPage == Page.Apps) vm.AppsTab = pageTab;
+            else if (vm.CurrentPage == Page.Tools) vm.ToolsTab = pageTab;
+        }
         if (double.TryParse(args.Value("--width"), CultureInfo.InvariantCulture, out var width)) window.Width = Math.Max(window.MinWidth, width);
         if (double.TryParse(args.Value("--height"), CultureInfo.InvariantCulture, out var height)) window.Height = Math.Max(window.MinHeight, height);
         if (args.Value("--select") is { } id)

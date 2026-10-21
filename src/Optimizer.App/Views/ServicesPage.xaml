@@ -34,8 +34,12 @@
                                 <ui:ToggleSwitch Content="{l:Tr Svc_ShowWindows}" IsChecked="{Binding ServicesPage.ShowWindowsServices}" />
                             </WrapPanel>
                             <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Svc_Rules}" Margin="0,8,0,0" />
-                            <ui:ProgressRing IsIndeterminate="True" Width="24" Height="24" HorizontalAlignment="Left" Margin="0,8,0,0"
-                                             Visibility="{Binding ServicesPage.IsLoading, Converter={StaticResource BoolToVisibility}}" />
+                            <ui:TextBlock FontTypography="Body" Text="{l:Tr List_NoMatch}" Margin="0,8,0,0"
+                                          Visibility="{Binding ServicesPage.RowsNoMatch, Converter={StaticResource BoolToVisibility}}" />
+                            <StackPanel Orientation="Horizontal" Margin="0,8,0,0" Visibility="{Binding ServicesPage.IsLoading, Converter={StaticResource BoolToVisibility}}">
+                                <ui:ProgressRing IsIndeterminate="True" Width="16" Height="16" Margin="0,0,8,0" />
+                                <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Svc_Loading}" VerticalAlignment="Center" />
+                            </StackPanel>
                         </StackPanel>
                     </ui:Card>
                     <v:ItemList Grid.Row="1" ItemsSource="{Binding ServicesPage.Rows}" Style="{StaticResource VirtualCardList}">
@@ -93,8 +97,18 @@
                     </Grid.RowDefinitions>
                     <ui:Card Padding="16,12" Margin="0,0,0,8">
                         <StackPanel>
-                            <ui:ToggleSwitch Content="{l:Tr Task_ShowMicrosoft}" IsChecked="{Binding ServicesPage.ShowMicrosoftTasks}" />
+                            <WrapPanel>
+                                <ui:TextBox PlaceholderText="{l:Tr Task_Search}" AutomationProperties.Name="{l:Tr Task_Search}" Text="{Binding ServicesPage.TaskSearch, UpdateSourceTrigger=PropertyChanged, Delay=200}"
+                                            MinWidth="280" Margin="0,0,16,0" Icon="{ui:SymbolIcon Search20}" ClearButtonEnabled="True" />
+                                <ui:ToggleSwitch Content="{l:Tr Task_ShowMicrosoft}" IsChecked="{Binding ServicesPage.ShowMicrosoftTasks}" />
+                            </WrapPanel>
                             <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Task_Hint}" Margin="0,8,0,0" />
+                            <StackPanel Orientation="Horizontal" Margin="0,8,0,0" Visibility="{Binding ServicesPage.IsLoading, Converter={StaticResource BoolToVisibility}}">
+                                <ui:ProgressRing IsIndeterminate="True" Width="16" Height="16" Margin="0,0,8,0" />
+                                <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Svc_Loading}" VerticalAlignment="Center" />
+                            </StackPanel>
+                            <ui:TextBlock FontTypography="Body" Text="{l:Tr List_NoMatch}" Margin="0,8,0,0"
+                                          Visibility="{Binding ServicesPage.TasksNoMatch, Converter={StaticResource BoolToVisibility}}" />
                         </StackPanel>
                     </ui:Card>
                     <v:ItemList Grid.Row="1" ItemsSource="{Binding ServicesPage.Tasks}" Style="{StaticResource VirtualCardList}">

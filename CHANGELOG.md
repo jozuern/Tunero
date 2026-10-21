@@ -6,6 +6,9 @@
 
 - **Tweaks:** an impact filter (1 or more up to 5, for your profile) and a Select mode: tick several tweaks, then turn them on or undo them with one confirmation each.
 - **Windows install media:** a check box per app group ticks or clears the whole group.
+- **Install & update:** Check for updates asks winget which installed apps have a newer version; Update then shows only where there is one.
+- **Remove apps:** tick several preinstalled apps and remove them with one confirmation; installed programs sort by name, size or install date.
+- **Services & tasks:** scheduled tasks have a search box.
 
 ### Changed
 
@@ -15,7 +18,9 @@
 
 - **Install & update:** WebView2 Runtime shows as installed (Windows registers it as a system component).
 - **Search:** a check shows its result for this PC, not the text for a problem.
-- **Startup:** Tunero's own "Apply changes again" task no longer counts as a program that starts with Windows.
+- **Startup:** Tunero's own "Apply changes again" task no longer counts as a program that starts with Windows; the counts wait until the signatures are checked.
+- **Lists:** a search that matches nothing says so, Installed programs counts "12 of 134", and Services and Startup name what they are loading.
+- **Settings:** the Start menu switch says why it is off for a Scoop install or a build.
 
 ## 1.4.0
 

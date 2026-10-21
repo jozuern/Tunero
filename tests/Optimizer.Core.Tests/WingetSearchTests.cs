@@ -54,6 +54,35 @@ public class WingetSearchTests
         Assert.Empty(Winget.ParseSearch(""));
     }
 
+    // Printed by winget 1.29 in PCO-Test (2026-10-21) for "upgrade --source winget" with 7-Zip 23.01 installed; the
+    // second table and the note are the shape winget gives pinned packages and unknown versions.
+    private const string Upgrades = """
+        Name                      Id        Version    Available
+        --------------------------------------------------------
+        7-Zip 23.01 (x64 edition) 7zip.7zip 23.01.00.0 26.04
+        1 upgrades available.
+
+        The following packages have an upgrade available, but require explicit targeting for upgrade:
+        Name      Id             Version Available
+        ------------------------------------------
+        Contoso   Contoso.Pinned 1.0     2.0
+        """;
+
+    /// <summary>
+    /// The first table only, also as StreamingProcess hands the lines over (no empty lines, so the pinned table follows
+    /// the note directly); a longer translated note under it is no package.
+    /// </summary>
+    [Fact]
+    public void UpgradesAreReadByColumnPosition()
+    {
+        var expected = new WingetUpgrade("7-Zip 23.01 (x64 edition)", "7zip.7zip", "23.01.00.0", "26.04");
+        Assert.Equal([expected], Winget.ParseUpgrades(Upgrades));
+        Assert.Equal([expected], Winget.ParseUpgrades(string.Join("\n", Upgrades.Split('\n').Where(l => l.Trim().Length > 0))));
+        Assert.Equal([expected], Winget.ParseUpgrades(Upgrades.Replace("1 upgrades available.", "1 Aktualisierungen verfügbar.")));
+        Assert.Empty(Winget.ParseUpgrades("No installed package found matching input criteria."));
+        Assert.Equal("upgrade --source winget --accept-source-agreements --disable-interactivity", Winget.UpgradesArguments);
+    }
+
     [Theory]
     [InlineData("notepad", true)]
     [InlineData("Visual Studio Code", true)]

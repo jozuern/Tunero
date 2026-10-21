@@ -33,6 +33,12 @@ public sealed partial class MainViewModel
     /// </summary>
     public bool CanAddToStartMenu => IsPublishedExe && Package?.Manager != PackageManager.Scoop;
 
+    /// <summary>What the entry does, or why the switch is off here (a Scoop copy, a build that is not the published exe).</summary>
+    public string StartMenuHint => Loc.Instance[
+        CanAddToStartMenu ? "StartMenu_Hint"
+        : Package?.Manager == PackageManager.Scoop ? "StartMenu_Scoop"
+        : "StartMenu_NotHere"];
+
     private void SetStartMenuEntry(bool on)
     {
         if (StartMenuFolder is not { } folder || Environment.ProcessPath is not { } exe) return;

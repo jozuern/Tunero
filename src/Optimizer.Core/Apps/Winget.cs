@@ -193,32 +193,50 @@ public static class Winget
     /// id and version. Rows whose id winget shortened (ending in an ellipsis) or that hold anything but id characters are left out, and so
     /// are the notes below the table (empty lines are already gone when the lines come from <see cref="StreamingProcess"/>).
     /// </summary>
-    public static IReadOnlyList<WingetSearchResult> ParseSearch(string output)
+    public static IReadOnlyList<WingetSearchResult> ParseSearch(string output) =>
+        Table(output, 3).Select(c => new WingetSearchResult(c[0], c[1], c[2])).ToList();
+
+    /// <summary>
+    /// Lists the packages winget can update from its community repository: name, id, installed and available version
+    /// (no source column with --source). Reads winget's catalog; installs nothing.
+    /// </summary>
+    public const string UpgradesArguments = "upgrade --source winget --accept-source-agreements --disable-interactivity";
+
+    /// <summary>
+    /// The table winget upgrade prints, read as <see cref="ParseSearch"/> reads search's (name, id, version, available).
+    /// Only the first table: a second one below it lists pinned packages that need explicit targeting.
+    /// </summary>
+    public static IReadOnlyList<WingetUpgrade> ParseUpgrades(string output) =>
+        Table(output, 4).Where(c => c[2].Length > 0 && c[3].Length > 0).Select(c => new WingetUpgrade(c[0], c[1], c[2], c[3])).ToList();
+
+    /// <summary>The cells of each package row of the first table, the first <paramref name="columns"/> columns (see <see cref="ParseSearch"/>).</summary>
+    private static List<string[]> Table(string output, int columns)
     {
         // Progress spinners are written with carriage returns: only the text after the last one is on screen.
         var lines = output.Split('\n').Select(l => l.TrimEnd('\r')).Select(l => l[(l.LastIndexOf('\r') + 1)..]).ToList();
-        var dashes = lines.FindIndex(l => l.Trim() is { Length: >= 10 } t && t.All(c => c == '-'));
+        static bool IsRule(string l) => l.Trim() is { Length: >= 10 } t && t.All(c => c == '-');
+        var dashes = lines.FindIndex(IsRule);
         if (dashes < 1) return [];
         // winget pads its columns by display width: a Chinese or Japanese character takes two cells, so the columns are
         // measured in cells, not characters (a name in CJK would shift every column after it).
         var header = lines[dashes - 1];
         var starts = Enumerable.Range(0, header.Length).Where(i => header[i] != ' ' && (i == 0 || header[i - 1] == ' ')).Select(i => Cells(header, i)).ToList();
-        if (starts.Count < 3) return [];
-        var list = new List<WingetSearchResult>();
+        if (starts.Count < columns) return [];
+        var list = new List<string[]>();
         foreach (var line in lines.Skip(dashes + 1))
         {
-            if (string.IsNullOrWhiteSpace(line)) break;
+            // A second table (winget upgrade lists pinned packages below the first) starts with its own rule.
+            if (string.IsNullOrWhiteSpace(line) || IsRule(line)) break;
             string Cut(int from, int to)
             {
                 var (a, b) = (IndexAtCell(line, from), IndexAtCell(line, to));
                 return a >= line.Length ? "" : line[a..b].Trim();
             }
-            var name = Cut(0, starts[1]);
-            var id = Cut(starts[1], starts[2]);
-            var version = Cut(starts[2], starts.Count > 3 ? starts[3] : int.MaxValue);
+            var cells = Enumerable.Range(0, columns).Select(c => Cut(starts[c], c + 1 < starts.Count ? starts[c + 1] : int.MaxValue)).ToArray();
+            var (name, id) = (cells[0], cells[1]);
             // Ids in the winget repository are Publisher.Package: a line without a dot is a note below the table.
             if (id.Contains('\u2026') || !IsSafeId(id) || !id.Contains('.') || name.Length == 0) continue;
-            list.Add(new WingetSearchResult(name, id, version));
+            list.Add(cells);
         }
         return list;
     }
@@ -269,12 +287,31 @@ public static class Winget
         return found;
     }
 
+    /// <summary>
+    /// Runs winget upgrade (the list only) with the trusted winget: the packages with a newer version in its repository.
+    /// A failed run (the source could not be opened) throws with winget's own last line, as <see cref="SearchAsync"/> does.
+    /// </summary>
+    public static async Task<IReadOnlyList<WingetUpgrade>> ListUpgradesAsync(string winget, CancellationToken ct)
+    {
+        var output = new System.Text.StringBuilder();
+        var code = await StreamingProcess.RunAsync(winget, UpgradesArguments, new SynchronousProgress(l => { lock (output) output.AppendLine(l); }), ct);
+        string text;
+        lock (output) text = output.ToString();
+        var found = ParseUpgrades(text);
+        if (found.Count == 0 && code is not (0 or NoPackagesFound))
+            throw new InvalidOperationException(text.Split('\n').Select(l => l.Trim()).LastOrDefault(l => l.Length > 0) ?? $"winget 0x{code:X8}");
+        return found;
+    }
+
     /// <summary>Reports on the reading thread: the parse after the run must see every line.</summary>
     private sealed class SynchronousProgress(Action<string> report) : IProgress<string>
     {
         public void Report(string value) => report(value);
     }
 }
+
+/// <summary>A package winget can update: its installed and its newest version.</summary>
+public sealed record WingetUpgrade(string Name, string Id, string Version, string Available);
 
 /// <summary>One result of a winget search.</summary>
 public sealed record WingetSearchResult(string Name, string Id, string Version)

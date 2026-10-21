@@ -71,8 +71,13 @@
         </ui:Card>
 
         <StackPanel Grid.Row="2">
-            <ui:ProgressRing IsIndeterminate="True" Width="24" Height="24" HorizontalAlignment="Left" Margin="0,0,0,8"
-                             Visibility="{Binding Startup.IsLoading, Converter={StaticResource BoolToVisibility}}" />
+            <!-- Labeled as on Install & update: the list is read, then the signatures are checked and the rows sorted again -->
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,8" Visibility="{Binding Startup.IsLoading, Converter={StaticResource BoolToVisibility}}">
+                <ui:ProgressRing IsIndeterminate="True" Width="16" Height="16" Margin="0,0,8,0" />
+                <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Startup_Loading}" VerticalAlignment="Center" />
+            </StackPanel>
+            <ui:TextBlock FontTypography="Body" Text="{l:Tr List_NoMatch}" Margin="0,0,0,8"
+                          Visibility="{Binding Startup.NoMatch, Converter={StaticResource BoolToVisibility}}" />
             <!-- Services and tasks also start with Windows, so they are listed here; their own page explains them -->
             <WrapPanel Margin="0,0,0,8" Visibility="{Binding Startup.ShowServicesHint, Converter={StaticResource BoolToVisibility}}">
                 <ui:SymbolIcon Symbol="Info16" FontSize="16" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" Margin="0,0,8,0" VerticalAlignment="Center" />

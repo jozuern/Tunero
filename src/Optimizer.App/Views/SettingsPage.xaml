@@ -43,7 +43,7 @@
                 <ui:CardControl.Header>
                     <StackPanel>
                         <ui:TextBlock FontTypography="Body" Text="{l:Tr StartMenu_Setting}" />
-                        <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr StartMenu_Hint}" Margin="0,4,0,0" />
+                        <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding StartMenuHint}" Margin="0,4,0,0" />
                     </StackPanel>
                 </ui:CardControl.Header>
                 <ui:ToggleSwitch AutomationProperties.Name="{l:Tr StartMenu_Setting}" IsChecked="{Binding StartMenuEntry}" IsEnabled="{Binding CanAddToStartMenu}" />

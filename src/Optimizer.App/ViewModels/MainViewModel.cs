@@ -88,6 +88,7 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
             Rebuild();
             Network.Rebuild();
             OnPropertyChanged(nameof(ReapplyHint));
+            OnPropertyChanged(nameof(StartMenuHint));
             foreach (var page in new PageViewModel[] { Debloat, Cleanup, Storage, Startup, ServicesPage, Apps, Tools, InstallMedia, Health }) page.OnLanguageChanged();
         };
     }

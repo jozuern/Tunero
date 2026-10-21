@@ -296,6 +296,15 @@ The app is removed for all users and new accounts. No Microsoft Store listing is
   <data name="Debloat_Removed" xml:space="preserve">
     <value>{0} was removed.</value>
   </data>
+  <data name="Debloat_RemoveSelected" xml:space="preserve"><value>Remove selected ({0})</value></data>
+  <data name="Debloat_ConfirmSelectedTitle" xml:space="preserve"><value>Remove the selected apps?</value></data>
+  <data name="Debloat_ConfirmSelected" xml:space="preserve"><value>{0}
+
+These apps are removed for all users and new accounts. Apps the Microsoft Store offers can be installed again from there.</value></data>
+  <data name="Debloat_ConfirmSelectedNoStore" xml:space="preserve"><value>No Microsoft Store listing is confirmed for these, so you may not be able to install them again: {0}</value></data>
+  <data name="Debloat_Removing" xml:space="preserve"><value>Removing apps</value></data>
+  <data name="Debloat_RemovedCount" xml:space="preserve"><value>Apps removed: {0}.</value></data>
+  <data name="Debloat_RemovedSome" xml:space="preserve"><value>Apps removed: {0}. Not removed: {1}. The log has the reason.</value></data>
   <data name="Debloat_RemovedTitle" xml:space="preserve">
     <value>Removed apps</value>
   </data>
@@ -397,6 +406,8 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Startup_Summary" xml:space="preserve">
     <value>{0} entries, {1} of them programs from other vendors at sign-in. {2} need attention: not signed or unusual.</value>
   </data>
+  <data name="Startup_SummaryChecking" xml:space="preserve"><value>{0} entries. Checking signatures before counting what comes from other vendors and what needs attention.</value></data>
+  <data name="Startup_Loading" xml:space="preserve"><value>Reading the entries and checking their signatures. The list sorts itself again when that is done.</value></data>
   <data name="Startup_NoPublisher" xml:space="preserve">
     <value>No publisher</value>
   </data>
@@ -445,6 +456,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Svc_Search" xml:space="preserve">
     <value>Search services</value>
   </data>
+  <data name="Svc_Loading" xml:space="preserve"><value>Reading the services and scheduled tasks and checking their signatures.</value></data>
   <data name="Svc_ShowWindows" xml:space="preserve">
     <value>Show all Windows services</value>
   </data>
@@ -1167,6 +1179,8 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Update_PackageManual" xml:space="preserve"><value>{0} could not be started from Tunero. Close Tunero and run {1} in a terminal.</value></data>
   <data name="StartMenu_Setting" xml:space="preserve"><value>Start menu entry</value></data>
   <data name="StartMenu_Hint" xml:space="preserve"><value>Windows Search finds Tunero only through an entry in the Start menu. The entry starts this exe where it is now.</value></data>
+  <data name="StartMenu_Scoop" xml:space="preserve"><value>Scoop adds its own entry under Scoop Apps and removes it with Tunero, so Tunero adds none.</value></data>
+  <data name="StartMenu_NotHere" xml:space="preserve"><value>Only the published Tunero.exe gets an entry. This copy runs from a build folder.</value></data>
   <data name="StartMenu_AskTitle" xml:space="preserve"><value>Add Tunero to the Start menu?</value></data>
   <data name="StartMenu_AskText" xml:space="preserve"><value>With an entry in the Start menu, Windows Search finds Tunero. The entry starts this exe where it is now. You can remove it any time in Settings.</value></data>
   <data name="StartMenu_Add" xml:space="preserve"><value>Add to Start menu</value></data>
@@ -1248,6 +1262,13 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Programs_Hint" xml:space="preserve"><value>Desktop programs from the Windows uninstall list. Uninstall runs the program's own uninstaller with its window. Tick several to uninstall them one after the other, quietly where the program offers it, and to see what they left behind. Before the first uninstall in a session the app creates a restore point when System Protection is on.</value></data>
   <data name="Programs_Search" xml:space="preserve"><value>Search programs</value></data>
   <data name="Programs_Count" xml:space="preserve"><value>{0} programs</value></data>
+  <data name="Programs_Sort" xml:space="preserve"><value>Sort programs</value></data>
+  <data name="Programs_SortName" xml:space="preserve"><value>By name</value></data>
+  <data name="Programs_SortSize" xml:space="preserve"><value>Largest first</value></data>
+  <data name="Programs_SortDate" xml:space="preserve"><value>Newest first</value></data>
+  <data name="List_NoMatch" xml:space="preserve"><value>Nothing matches the search or the filters.</value></data>
+  <data name="Task_Search" xml:space="preserve"><value>Search tasks</value></data>
+  <data name="Programs_CountFiltered" xml:space="preserve"><value>{0} of {1} programs</value></data>
   <data name="Programs_Uninstall" xml:space="preserve"><value>Uninstall</value></data>
   <data name="Programs_ConfirmTitle" xml:space="preserve"><value>Uninstall program?</value></data>
   <data name="Programs_ConfirmText" xml:space="preserve"><value>Starts the uninstaller of {0}. Follow its window; it decides what is removed, including your settings for this program.</value></data>
@@ -1562,6 +1583,13 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Apps_Updating" xml:space="preserve"><value>Updating</value></data>
   <data name="Apps_UpToDate" xml:space="preserve"><value>Up to date</value></data>
   <data name="Apps_Updated" xml:space="preserve"><value>Updated</value></data>
+  <data name="Apps_CheckUpdates" xml:space="preserve"><value>Check for updates</value></data>
+  <data name="Apps_CheckUpdatesHint" xml:space="preserve"><value>winget reads its catalog from Microsoft and compares it with what is installed. Nothing is installed.</value></data>
+  <data name="Apps_CheckingUpdates" xml:space="preserve"><value>winget is checking for updates</value></data>
+  <data name="Apps_CheckUpdatesFailed" xml:space="preserve"><value>The check for updates failed: {0}</value></data>
+  <data name="Apps_NoUpdates" xml:space="preserve"><value>winget has no updates for the installed apps.</value></data>
+  <data name="Apps_UpdatesFound" xml:space="preserve"><value>Updates available: {0}, of them in this list: {1}. Update all apps installs all of them.</value></data>
+  <data name="Apps_UpdateAvailable" xml:space="preserve"><value>Update: {0} to {1}</value></data>
   <!-- 4a -->
   <data name="Cli_NotElevated" xml:space="preserve"><value>Tunero needs administrator rights to change or undo anything.</value></data>
   <data name="Cli_Busy" xml:space="preserve"><value>Another Tunero window or command line run was changing this PC for 5 minutes, so nothing was changed. Run the command again when it has finished.</value></data>

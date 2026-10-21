@@ -25,8 +25,19 @@
                         <!-- Update all at the top, not after the last of about thirty apps -->
                         <DockPanel Margin="0,0,0,8">
                             <ui:Button DockPanel.Dock="Right" Content="{l:Tr Apps_UpdateAll}" Icon="{ui:SymbolIcon ArrowDownload20}" Command="{Binding Apps.UpdateAllCommand}"
-                                       IsEnabled="{Binding Apps.IsUpdatingAll, Converter={StaticResource InverseBool}}" VerticalAlignment="Top" Margin="16,0,0,0" />
-                            <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Apps_TabAppsHint}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                       IsEnabled="{Binding Apps.IsUpdatingAll, Converter={StaticResource InverseBool}}" VerticalAlignment="Top" Margin="8,0,0,0" />
+                            <!-- Which apps have an update: winget compares its catalog with what is installed (started here, installs nothing) -->
+                            <ui:Button DockPanel.Dock="Right" Content="{l:Tr Apps_CheckUpdates}" Icon="{ui:SymbolIcon ArrowSync20}" Command="{Binding Apps.CheckUpdatesCommand}"
+                                       IsEnabled="{Binding Apps.IsCheckingUpdates, Converter={StaticResource InverseBool}}" VerticalAlignment="Top" Margin="16,0,0,0"
+                                       ToolTip="{l:Tr Apps_CheckUpdatesHint}" Visibility="{Binding Apps.WingetMissing, Converter={StaticResource InverseBoolToVisibility}}" />
+                            <StackPanel VerticalAlignment="Center">
+                                <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Apps_TabAppsHint}" TextWrapping="Wrap" />
+                                <StackPanel Orientation="Horizontal" Margin="0,4,0,0" Visibility="{Binding Apps.UpdatesText, Converter={StaticResource NullToVisibility}}">
+                                    <ui:ProgressRing IsIndeterminate="True" Width="16" Height="16" Margin="0,0,8,0"
+                                                     Visibility="{Binding Apps.IsCheckingUpdates, Converter={StaticResource BoolToVisibility}}" />
+                                    <ui:TextBlock FontTypography="Body" Text="{Binding Apps.UpdatesText}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </StackPanel>
                         </DockPanel>
                         <ui:InfoBar Title="" Message="{l:Tr Apps_NoWinget}" Severity="Warning" IsClosable="False" IsOpen="{Binding Apps.WingetMissing}" Margin="0,0,0,8" />
                         <ui:Button Content="{l:Tr Apps_GetAppInstaller}" Icon="{ui:SymbolIcon Open20}" Margin="0,0,0,8"

@@ -127,6 +127,16 @@ public sealed partial class ServicesViewModel(IPageHost owner, AppServices servi
     [ObservableProperty] private bool _showWindowsServices;
     [ObservableProperty] private bool _showMicrosoftTasks;
 
+    /// <summary>Scheduled tasks tab: words in the task's path or command.</summary>
+    [ObservableProperty] private string _taskSearch = "";
+
+    /// <summary>The services or tasks were read but the search and filters leave none: the page says so.</summary>
+    public bool RowsNoMatch => _all.Count > 0 && Rows.Count == 0;
+
+    public bool TasksNoMatch => _taskList.Count > 0 && Tasks.Count == 0;
+
+    partial void OnTaskSearchChanged(string value) => FillTasks();
+
     partial void OnSearchChanged(string value) => Filter();
     partial void OnShowWindowsServicesChanged(bool value) => Filter();
     // The task list is kept: switching the filter shows or hides rows without reading every service and task again.
@@ -173,8 +183,11 @@ public sealed partial class ServicesViewModel(IPageHost owner, AppServices servi
     {
         var lang = Lang;
         var showMs = ShowMicrosoftTasks;
+        var q = TaskSearch.Trim();
         Tasks.Clear();
-        foreach (var t in _taskList.Where(t => showMs || !t.Path.StartsWith(@"\Microsoft\", StringComparison.OrdinalIgnoreCase)).OrderBy(t => t.Path, StringComparer.OrdinalIgnoreCase))
+        foreach (var t in _taskList.Where(t => (showMs || !t.Path.StartsWith(@"\Microsoft\", StringComparison.OrdinalIgnoreCase))
+                                               && (q.Length == 0 || t.Path.Contains(q, StringComparison.OrdinalIgnoreCase) || t.Command?.Contains(q, StringComparison.OrdinalIgnoreCase) == true))
+                     .OrderBy(t => t.Path, StringComparer.OrdinalIgnoreCase))
         {
             // Full command with arguments: rundll32 resolves to its DLL, and script hosts are judged by what they run.
             var command = t.Command is null ? null : $"\"{t.Command}\" {t.Arguments}".Trim();
@@ -185,6 +198,7 @@ public sealed partial class ServicesViewModel(IPageHost owner, AppServices servi
             };
             Tasks.Add(new StartupRow(entry, lang, services, runner));
         }
+        OnPropertyChanged(nameof(TasksNoMatch));
     }
 
     private void Filter()
@@ -194,6 +208,7 @@ public sealed partial class ServicesViewModel(IPageHost owner, AppServices servi
         foreach (var r in _all.Where(r => (ShowWindowsServices || r.Row.Edit != ServiceEdit.ReadOnly)
                                           && (q.Length == 0 || r.DisplayName.Contains(q, StringComparison.CurrentCultureIgnoreCase) || r.Name.Contains(q, StringComparison.OrdinalIgnoreCase))))
             Rows.Add(r);
+        OnPropertyChanged(nameof(RowsNoMatch));
     }
 
     public async Task<bool> ChangeStartAsync(ServiceRowVm row, ServiceStart start)
