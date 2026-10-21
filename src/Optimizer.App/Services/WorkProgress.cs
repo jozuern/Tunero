@@ -33,15 +33,23 @@ public sealed partial class WorkProgress : ObservableObject
     /// </summary>
     [ObservableProperty] private bool _isIndeterminate;
     [ObservableProperty] private bool _canStop;
+    /// <summary>
+    /// How long the run can take, when that is minutes (SFC, DISM, Update all): the banner says it under the bar, so a bar
+    /// that moves for minutes does not look stuck. Null for work that is done in seconds.
+    /// </summary>
+    [ObservableProperty] private string? _durationText;
     [ObservableProperty] private bool _stopping;
 
     /// <summary>A run is going on (shown or still within <see cref="ShowDelay"/>).</summary>
     public bool IsActive => _scopes.Count > 0;
 
     /// <param name="stop">Cancelled by the Stop button; null when the work cannot stop half-way.</param>
-    public Scope Begin(string title, CancellationTokenSource? stop = null)
+    /// <param name="slow">The work can take several minutes: the banner says so.</param>
+    /// <param name="duration">Instead of "several minutes", a wording that fits better (<see cref="Durations"/>):
+    /// DISM's wait for Windows Update, or the install media's half hour. <see cref="Scope.Duration"/> changes it later.</param>
+    public Scope Begin(string title, CancellationTokenSource? stop = null, bool slow = false, string? duration = null)
     {
-        var scope = new Scope(this, title, stop);
+        var scope = new Scope(this, title, stop) { Duration = duration ?? (slow ? Durations.Minutes : null) };
         _scopes.Add(scope);
         Show(scope);
         if (_scopes.Count == 1)
@@ -81,6 +89,7 @@ public sealed partial class WorkProgress : ObservableObject
         _timer = null;
         IsShown = false;
         IsIndeterminate = false;
+        DurationText = null;
     }
 
     private void Show(Scope s)
@@ -92,6 +101,7 @@ public sealed partial class WorkProgress : ObservableObject
         IsIndeterminate = s.Percent is null;
         Value = s.Percent ?? 0;
         CanStop = s.Stop is not null && !Stopping;
+        DurationText = s.Duration;
     }
 
     private void Changed(Scope s)
@@ -108,6 +118,18 @@ public sealed partial class WorkProgress : ObservableObject
         internal int Total { get; private set; }
         internal string? Detail { get; private set; }
         internal double? Percent { get; private set; }
+
+        /// <summary>How long the work, or the step of a batch that runs now, can take; null when it is done in seconds.</summary>
+        public string? Duration
+        {
+            get;
+            set
+            {
+                if (field == value) return;
+                field = value;
+                owner.Changed(this);
+            }
+        }
 
         /// <summary>Item <paramref name="done"/> + 1 of <paramref name="total"/> starts; the bar shows what is done.</summary>
         public void Step(int done, int total, string? item)

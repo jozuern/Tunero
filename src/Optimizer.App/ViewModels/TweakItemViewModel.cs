@@ -79,6 +79,7 @@ public sealed class TweakItemViewModel : InspectorItem
         if (t.Impact.Basis == "disputed") badges.Add(new(labels.Get(lang, "badge.disputed"), false, Loc.Instance["Badge_TipDisputed"]));
         if (t.Restart) badges.Add(new(labels.Get(lang, "badge.restart"), false, Loc.Instance["Badge_TipRestart"]));
         if (t.SignOut) badges.Add(new(labels.Get(lang, "badge.signOut"), false, Loc.Instance["Badge_TipSignOut"]));
+        if (t.TakesMinutes) badges.Add(new(labels.Get(lang, "badge.takesMinutes"), false, Loc.Instance["Badge_TipMinutes"]));
         Badges = badges;
         BadgesText = string.Join(", ", badges.Select(b => b.Text));
         IsRecommended = profiled?.Recommended ?? status.Recommended;

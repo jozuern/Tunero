@@ -32,6 +32,8 @@
                                        ToolTip="{l:Tr Apps_CheckUpdatesHint}" Visibility="{Binding Apps.WingetMissing, Converter={StaticResource InverseBoolToVisibility}}" />
                             <StackPanel VerticalAlignment="Center">
                                 <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Apps_TabAppsHint}" TextWrapping="Wrap" />
+                                <!-- Update all runs every package manager in turn, each downloading and installing -->
+                                <ContentControl Style="{StaticResource DurationHint}" Margin="0,8,0,0" />
                                 <StackPanel Orientation="Horizontal" Margin="0,4,0,0" Visibility="{Binding Apps.UpdatesText, Converter={StaticResource NullToVisibility}}">
                                     <ui:ProgressRing IsIndeterminate="True" Width="16" Height="16" Margin="0,0,8,0"
                                                      Visibility="{Binding Apps.IsCheckingUpdates, Converter={StaticResource BoolToVisibility}}" />

@@ -144,6 +144,28 @@
                 <Setter Property="TextWrapping" Value="Wrap" />
             </Style>
 
+            <!-- Work that can take several minutes (SFC, DISM, Windows features, Update all): a clock and a caption next to
+                 the button or card that starts it and in the progress banner, one wording everywhere. Content replaces the
+                 text where a measurement supports a longer time (the install media). -->
+            <Style x:Key="DurationHint" TargetType="ContentControl">
+                <Setter Property="Focusable" Value="False" />
+                <Setter Property="IsTabStop" Value="False" />
+                <Setter Property="HorizontalAlignment" Value="Left" />
+                <Setter Property="Content" Value="{s:Tr Hint_TakesMinutes}" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ContentControl">
+                            <DockPanel>
+                                <ui:SymbolIcon DockPanel.Dock="Left" Symbol="Clock16" FontSize="14" Margin="0,0,4,0" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" VerticalAlignment="Center"
+                                              Text="{Binding Content, RelativeSource={RelativeSource TemplatedParent}}" />
+                            </DockPanel>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
             <Style x:Key="Mono" TargetType="TextBlock">
                 <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
                 <Setter Property="FontSize" Value="12" />

@@ -119,6 +119,10 @@ public sealed class TweakDefinition
     [JsonIgnore]
     public bool IsBootCritical => BootCritical || Actions.Any(a => a.IsBootCritical);
 
+    /// <summary>One of its actions can take several minutes (<see cref="TweakAction.TakesMinutes"/>), so new tweaks of that kind get the tag too.</summary>
+    [JsonIgnore]
+    public bool TakesMinutes => Actions.Any(a => a.TakesMinutes);
+
     /// <summary>
     /// May be part of "Apply recommended": Safe or Moderate, fully reversible, not boot-critical, no anti-cheat
     /// sensitivity, not a preview. Expert items are never included.

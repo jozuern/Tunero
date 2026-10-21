@@ -744,7 +744,7 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
                 var results = await PackageRuns.RunAllAsync(plan, progress);
                 lines.AddRange(results);
                 ManagerOutput = string.Join("\n", lines);
-            });
+            }, slow: true);
         }
         finally
         {

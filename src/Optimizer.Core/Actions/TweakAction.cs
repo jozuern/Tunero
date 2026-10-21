@@ -160,6 +160,13 @@ public abstract class TweakAction
     /// </summary>
     public virtual bool TakesEffectAfterRestart => false;
 
+    /// <summary>
+    /// Applying or undoing it can take several minutes, longer while Windows installs updates: DISM installing or removing
+    /// a Windows feature, or any DISM call while Windows' own servicing (TiWorker) runs, which DISM waits for. The tweak
+    /// gets a tag, its confirmation says so and the progress banner too (<see cref="Tweaks.TweakDefinition.TakesMinutes"/>).
+    /// </summary>
+    public virtual bool TakesMinutes => false;
+
     /// <summary>Whether the scan reads this action's state ahead of the tweak detection (<see cref="Tweaks.TweakEngine.PrefetchReads"/>).</summary>
     public virtual EarlyRead EarlyRead => EarlyRead.None;
 

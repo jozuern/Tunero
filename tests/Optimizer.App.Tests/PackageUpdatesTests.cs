@@ -135,6 +135,8 @@ public sealed class PackageUpdatesTests
         Assert.StartsWith(Loc.Instance.Format("Apps_UpdateAllRuns", "winget, Chocolatey, Scoop, Microsoft Store"), all);
         foreach (var key in new[] { "Apps_UpdateAllWinget", "Apps_UpdateAllChoco", "Apps_UpdateAllScoop", "Apps_UpdateAllStore", "Apps_UpdateAllRestart" })
             Assert.Contains(Loc.Instance[key], all);
+        // Several package managers in turn: the question says it can take minutes, as the card and the banner do.
+        Assert.Contains(Loc.Instance["Hint_TakesMinutesSentence"], all);
 
         // winget's sentence says what runs: the whole PC and the user's window, the whole PC alone, or the user's window alone.
         Assert.DoesNotContain(Loc.Instance["Apps_UpdateAllWingetMachine"], all);

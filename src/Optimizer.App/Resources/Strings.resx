@@ -381,10 +381,10 @@ The files are deleted permanently. Files in use are skipped.</value>
     <value>Superseded Windows components</value>
   </data>
   <data name="Cleanup_ComponentHint" xml:space="preserve">
-    <value>Removes old versions of updated Windows components (DISM StartComponentCleanup). Takes several minutes. Afterwards, installed updates can no longer be uninstalled.</value>
+    <value>Removes old versions of updated Windows components (DISM StartComponentCleanup). Afterwards, installed updates can no longer be uninstalled.</value>
   </data>
   <data name="Cleanup_ComponentText" xml:space="preserve">
-    <value>Windows removes old component versions. Updates installed so far can no longer be uninstalled afterwards. This can take several minutes.</value>
+    <value>Windows removes old component versions. Updates installed so far can no longer be uninstalled afterwards.</value>
   </data>
   <data name="Cleanup_DoTitle" xml:space="preserve">
     <value>Delivery Optimization cache</value>
@@ -396,7 +396,7 @@ The files are deleted permanently. Files in use are skipped.</value>
     <value>Run</value>
   </data>
   <data name="Tools_Running" xml:space="preserve">
-    <value>Running. This can take a while.</value>
+    <value>Running.</value>
   </data>
   <data name="Tools_Done" xml:space="preserve">
     <value>Done.</value>
@@ -1240,7 +1240,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Quick_PerfCountersHint" xml:space="preserve"><value>Restores the performance counter settings from the system files (lodctr /r). Helps when Task Manager, the sensors or benchmarks show no data.</value></data>
   <data name="Quick_PerfCountersDone" xml:space="preserve"><value>Performance counters rebuilt.</value></data>
   <data name="Quick_DiskScan" xml:space="preserve"><value>Check the system drive</value></data>
-  <data name="Quick_DiskScanHint" xml:space="preserve"><value>Scans the system drive for file system errors while Windows keeps running (chkdsk /scan). Can take several minutes.</value></data>
+  <data name="Quick_DiskScanHint" xml:space="preserve"><value>Scans the system drive for file system errors while Windows keeps running (chkdsk /scan).</value></data>
   <data name="Quick_DiskScanDone" xml:space="preserve"><value>Drive check finished. chkdsk reports:</value></data>
   <data name="Quick_RecoveryEnable" xml:space="preserve"><value>Turn on the recovery environment</value></data>
   <data name="Quick_RecoveryEnableHint" xml:space="preserve"><value>Turns on the Windows Recovery Environment (reagentc /enable), which Windows needs for startup repair and resetting the PC.</value></data>
@@ -1708,6 +1708,12 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Work_Sfc" xml:space="preserve"><value>Checking system files (SFC)</value></data>
   <data name="Work_DismScan" xml:space="preserve"><value>Checking the Windows image (DISM)</value></data>
   <data name="Work_DismRestore" xml:space="preserve"><value>Repairing the Windows image (DISM)</value></data>
+  <data name="Hint_TakesMinutes" xml:space="preserve"><value>Can take several minutes</value><comment>Next to a clock icon at work that runs long (SFC, DISM, Windows features, Update all), in the progress banner, and as a sentence in confirmations</comment></data>
+  <data name="Hint_TakesMinutesServicing" xml:space="preserve"><value>Can take several minutes, longer while Windows is installing updates</value><comment>DISM and SFC: they wait for Windows' own update servicing (TiWorker); in the test VM DISM ScanHealth waited over 25 minutes for it</comment></data>
+  <data name="Hint_TakesMinutesServicingSentence" xml:space="preserve"><value>This can take several minutes, longer while Windows is installing updates.</value></data>
+  <data name="Hint_TakesMinutesSentence" xml:space="preserve"><value>This can take several minutes.</value><comment>Last sentence of the question before such work (component store cleanup, Update all)</comment></data>
+  <data name="Hint_TakesHalfHour" xml:space="preserve"><value>Can take half an hour or longer</value><comment>Install media build: in the test VM the download alone took 21 minutes and unpacking the image 12</comment></data>
+  <data name="Badge_TipMinutes" xml:space="preserve"><value>Turning it on or off can take several minutes, longer while Windows is installing updates. The banner at the top shows that it still runs.</value></data>
   <data name="Result_BatchStopped" xml:space="preserve"><value>Stopped. {0} applied, {1} failed, {2} skipped, {3} not started.</value></data>
   <data name="Setup_Title" xml:space="preserve"><value>Set up Tunero</value></data>
   <data name="Setup_Location" xml:space="preserve"><value>Tunero runs from {0} right now.</value></data>

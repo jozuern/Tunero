@@ -17,6 +17,9 @@ public sealed partial class OptionalCapabilityAction : TweakAction
     public override TargetText TargetLabel(ActionContext c) => TargetText.Of("target.capability", Capability);
     public override StoredValue Desired(ActionContext c) => new(true, "feature", Installed ? "Enabled" : "Disabled");
 
+    /// <summary>Adding downloads the capability from Windows Update, and DISM services the image either way (30 minutes allowed below).</summary>
+    public override bool TakesMinutes => true;
+
     public override StoredValue? Read(ActionContext c) => ReadState(c.Processes, Capability) is { } s ? new StoredValue(true, "feature", s) : null;
 
     public override void Apply(ActionContext c) => Set(c.Processes, Capability, Installed);

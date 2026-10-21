@@ -1186,7 +1186,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
                     ticking.Cancel();
                     await ticker;
                 }
-            }, stop);
+            }, stop, duration: Durations.HalfHour);
         }
         finally
         {

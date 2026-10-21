@@ -77,6 +77,9 @@
                     <StackPanel>
                         <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Cleanup_ComponentTitle}" />
                         <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Cleanup_ComponentHint}" Margin="0,4,0,0" />
+                        <!-- Microsoft gives its own StartComponentCleanup task an hour before it stops
+                             (learn.microsoft.com/windows-hardware/manufacture/desktop/clean-up-the-winsxs-folder) -->
+                        <ContentControl Style="{StaticResource DurationHint}" Content="{l:Tr Hint_TakesMinutesServicing}" Margin="0,8,0,0" />
                     </StackPanel>
                 </ui:CardControl.Header>
                 <ui:Button Content="{l:Tr Cleanup_RunClean}" MinWidth="96" Command="{Binding Cleanup.ComponentCleanupCommand}" IsEnabled="{Binding Cleanup.IsWorking, Converter={StaticResource InverseBool}}" />

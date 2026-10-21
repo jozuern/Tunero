@@ -158,12 +158,14 @@ public sealed class ChangeRunner(AppServices services, IDialogs dialogs, Func<Fa
 
     /// <summary>
     /// The same with the banner titled <paramref name="title"/>; <paramref name="work"/> reports its steps to the scope.
-    /// <paramref name="stop"/> adds Stop to the banner (only for work that can end between two safe points).
+    /// <paramref name="stop"/> adds Stop to the banner (only for work that can end between two safe points);
+    /// <paramref name="slow"/> has the banner say that it can take several minutes.
     /// </summary>
-    public Task<bool> RunExclusiveAsync(string what, string title, Func<WorkProgress.Scope, Task> work, CancellationTokenSource? stop = null) =>
+    public Task<bool> RunExclusiveAsync(string what, string title, Func<WorkProgress.Scope, Task> work, CancellationTokenSource? stop = null, bool slow = false,
+        string? duration = null) =>
         ExclusiveAsync(what, async () =>
         {
-            using var scope = Work.Begin(title, stop);
+            using var scope = Work.Begin(title, stop, slow, duration);
             await work(scope);
             return true;
         }, false);
@@ -185,7 +187,7 @@ public sealed class ChangeRunner(AppServices services, IDialogs dialogs, Func<Fa
         var confirm = dialogs.ConfirmApply(request);
         if (confirm is null) return false;
 
-        using var work = Work.Begin(Loc.Instance["Work_ApplyOne"]);
+        using var work = Work.Begin(Loc.Instance["Work_ApplyOne"], duration: Durations.For(t));
         work.Indeterminate(request.Title);
         var options = new ApplyOptions { ExpertMode = expertMode(), AcknowledgeAntiCheat = confirm.AcknowledgedAntiCheat, RestorePointStarting = RestorePointNote(work) };
         if (await Session.ApplyAsync(t, currentFacts, options, dialogs.AskRestorePoint) is not { } result) return false;
@@ -204,6 +206,7 @@ public sealed class ChangeRunner(AppServices services, IDialogs dialogs, Func<Fa
         var badges = new List<string> { labels.Get(lang, $"risk.{t.EffectiveRisk}"), labels.Get(lang, $"reversibility.{t.Reversibility}") };
         if (t.Restart) badges.Add(labels.Get(lang, "badge.restart"));
         if (t.SignOut) badges.Add(labels.Get(lang, "badge.signOut"));
+        if (t.TakesMinutes) badges.Add(labels.Get(lang, "badge.takesMinutes"));
         if (t.Preview) badges.Insert(0, labels.Get(lang, "badge.preview"));
         if (t.Undocumented) badges.Add(labels.Get(lang, "badge.undocumented"));
         var warnings = new List<string>();
@@ -213,7 +216,7 @@ public sealed class ChangeRunner(AppServices services, IDialogs dialogs, Func<Fa
         var blocks = status.Blocks.Where(b => b.ReasonKey is not ("block.antiCheat" or "block.expertMode")).Select(b => BlockText(b, lang)).ToList();
         if (t.EffectiveRisk == Risk.Expert && !expert) blocks.Add(labels.Get(lang, "block.expertMode"));
         var antiCheat = status.Blocks.FirstOrDefault(b => b.ReasonKey == "block.antiCheat") is { } ac ? labels.Get(lang, ac.ReasonKey) + ac.Detail : null;
-        return new ConfirmRequest(title, summary, preview, badges, warnings, antiCheat, false) { Blocks = blocks };
+        return new ConfirmRequest(title, summary, preview, badges, warnings, antiCheat, false) { Blocks = blocks, Duration = Durations.For(t) };
     }
 
     /// <summary>Confirms and undoes one tweak from its backup.</summary>
@@ -241,8 +244,9 @@ public sealed class ChangeRunner(AppServices services, IDialogs dialogs, Func<Fa
         var lines = backup.Entries.Select(e => new ChangeLine(e.Description, e.Applied?.Display ?? "?", e.Original.Display, e.Label)).ToList();
         var warnings = t.IsBootCritical ? new List<string> { Labels.Current.Get(lang, "undo.bootCritical") } : [];
         var title = Title(t);
-        if (dialogs.ConfirmApply(new ConfirmRequest(title, Labels.Current.Get(lang, "undo.reversible"), lines, [], warnings, null, true)) is null) return false;
-        using var work = Work.Begin(Loc.Instance["Work_UndoOne"]);
+        if (dialogs.ConfirmApply(new ConfirmRequest(title, Labels.Current.Get(lang, "undo.reversible"), lines, [], warnings, null, true) { Duration = Durations.For(t) }) is null)
+            return false;
+        using var work = Work.Begin(Loc.Instance["Work_UndoOne"], duration: Durations.For(t));
         work.Indeterminate(title);
         try
         {
@@ -279,7 +283,11 @@ public sealed class ChangeRunner(AppServices services, IDialogs dialogs, Func<Fa
         using var work = Work.Begin(Loc.Instance["Work_UndoAll"]);
         try
         {
-            var outcome = await Session.UndoAllAsync(new Progress<BatchStep>(s => work.Step(s.Done, s.Total, s.Tweak is { } t ? Title(t) : null)));
+            var outcome = await Session.UndoAllAsync(new Progress<BatchStep>(s =>
+            {
+                work.Duration = s.Tweak is { } slow ? Durations.For(slow) : null;
+                work.Step(s.Done, s.Total, s.Tweak is { } t ? Title(t) : null);
+            }));
             if (outcome.Failed == 0) Report(Loc.Instance.Format("Result_UndoAll", outcome.Results.Count), InfoBarSeverity.Success);
             else Report((Loc.Instance.Format("Result_UndoAllIncomplete", outcome.Undone, outcome.Failed) + " " + incompleteNote).TrimEnd(), InfoBarSeverity.Error);
             return outcome.Failed == 0;
@@ -319,7 +327,8 @@ public sealed class ChangeRunner(AppServices services, IDialogs dialogs, Func<Fa
             new ChangeLine($"{Title(x.Tweak)}\n{e.Description}", e.Applied?.Display ?? "?", e.Original.Display, e.Label))).ToList();
         var warnings = backups.Any(x => x.Tweak.IsBootCritical) ? new List<string> { Labels.Current.Get(lang, "undo.bootCritical") } : [];
         var badges = new List<string> { Loc.Instance.Format("Rec_Count", backups.Count) };
-        if (dialogs.ConfirmApply(new ConfirmRequest(Loc.Instance["Tweaks_PickedUndoTitle"], Labels.Current.Get(lang, "undo.reversible"), lines, badges, warnings, null, true)) is null)
+        if (dialogs.ConfirmApply(new ConfirmRequest(Loc.Instance["Tweaks_PickedUndoTitle"], Labels.Current.Get(lang, "undo.reversible"), lines, badges, warnings, null, true)
+                { Duration = Durations.For(backups.Select(x => x.Tweak)) }) is null)
             return [];
 
         using var work = Work.Begin(Loc.Instance["Work_UndoPicked"]);
@@ -329,6 +338,7 @@ public sealed class ChangeRunner(AppServices services, IDialogs dialogs, Func<Fa
             for (var i = 0; i < backups.Count; i++)
             {
                 var t = backups[i].Tweak;
+                work.Duration = Durations.For(t);
                 work.Step(i, backups.Count, Title(t));
                 var result = await Session.UndoAsync(t);
                 if (result.Success) undone++;
@@ -358,7 +368,9 @@ public sealed class ChangeRunner(AppServices services, IDialogs dialogs, Func<Fa
         var preview = await Task.Run(() => tweaks.SelectMany(t => services.Engine.Preview(t).Select(c => c with { Target = $"{Title(t)}\n{c.Target}" })).ToList());
         var badges = new List<string> { Loc.Instance.Format("Rec_Count", tweaks.Count) };
         if (tweaks.Any(t => t.Restart)) badges.Add(Labels.Current.Get(lang, "badge.restart"));
-        if (dialogs.ConfirmApply(new ConfirmRequest(title, summary, preview, badges, [], null, false)) is null) return [];
+        var duration = Durations.For(tweaks);
+        if (duration is not null) badges.Add(Labels.Current.Get(lang, "badge.takesMinutes"));
+        if (dialogs.ConfirmApply(new ConfirmRequest(title, summary, preview, badges, [], null, false) { Duration = duration }) is null) return [];
 
         // Stop ends the batch after the change that runs: every change is applied whole or not at all.
         using var stop = new CancellationTokenSource();
@@ -366,7 +378,11 @@ public sealed class ChangeRunner(AppServices services, IDialogs dialogs, Func<Fa
         var steps = new Progress<BatchStep>(s =>
         {
             if (s.RestorePoint) work.Indeterminate(Loc.Instance["Work_RestorePoint"]);
-            else work.Step(s.Done, s.Total, s.Tweak is { } t ? Title(t) : null);
+            else
+            {
+                work.Duration = s.Tweak is { } slow ? Durations.For(slow) : null;
+                work.Step(s.Done, s.Total, s.Tweak is { } t ? Title(t) : null);
+            }
         });
         var outcome = await Session.ApplyBatchAsync(tweaks, facts(), new ApplyOptions { ExpertMode = expertMode() }, dialogs.AskRestorePoint,
             steps, stop.Token);

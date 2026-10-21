@@ -333,8 +333,11 @@ public partial class App : Application
             else
                 foreach (var row in vm.Tweaks.Where(t => pick.Split(',').Contains(t.Tweak.Id))) row.IsPicked = true;
         }
-        // Developer aid: the progress banner as a batch shows it (third of twelve changes, with Stop); nothing runs.
-        if (args.Has("--work-demo") && vm.Tweaks.FirstOrDefault() is { } demo)
+        // Developer aid: the progress banner as a batch shows it (third of twelve changes, with Stop); nothing runs. With
+        // "slow": as SFC shows it, with a percentage, Stop and the note that it can take several minutes.
+        if (args.Value("--work-demo") == "slow")
+            vm.Runner.Work.Begin(Loc.Instance["Work_Sfc"], new CancellationTokenSource(), duration: Durations.Servicing).Report(42, null);
+        else if (args.Has("--work-demo") && vm.Tweaks.FirstOrDefault() is { } demo)
             vm.Runner.Work.Begin(Loc.Instance["Work_Apply"], new CancellationTokenSource()).Step(2, 12, vm.Runner.Title(demo.Tweak));
         // Developer aid: the Storage page with a folder analyzed (read only), on the tab --storage-tab names (0 to 3).
         if (args.Value("--storage-scan") is { } storageFolder)
@@ -441,7 +444,7 @@ public partial class App : Application
         }
 
         // Developer aid: render the confirmation dialog of a tweak without applying anything.
-        if (args.Value("--confirm") is { } confirmId && services.Catalog.Get(confirmId) is { } ct && args.Value("--confirm-shot") is { } confirmShot)
+        if (args.Value("--confirm") is { } confirmId && (services.Catalog.Get(confirmId) ?? FeatureTweak(confirmId)) is { } ct && args.Value("--confirm-shot") is { } confirmShot)
         {
             var request = ChangeRunner.ConfirmRequestFor(ct, services.Engine.Detect(ct, vm.Facts), vm.ExpertMode,
                 vm.Runner.Title(ct), vm.Runner.Summary(ct), services.Engine.Preview(ct));
@@ -800,6 +803,16 @@ public partial class App : Application
             Environment.Exit(exitCode);
         }) { IsBackground = true, Name = "developer run end" }.Start();
     }
+
+    /// <summary>
+    /// --confirm with the id of a Windows feature switch (Tools > Windows features), such as feature.on.tftp or
+    /// capability.off.media.windowsmediaplayer: those tweaks are built when the switch is used, not read from the catalog.
+    /// </summary>
+    private static Optimizer.Core.Tweaks.TweakDefinition? FeatureTweak(string id) =>
+        CatalogData.Current.Features.Features
+            .SelectMany(f => new[] { true, false }.Select(on => f.Capability
+                ? Optimizer.Core.Tools.OptionalCapabilityAction.Tweak(f, on) : Optimizer.Core.Tools.OptionalFeatureAction.Tweak(f, on)))
+            .FirstOrDefault(t => string.Equals(t.Id, id, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
     /// Developer runs (--screenshot, --perf) render from the visual tree, not from the screen: the window opens below the

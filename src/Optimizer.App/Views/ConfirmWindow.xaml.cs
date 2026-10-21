@@ -42,6 +42,8 @@ public partial class ConfirmWindow : FluentWindow
         SummaryText.Visibility = string.IsNullOrWhiteSpace(request.Summary) ? Visibility.Collapsed : Visibility.Visible;
         BadgeList.ItemsSource = request.Badges;
         BadgeList.Visibility = request.Badges.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+        DurationNote.Content = request.Duration;
+        DurationNote.Visibility = request.Duration is null ? Visibility.Collapsed : Visibility.Visible;
         BlockList.ItemsSource = request.Blocks;
         WarningList.ItemsSource = request.AntiCheatWarning is null ? request.Warnings : request.Warnings.Append(request.AntiCheatWarning).ToList();
         // A value that already is what the change writes says so instead of repeating the number, and goes below the real

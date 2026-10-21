@@ -13,6 +13,7 @@
                     <StackPanel>
                         <ui:TextBlock FontTypography="BodyStrong" Text="{Binding Title}" />
                         <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding Hint}" Margin="0,4,0,0" />
+                        <ContentControl Style="{StaticResource DurationHint}" Margin="0,8,0,0" Visibility="{Binding TakesMinutes, Converter={StaticResource BoolToVisibility}}" />
                         <!-- A fix that needs a restart is marked, so it does not look as harmless as a cache flush -->
                         <Border Style="{StaticResource TagBorder}" Margin="0,6,0,0" Background="{DynamicResource SystemFillColorCautionBackgroundBrush}"
                                 Visibility="{Binding NeedsRestart, Converter={StaticResource BoolToVisibility}}">
@@ -74,6 +75,11 @@
                             <StackPanel>
                                 <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Health_SystemFiles}" />
                                 <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Health_SystemFilesHint}" Margin="0,4,0,0" />
+                                <!-- Microsoft: SFC and DISM RestoreHealth "may take several minutes", ScanHealth "will take several minutes"
+                                     (learn.microsoft.com/troubleshoot/windows-server/installing-updates-features-roles/fix-windows-update-errors,
+                                     learn.microsoft.com/windows-hardware/manufacture/desktop/repair-a-windows-image), and both wait
+                                     while Windows installs updates (in PCO-Test ScanHealth waited over 25 minutes for TiWorker) -->
+                                <ContentControl Style="{StaticResource DurationHint}" Content="{l:Tr Hint_TakesMinutesServicing}" Margin="0,8,0,0" />
                                 <WrapPanel Margin="0,8,0,0">
                                     <ui:Button Content="{l:Tr Health_Sfc}" Command="{Binding Health.SfcCommand}" IsEnabled="{Binding Health.IsToolRunning, Converter={StaticResource InverseBool}}" Margin="0,0,8,0" />
                                     <ui:Button Content="{l:Tr Health_DismScan}" Command="{Binding Health.DismScanCommand}" IsEnabled="{Binding Health.IsToolRunning, Converter={StaticResource InverseBool}}" Margin="0,0,8,0" />
@@ -117,7 +123,9 @@
                 <ScrollViewer Style="{StaticResource EdgeTabScroll}">
                     <StackPanel Style="{StaticResource EdgeContent}">
                         <!-- Optional features -->
-                        <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Feat_Hint}" Margin="0,0,0,8" />
+                        <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Feat_Hint}" />
+                        <!-- DISM installs or removes the feature; a capability is downloaded from Windows Update first -->
+                        <ContentControl Style="{StaticResource DurationHint}" Content="{l:Tr Hint_TakesMinutesServicing}" Margin="0,8,0,8" />
                         <ui:ProgressRing IsIndeterminate="True" Width="24" Height="24" HorizontalAlignment="Left" Margin="0,0,0,8" Visibility="{Binding Tools.IsLoading, Converter={StaticResource BoolToVisibility}}" />
                         <ui:InfoBar Title="" Message="{Binding Tools.FeaturesNote}" Severity="Informational" IsClosable="False" Margin="0,0,0,8"
                                     IsOpen="{Binding Tools.FeaturesNote, Converter={StaticResource NullToBool}}" />

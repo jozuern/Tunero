@@ -13,6 +13,12 @@ public sealed partial class ReservedStorageAction : TweakAction
     public override string TargetKey => "dism:reservedstorage";
     public override TargetText TargetLabel(ActionContext c) => TargetText.Of("target.reservedStorage");
     public override EarlyRead EarlyRead => EarlyRead.WithScan;
+
+    /// <summary>
+    /// The switch itself is small, but DISM waits while Windows services its own updates: in PCO-Test DISM showed no
+    /// progress for over 25 minutes while TiWorker ran. So it gets the same note as the Windows features.
+    /// </summary>
+    public override bool TakesMinutes => true;
     public override StoredValue Desired(ActionContext c) => new(true, "reservedstorage", Enabled ? "Enabled" : "Disabled");
 
     public override StoredValue? Read(ActionContext c) => ReadCache.Get(c, TargetKey, () =>
@@ -32,7 +38,9 @@ public sealed partial class ReservedStorageAction : TweakAction
 
     private void Set(ActionContext c, bool enabled) => ReadCache.Writing(c, TargetKey, () =>
     {
-        var (code, output) = c.Processes.Run("dism.exe", $"/Online /English /Set-ReservedStorageState /State:{(enabled ? "Enabled" : "Disabled")}", TimeSpan.FromMinutes(5));
+        // As long as a feature change (OptionalFeatures): DISM waits while Windows services updates (25 minutes in PCO-Test,
+        // 2026-10-21), and a time limit that ends it would leave the change half done.
+        var (code, output) = c.Processes.Run("dism.exe", $"/Online /English /Set-ReservedStorageState /State:{(enabled ? "Enabled" : "Disabled")}", TimeSpan.FromMinutes(30));
         if (code != 0) throw new InvalidOperationException(Optimizer.Core.Media.DismOutput.Failure(code, output));
     });
 

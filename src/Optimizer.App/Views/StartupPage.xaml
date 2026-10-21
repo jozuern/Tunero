@@ -80,6 +80,9 @@
                                       Visibility="{Binding Startup.SnapshotText, Converter={StaticResource NullToVisibility}}" />
                         <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding Startup.VirusTotalStatus}" Margin="0,4,0,0"
                                       Visibility="{Binding Startup.VirusTotalStatus, Converter={StaticResource NullToVisibility}}" />
+                        <!-- The free key allows 4 lookups a minute: a long list takes minutes -->
+                        <ContentControl Style="{StaticResource DurationHint}" Margin="0,4,0,0"
+                                        Visibility="{Binding Startup.VirusTotalTakesMinutes, Converter={StaticResource BoolToVisibility}}" />
                     </StackPanel>
                 </DockPanel>
                 <!-- Below, across the card: a link does not wrap, so next to the buttons a narrow window cut it off -->

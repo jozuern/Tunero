@@ -266,7 +266,7 @@ public sealed partial class ToolsViewModel(IPageHost owner, AppServices services
             ShowQuickResult(ok, Loc.Instance[$"Quick_{fix.Id}Done"], output);
             // A report worth reading (chkdsk, reagentc) stays in the card that ran it; the result bar closes by itself.
             if (ok && fix.ShowOutput) row.Output = string.Join("\n", output.Trim().Split('\n').Select(l => l.TrimEnd()).TakeLast(8));
-        });
+        }, slow: fix.TakesMinutes);
     }
 
     /// <summary>
@@ -296,6 +296,9 @@ public sealed partial class QuickFixRow(QuickFix fix) : ObservableObject
     public string ActionText => Loc.Instance[$"Quick_{Fix.Id}Action"];
 
     public bool NeedsRestart => Fix.NeedsRestart;
+
+    /// <summary>Can take several minutes (chkdsk /scan): the card shows the clock line.</summary>
+    public bool TakesMinutes => Fix.TakesMinutes;
 
     /// <summary>The last lines of the tool's report (chkdsk, reagentc), shown in the card that ran it.</summary>
     [ObservableProperty] private string? _output;

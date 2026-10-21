@@ -44,6 +44,9 @@ public sealed partial class OptionalFeatureAction : TweakAction
     public override TargetText TargetLabel(ActionContext c) => TargetText.Of("target.feature", Feature);
     public override StoredValue Desired(ActionContext c) => new(true, "feature", Enabled ? "Enabled" : "Disabled");
 
+    /// <summary>DISM installs or removes the feature's packages through the servicing stack (30 minutes allowed below).</summary>
+    public override bool TakesMinutes => true;
+
     public override StoredValue? Read(ActionContext c) => ReadState(c.Processes, Feature) is { } s ? new StoredValue(true, "feature", s) : null;
 
     public override void Apply(ActionContext c) => Set(c.Processes, Feature, Enabled);

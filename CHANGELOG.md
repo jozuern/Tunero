@@ -16,6 +16,7 @@
 
 ### Changed
 
+- **Long work says so:** SFC and DISM, the drive check, Windows features, the component store cleanup, Update all apps, a long VirusTotal check and the install media build (half an hour or longer) show a clock line where you start them, in the confirmation and in the progress banner; tweaks that run DISM carry a "Can take minutes" tag. DISM work adds that it takes longer while Windows is installing updates.
 - **Startup:** tabs for apps at sign-in, scheduled tasks, services, drivers and advanced places, each with its count; a summary for the open tab; plainer cards with Show file, Copy location and Delete entry under More options.
 - **Remove apps:** the Microsoft Edge card says whether Windows lets you remove Edge on this PC (set up with a region in the European Economic Area or Switzerland) and opens Installed apps, where Windows removes it. Apps that show web content keep working: WebView2 is a separate program and stays, unlike what the old note said.
 - **Windows install media:** for the download, the app list shows only the apps that edition of Microsoft's image holds (measured for build 26300: 26 instead of 50 for Pro), so no app you leave unticked looks as if it would be installed. For a build that was not measured the list says that some of its apps may not be in the image.
@@ -38,7 +39,7 @@
 - **Installed programs:** a program installed for your account alone runs your own uninstaller and its leftovers are looked for in your profile, also when Tunero runs as a separate administrator account.
 - **Other account:** when Windows cannot look up the signed-in account (a domain account while the domain cannot be reached), a banner says that user settings go to the account Tunero runs as.
 - **Command line:** every result line names its tweak, also when a change was not applied, conflicted or failed.
-- **Windows features, capabilities and reserved storage:** a DISM failure shows its error code and DISM's reason without DISM's version header.
+- **Windows features, capabilities and reserved storage:** a DISM failure shows its error code and DISM's reason without DISM's version header. Turning reserved storage on or off waits up to 30 minutes for DISM instead of 5, as DISM waits while Windows installs updates.
 
 ## 1.4.0
 

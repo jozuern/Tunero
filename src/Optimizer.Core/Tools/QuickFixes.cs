@@ -19,6 +19,9 @@ public sealed record QuickFix(string Id, bool Confirm, bool NeedsRestart, IReadO
 {
     /// <summary>The result text of the tool is shown after a success (chkdsk, reagentc report what they found).</summary>
     public bool ShowOutput { get; init; }
+
+    /// <summary>Can take several minutes: the card and the progress banner say so.</summary>
+    public bool TakesMinutes { get; init; }
 }
 
 public static class QuickFixes
@@ -53,11 +56,12 @@ public static class QuickFixes
             "https://learn.microsoft.com/en-us/windows-server/networking/windows-time-service/windows-time-service-tools-and-settings"),
         new("PerfCounters", Confirm: false, NeedsRestart: false, [new("lodctr.exe", "/r", TimeSpan.FromMinutes(5))],
             "https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/lodctr"),
-        // Online scan of the system drive: Windows stays usable, found problems are queued for a fix.
+        // Online scan of the system drive: Windows stays usable, found problems are queued for a fix. It checks the
+        // whole volume, which can take several minutes.
         new("DiskScan", Confirm: false, NeedsRestart: false,
             // chkdsk: 0 no errors, 1 errors found and fixed, 2 no cleanup done; 3 means problems remain (its text says which).
             [new("chkdsk.exe", Path.GetPathRoot(Environment.SystemDirectory)!.TrimEnd('\\') + " /scan", TimeSpan.FromMinutes(60), OkCodes: [0, 1, 2])],
-            "https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/chkdsk") { ShowOutput = true },
+            "https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/chkdsk") { ShowOutput = true, TakesMinutes = true },
         new("RecoveryEnable", Confirm: false, NeedsRestart: false, [new("reagentc.exe", "/enable")],
             "https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/reagentc-command-line-options") { ShowOutput = true },
         // Defender's own signature update from its configured sources (Windows Update by default), as "Check for updates"

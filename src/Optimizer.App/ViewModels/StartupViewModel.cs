@@ -188,6 +188,15 @@ public sealed partial class StartupViewModel(IPageHost owner, AppServices servic
     [ObservableProperty] private string _summaryText = "";
     [ObservableProperty] private string _virusTotalStatus = "";
     [ObservableProperty] private bool _isCheckingVirusTotal;
+
+    /// <summary>The running check has enough files that the free key's pace (4 lookups a minute) makes it take minutes.</summary>
+    [ObservableProperty] private bool _virusTotalTakesMinutes;
+
+    /// <summary>
+    /// The lookups are spaced by <paramref name="spacing"/>, so the check of <paramref name="files"/> files takes at least
+    /// (files - 1) times that: from two minutes on, the status line says it can take several minutes.
+    /// </summary>
+    public static bool VirusTotalTakesMinutesFor(int files, TimeSpan spacing) => files > 1 && (files - 1) * spacing >= TimeSpan.FromMinutes(2);
     [ObservableProperty] private string _snapshotText = "";
     [ObservableProperty] private bool _hasComparison;
     [ObservableProperty] private bool _onlyNew;
@@ -441,6 +450,7 @@ public sealed partial class StartupViewModel(IPageHost owner, AppServices servic
             using var client = new VirusTotalClient(key);
             var targets = Rows.Where(r => !r.IsMicrosoft && r.Entry.ImagePath is { } p && File.Exists(p))
                 .GroupBy(r => r.Entry.ImagePath!, StringComparer.OrdinalIgnoreCase).ToList();
+            VirusTotalTakesMinutes = VirusTotalTakesMinutesFor(targets.Count, client.Spacing);
             var done = 0;
             foreach (var g in targets)
             {
@@ -481,6 +491,7 @@ public sealed partial class StartupViewModel(IPageHost owner, AppServices servic
         finally
         {
             IsCheckingVirusTotal = false;
+            VirusTotalTakesMinutes = false;
             _vtCancel?.Dispose();
             _vtCancel = null;
         }

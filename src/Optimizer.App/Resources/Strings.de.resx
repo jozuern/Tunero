@@ -381,10 +381,10 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
     <value>Ersetzte Windows-Komponenten</value>
   </data>
   <data name="Cleanup_ComponentHint" xml:space="preserve">
-    <value>Entfernt alte Versionen aktualisierter Windows-Komponenten (DISM StartComponentCleanup). Dauert einige Minuten. Danach lassen sich installierte Updates nicht mehr deinstallieren.</value>
+    <value>Entfernt alte Versionen aktualisierter Windows-Komponenten (DISM StartComponentCleanup). Danach lassen sich installierte Updates nicht mehr deinstallieren.</value>
   </data>
   <data name="Cleanup_ComponentText" xml:space="preserve">
-    <value>Windows entfernt alte Komponentenversionen. Bisher installierte Updates lassen sich danach nicht mehr deinstallieren. Das kann einige Minuten dauern.</value>
+    <value>Windows entfernt alte Komponentenversionen. Bisher installierte Updates lassen sich danach nicht mehr deinstallieren.</value>
   </data>
   <data name="Cleanup_DoTitle" xml:space="preserve">
     <value>Cache der Übermittlungsoptimierung (Delivery Optimization)</value>
@@ -396,7 +396,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
     <value>Ausführen</value>
   </data>
   <data name="Tools_Running" xml:space="preserve">
-    <value>Läuft. Das kann eine Weile dauern.</value>
+    <value>Läuft.</value>
   </data>
   <data name="Tools_Done" xml:space="preserve">
     <value>Fertig.</value>
@@ -1240,7 +1240,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Quick_PerfCountersHint" xml:space="preserve"><value>Stellt die Einstellungen der Leistungsindikatoren aus den Systemdateien wieder her (lodctr /r). Hilft, wenn Task-Manager, Sensoren oder Benchmarks keine Daten zeigen.</value></data>
   <data name="Quick_PerfCountersDone" xml:space="preserve"><value>Leistungsindikatoren neu aufgebaut.</value></data>
   <data name="Quick_DiskScan" xml:space="preserve"><value>Systemlaufwerk prüfen</value></data>
-  <data name="Quick_DiskScanHint" xml:space="preserve"><value>Prüft das Systemlaufwerk auf Dateisystemfehler, während Windows weiterläuft (chkdsk /scan). Kann einige Minuten dauern.</value></data>
+  <data name="Quick_DiskScanHint" xml:space="preserve"><value>Prüft das Systemlaufwerk auf Dateisystemfehler, während Windows weiterläuft (chkdsk /scan).</value></data>
   <data name="Quick_DiskScanDone" xml:space="preserve"><value>Laufwerksprüfung fertig. chkdsk meldet:</value></data>
   <data name="Quick_RecoveryEnable" xml:space="preserve"><value>Wiederherstellungsumgebung einschalten</value></data>
   <data name="Quick_RecoveryEnableHint" xml:space="preserve"><value>Schaltet die Windows-Wiederherstellungsumgebung ein (reagentc /enable), die Windows für die Starthilfe und das Zurücksetzen des PCs braucht.</value></data>
@@ -1708,6 +1708,12 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Work_Sfc" xml:space="preserve"><value>Systemdateien werden geprüft (SFC)</value></data>
   <data name="Work_DismScan" xml:space="preserve"><value>Windows-Abbild wird geprüft (DISM)</value></data>
   <data name="Work_DismRestore" xml:space="preserve"><value>Windows-Abbild wird repariert (DISM)</value></data>
+  <data name="Hint_TakesMinutes" xml:space="preserve"><value>Kann mehrere Minuten dauern</value></data>
+  <data name="Hint_TakesMinutesServicing" xml:space="preserve"><value>Kann mehrere Minuten dauern, länger, während Windows Updates installiert</value></data>
+  <data name="Hint_TakesMinutesServicingSentence" xml:space="preserve"><value>Das kann mehrere Minuten dauern, länger, während Windows Updates installiert.</value></data>
+  <data name="Hint_TakesMinutesSentence" xml:space="preserve"><value>Das kann mehrere Minuten dauern.</value></data>
+  <data name="Hint_TakesHalfHour" xml:space="preserve"><value>Kann eine halbe Stunde oder länger dauern</value></data>
+  <data name="Badge_TipMinutes" xml:space="preserve"><value>Das Ein- oder Ausschalten kann mehrere Minuten dauern, länger, während Windows Updates installiert. Das Banner oben zeigt, dass es noch läuft.</value></data>
   <data name="Result_BatchStopped" xml:space="preserve"><value>Angehalten. {0} angewendet, {1} fehlgeschlagen, {2} übersprungen, {3} nicht begonnen.</value></data>
   <data name="Setup_Title" xml:space="preserve"><value>Tunero einrichten</value></data>
   <data name="Setup_Location" xml:space="preserve"><value>Tunero läuft gerade aus {0}.</value></data>

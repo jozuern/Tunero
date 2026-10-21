@@ -36,6 +36,8 @@
                         </DataTemplate>
                     </v:ItemList.ItemTemplate>
                 </v:ItemList>
+                <!-- A Windows feature: the same clock line as on the Tools page, so a long wait is expected -->
+                <ContentControl x:Name="DurationNote" Style="{StaticResource DurationHint}" Margin="0,8,0,0" Visibility="Collapsed" />
                 <!-- What stops the change first (error), then the notes about it (caution) -->
                 <v:ItemList x:Name="BlockList" Margin="0,8,0,0">
                     <v:ItemList.ItemTemplate>

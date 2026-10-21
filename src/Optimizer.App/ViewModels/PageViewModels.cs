@@ -62,15 +62,19 @@ public abstract partial class PageViewModel : ObservableObject
     /// Runs a page operation that changes the system (see <see cref="Services.ChangeRunner.RunExclusiveAsync"/>): the page
     /// shows it as working, no tweak, scan or update runs at the same time, and an error is logged and shown.
     /// </summary>
-    protected Task<bool> RunWorkAsync(string what, Func<Task> work) => RunWorkAsync(what, Loc.Instance["Busy"], _ => work());
+    /// <param name="slow">The banner says that it can take several minutes.</param>
+    /// <param name="duration">Another wording for that (<see cref="Durations"/>), such as DISM's wait for Windows updates.</param>
+    protected Task<bool> RunWorkAsync(string what, Func<Task> work, bool slow = false, string? duration = null) =>
+        RunWorkAsync(what, Loc.Instance["Busy"], _ => work(), slow: slow, duration: duration);
 
     /// <summary>The same with the progress banner titled <paramref name="title"/>, and Stop when <paramref name="stop"/> is given.</summary>
-    protected async Task<bool> RunWorkAsync(string what, string title, Func<Services.WorkProgress.Scope, Task> work, CancellationTokenSource? stop = null)
+    protected async Task<bool> RunWorkAsync(string what, string title, Func<Services.WorkProgress.Scope, Task> work, CancellationTokenSource? stop = null, bool slow = false,
+        string? duration = null)
     {
         IsWorking = true;
         try
         {
-            return await Owner.Runner.RunExclusiveAsync(what, title, work, stop);
+            return await Owner.Runner.RunExclusiveAsync(what, title, work, stop, slow, duration);
         }
         finally
         {
@@ -1007,13 +1011,13 @@ public sealed partial class CleanupViewModel(IPageHost owner, AppServices servic
     [RelayCommand]
     private async Task ComponentCleanupAsync()
     {
-        if (!dialogs.Ask(Labels.Current.Get(Lang, "cleanup.componentStore"), Loc.Instance["Cleanup_ComponentText"], Loc.Instance["Cleanup_Clean"])) return;
+        if (!dialogs.Ask(Labels.Current.Get(Lang, "cleanup.componentStore"), Durations.WithServicingSentence(Loc.Instance["Cleanup_ComponentText"]), Loc.Instance["Cleanup_Clean"])) return;
         ToolOutput = Loc.Instance["Tools_Running"];
         if (!await RunWorkAsync("component store cleanup", async () =>
             {
                 var (code, output) = await Task.Run(() => Optimizer.Core.Cleanup.CleanupEngine.ComponentStoreCleanup(services.Context.Processes));
                 ToolOutput = code == 0 ? Loc.Instance["Tools_Done"] : Loc.Instance.Format("Result_Error", output.Trim().Split('\n').Select(l => l.Trim()).LastOrDefault(l => l.Length > 0) ?? code.ToString());
-            }))
+            }, duration: Durations.Servicing))
             ToolOutput = "";
     }
 

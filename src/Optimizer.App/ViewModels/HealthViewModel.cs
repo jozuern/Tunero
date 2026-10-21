@@ -232,7 +232,7 @@ public sealed partial class HealthViewModel(IPageHost owner, IDialogs dialogs, A
                 {
                     ToolOutput += "\n" + Loc.Instance["Health_Stopped"];
                 }
-            }, _toolCancel);
+            }, _toolCancel, duration: Durations.Servicing);
         }
         finally
         {

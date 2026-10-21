@@ -20,7 +20,8 @@ public sealed class PackageUpdates(Launch launch, ElevationInfo? elevation)
     public static string ConfirmText(IReadOnlyList<PackageManagerInfo> plan)
     {
         var l = Loc.Instance;
-        var parts = new List<string> { l.Format("Apps_UpdateAllRuns", string.Join(", ", plan.Select(m => m.Name))) };
+        // Several package managers, each downloading and installing: "This can take several minutes" belongs to the run.
+        var parts = new List<string> { Durations.WithSentence(l.Format("Apps_UpdateAllRuns", string.Join(", ", plan.Select(m => m.Name)))) };
         foreach (var m in plan)
             parts.Add(m.Kind switch
             {

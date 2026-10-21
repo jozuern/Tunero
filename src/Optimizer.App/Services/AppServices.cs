@@ -179,6 +179,9 @@ public sealed record ConfirmRequest(
 {
     /// <summary>Reasons the change cannot be made now (Expert mode off, a policy): shown first, and Apply stays off.</summary>
     public IReadOnlyList<string> Blocks { get; init; } = [];
+
+    /// <summary>How long the change can take when that is minutes (a Windows feature): the dialog says it with a clock under the tags.</summary>
+    public string? Duration { get; init; }
 }
 
 public sealed record ConfirmResult(bool AcknowledgedAntiCheat);
