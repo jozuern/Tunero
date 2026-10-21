@@ -13,6 +13,12 @@ const en = {
     body: 'This address does not exist on tunero.dev.',
     home: 'Go to the start page',
   },
+  demo: {
+    notSet: 'not set',
+    display: 'Display 1',
+    refreshWhere: 'Display 1: refresh rate',
+    startup: ['Game launcher', 'Chat', 'RGB control', 'Cloud sync', 'Updater', 'Music', 'Peripheral tool', 'Screenshot tool', 'Voice chat'],
+  },
   classic: {
     heading: 'Tunero',
   },

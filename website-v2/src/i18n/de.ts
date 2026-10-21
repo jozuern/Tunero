@@ -14,6 +14,12 @@ const de: Strings = {
     body: 'Diese Adresse gibt es auf tunero.dev nicht.',
     home: 'Zur Startseite',
   },
+  demo: {
+    notSet: 'nicht gesetzt',
+    display: 'Bildschirm 1',
+    refreshWhere: 'Bildschirm 1: Bildwiederholrate',
+    startup: ['Spiele-Launcher', 'Chat', 'RGB-Steuerung', 'Cloud-Sync', 'Updater', 'Musik', 'Zubehör-Tool', 'Screenshot-Tool', 'Sprachchat'],
+  },
   classic: {
     heading: 'Tunero',
   },

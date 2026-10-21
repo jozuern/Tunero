@@ -23,9 +23,12 @@ watch it rewind. Doing it is the explanation; the rewind is the trust.
    `prefers-reduced-motion`. Black screen, the Tunero mark, then a few boot lines that are true and read at build
    time: version, the signature, the number of checks and tweaks. Hard cut to the desktop.
 1. **The demo PC.** A desktop full of the clutter Tunero removes: toasts (cloud sync nag, "get more out of Windows"
-   style suggestions), a crowded tray, suggestions and ads in Start, a long startup list, a restless wallpaper. A
-   watermark in the corner, styled like the Windows test mode watermark: "Demo PC. Nothing here touches your
-   computer." The Tunero icon on the desktop pulses until it is opened.
+   style suggestions, a feedback request), a crowded tray, recommendations and an account nag in Start, trending
+   content in search, a long startup list, a restless wallpaper. A watermark in the corner, styled like the Windows
+   test mode watermark: "Demo PC, Windows 11 Pro. Nothing here touches your computer." The demo PC is Pro because
+   some of its tweaks are documented for Pro and up; a tweak that Microsoft supports only on Enterprise and Education,
+   or whose effect it has not confirmed, is not in the demo. The Tunero icon on the desktop pulses until it is
+   opened.
 2. **Tunero.** A recreation of the real app in its Fluent look (navigation rail, cards, toggle switches): Overview,
    Scan, Tweaks, Changes. Check titles, ratings, summaries and the scan's check count come from the catalog. The scan
    walks through every check and finds the fixed demo set of problems.
