@@ -11,7 +11,8 @@
     position: fixed;
     right: 24px;
     top: 16px;
-    z-index: 2;
+    /* Above the windows, below Start and the taskbar: the demo label must stay readable. */
+    z-index: 7000;
     display: flex;
     flex-direction: column;
     align-items: flex-end;

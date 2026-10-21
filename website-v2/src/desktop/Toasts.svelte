@@ -93,7 +93,7 @@
     padding: 12px 16px 16px;
     border: 1px solid var(--stroke-strong);
     border-radius: var(--radius);
-    background: var(--acrylic);
+    background: var(--acrylic-strong);
     backdrop-filter: blur(30px) saturate(1.6);
     -webkit-backdrop-filter: blur(30px) saturate(1.6);
     box-shadow: var(--shadow);

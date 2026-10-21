@@ -1,6 +1,7 @@
 <script lang="ts">
   // The desktop wallpaper: the WebGL2 shader on a fixed canvas, with a CSS picture in front of it until the first
   // frame is drawn. The CSS picture comes back when WebGL2 is missing, the shader fails or the context is lost.
+  import { untrack } from 'svelte';
   import { startWallpaper } from './wallpaper.ts';
 
   let {
@@ -18,14 +19,16 @@
 
   $effect(() => {
     if (!canvas) return;
-    const stop = startWallpaper(canvas, () => clutter, () => theme, {
+    const target = canvas;
+    // Started once per canvas: clutter and theme are read every frame, so they must not restart it.
+    const stop = untrack(() => startWallpaper(target, () => clutter, () => theme, {
       onFirstFrame: () => {
         live = true;
       },
       onFail: () => {
         live = false;
       },
-    });
+    }));
     return () => {
       stop();
       live = false;

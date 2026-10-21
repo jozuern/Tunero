@@ -21,6 +21,10 @@
   const recommendedIcons: IconName[] = ['lightbulbBig', 'star', 'notepad', 'folder'];
 
   let query = $state('');
+  /** Start opens with the cursor in search, as in Windows. */
+  const focusNow = (node: HTMLInputElement) => {
+    requestAnimationFrame(() => node.focus({ preventScroll: true }));
+  };
 
   type Key = keyof DesktopStrings['search']['items'];
   const targets: Record<Key, { href?: string; window?: WindowId; icon: IconName | 'tunero' }> = $derived({
@@ -60,8 +64,7 @@
   <div class="start" bind:this={panel} role="dialog" aria-label={copy.start} transition:motion>
     <label class="searchbox">
       <Icon name="search" size={16} />
-      <!-- svelte-ignore a11y_autofocus -->
-      <input type="search" bind:value={query} placeholder={copy.searchPlaceholder} aria-label={copy.searchPlaceholder} autofocus />
+      <input type="search" bind:value={query} placeholder={copy.searchPlaceholder} aria-label={copy.searchPlaceholder} use:focusNow />
       {#if store.active('search-highlights')}
         <span class="trend" transition:appMotion><Icon name="star" size={16} />{copy.searchHighlight}</span>
       {/if}
@@ -152,7 +155,7 @@
     padding: 24px 32px 0;
     border: 1px solid var(--stroke-strong);
     border-radius: var(--radius);
-    background: var(--acrylic);
+    background: var(--acrylic-strong);
     backdrop-filter: blur(40px) saturate(1.6);
     -webkit-backdrop-filter: blur(40px) saturate(1.6);
     box-shadow: var(--shadow);
