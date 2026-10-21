@@ -1,6 +1,7 @@
 ---
 import '../styles/tokens.css';
 import { t, localPath, type Lang } from '../i18n/index.ts';
+import { phoneQuery } from '../lib/phone.ts';
 
 interface Props {
   lang: Lang;
@@ -14,9 +15,11 @@ interface Props {
   skipTo?: string;
   /** The German path when it is not /de in front of the English one (v1's /de/datenschutz/ and /de/impressum/). */
   germanPath?: string;
+  /** Where phones go instead of this page: the demo PC is not offered on phones. */
+  phoneTo?: string;
 }
 
-const { lang, title, description, path, indexed = true, skipTo, germanPath } = Astro.props;
+const { lang, title, description, path, indexed = true, skipTo, germanPath, phoneTo } = Astro.props;
 const copy = t(lang);
 const english = new URL(path, Astro.site);
 const german = new URL(germanPath ?? localPath('de', path), Astro.site);
@@ -28,6 +31,12 @@ const canonical = lang === 'de' ? german : english;
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    {phoneTo && (
+      <script is:inline define:vars={{ phoneTo, phoneQuery }}>
+        // Phones get the classic page before anything paints; the hash (a search result's #faq) goes along.
+        if (matchMedia(phoneQuery).matches) location.replace(phoneTo + location.hash);
+      </script>
+    )}
     <title>{title}</title>
     <meta name="description" content={description} />
     <script is:inline>

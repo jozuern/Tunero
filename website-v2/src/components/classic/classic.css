@@ -153,6 +153,13 @@
   color: var(--ink);
 }
 
+/* No demo PC on phones (the same query as src/lib/phone.ts). */
+@media (max-width: 899px), (pointer: coarse) and (max-height: 500px) {
+  .demo-link {
+    display: none;
+  }
+}
+
 .languages {
   display: flex;
   gap: 4px;

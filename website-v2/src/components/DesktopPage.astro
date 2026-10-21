@@ -37,7 +37,7 @@ const facts = {
 };
 ---
 
-<Base lang={lang} title={copy.meta.title} description={copy.meta.description} path="/">
+<Base lang={lang} title={copy.meta.title} description={copy.meta.description} path="/" phoneTo={localPath(lang, '/classic/')}>
   <main>
     <h1 class="visually-hidden">{copy.meta.title}</h1>
     <noscript>

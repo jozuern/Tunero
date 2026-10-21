@@ -46,7 +46,7 @@ watch it rewind. Doing it is the explanation; the rewind is the trust.
    - Desktop icons: Tunero; a "Why trust it" folder in an Explorer window (code signature, source code, GPL-3.0, no
      telemetry, how undo works, checking the SHA-256, what it leaves out on purpose); Notepad with the changelog;
      Settings with language (EN, DE) and theme (light, dark), which switch the whole desktop.
-   - Windows can be moved, minimized, maximized and closed; one open window at a time on phones.
+   - Windows can be moved, minimized, maximized and closed; one open window at a time in the compact layout.
 
 ### Set pieces (WebGL)
 
@@ -75,10 +75,13 @@ screen readers and keyboard users ("Skip to classic page").
 
 ## Phones and small screens
 
-Below 900 px the desktop becomes a phone shaped version of the same story: Tunero fills the screen, a compact strip
-above it shows the demo PC's state (toasts, tray, startup count) and reacts to every fix and undo, and the other
-windows open as sheets. The Install button stays on screen. Phones cannot run the app, so Install there says
-"Download on your PC" and offers to copy the link.
+Phones do not get the demo PC (owner, 2026-10-21): the home page sends them to the classic page before anything
+paints, in the same language and with the hash, and the classic page hides its demo link there. A phone is narrower
+than 900 px, or a touch screen under 500 px tall (held sideways); the query lives in `src/lib/phone.ts`.
+
+A desktop browser made narrower than 900 px after the page loaded keeps the demo in its compact layout: Tunero fills
+the screen, a strip above it counts the demo PC's nags, startup programs and apps, and the other windows open as
+sheets.
 
 ## Accessibility and motion
 
