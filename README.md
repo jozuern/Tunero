@@ -57,7 +57,7 @@ The app uses settings that Microsoft or the hardware vendor documents. A few har
 
 <p align="center"><img src="docs/screenshots/overview-en-dark.png" width="800" alt="Overview page: the verdict of the scan, the findings with their impact rating, and the recommended changes as a checklist"></p>
 
-<p align="center"><img src="docs/screenshots/tweaks-en-light.png" width="800" alt="Tweaks page: the Show filter, groups with Turn on, rows with their impact rating, and the explanation of the selected tweak"></p>
+<p align="center"><img src="docs/screenshots/tweaks-en-dark.png" width="800" alt="Tweaks page: the Show filter, groups with Turn on, rows with their impact rating, and the explanation of the selected tweak"></p>
 
 <p align="center"><img src="docs/screenshots/system-info-en-dark.png" width="800" alt="System info page: summary tiles and one card per area"></p>
 
@@ -82,7 +82,7 @@ Tunero is built to be the only PC optimizer you need, and it says plainly where 
 - **Security trade-offs:** tweaks that turn off Defender, UAC, updates or exploit protections for a few frames stay out ([docs/not-included.md](docs/not-included.md) lists them with sources). Tools such as AtlasOS that do this go further than Tunero on purpose.
 - **Writing USB drives and changing Setup further:** Tunero builds the ISO; a tool such as Rufus writes it to a USB drive. Disk layouts, drivers in the image and other Setup changes (Flyoobe, NTLite) stay with those tools.
 
-<p align="center"><img src="docs/screenshots/search-en-light.png" width="800" alt="Search for defender: the reason why turning off Defender is not offered comes first, then what the app offers for Defender"></p>
+<p align="center"><img src="docs/screenshots/search-en-dark.png" width="800" alt="Search for defender: the reason why turning off Defender is not offered comes first, then what the app offers for Defender"></p>
 
 ## Command line
 
