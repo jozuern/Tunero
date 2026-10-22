@@ -3,6 +3,7 @@ import '../styles/tokens.css';
 import { t, localPath, type Lang } from '../i18n/index.ts';
 import { phoneQuery } from '../lib/phone.ts';
 import { download, operator } from '../lib/repo.ts';
+import { storageKeys as keys } from '../lib/storage-keys.ts';
 
 interface Props {
   lang: Lang;
@@ -16,17 +17,25 @@ interface Props {
   skipTo?: string;
   /** The German path when it is not /de in front of the English one (v1's /de/datenschutz/ and /de/impressum/). */
   germanPath?: string;
-  /** Where phones go instead of this page: the demo PC is not offered on phones. */
+  /**
+   * Where phones go instead of this page: the demo PC is not offered on phones. Search engines learn it from a
+   * rel=alternate link for the same media query (Google's setup for a separate mobile page).
+   */
   phoneTo?: string;
+  /**
+   * On the phone version of another page (the classic page of the home page): that page's English path. Its address is
+   * the canonical one, so search engines index the home page, with this page's text, as one page.
+   */
+  phoneOf?: string;
   /** On the pages about the app (home and classic): its facts for search engines, as schema.org SoftwareApplication. */
   software?: { version: string };
 }
 
-const { lang, title, description, path, indexed = true, skipTo, germanPath, phoneTo, software } = Astro.props;
+const { lang, title, description, path, indexed = true, skipTo, germanPath, phoneTo, phoneOf, software } = Astro.props;
 const copy = t(lang);
 const english = new URL(path, Astro.site);
 const german = new URL(germanPath ?? localPath('de', path), Astro.site);
-const canonical = lang === 'de' ? german : english;
+const canonical = phoneOf ? new URL(localPath(lang, phoneOf), Astro.site) : lang === 'de' ? german : english;
 // Only facts the site states anyway: no ratings or reviews. "<" is escaped so the JSON cannot end the script element.
 const structured = software && JSON.stringify({
   '@context': 'https://schema.org',
@@ -60,16 +69,16 @@ const structured = software && JSON.stringify({
     )}
     <title>{title}</title>
     <meta name="description" content={description} />
-    <script is:inline>
+    <script is:inline define:vars={{ keys }}>
       // The theme before first paint: the visitor's choice in Settings, else the system's.
       (() => {
         let theme = null;
-        try { theme = localStorage.getItem('theme'); } catch {}
+        try { theme = localStorage.getItem(keys.theme); } catch {}
         if (theme !== 'light' && theme !== 'dark') theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
         document.documentElement.dataset.theme = theme;
         // Animation: on unless the visitor turned it off in the demo's Settings (desktop/motion.ts).
         let motion = null;
-        try { motion = localStorage.getItem('motion'); } catch {}
+        try { motion = localStorage.getItem(keys.motion); } catch {}
         const reduce = motion === 'off';
         document.documentElement.dataset.motion = reduce ? 'reduce' : 'full';
       })();
@@ -80,6 +89,7 @@ const structured = software && JSON.stringify({
         <link rel="alternate" hreflang="en" href={english} />
         <link rel="alternate" hreflang="de" href={german} />
         <link rel="alternate" hreflang="x-default" href={english} />
+        {phoneTo && <link rel="alternate" media={phoneQuery} href={new URL(phoneTo, Astro.site)} />}
       </>
     ) : <meta name="robots" content="noindex" />}
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />

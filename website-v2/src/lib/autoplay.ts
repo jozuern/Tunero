@@ -2,7 +2,7 @@
 // them with a cursor on the real buttons (data-auto holds each step's target), so nothing happens that a click could
 // not do.
 import type { Demo } from './demo.ts';
-import { apply, isApplied, type Change, type DemoState } from './demo-state.ts';
+import { apply, findingChange, isApplied, type Change, type DemoState } from './demo-state.ts';
 
 export type AutoPage = 'overview' | 'tweaks' | 'startup' | 'apps';
 
@@ -24,8 +24,8 @@ export function autoplayPlan(start: DemoState, demo: Demo): AutoStep[] {
   };
 
   for (const f of demo.findings) {
-    if (f.fix === 'apply') add({ page: 'overview', target: `finding:${f.id}`, changes: [{ kind: 'finding', id: f.id }] });
-    if (f.fix === 'tweak') add({ page: 'overview', target: `finding:${f.id}`, changes: [{ kind: 'tweak', id: f.tweak! }] });
+    const change = findingChange(f);
+    if (change) add({ page: 'overview', target: `finding:${f.id}`, changes: [change] });
   }
   for (const category of new Set(demo.tweaks.map((t) => t.category ?? ''))) {
     const changes = demo.tweaks.filter((t) => (t.category ?? '') === category).map((t): Change => ({ kind: 'tweak', id: t.id }));

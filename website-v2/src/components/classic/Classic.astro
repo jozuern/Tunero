@@ -19,7 +19,7 @@ const copy = t(lang);
 const claim = copy.classic.claim.split(/(\S+-\S+)/).map((part, index) => ({ keep: index % 2 === 1, part }));
 ---
 
-<Page lang={lang} title={copy.meta.classicTitle} description={copy.meta.description} path="/classic/" version={release.version}>
+<Page lang={lang} title={copy.meta.classicTitle} description={copy.meta.description} path="/classic/" version={release.version} phoneOf="/">
   <div class="intro">
     <h1>{claim.map((piece) => (piece.keep ? <span class="nowrap">{piece.part}</span> : piece.part))}</h1>
     <p class="lead">{copy.classic.lead}</p>

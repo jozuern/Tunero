@@ -2,7 +2,9 @@
 // saved in localStorage as motion = on or off). The system's reduced motion setting is not followed (owner,
 // 2026-10-21): the demo is the show. CSS follows data-motion on <html> (reduce or full), which Base.astro sets before
 // the first paint.
-const key = 'motion';
+import { storageKeys } from '../lib/storage-keys.ts';
+
+const key = storageKeys.motion;
 
 export function motionChoice(): 'on' | 'off' | null {
   try {
