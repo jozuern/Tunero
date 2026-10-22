@@ -16,7 +16,7 @@
       "kind": "capability",
       "names": [ "App.StepsRecorder~~~" ],
       "title": "Steps Recorder",
-      "titleDe": "Schrittaufzeichnung",
+      "titleDe": "Problemaufzeichnung",
       "en": "Captures individual steps with screenshots, to save or share. Microsoft asks image builders not to remove it.",
       "de": "Hält einzelne Schritte mit Bildschirmfotos fest, zum Speichern oder Weitergeben. Microsoft rät, sie nicht aus Windows-Abbildern zu entfernen.",
       "source": "https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/features-on-demand-non-language-fod"
@@ -26,7 +26,7 @@
       "kind": "capability",
       "names": [ "MathRecognizer~~~" ],
       "title": "Math Recognizer",
-      "titleDe": "Mathematikerkennung",
+      "titleDe": "Mathe-Erkennung",
       "en": "The Math Input Control and Recognizer. Microsoft asks image builders not to remove it.",
       "de": "Das Math Input Control und die Erkennung für mathematische Eingaben. Microsoft rät, sie nicht aus Windows-Abbildern zu entfernen.",
       "source": "https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/features-on-demand-non-language-fod"
