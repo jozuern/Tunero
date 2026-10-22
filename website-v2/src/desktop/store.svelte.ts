@@ -1,6 +1,7 @@
 // The desktop's live state: the tested demo logic (lib/demo-state.ts) in Svelte runes, plus the window manager.
 // The demo state survives a language switch through sessionStorage; blocked storage just starts fresh.
 import { getContext, setContext } from 'svelte';
+import { storageKeys } from '../lib/storage-keys.ts';
 import type { Demo, Effect, Write } from '../lib/demo.ts';
 import type { Page } from './app/appKeys.ts';
 import { trail } from './effects.ts';
@@ -26,7 +27,7 @@ import {
   type WindowId,
 } from '../lib/demo-state.ts';
 
-const storageKey = 'tunero-demo';
+const storageKey = storageKeys.demo;
 /** Pause between two steps of Undo all, so the rewind can be followed. */
 export const rewindStep = 180;
 

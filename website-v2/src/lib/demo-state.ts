@@ -1,5 +1,5 @@
 // The demo's state and what follows from it, without the DOM: the desktop island renders it and animates the steps.
-import type { Demo, Effect } from './demo.ts';
+import type { Demo, DemoFinding, Effect } from './demo.ts';
 
 export type WindowId = 'tunero' | 'trust' | 'notepad' | 'settings';
 const windowIds: WindowId[] = ['tunero', 'trust', 'notepad', 'settings'];
@@ -69,12 +69,23 @@ export function turnedOff(before: DemoState, after: DemoState, demo: Demo): Effe
   return effects.filter((e) => isActive(before, demo, e) && !isActive(after, demo, e));
 }
 
+/**
+ * The change a finding's Fix makes, as the app does: its own for an `apply` fix, the tweak behind it for a `tweak` fix,
+ * none for the startup finding (its button opens the startup list).
+ */
+export function findingChange(f: DemoFinding): Change | null {
+  if (f.fix === 'apply') return { kind: 'finding', id: f.id };
+  if (f.fix === 'tweak' && f.tweak) return { kind: 'tweak', id: f.tweak };
+  return null;
+}
+
 /** What is applied, by kind, for the end card. A problem counts as fixed by its own Fix or by the tweak that fixes it. */
 export function tally(state: DemoState, demo: Demo) {
   const count = (kind: ChangeKind) => state.applied.filter((c) => c.kind === kind).length;
-  const problems = demo.findings.filter((f) =>
-    f.fix === 'apply' ? isApplied(state, { kind: 'finding', id: f.id }) : f.fix === 'tweak' && isApplied(state, { kind: 'tweak', id: f.tweak! }),
-  ).length;
+  const problems = demo.findings.filter((f) => {
+    const change = findingChange(f);
+    return change !== null && isApplied(state, change);
+  }).length;
   return { problems, tweaks: count('tweak'), startup: count('startup'), apps: count('app') };
 }
 

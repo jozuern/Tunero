@@ -11,8 +11,7 @@
   import { flash } from './flash.ts';
   import { single } from '../clicks.ts';
   import { fill, type AppStrings, type Page } from './appKeys.ts';
-  import type { DemoFinding } from '../../lib/demo.ts';
-  import type { Change } from '../../lib/demo-state.ts';
+  import { findingChange, type Change } from '../../lib/demo-state.ts';
 
   let { app, copy, go, download }: { app: AppStrings; copy: DesktopStrings['app']; go: (page: Page) => void; download: string } = $props();
   const store = useStore();
@@ -44,15 +43,17 @@
   }
   onDestroy(() => clearInterval(timer));
 
-  /** The problems Fix changes: by itself, or by turning on the tweak that fixes it, as the app does. */
-  const fixable = demo.findings.filter((f) => f.fix !== 'startup');
+  /** The problems Fix changes: by itself, or by turning on the tweak that fixes it, as the app does (findingChange). */
+  const fixable = demo.findings.flatMap((finding) => {
+    const change = findingChange(finding);
+    return change ? [{ finding, change }] : [];
+  });
   const startupFinding = demo.findings.find((f) => f.fix === 'startup')!;
-  const change = (f: DemoFinding): Change => (f.fix === 'tweak' ? { kind: 'tweak', id: f.tweak! } : { kind: 'finding', id: f.id });
-  const fixed = (f: DemoFinding) => store.applied(change(f));
+  const fixed = (change: Change) => store.applied(change);
   const enabledStartup = $derived(demo.startup.filter((s) => !store.applied({ kind: 'startup', id: s.id })).length);
   const tweaksLeft = $derived(demo.tweaks.filter((t) => !store.applied({ kind: 'tweak', id: t.id })).length);
   const appsLeft = $derived(demo.apps.filter((a) => !store.applied({ kind: 'app', id: a.id })).length);
-  const problems = $derived(fixable.filter((f) => !fixed(f)).length);
+  const problems = $derived(fixable.filter((f) => !fixed(f.change)).length);
   // A fixed problem's mark pops in and what the fix wrote unfolds below it; nothing moves with animation effects off.
   const pop = (node: Element) => scale(node, { start: 0.4, duration: reducedMotion() ? 0 : 420, easing: backOut });
   const unfold = (node: Element) => slide(node, { duration: reducedMotion() ? 0 : 380, easing: cubicOut });
@@ -99,8 +100,8 @@
     </section>
   {/if}
   <ul class="findings">
-    {#each fixable as finding (finding.id)}
-      {@const done = fixed(finding)}
+    {#each fixable as { finding, change } (finding.id)}
+      {@const done = fixed(change)}
       <li class="card finding" class:fixed={done} use:flash={{ value: done, tone: 'ok' }}>
         {#key done}
           <span class="status" class:ok={done} in:pop><Icon name={done ? 'check' : 'warning'} size={20} /></span>
@@ -111,11 +112,17 @@
           {#if done && finding.writes.length > 0}<div in:unfold><Writes writes={finding.writes} {copy} /></div>{/if}
         </div>
         <Rating value={finding.impact} label={fill(app.Impact_Short, finding.impact)} />
-        {#if done}
-          <button type="button" class="btn" onclick={single(() => store.undo(change(finding)))}>{app.Tweak_Undo}</button>
-        {:else}
-          <button type="button" class="btn primary" data-auto="finding:{finding.id}" onclick={single(() => store.apply([change(finding)]))}>{app.Fix_Apply}</button>
-        {/if}
+        <!-- One button that turns from Fix into Undo, so the keyboard focus stays on it. -->
+        <button
+          type="button"
+          class="btn"
+          class:primary={!done}
+          data-auto={done ? undefined : `finding:${finding.id}`}
+          aria-label="{done ? app.Tweak_Undo : app.Fix_Apply}: {finding.title}"
+          onclick={single(() => (done ? store.undo(change) : store.apply([change])))}
+        >
+          {done ? app.Tweak_Undo : app.Fix_Apply}
+        </button>
       </li>
     {/each}
     {#if enabledStartup > startupThreshold}

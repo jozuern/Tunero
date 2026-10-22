@@ -1,6 +1,7 @@
 <script lang="ts">
   // Settings of the demo PC: the display's refresh rate (what Tunero's Fix changes), and the site's own choices:
   // theme, language and animation effects.
+  import { storageKeys } from '../../lib/storage-keys.ts';
   import type { DesktopStrings } from '../../i18n/desktop-en.ts';
   import { useStore } from '../store.svelte.ts';
   import { reducedMotion, setMotionChoice } from '../motion.ts';
@@ -29,7 +30,7 @@
     theme = value;
     document.documentElement.dataset.theme = value;
     try {
-      localStorage.setItem('theme', value);
+      localStorage.setItem(storageKeys.theme, value);
     } catch {
       // Storage blocked: the theme holds until the page is left.
     }

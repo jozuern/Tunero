@@ -1,3 +1,15 @@
+<script lang="ts" module>
+  /** What changes with each build: the version and counts, and the links between the pages. */
+  export interface Facts {
+    version: string;
+    checkCount: number;
+    tweakCount: number;
+    download: string;
+    classicHref: string;
+    otherHref: string;
+  }
+</script>
+
 <script lang="ts">
   // The demo PC: wallpaper, icons, windows, notifications, Start and the taskbar, all driven by one DesktopStore.
   import { onMount } from 'svelte';
@@ -37,7 +49,7 @@
     demo: Demo;
     copy: DesktopStrings;
     lang: 'en' | 'de';
-    facts: { version: string; checkCount: number; tweakCount: number; download: string; classicHref: string; otherHref: string };
+    facts: Facts;
     app: AppStrings;
     trust: { intro: string; items: TrustItem[] };
     changelog: { entries: { version: string; body: string }[]; href: string };
@@ -53,6 +65,8 @@
   let theme = $state<'light' | 'dark'>(typeof document !== 'undefined' && document.documentElement.dataset.theme === 'light' ? 'light' : 'dark');
   let phone = $state(false);
   let booting = $state(false);
+  /** A frame after the start: see Hero. */
+  let settled = $state(false);
 
   // The wallpaper rests while nobody can see it move: under the boot screen, and under a window that covers all but the
   // taskbar (maximized, or any window in the compact layout).
@@ -61,6 +75,9 @@
   );
 
   function endBoot() {
+    // The boot is in the page from the start (Boot.svelte): before the start of the desktop, or on a visit without a
+    // boot, its end changes nothing (and must not save a session not yet restored).
+    if (!booting) return;
     booting = false;
     store.markBootSeen();
     delete document.documentElement.dataset.boot;
@@ -71,6 +88,7 @@
     booting = !store.state.bootSeen && !reducedMotion();
     if (!booting) delete document.documentElement.dataset.boot;
     ready = true;
+    requestAnimationFrame(() => (settled = true));
     const narrow = matchMedia('(max-width: 899px)');
     const onWidth = () => (phone = narrow.matches);
     onWidth();
@@ -95,7 +113,7 @@
   <Wallpaper clutter={store.clutter} {theme} paused={covered} />
   <DesktopIcons {copy} />
   <Widget copy={copy.widget} />
-  <Hero {copy} checks={facts.checkCount} tweaks={facts.tweakCount} download={facts.download} ready={ready && !booting && !phone} />
+  <Hero {copy} checks={facts.checkCount} tweaks={facts.tweakCount} download={facts.download} ready={ready && !booting && !phone} compact={phone} {settled} />
 
   {#if store.windows.tunero.open}
     <Window id="tunero" title="Tunero" icon="tunero" labels={copy.window}>
@@ -131,7 +149,7 @@
   {#if store.compare}
     <Compare {copy} {lang} download={facts.download} version={facts.version} classicHref={facts.classicHref} {links} />
   {/if}
-  {#if booting}
+  {#if booting || !ready}
     <Boot copy={copy.boot} version={facts.version} checks={facts.checkCount} tweaks={facts.tweakCount} ondone={endBoot} />
   {/if}
 </div>

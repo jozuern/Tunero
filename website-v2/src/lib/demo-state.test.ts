@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { initial, apply, undo, undoAll, undoable, clutter, isActive, serialize, deserialize, allChanges, turnedOff, tally, type Change } from './demo-state.ts';
+import { initial, apply, undo, undoAll, undoable, clutter, isActive, serialize, deserialize, allChanges, turnedOff, tally, findingChange, type Change } from './demo-state.ts';
 import type { Demo } from './demo.ts';
 
 const item = (id: string, effect: string) => ({ id, title: id, summary: '', impact: 0, basis: 'situational', writes: [], effect });
@@ -58,6 +58,13 @@ test('an effect shows while any of its changes is not applied', () => {
   assert.equal(isActive(initial(), demo, 'tray'), true);
   assert.equal(isActive(apply(initial(), [s1]), demo, 'tray'), true);
   assert.equal(isActive(apply(initial(), [s1, s2]), demo, 'tray'), false);
+});
+
+test('findingChange: a Fix changes the finding itself, the tweak behind it, or nothing (the startup finding)', () => {
+  const [apply, startup] = demo.findings;
+  assert.deepEqual(findingChange(apply), { kind: 'finding', id: 'F1.refresh' });
+  assert.equal(findingChange(startup), null);
+  assert.deepEqual(findingChange({ ...apply, id: 'F6.turbo', fix: 'tweak', tweak: 'a' }), tweakA);
 });
 
 test('deserialize leaves out saved changes the demo no longer has', () => {

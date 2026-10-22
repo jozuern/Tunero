@@ -10,17 +10,38 @@
   import { fill } from './app/appKeys.ts';
   import Icon from './Icon.svelte';
 
-  let { copy, checks, tweaks, download, ready }: { copy: DesktopStrings; checks: number; tweaks: number; download: string; ready: boolean } = $props();
+  let {
+    copy,
+    checks,
+    tweaks,
+    download,
+    ready,
+    compact,
+    settled,
+  }: {
+    copy: DesktopStrings;
+    checks: number;
+    tweaks: number;
+    download: string;
+    /** The desktop shows (not before the start, not under the boot): the headline can be seen. */
+    ready: boolean;
+    /** The compact layout, below 900 px: no headline. */
+    compact: boolean;
+    /** A frame after the start: what the restored session hides from then on fades instead of vanishing. */
+    settled: boolean;
+  } = $props();
   const store = useStore();
 
   const windowOpen = $derived(Object.values(store.windows).some((w) => w.open && !w.minimized));
-  // Not while Undo all plays: the desktop is still filling up, and Watch would start from the middle of it.
-  const intro = $derived(ready && !store.guiding && !store.rewinding && !store.compare && !windowOpen && store.clutter > 0);
+  // In the page's HTML from the start (search engines read it there), seen once the desktop is ready. Not while Undo all
+  // plays: the desktop is still filling up, and Watch would start from the middle of it.
+  const intro = $derived(!compact && !store.guiding && !store.rewinding && !store.compare && !windowOpen && store.clutter > 0);
   const end = $derived(ready && store.finale && !store.guiding && !store.compare && store.clutter === 0);
   const counts = $derived(tally(store.state, store.demo));
 
-  const rise = (node: Element, { delay = 0 }: { delay?: number }) =>
-    fly(node, { y: reducedMotion() ? 0 : 24, duration: reducedMotion() ? 0 : 600, delay: reducedMotion() ? 0 : delay, opacity: 0 });
+  // The headline leaves with a fade, except when the restored session hides it right at the start (a fixed PC, an open
+  // window): then it was never seen and goes at once.
+  const leave = (node: Element) => fade(node, { duration: settled && !reducedMotion() ? 160 : 0 });
   const swap = (node: Element) => fly(node, { y: reducedMotion() ? 0 : 6, duration: reducedMotion() ? 0 : 280, opacity: 0 });
   const quick = (node: Element) => fade(node, { duration: reducedMotion() ? 0 : 160 });
   const pop = (node: Element) => scale(node, { start: 0.94, duration: reducedMotion() ? 0 : 420, delay: reducedMotion() ? 0 : 500, opacity: 0 });
@@ -56,14 +77,15 @@
 </script>
 
 {#if intro}
-  <section class="hero" aria-labelledby="hero-title" out:quick>
-    <h2 id="hero-title" in:rise={{ delay: 150 }}>{copy.hero.title}</h2>
-    <p class="body" in:rise={{ delay: 300 }}>{copy.hero.body}</p>
-    <div class="actions" in:rise={{ delay: 450 }}>
+  <!-- Its lines rise in by CSS (below): held while it waits, so they rise when it shows, after the boot or at once. -->
+  <section class="hero" class:waiting={!ready} aria-labelledby="hero-title" out:leave>
+    <h2 id="hero-title" style:--delay="150ms">{copy.hero.title}</h2>
+    <p class="body" style:--delay="300ms">{copy.hero.body}</p>
+    <div class="actions" style:--delay="450ms">
       <button type="button" class="cta" onclick={watch}><Icon name="play" size={20} />{copy.hero.watch}</button>
       <button type="button" class="ghost" onclick={() => store.open('tunero')}>{copy.hero.self}</button>
     </div>
-    <p class="facts" in:rise={{ delay: 600 }}>
+    <p class="facts" style:--delay="600ms">
       {fill(copy.hero.facts, checks, tweaks)}
       <button type="button" class="link" onclick={() => (store.compare = true)}><Icon name="split" size={16} />{copy.end.compare}</button>
     </p>
@@ -129,6 +151,29 @@
     transform: translateY(-50%);
     color: var(--hero-ink);
     text-shadow: var(--hero-shadow);
+  }
+
+  .hero > * {
+    animation: rise 600ms cubic-bezier(0.2, 0.8, 0.2, 1) var(--delay, 0ms) both;
+  }
+
+  .hero.waiting {
+    visibility: hidden;
+  }
+
+  .hero.waiting > * {
+    animation-play-state: paused;
+  }
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(24px);
+    }
+  }
+
+  :global([data-motion='reduce']) .hero > * {
+    animation: none;
   }
 
   h2 {

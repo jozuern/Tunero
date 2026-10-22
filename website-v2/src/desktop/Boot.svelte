@@ -1,6 +1,9 @@
 <script lang="ts">
   // The boot of the demo PC: the mark, Windows style spinning dots and a few true lines, then a hard cut to the
-  // desktop. First visit of a session only; any key, click or tap skips it.
+  // desktop. First visit of a session only; any key, click or tap skips it. It is in the page's HTML, shown from the
+  // first paint while <html data-boot="pending"> (DesktopPage.astro sets it before the desktop paints), so the mark
+  // shows while the scripts load; its times count from the start of the page, so it ends 2.3 s after it, or as soon as
+  // the desktop is ready when that takes longer.
   import { onMount } from 'svelte';
   import type { DesktopStrings } from '../i18n/desktop-en.ts';
   import { fill } from './app/appKeys.ts';
@@ -15,8 +18,9 @@
 
   onMount(() => {
     touch = matchMedia('(pointer: coarse)').matches;
-    const timers = [400, 750, 1100, 1450].map((at, i) => setTimeout(() => (shown = i + 1), at));
-    const end = setTimeout(finish, 2300);
+    const since = performance.now();
+    const timers = [400, 750, 1100, 1450].map((at, i) => setTimeout(() => (shown = i + 1), Math.max(0, at - since)));
+    const end = setTimeout(finish, Math.max(0, 2300 - since));
     return () => {
       timers.forEach(clearTimeout);
       clearTimeout(end);
@@ -43,11 +47,18 @@
 </div>
 
 <style>
+  /* Shown only while the page waits for the boot; if the scripts never come, it steps aside after 4 s with the desktop
+     (tokens.css). */
   .boot {
+    display: none;
+  }
+
+  :global(html[data-boot='pending']) .boot {
     position: fixed;
     inset: 0;
     z-index: 10000;
     display: flex;
+    animation: boot-timeout 0s 4s forwards;
     flex-direction: column;
     align-items: center;
     justify-content: center;
@@ -135,5 +146,11 @@
     margin: 0;
     color: #6b6b6b;
     font-size: 12px;
+  }
+
+  @keyframes boot-timeout {
+    to {
+      visibility: hidden;
+    }
   }
 </style>

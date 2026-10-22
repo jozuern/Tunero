@@ -1,7 +1,9 @@
 // The demo PC's sounds, made with Web Audio (no files): a notification chime, a soft pop when something shatters, a
 // click for the guided fix and a chord when the PC is fixed. Off until the visitor turns it on with the speaker in the
 // tray; the choice is kept in localStorage as sound = on or off.
-const key = 'sound';
+import { storageKeys } from '../lib/storage-keys.ts';
+
+const key = storageKeys.sound;
 let enabled = read();
 let context: AudioContext | null = null;
 const listeners = new Set<() => void>();

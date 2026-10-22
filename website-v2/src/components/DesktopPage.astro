@@ -1,14 +1,14 @@
 ---
-// The home page in either language: the demo desktop, with the facts it needs read at build time.
+// The home page in either language: the demo desktop. Its island imports what it shows (lib/desktop-data.ts) from a
+// cached module; the page passes only what changes with each build (the facts).
 import Base from '../layouts/Base.astro';
-import Desktop from '../desktop/Desktop.svelte';
+import DesktopEn from '../desktop/DesktopEn.svelte';
+import DesktopDe from '../desktop/DesktopDe.svelte';
 import { t, localPath, type Lang } from '../i18n/index.ts';
-import desktopEn from '../i18n/desktop-en.ts';
-import desktopDe from '../i18n/desktop-de.ts';
-import { buildDemo } from '../lib/demo.ts';
-import { appString, changelog, counts, download, repo } from '../lib/repo.ts';
-import { appKeys, type AppStrings } from '../desktop/app/appKeys.ts';
+import { counts, download } from '../lib/repo.ts';
 import { latestRelease } from '../lib/release.ts';
+import { storageKeys } from '../lib/storage-keys.ts';
+import type { Facts } from '../desktop/Desktop.svelte';
 
 interface Props {
   lang: Lang;
@@ -17,17 +17,7 @@ interface Props {
 const { lang } = Astro.props;
 const copy = t(lang);
 const release = await latestRelease();
-const app = Object.fromEntries(appKeys.map((key) => [key, appString(key, lang)])) as AppStrings;
-const extras = {
-  trust: { intro: copy.trust.intro, items: copy.trust.items },
-  changelog: { entries: changelog(3), href: `${repo}/blob/main/CHANGELOG.md` },
-  links: {
-    download,
-    faq: `${localPath(lang, '/classic/')}#faq`,
-    privacy: lang === 'de' ? '/de/datenschutz/' : '/privacy/',
-  },
-};
-const facts = {
+const facts: Facts = {
   checkCount: counts.checks,
   tweakCount: counts.tweaks,
   version: release.version,
@@ -43,14 +33,14 @@ const facts = {
     <noscript>
       <p class="noscript">{copy.noscript} <a href={localPath(lang, '/classic/')}>{copy.skip}</a></p>
     </noscript>
-    <script is:inline>
+    <script is:inline define:vars={{ demoKey: storageKeys.demo }}>
       // Before the desktop paints: on the first visit of a session, keep it hidden for the boot (Boot.svelte ends it).
       (() => {
         let seen = false;
-        try { seen = JSON.parse(sessionStorage.getItem('tunero-demo') || '{}').bootSeen === true; } catch {}
+        try { seen = JSON.parse(sessionStorage.getItem(demoKey) || '{}').bootSeen === true; } catch {}
         if (!seen && document.documentElement.dataset.motion !== 'reduce') document.documentElement.dataset.boot = 'pending';
       })();
     </script>
-    <Desktop client:load demo={buildDemo(lang)} copy={lang === 'de' ? desktopDe : desktopEn} lang={lang} facts={facts} app={app} {...extras} />
+    {lang === 'de' ? <DesktopDe client:load facts={facts} /> : <DesktopEn client:load facts={facts} />}
   </main>
 </Base>
