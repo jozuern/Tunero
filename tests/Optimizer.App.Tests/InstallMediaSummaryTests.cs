@@ -59,6 +59,19 @@ public sealed class InstallMediaSummaryTests
     }
 
     [Fact]
+    public void ReviewNamesSpeechRecognitionWhenTextToSpeechTakesItAlong()
+    {
+        var only = InstallMediaSummary.Review(Choices() with { RemoveParts = ["textToSpeech"] }, "Windows 11 Pro", null, 1);
+        var line = Assert.Single(only.Changes, l => l.Target == Loc.Instance["Media_PartsTitle"]).After;
+        Assert.Contains(CatalogData.Current.MediaParts.Single(p => p.Id == "textToSpeech").Label("en"), line);
+        Assert.Contains(CatalogData.Current.MediaParts.Single(p => p.Id == "speech").Label("en"), line);
+        // Ticked as well: named once.
+        var both = InstallMediaSummary.Review(Choices() with { RemoveParts = ["textToSpeech", "speech"] }, "Windows 11 Pro", null, 1);
+        var text = Assert.Single(both.Changes, l => l.Target == Loc.Instance["Media_PartsTitle"]).After;
+        Assert.Equal(2, text.Split(", ").Length);
+    }
+
+    [Fact]
     public void BarSaysSmallerIsoOnlyWhenChosen()
     {
         Assert.Contains(Loc.Instance["Media_CompressionSmaller"], InstallMediaSummary.Bar(Choices(smaller: true), "Windows 11 Pro", null, 1));

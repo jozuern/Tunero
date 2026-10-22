@@ -1775,7 +1775,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Media_AppsChosen" xml:space="preserve"><value>{0} of {1} chosen</value></data>
   <data name="Media_AppsGroupAll" xml:space="preserve"><value>Select all: {0}</value></data>
   <data name="Media_PartsTitle" xml:space="preserve"><value>Remove optional Windows parts</value></data>
-  <data name="Media_PartsText" xml:space="preserve"><value>The parts you tick are removed from the image. After the installation they can be added back: most with DISM /Add-Capability, which downloads them from Windows Update, Recall with Enable-WindowsOptionalFeature.</value></data>
+  <data name="Media_PartsText" xml:space="preserve"><value>The parts you tick are removed or turned off in the image. After the installation they can be added back: most with the command DISM /Add-Capability (it downloads them from Windows Update), Recall with Enable-WindowsOptionalFeature.</value></data>
   <data name="Media_PartsSummary" xml:space="preserve"><value>Windows parts to remove: {0}</value></data>
   <data name="Media_AppsFromDownload" xml:space="preserve"><value>Every app a Microsoft image can hold: Tunero does not know yet which of them this download holds. It reads the image while it builds and skips the apps it does not have, so an app you leave unticked here may still not be on the new PC. Apps that are parts of Windows (such as the Store) are never listed and always stay.</value></data>
   <data name="Media_AppsReading" xml:space="preserve"><value>Reading which apps this edition of your ISO holds</value></data>

@@ -71,6 +71,34 @@ public sealed class MediaPartsCatalogTests
     }
 
     [Fact]
+    public void ImpliedPartsAreThoseWhoseNamesAnotherPartRemovesToo()
+    {
+        Assert.Equal(["speech", "textToSpeech"], MediaParts.WithImplied(Parts, ["textToSpeech"]).Select(p => p.Id));
+        Assert.Equal(["wordpad"], MediaParts.WithImplied(Parts, ["WordPad"]).Select(p => p.Id));
+        Assert.Equal(["speech"], MediaParts.WithImplied(Parts, ["speech"]).Select(p => p.Id));
+    }
+
+    [Fact]
+    public void WordPadStepsRecorderAndMathRecognizerSayMicrosoftAsksNotToRemoveThem()
+    {
+        foreach (var id in new[] { "wordpad", "stepsRecorder", "mathRecognizer" })
+        {
+            var part = Parts.Single(p => p.Id == id);
+            Assert.Contains("Microsoft asks image builders not to remove it", part.En, StringComparison.Ordinal);
+            Assert.Contains("Microsoft rät", part.De, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public void RecallSaysItIsTurnedOffNotRemoved()
+    {
+        var recall = Parts.Single(p => p.Id == "recall");
+        Assert.Contains("turns the component off", recall.En, StringComparison.Ordinal);
+        Assert.DoesNotContain("removes", recall.En, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("abgeschaltet", recall.De, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ACapabilityPrefixMatchesEveryLanguageAndOnlyInstalledOnes()
     {
         var states = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)

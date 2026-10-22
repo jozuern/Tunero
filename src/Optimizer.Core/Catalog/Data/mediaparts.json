@@ -7,8 +7,8 @@
       "names": [ "Microsoft.Windows.WordPad~~~" ],
       "title": "WordPad",
       "titleDe": "WordPad",
-      "en": "The simple word processor that creates, opens and edits .rtf, .docx and .txt files.",
-      "de": "Das einfache Textverarbeitungsprogramm, mit dem .rtf-, .docx- und .txt-Dateien erstellt, geöffnet und bearbeitet werden.",
+      "en": "The simple word processor that creates, opens and edits .rtf, .docx and .txt files. Microsoft asks image builders not to remove it.",
+      "de": "Das einfache Textverarbeitungsprogramm zum Erstellen, Öffnen und Bearbeiten von .rtf-, .docx- und .txt-Dateien. Microsoft rät, es nicht aus Windows-Abbildern zu entfernen.",
       "source": "https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/features-on-demand-non-language-fod"
     },
     {
@@ -16,9 +16,9 @@
       "kind": "capability",
       "names": [ "App.StepsRecorder~~~" ],
       "title": "Steps Recorder",
-      "titleDe": "Steps Recorder",
-      "en": "Captures individual steps with screenshots, to save or share.",
-      "de": "Hält einzelne Schritte mit Bildschirmfotos fest, zum Speichern oder Weitergeben.",
+      "titleDe": "Schrittaufzeichnung",
+      "en": "Captures individual steps with screenshots, to save or share. Microsoft asks image builders not to remove it.",
+      "de": "Hält einzelne Schritte mit Bildschirmfotos fest, zum Speichern oder Weitergeben. Microsoft rät, sie nicht aus Windows-Abbildern zu entfernen.",
       "source": "https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/features-on-demand-non-language-fod"
     },
     {
@@ -26,9 +26,9 @@
       "kind": "capability",
       "names": [ "MathRecognizer~~~" ],
       "title": "Math Recognizer",
-      "titleDe": "Mathe-Erkennung",
-      "en": "The Math Input Control and Recognizer.",
-      "de": "Das Math Input Control und die Erkennung für mathematische Eingaben.",
+      "titleDe": "Mathematikerkennung",
+      "en": "The Math Input Control and Recognizer. Microsoft asks image builders not to remove it.",
+      "de": "Das Math Input Control und die Erkennung für mathematische Eingaben. Microsoft rät, sie nicht aus Windows-Abbildern zu entfernen.",
       "source": "https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/features-on-demand-non-language-fod"
     },
     {
@@ -67,8 +67,8 @@
       "names": [ "Language.Speech~~~" ],
       "title": "Speech recognition",
       "titleDe": "Spracherkennung",
-      "en": "Recognizes voice input, used by Windows Speech Recognition, for every language the image has.",
-      "de": "Erkennt Spracheingaben, wird von der Windows-Spracherkennung genutzt, für jede Sprache des Abbilds.",
+      "en": "Recognizes voice input and is used by Windows Speech Recognition, for every language the image has.",
+      "de": "Erkennt Spracheingaben und wird von der Windows-Spracherkennung genutzt, für jede Sprache des Abbilds.",
       "source": "https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/features-on-demand-language-fod"
     },
     {
@@ -78,7 +78,7 @@
       "title": "Text to speech",
       "titleDe": "Sprachsynthese",
       "en": "The voices that read text aloud, used by Narrator. Speech recognition goes too, because it depends on them.",
-      "de": "Die Stimmen, die Text vorlesen und vom Narrator genutzt werden. Die Spracherkennung entfällt mit, weil sie darauf aufbaut.",
+      "de": "Die Stimmen, die Text vorlesen und von der Sprachausgabe genutzt werden. Die Spracherkennung wird mit entfernt, weil sie darauf aufbaut.",
       "source": "https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/features-on-demand-language-fod"
     },
     {
@@ -87,8 +87,8 @@
       "names": [ "Recall" ],
       "title": "Recall",
       "titleDe": "Recall",
-      "en": "Recall (preview) searches saved snapshots of your screen. It needs a Copilot+ PC; this removes the component.",
-      "de": "Recall (Vorschau) durchsucht gespeicherte Momentaufnahmen des Bildschirms. Es braucht einen Copilot+-PC; das entfernt die Komponente.",
+      "en": "Recall (preview) searches saved snapshots of your screen. It needs a Copilot+ PC; this turns the component off in the image.",
+      "de": "Recall (Vorschau) durchsucht gespeicherte Momentaufnahmen des Bildschirms. Es setzt einen Copilot+-PC voraus. Die Komponente wird im Abbild abgeschaltet.",
       "source": "https://learn.microsoft.com/en-us/windows/client-management/manage-recall"
     }
   ]

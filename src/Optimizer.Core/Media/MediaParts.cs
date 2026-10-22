@@ -30,6 +30,17 @@ public static class MediaParts
         parts.FirstOrDefault(p => string.Equals(p.Id, id, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
+    /// The parts that removing <paramref name="ids"/> removes, in catalog order: the chosen ones and every part whose names
+    /// another chosen part removes too (text to speech removes speech recognition, which depends on it).
+    /// </summary>
+    public static IReadOnlyList<MediaPart> WithImplied(IReadOnlyList<MediaPart> catalog, IEnumerable<string> ids)
+    {
+        var chosen = catalog.Where(p => ids.Contains(p.Id, StringComparer.OrdinalIgnoreCase)).ToList();
+        return catalog.Where(p => chosen.Contains(p)
+            || chosen.Any(c => c.Kind == p.Kind && p.Names.All(n => c.Names.Contains(n, StringComparer.OrdinalIgnoreCase)))).ToList();
+    }
+
+    /// <summary>
     /// The names of <paramref name="part"/> that the image holds, in removal order: capabilities in state Installed whose
     /// name starts with one of the part's prefixes, features in state Enabled named exactly like one of its names.
     /// <paramref name="states"/> are the image's names with their DISM state.

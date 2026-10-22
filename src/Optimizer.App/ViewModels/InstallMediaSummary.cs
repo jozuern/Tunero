@@ -117,9 +117,12 @@ internal static class InstallMediaSummary
         return c.AccountName?.Trim() is { Length: > 0 } name ? T.Format("Media_SetupSummary", name, region) : T.Format("Media_SetupSummaryNoName", region);
     }
 
-    /// <summary>The names of the chosen parts in the app's language, in the catalog's order: "WordPad, Recall".</summary>
+    /// <summary>
+    /// The names of the parts the build removes in the app's language, in the catalog's order: "WordPad, Recall". A part
+    /// that another chosen part takes along (text to speech takes speech recognition) is named too.
+    /// </summary>
     private static string PartsText(MediaChoices c) =>
-        string.Join(", ", CatalogData.Current.MediaParts.Where(p => c.RemoveParts.Contains(p.Id, StringComparer.OrdinalIgnoreCase)).Select(p => p.Label(c.AppLanguage)));
+        string.Join(", ", MediaParts.WithImplied(CatalogData.Current.MediaParts, c.RemoveParts).Select(p => p.Label(c.AppLanguage)));
 
     /// <summary>The ticked apps by group of the reviewed list, in the page's order; names the list does not know go last.</summary>
     private static IEnumerable<(string Group, int Count)> AppGroups(MediaChoices c)
