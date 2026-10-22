@@ -1,56 +1,29 @@
 # Changelog
 
-## Unreleased
+## 1.5.0
+
+More control over the Windows ISO, several tweaks at once, and Startup in tabs.
 
 ### Added
 
-- **Tweaks:** Num Lock on at the sign-in screen, so a PIN can be typed on the numeric keypad right away (checked at the sign-in screen in the test VM).
-- **Tweaks:** an impact filter (1 or more up to 5, for your profile) and a Select mode: tick several tweaks, then turn them on or undo them with one confirmation each.
-- **Windows install media:** a check box per app group ticks or clears the whole group.
-- **Install & update:** Check for updates asks winget which installed apps have a newer version; Update then shows only where there is one.
-- **Remove apps:** tick several preinstalled apps and remove them with one confirmation; installed programs sort by name, size or install date.
-- **Services & tasks:** scheduled tasks have a search box.
-- **Ignore a recommendation:** a recommended tweak, or one flagged as working against your profile, can be ignored in its details or with the eye on its Overview line. It is then neither recommended nor applied in any profile, also not by `--apply-recommended`, and waits under "Ignored recommendations" on the Tweaks page with Stop ignoring.
-
-- **Windows install media:** Install apps: tick apps from the Install & update list, and the copied Tunero installs them with winget at the first sign-in, after the profile: apps for the whole PC elevated, apps that install for one account (Discord, Spotify) as the account that signed in (the new PC needs the internet then; the result names any that were not installed).
-- **Windows install media:** the page remembers the choices of your last successful build and opens with them. A Choices menu in the bar saves them to a file, loads such a file or resets the page to its defaults. What no longer fits (a moved ISO, an app that left the catalog, a renamed profile) is left out and named above the bar.
-- **Windows install media:** an Install image card: Faster build (install.wim, today's behavior and the default) or Smaller ISO (install.esd with recovery compression: a smaller ISO, a longer build that needs room for both images). Not yet measured in the test VM, so the page names no sizes or times. `--build-media` takes an optional `compression` (`"wim"` or `"recovery"`).
-- **Windows install media:** with Allow unsupported PCs on, a Preview Expert option writes the value that lets PCs installed from the ISO accept later upgrades without the hardware checks (the setup.exe of a newer ISO). It does not help a PC on which this ISO's setup.exe is started now. Microsoft no longer documents the value and Tunero has not tested it yet. `--build-media` takes optional `allowUnsupportedUpgrades`.
-- **Windows install media:** two more Expert options, written into the install image so they apply to every PC installed from the ISO: Keep device encryption off (a value Microsoft documents) and No reserved storage (Preview: Microsoft does not document this value). Both are warned about in the review. `--build-media` takes optional `preventDeviceEncryption` and `noReservedStorage`.
-- **Windows install media:** a Remove optional Windows parts card, off by default and with nothing ticked: WordPad, Steps Recorder, Math Recognizer, XPS Viewer, the handwriting, text recognition, speech recognition and text to speech data of every language in the image, and Recall. They are removed in the same mount as the apps. Per Microsoft they can be added back after the installation (DISM /Add-Capability; Recall with Enable-WindowsOptionalFeature). The space this saves is not measured yet, so the page names none.
-- **Windows install media:** a build that fails or is stopped after the download, or once the Windows image is finished, keeps its work folder (without a mounted image) instead of deleting it, when a retry can fix the failure (a full disk, a Stop, a DISM error; not an image that fails its checks). It stays until you discard it, at most 14 days: it is removed at the next start of Tunero after that. The page then offers Resume, which applies the saved choices and goes on from there after checking every saved file, or Discard, and the failure card says how much space it takes. Build with a saved build present asks, after the review, to discard it first. `--build-media` names a kept folder and its size, and deletes saved builds in its start cleanup (it has no Resume). Not yet tested in the VM.
-- **Windows install media:** an Expert options section with Allow unsupported PCs and, for your own ISO, the apps of its edition beyond the reviewed list, to remove with a warning as on Remove apps.
+- **Windows install media:** remove optional Windows parts (WordPad, Recall, speech data), install apps at the first sign-in, a Smaller ISO option and Expert options such as device encryption off. Choices are remembered and can be saved to a file.
+- **Windows install media:** a build that fails late keeps its work for up to 14 days and offers Resume or Discard.
+- **Tweaks:** an impact filter, a Select mode for several tweaks at once, Num Lock at sign-in, and Ignore for a recommendation.
+- **Install & update:** Check for updates shows only apps that have a newer version.
+- **Remove apps:** several preinstalled apps at once; scheduled tasks have a search box.
 
 ### Changed
 
-- **Windows install media:** the finished build has its own card: the ISO's path and size, its SHA-256 (hashed from the verified file, selectable, with Copy), Show in folder, Show log and the next step (a virtual machine, or a USB stick larger than the ISO with a tool such as Rufus, with links). A failed build keeps its message with Show log and Show the stage. `--build-media` prints `SHA-256 <hash>` after the path.
-- **Windows install media:** while the build runs, the page lists every stage with its state, the app or file it is working on, how long each took and, where it stopped, the reason.
-- **Windows install media:** a summary bar stays at the bottom of the page with the image, your choices, the space needed and Build (Stop while it runs). Build first shows what goes into the ISO, with a warning for each Expert option that is on. Every card has an icon.
-- **Windows install media:** every change to the install image happens in one mount, then a component cleanup without `/ResetBase` (installed updates stay removable) before the one commit; pending operations skip the cleanup and the build goes on. Size gain not yet measured in the test VM.
-- **Long work says so:** SFC and DISM, the drive check, Windows features, the component store cleanup, Update all apps, a long VirusTotal check and the install media build (half an hour or longer) show a clock line where you start them, in the confirmation and in the progress banner; tweaks that run DISM carry a "Can take minutes" tag. DISM work adds that it takes longer while Windows is installing updates.
-- **Startup:** tabs for apps at sign-in, scheduled tasks, services, drivers and advanced places, each with its count; a summary for the open tab; plainer cards with Show file, Copy location and Delete entry under More options.
-- **Remove apps:** the Microsoft Edge card says whether Windows lets you remove Edge on this PC (set up with a region in the European Economic Area or Switzerland) and opens Installed apps, where Windows removes it. Apps that show web content keep working: WebView2 is a separate program and stays, unlike what the old note said.
-- **Windows install media:** for the download, the app list shows only the apps that edition of Microsoft's image holds (measured for build 26300: 26 instead of 50 for Pro), so no app you leave unticked looks as if it would be installed. For a build that was not measured the list says that some of its apps may not be in the image.
-- **Windows install media:** the app list shows what the image can actually hold. For your own ISO Tunero reads the chosen edition's apps (a few seconds); for the download it lists only Microsoft's apps, without manufacturer, third-party and Windows 10 apps that a Microsoft image never contains.
+- **Windows install media:** a review before the build, every stage with its time, the ISO's SHA-256, and an app list that matches the image.
+- **Startup:** tabs for sign-in apps, tasks, services, drivers and advanced places.
+- **Long work** such as SFC, DISM and the ISO build says how long it can take.
+- **Remove apps:** the Edge card says whether Windows lets you remove Edge on this PC.
 
 ### Fixed
 
-- **Install & update:** WebView2 Runtime shows as installed (Windows registers it as a system component).
-- **Search:** a check shows its result for this PC, not the text for a problem.
-- **Startup:** Tunero's own "Apply changes again" task no longer counts as a program that starts with Windows; the counts wait until the signatures are checked.
-- **Lists:** a search that matches nothing says so, Installed programs counts "12 of 134", and Services and Startup name what they are loading.
-- **Settings:** the Start menu switch says why it is off for a Scoop install or a build.
-- **One window, any file name:** starting a copy saved as "Tunero (1).exe" or renamed brings the open Tunero window to the front instead of opening a second one.
-- **Tools' temporary folder:** a renamed copy no longer empties it while another Tunero still uses it.
-- **Install & update:** a winget search or update check that gets no answer stops after five minutes with an error instead of waiting forever.
-- **Benchmark:** a PresentMon capture that does not end on its own is stopped a minute after its capture time and not kept.
-- **Screen readers:** scroll bar arrows are read as "Scroll up" and "Scroll down" instead of icon names.
-- **Windows features:** a switch made by an earlier version is still found, so switching back undoes it.
-- **Tools:** Flush DNS cache and Reset Winsock work like the other quick fixes; the Winsock confirmation carries the card's title.
-- **Installed programs:** a program installed for your account alone runs your own uninstaller and its leftovers are looked for in your profile, also when Tunero runs as a separate administrator account.
-- **Other account:** when Windows cannot look up the signed-in account (a domain account while the domain cannot be reached), a banner says that user settings go to the account Tunero runs as.
-- **Command line:** every result line names its tweak, also when a change was not applied, conflicted or failed.
-- **Windows features, capabilities and reserved storage:** a DISM failure shows its error code and DISM's reason without DISM's version header. Turning reserved storage on or off waits up to 30 minutes for DISM instead of 5, as DISM waits while Windows installs updates.
+- **Other accounts:** per-user paths, uninstallers and leftovers are the signed-in user's, also under a separate administrator account.
+- **One window:** a renamed copy brings the open window to the front.
+- Time limits for winget and PresentMon, clearer DISM errors, and smaller fixes for Search, Startup, Tools and screen readers.
 
 ## 1.4.0
 
