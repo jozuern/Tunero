@@ -579,6 +579,67 @@ public sealed class InstallMediaViewModelTests : IDisposable
         Assert.All(media.Stages.SkipWhile(s => s.Stage != MediaStage.Apps).Skip(1), s => Assert.Equal(MediaStageState.NotRun, s.State));
     }
 
+    /// <summary>The engine reports Cleanup before it rethrows a Stop or a failure: the running row still ends Stopped or Failed.</summary>
+    [Fact]
+    public async Task CleanupReportedBeforeAStopStillMarksTheStageStopped()
+    {
+        var started = new TaskCompletionSource();
+        IProgress<MediaProgress>? engine = null;
+        _reports = p =>
+        {
+            engine = p;
+            Begin(p, MediaStage.Download, MediaStage.Check, MediaStage.Unpack, MediaStage.Apps);
+        };
+        _build = async (_, ct) =>
+        {
+            started.SetResult();
+            try
+            {
+                await Task.Delay(Timeout.Infinite, ct);
+            }
+            catch (OperationCanceledException)
+            {
+                Begin(engine!, MediaStage.Cleanup);   // as CleanUpAfterFailureAsync does, before it rethrows
+                throw;
+            }
+            return "";
+        };
+        var media = await WithCatalog();
+        var build = media.BuildCommand.ExecuteAsync(null);
+        await started.Task;
+        await media.StopAndWaitAsync();
+        await build;
+        Assert.Equal(MediaStageState.Stopped, Row(media, MediaStage.Apps).State);
+        Assert.Equal(MediaStageState.Done, Row(media, MediaStage.Unpack).State);
+        Assert.Equal(Loc.Instance["Media_StageStopped"], Row(media, MediaStage.Apps).Note);
+    }
+
+    [Fact]
+    public async Task CleanupReportedBeforeAFailureStillMarksTheStageFailed()
+    {
+        _reports = p => Begin(p, MediaStage.Download, MediaStage.Check, MediaStage.Unpack, MediaStage.Cleanup);
+        _build = (_, _) => throw new MediaBuildException(MediaStage.Unpack, "x", 87, "Media_ImageCheckFailed");
+        var media = await WithCatalog();
+        await media.BuildCommand.ExecuteAsync(null);
+        Assert.Equal(MediaStageState.Failed, Row(media, MediaStage.Unpack).State);
+        Assert.Contains("87", Row(media, MediaStage.Unpack).Detail);
+    }
+
+    [Fact]
+    public async Task CleanupAfterASuccessLeavesEveryRowDone()
+    {
+        IProgress<MediaProgress>? engine = null;
+        _reports = p => engine = p;
+        _build = (request, _) =>
+        {
+            Begin(engine!, [.. MediaBuild.PlannedStages(request), MediaStage.Cleanup]);
+            return Task.FromResult(request.OutputIso);
+        };
+        var media = await WithCatalog();
+        await media.BuildCommand.ExecuteAsync(null);
+        Assert.All(media.Stages, s => Assert.Equal(MediaStageState.Done, s.State));
+    }
+
     [Fact]
     public async Task TheRowShowsTheCurrentPackageAndPercent()
     {

@@ -1281,12 +1281,9 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     private void ApplyProgress(MediaProgress p)
     {
         if (!_stagesRunning) return;
-        if (p.Stage == MediaStage.Cleanup)
-        {
-            // The ISO is verified; only the work folder is left.
-            CloseCurrent(MediaStageState.Done);
-            return;
-        }
+        // Cleanup is no row: the engine reports it after a success but also before it rethrows a failure or Stop, so
+        // FinishStages, which knows how the build ended, closes the running row.
+        if (p.Stage == MediaStage.Cleanup) return;
         var index = Stages.ToList().FindIndex(s => s.Stage == p.Stage);
         if (index < 0) return;
         var row = Stages[index];
