@@ -8,6 +8,7 @@
 - **Uninstall leftovers:** Move to Recycle Bin asks first, and checks each folder again right before it moves it, with the same evidence as Find unused program folders (autostart entries, services, scheduled tasks, running programs, taskbar pins). A folder something uses by now, such as a program installed again into it, stays and says why.
 - **Storage:** a file or folder right below a drive root (such as `D:\Old backups`) moves to the Recycle Bin. Before, the move always ended as "not moved".
 - **Scan:** the check for leftovers of other tools finds the forced platform timer on German Windows too, where bcdedit prints "Ja".
+- **Screen readers:** the result of a change, a cleanup or another task is read out also when the result bar had closed by itself before.
 
 ## 1.5.0
 

@@ -206,7 +206,9 @@ public partial class MainWindow : FluentWindow, IServiceProvider
 
     private void OnViewModelChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(MainViewModel.ResultText) && _vm.ResultOpen) Dispatcher.BeginInvoke(AnnounceResult);
+        // A new text in the open bar, or the bar opening (ShowResult sets the text first, while a bar that closed by itself
+        // is still closed): either way the result is read out once.
+        if (e.PropertyName is nameof(MainViewModel.ResultText) or nameof(MainViewModel.ResultOpen) && _vm.ResultOpen) Dispatcher.BeginInvoke(AnnounceResult);
         if (e.PropertyName == nameof(MainViewModel.SelectedItem))
         {
             RenderDetails();
