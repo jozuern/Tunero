@@ -16,9 +16,8 @@ public sealed class RecycleRulesTests : IDisposable
         Assert.Equal(RecycleBlock.SystemFile, RecycleRules.Check(@"C:\pagefile.sys", folder: false, systemFile: true, [], [], appData: false));
     }
 
-    /// <summary>Reads this PC's profile list and drives (read only).</summary>
+    /// <summary>Reads this PC's profile list and drives (read only): the CI runner has both, so CI runs it.</summary>
     [Fact]
-    [Trait("Category", "Hardware")]
     public void DriveRootIsKept()
     {
         var kept = RecycleRules.KeptFolders();
@@ -26,9 +25,8 @@ public sealed class RecycleRulesTests : IDisposable
         Assert.Equal(RecycleBlock.KeptFolder, RecycleRules.Check(system, folder: true, systemFile: false, [], kept, appData: false));
     }
 
-    /// <summary>Reads this PC's profile list and drives (read only).</summary>
+    /// <summary>Reads this PC's profile list and drives (read only): the CI runner has both, so CI runs it.</summary>
     [Fact]
-    [Trait("Category", "Hardware")]
     public void ProfileRootIsKeptButItsFilesAreNot()
     {
         var kept = RecycleRules.KeptFolders();
