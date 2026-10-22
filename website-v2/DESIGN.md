@@ -69,7 +69,12 @@ watch it rewind. Doing it is the explanation; the rewind is the trust.
   thin rim, slows as it grows, is sized by what burst and is gone in 1.8 s.
 - **Watch Tunero fix it** (`guide.ts`, plan in `lib/autoplay.ts`): a cursor clicks the real buttons page by page, the
   clicks a visitor would make (Fix, Turn on per group, each startup switch, Remove per app). The app has no fix-all
-  button and the demo does not pretend it has one. Any key or click takes over. About 15 seconds.
+  button and the demo does not pretend it has one. Any key or click takes over. About 30 seconds. The cursor moves like
+  a hand (timed by distance), rests on a button in its hover state before it presses it, and the page glides to the next
+  one; a caption above the take-over hint names the step ("Step 1 of 4: Fix what the scan found"). Each click is seen
+  where it lands: a fixed problem flashes green, its mark pops and what it wrote unfolds; a group's switches flip one
+  after the other; a switched row lights up; a removed app folds away and unfolds under Removed apps; the Changes count
+  pops. These belong to the pages, so a visitor's own clicks get them too.
 - **The finale:** when nothing is left, the wallpaper blooms and a band of light sweeps across, and an end card counts
   what was done and offers Install, the comparison and Undo all.
 - **Before/after:** a line the visitor drags across the whole screen; the shader splits the wallpaper, and the

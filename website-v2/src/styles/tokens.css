@@ -209,14 +209,35 @@ html[data-boot='pending'] .desktop {
   filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45));
 }
 
+/* The arrow's tip, which the press dips around (desktop/guide.ts). */
+.guide-cursor svg {
+  display: block;
+  transform-origin: 6px 3px;
+}
+
 .guide-click {
   position: fixed;
-  left: -18px;
-  top: -18px;
+  left: -22px;
+  top: -22px;
   z-index: 9690;
-  width: 36px;
-  height: 36px;
-  border: 1.5px solid var(--accent);
+  width: 44px;
+  height: 44px;
+  border: 2px solid var(--accent);
   border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
   pointer-events: none;
+}
+
+/* What the guided fix's cursor rests on shows the hover state a mouse would give it. */
+[data-window='tunero'] .btn.guide-hover:not(.primary),
+[data-window='tunero'] [data-nav].guide-hover:not(.current) {
+  background: var(--stroke);
+}
+
+[data-window='tunero'] .btn.primary.guide-hover {
+  filter: brightness(1.08);
+}
+
+[data-window='tunero'] .toggle.guide-hover .track {
+  border-color: var(--ink);
 }

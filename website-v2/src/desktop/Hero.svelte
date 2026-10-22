@@ -20,6 +20,7 @@
 
   const rise = (node: Element, { delay = 0 }: { delay?: number }) =>
     fly(node, { y: reducedMotion() ? 0 : 24, duration: reducedMotion() ? 0 : 600, delay: reducedMotion() ? 0 : delay, opacity: 0 });
+  const swap = (node: Element) => fly(node, { y: reducedMotion() ? 0 : 6, duration: reducedMotion() ? 0 : 280, opacity: 0 });
   const quick = (node: Element) => fade(node, { duration: reducedMotion() ? 0 : 160 });
   const pop = (node: Element) => scale(node, { start: 0.94, duration: reducedMotion() ? 0 : 420, delay: reducedMotion() ? 0 : 500, opacity: 0 });
 
@@ -45,7 +46,17 @@
 {/if}
 
 {#if store.guiding}
-  <p class="guiding" role="status" transition:quick>{copy.hero.stop}</p>
+  <div class="guiding" role="status" transition:quick>
+    {#if store.guideStep}
+      {#key store.guideStep.page}
+        <p class="step" in:swap>
+          <b>{fill(copy.hero.step, store.guideStep.index, store.guideStep.total)}</b>
+          {copy.hero.steps[store.guideStep.page]}
+        </p>
+      {/key}
+    {/if}
+    <p class="hint">{copy.hero.stop}</p>
+  </div>
 {/if}
 
 {#if end}
@@ -184,8 +195,13 @@
     bottom: 60px;
     left: 50%;
     z-index: 9650;
+    display: grid;
+    justify-items: center;
+    gap: 2px;
+    max-width: calc(100vw - 32px);
     margin: 0;
-    padding: 8px 16px;
+    padding: 10px 20px;
+    text-align: center;
     border: 1px solid var(--stroke-strong);
     border-radius: 18px;
     background: var(--acrylic-strong);
@@ -195,6 +211,25 @@
     font-size: 13px;
     transform: translateX(-50%);
     box-shadow: var(--shadow);
+  }
+
+  .guiding p {
+    margin: 0;
+  }
+
+  .step {
+    font-size: 15px;
+  }
+
+  .step b {
+    margin-right: 6px;
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .hint {
+    color: var(--ink-2);
+    font-size: 12px;
   }
 
   .end {

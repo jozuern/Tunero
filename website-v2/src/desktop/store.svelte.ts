@@ -81,6 +81,8 @@ export class DesktopStore {
   finale = $state(false);
   /** True while the guided fix (guide.ts) clicks through the plan. */
   guiding = $state(false);
+  /** The guided fix's current page and its place among the pages it visits, for the caption; null outside it. */
+  guideStep = $state<{ page: 'overview' | 'tweaks' | 'startup' | 'apps'; index: number; total: number } | null>(null);
   /** True while the before/after comparison covers the desktop (Compare.svelte). */
   compare = $state(false);
   get clutter() {

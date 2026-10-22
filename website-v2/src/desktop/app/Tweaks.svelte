@@ -1,6 +1,7 @@
 <script lang="ts">
   // Tweaks: the demo's tweaks grouped by category with the app's "Turn on" per group, and a detail pane that shows
   // exactly what the selected one writes.
+  import { onDestroy } from 'svelte';
   import type { DesktopStrings } from '../../i18n/desktop-en.ts';
   import type { DemoItem } from '../../lib/demo.ts';
   import { useStore } from '../store.svelte.ts';
@@ -8,6 +9,7 @@
   import Toggle from './Toggle.svelte';
   import Writes from './Writes.svelte';
   import Icon from '../Icon.svelte';
+  import { flash } from './flash.ts';
   import { fill, type AppStrings } from './appKeys.ts';
 
   let { app, copy, tweakCount }: { app: AppStrings; copy: DesktopStrings['app']; tweakCount: number } = $props();
@@ -36,6 +38,20 @@
   const selected = $derived(tweaks.find((t) => t.id === selectedId));
   const on = (item: DemoItem) => store.applied({ kind: 'tweak', id: item.id });
   const basisLabel = (basis: string) => fill(copy.basisLabel, copy.basis[basis as keyof typeof copy.basis] ?? basis);
+
+  /** Spacing of the switches a group's "Turn on" flips: one after the other, as the app's list fills in. */
+  const cascadeStep = 110;
+  /** The group "Turn on" was just clicked in, for as long as its switches cascade. */
+  let cascading = $state<string | null>(null);
+  let cascadeTimer: ReturnType<typeof setTimeout> | undefined;
+
+  function turnOn(group: { category: string; items: DemoItem[] }) {
+    clearTimeout(cascadeTimer);
+    cascading = group.category;
+    cascadeTimer = setTimeout(() => (cascading = null), group.items.length * cascadeStep + 900);
+    store.apply(group.items.map((item) => ({ kind: 'tweak' as const, id: item.id })));
+  }
+  onDestroy(() => clearTimeout(cascadeTimer));
 
   function set(item: DemoItem, value: boolean) {
     if (value) store.apply([{ kind: 'tweak', id: item.id }]);
@@ -84,20 +100,21 @@
               class="btn"
               data-auto="group:{group.category}"
               title={app.Tweaks_GroupApplyTip}
-              onclick={() => store.apply(group.items.map((item) => ({ kind: 'tweak' as const, id: item.id })))}
+              onclick={() => turnOn(group)}
             >
               {fill(app.Tweaks_GroupApply, off.length)}
             </button>
           {/if}
         </header>
-        {#each group.items as item (item.id)}
-          <div class="card tweak" class:selected={selectedId === item.id}>
+        {#each group.items as item, index (item.id)}
+          {@const delay = cascading === group.category ? index * cascadeStep : 0}
+          <div class="card tweak" class:selected={selectedId === item.id} use:flash={{ value: on(item), delay }}>
             <button type="button" class="pick" onclick={() => (selectedId = item.id)}>
               <strong>{item.title}</strong>
               <span>{item.summary}</span>
             </button>
             <Rating value={item.impact} label={fill(app.Impact_Short, item.impact)} />
-            <Toggle checked={on(item)} label={item.title} on={app.Tweak_SwitchOn} off={app.Tweak_SwitchOff} onchange={(value) => set(item, value)} />
+            <Toggle checked={on(item)} label={item.title} on={app.Tweak_SwitchOn} off={app.Tweak_SwitchOff} {delay} onchange={(value) => set(item, value)} />
           </div>
           {#if selectedId === item.id}
             <div class="inline" aria-live="polite">

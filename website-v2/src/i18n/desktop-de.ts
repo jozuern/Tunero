@@ -123,6 +123,13 @@ const desktopDe: DesktopStrings = {
     self: 'Selbst beheben',
     facts: '{0} Prüfungen, {1} Tweaks, jede Einstellung rückgängig zu machen. Kostenlos und quelloffen.',
     stop: 'Eine Taste oder ein Klick, und du übernimmst',
+    step: 'Schritt {0} von {1}',
+    steps: {
+      overview: 'Beheben, was der Scan gefunden hat',
+      tweaks: 'Die Tweaks einschalten, Gruppe für Gruppe',
+      startup: 'Ausschalten, was mit Windows startet',
+      apps: 'Die vorinstallierten Apps entfernen',
+    },
   },
   end: {
     title: 'Dieser PC ist behoben.',

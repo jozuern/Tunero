@@ -1,7 +1,9 @@
 <script lang="ts">
   // Remove apps: preinstalled apps from the app's reviewed list, each with Remove; removed ones are listed below.
+  import { fade, slide } from 'svelte/transition';
+  import { cubicOut } from 'svelte/easing';
   import type { DesktopStrings } from '../../i18n/desktop-en.ts';
-  import { useStore } from '../store.svelte.ts';
+  import { useStore, reducedMotion } from '../store.svelte.ts';
   import Icon from '../Icon.svelte';
   import { appIcons } from '../startup.ts';
   import { single } from '../clicks.ts';
@@ -11,6 +13,13 @@
   const store = useStore();
   const installed = $derived(store.demo.apps.filter((a) => !store.applied({ kind: 'app', id: a.id })));
   const removed = $derived(store.demo.apps.filter((a) => store.applied({ kind: 'app', id: a.id })));
+
+  // A removed app folds out of the list, the rows below glide up as it closes, and it unfolds in Removed apps (and the
+  // other way on undo); at once with animation effects off. No animate:flip: it takes a leaving row out of the layout,
+  // so the heading between the lists would jump under it.
+  const ms = (value: number) => (reducedMotion() ? 0 : value);
+  const leave = (node: Element) => slide(node, { duration: ms(320), easing: cubicOut });
+  const arrive = (node: Element) => slide(node, { duration: ms(360), delay: ms(120), easing: cubicOut });
 </script>
 
 <h1>{app.Debloat_Title}</h1>
@@ -18,7 +27,7 @@
 
 <ul>
   {#each installed as item (item.id)}
-    <li class="card">
+    <li class="card" in:arrive out:leave>
       <Icon name={appIcons[store.demo.apps.indexOf(item)]} size={20} />
       <strong>{item.title}</strong>
       <button type="button" class="btn" data-auto="app:{item.id}" aria-label={fill(app.Debloat_RemoveName, item.title)} onclick={single(() => store.apply([{ kind: 'app', id: item.id }]))}>
@@ -30,19 +39,19 @@
 
 <h2>{app.Debloat_RemovedTitle}</h2>
 {#if removed.length === 0}
-  <p class="empty">{app.Debloat_RemovedEmpty}</p>
-{:else}
-  <ul>
-    {#each removed as item (item.id)}
-      <li class="card done">
-        <Icon name="check" size={20} />
-        <strong>{item.title}</strong>
-        <span>{copy.removed}</span>
-        <button type="button" class="btn" onclick={single(() => store.undo({ kind: 'app', id: item.id }))}>{app.Debloat_Reinstall}</button>
-      </li>
-    {/each}
-  </ul>
+  <p class="empty" in:fade={{ duration: ms(200) }}>{app.Debloat_RemovedEmpty}</p>
 {/if}
+<!-- Always there, so the first app removed slides in like the others. -->
+<ul>
+  {#each removed as item (item.id)}
+    <li class="card done" in:arrive out:leave>
+      <Icon name="check" size={20} />
+      <strong>{item.title}</strong>
+      <span>{copy.removed}</span>
+      <button type="button" class="btn" onclick={single(() => store.undo({ kind: 'app', id: item.id }))}>{app.Debloat_Reinstall}</button>
+    </li>
+  {/each}
+</ul>
 
 <style>
   ul {

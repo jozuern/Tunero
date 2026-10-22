@@ -1,11 +1,14 @@
 <script lang="ts">
   // Overview: the scan, its findings and a way into the pages that change something.
   import { onDestroy } from 'svelte';
+  import { fly, scale, slide } from 'svelte/transition';
+  import { backOut, cubicOut } from 'svelte/easing';
   import type { DesktopStrings } from '../../i18n/desktop-en.ts';
   import { useStore, reducedMotion } from '../store.svelte.ts';
   import Icon from '../Icon.svelte';
   import Rating from './Rating.svelte';
   import Writes from './Writes.svelte';
+  import { flash } from './flash.ts';
   import { single } from '../clicks.ts';
   import { fill, type AppStrings, type Page } from './appKeys.ts';
   import type { DemoFinding } from '../../lib/demo.ts';
@@ -50,6 +53,10 @@
   const tweaksLeft = $derived(demo.tweaks.filter((t) => !store.applied({ kind: 'tweak', id: t.id })).length);
   const appsLeft = $derived(demo.apps.filter((a) => !store.applied({ kind: 'app', id: a.id })).length);
   const problems = $derived(fixable.filter((f) => !fixed(f)).length);
+  // A fixed problem's mark pops in and what the fix wrote unfolds below it; nothing moves with animation effects off.
+  const pop = (node: Element) => scale(node, { start: 0.4, duration: reducedMotion() ? 0 : 420, easing: backOut });
+  const unfold = (node: Element) => slide(node, { duration: reducedMotion() ? 0 : 380, easing: cubicOut });
+  const rise = (node: Element) => fly(node, { y: reducedMotion() ? 0 : 8, duration: reducedMotion() ? 0 : 320, easing: cubicOut });
   const verdict = $derived(problems === 0 ? app.Dash_VerdictNone : problems === 1 ? app.Dash_VerdictOne : fill(app.Dash_VerdictMany, problems));
 </script>
 
@@ -77,7 +84,7 @@
     <p>{fill(copy.scanNote, demo.checksRun)}</p>
   </section>
 {:else}
-  <h2 class="verdict">{verdict}</h2>
+  {#key verdict}<h2 class="verdict" in:rise>{verdict}</h2>{/key}
   {#if store.clutter === 0}
     <section class="done" aria-live="polite">
       <Icon name="check" size={20} />
@@ -94,12 +101,14 @@
   <ul class="findings">
     {#each fixable as finding (finding.id)}
       {@const done = fixed(finding)}
-      <li class="card finding" class:fixed={done}>
-        <span class="status" class:ok={done}><Icon name={done ? 'check' : 'warning'} size={20} /></span>
+      <li class="card finding" class:fixed={done} use:flash={{ value: done, tone: 'ok' }}>
+        {#key done}
+          <span class="status" class:ok={done} in:pop><Icon name={done ? 'check' : 'warning'} size={20} /></span>
+        {/key}
         <div class="text">
           <strong>{finding.title}</strong>
           <p>{finding.summary}</p>
-          {#if done && finding.writes.length > 0}<Writes writes={finding.writes} {copy} />{/if}
+          {#if done && finding.writes.length > 0}<div in:unfold><Writes writes={finding.writes} {copy} /></div>{/if}
         </div>
         <Rating value={finding.impact} label={fill(app.Impact_Short, finding.impact)} />
         {#if done}

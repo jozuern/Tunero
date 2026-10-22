@@ -122,6 +122,13 @@ const desktopEn = {
     self: 'Fix it yourself',
     facts: '{0} checks, {1} tweaks, every setting undoable. Free and open source.',
     stop: 'Press any key or click to take over',
+    step: 'Step {0} of {1}',
+    steps: {
+      overview: 'Fix what the scan found',
+      tweaks: 'Turn on the tweaks, group by group',
+      startup: 'Turn off what starts with Windows',
+      apps: 'Remove the preinstalled apps',
+    },
   },
   end: {
     title: 'This PC is fixed.',

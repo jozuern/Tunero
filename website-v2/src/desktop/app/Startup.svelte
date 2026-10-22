@@ -3,6 +3,7 @@
   import { useStore } from '../store.svelte.ts';
   import Icon from '../Icon.svelte';
   import Toggle from './Toggle.svelte';
+  import { flash } from './flash.ts';
   import { startupIcons } from '../startup.ts';
   import type { AppStrings } from './appKeys.ts';
 
@@ -16,7 +17,7 @@
 <ul>
   {#each store.demo.startup as item, i (item.id)}
     {@const off = store.applied({ kind: 'startup', id: item.id })}
-    <li class="card">
+    <li class="card" use:flash={{ value: off }}>
       <Icon name={startupIcons[i]} size={20} />
       <strong>{item.title}</strong>
       <Toggle

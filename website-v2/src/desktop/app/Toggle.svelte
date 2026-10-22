@@ -8,6 +8,7 @@
     onchange,
     stateFirst = false,
     auto,
+    delay = 0,
   }: {
     checked: boolean;
     label: string;
@@ -17,10 +18,12 @@
     stateFirst?: boolean;
     /** The guided fix's target (lib/autoplay.ts). */
     auto?: string;
+    /** Milliseconds before the switch moves, so a group turned on at once flips one switch after the other. */
+    delay?: number;
   } = $props();
 </script>
 
-<label class="toggle" class:state-first={stateFirst} data-auto={auto}>
+<label class="toggle" class:state-first={stateFirst} data-auto={auto} style:--delay="{delay}ms">
   <input type="checkbox" role="switch" {checked} aria-label={label} onchange={(event) => onchange((event.currentTarget as HTMLInputElement).checked)} />
   <span class="track" aria-hidden="true"><span class="thumb"></span></span>
   <span class="state">{checked ? on : off}</span>
@@ -48,7 +51,7 @@
     height: 20px;
     border: 1px solid var(--ink-2);
     border-radius: 10px;
-    transition: background 150ms, border-color 150ms;
+    transition: background 150ms var(--delay, 0ms), border-color 150ms var(--delay, 0ms);
   }
 
   .thumb {
@@ -59,7 +62,7 @@
     height: 12px;
     border-radius: 50%;
     background: var(--ink-2);
-    transition: transform 180ms cubic-bezier(0.1, 0.9, 0.2, 1), background 150ms;
+    transition: transform 220ms cubic-bezier(0.1, 0.9, 0.2, 1) var(--delay, 0ms), background 150ms var(--delay, 0ms);
   }
 
   input:checked + .track {
