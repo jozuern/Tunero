@@ -23,6 +23,17 @@ void main() {
 
 /** Highest device pixel ratio rendered; the picture is soft, so more pixels would only cost. */
 const maxPixelRatio = 1.5;
+/**
+ * Least time between two drawn frames: about 60 a second (72 on a 144 Hz monitor, whose refreshes fall that way). On a
+ * 120, 144 or 240 Hz monitor every refresh would draw the shader and make the browser blur every glass panel above the
+ * canvas again; the motion is slow, so this looks the same at a fraction of the cost. The 4 ms of slack allow for the
+ * jitter of a 60 Hz display, which keeps every refresh.
+ */
+const minFrameSpacing = 1000 / 60 - 4;
+/** Slow frames in a row (beyond the ones a fast frame cancels) before the picture is drawn with fewer pixels. */
+const slowFramesBeforeScaling = 30;
+/** Lowest share of the pixels drawn; the picture is soft and survives it. */
+const minQualityScale = 0.5;
 /** Angular frequency of the critically damped clutter spring: about 95 percent of the way in 1.2 s. */
 const clutterOmega = 4;
 /** Rate of the theme cross-fade, per second. */
@@ -222,10 +233,10 @@ export function startWallpaper(
 
     /** If frames keep coming slowly, draw fewer pixels: the picture is soft and survives a lower resolution. */
     function watchSpeed(seconds: number) {
-      if (qualityScale <= 0.6) return;
+      if (qualityScale <= minQualityScale) return;
       slowFrames = seconds > 0.026 ? slowFrames + 1 : Math.max(0, slowFrames - 2);
-      if (slowFrames > 90) {
-        qualityScale = Math.max(0.6, qualityScale - 0.2);
+      if (slowFrames > slowFramesBeforeScaling) {
+        qualityScale = Math.max(minQualityScale, qualityScale - 0.2);
         slowFrames = 0;
       }
     }
@@ -237,6 +248,8 @@ export function startWallpaper(
         if (clamp01(getClutter()) !== stillClutter || themeTarget() !== stillTheme || split !== stillSplit) drawStill();
         return;
       }
+      // A refresh that comes sooner than 60 a second is skipped; the next one draws, with the time since this draw.
+      if (lastNow !== null && now - lastNow < minFrameSpacing) return;
       const seconds = lastNow === null ? 0 : Math.min((now - lastNow) / 1000, 0.1);
       lastNow = now;
       if (seconds > 0) watchSpeed(seconds);

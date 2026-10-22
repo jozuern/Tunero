@@ -54,7 +54,9 @@ watch it rewind. Doing it is the explanation; the rewind is the trust.
   `clutter` value from 1 (demo state) to 0 (everything fixed), eased, so fixing calms it and undo stirs it up again.
   Neglect shows as muddy colour, grain, a wobble and faster motion, never as dropped frames or glitches: on a site
   about a faster PC, anything that looks like lag reads as the site being slow.
-  Paused when the tab is hidden, rendered once and frozen with animation effects off, capped at 1.5 device pixel ratio.
+  Paused when the tab is hidden, rendered once and frozen with animation effects off, capped at 1.5 device pixel ratio
+  and at about 60 frames a second (a faster monitor would redraw the shader and every glass panel above it for nothing), and
+  drawn with fewer pixels once frames keep coming slowly.
   Without WebGL2 a static CSS background stands in.
 - **The arrival:** on an untouched demo PC three notifications pile up at once, then come one at a time. A headline
   sits on the wallpaper like the clock of a lock screen, with "Watch Tunero fix it", "Fix it yourself" and a link to
