@@ -1806,6 +1806,14 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Media_CompressionSmallerText" xml:space="preserve"><value>Windows is stored with stronger compression in install.esd. The ISO is smaller; the build takes longer and needs room for both images while it runs.</value></data>
   <data name="Media_UnsupportedSourceSupport" xml:space="preserve"><value>Microsoft: Windows 11 on devices that don't meet minimum system requirements</value></data>
   <data name="Media_UnsupportedSourceSpecs" xml:space="preserve"><value>Microsoft: Windows 11 specifications and system requirements</value></data>
+  <data name="Media_EncryptionTitle" xml:space="preserve"><value>Keep device encryption off</value></data>
+  <data name="Media_EncryptionText" xml:space="preserve"><value>Automatic device encryption stays off: the drive is not encrypted unless you turn on BitLocker. This applies to every PC installed from this ISO, and anyone who takes the drive out can read it. Microsoft recommends keeping device encryption on for PCs that support it.</value></data>
+  <data name="Media_EncryptionSource" xml:space="preserve"><value>Microsoft: BitLocker overview, disable device encryption</value></data>
+  <data name="Media_ReservedTitle" xml:space="preserve"><value>No reserved storage</value></data>
+  <data name="Media_ReservedText" xml:space="preserve"><value>No space is kept for updates: an update can fail on a full drive. This applies to every PC installed from this ISO. Microsoft does not document this value, and it has not been checked in a test installation yet.</value></data>
+  <data name="Media_Field_preventDeviceEncryption" xml:space="preserve"><value>Keep device encryption off</value></data>
+  <data name="Media_Field_noReservedStorage" xml:space="preserve"><value>No reserved storage</value></data>
+  <data name="Media_SettingsFailed" xml:space="preserve"><value>Tunero could not write the settings into the Windows image.</value></data>
   <data name="Media_BuildTitle" xml:space="preserve"><value>Build</value></data>
   <data name="Media_Output" xml:space="preserve"><value>ISO file</value></data>
   <data name="Media_PickOutput" xml:space="preserve"><value>Change</value></data>

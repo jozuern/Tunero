@@ -986,6 +986,7 @@ public sealed class InstallMediaViewModelTests : IDisposable
         public void DeleteWorkFolder(string folder) => throw new NotSupportedException();
         public long FreeBytes(string path) => throw new NotSupportedException();
         public IOfflineHive LoadSystemHive(string file) => throw new NotSupportedException();
+        public IWritableHive LoadWritableHive(string file) => throw new NotSupportedException();
         public void UnloadLeftoverHives() => throw new NotSupportedException();
     }
 
@@ -1434,6 +1435,65 @@ public sealed class InstallMediaViewModelTests : IDisposable
 
         media.ResetChoicesCommand.Execute(null);
         Assert.True(media.FasterBuild);
+    }
+
+    [Fact]
+    public async Task TheImageSettingsAreOffAndReachTheRequestSummaryReviewAndSavedFile()
+    {
+        var media = await WithCatalog();
+        Assert.False(media.PreventDeviceEncryption);
+        Assert.False(media.NoReservedStorage);
+        await media.BuildCommand.ExecuteAsync(null);
+        Assert.Equal(MediaImageSettings.None, Assert.Single(_requests).Settings);
+
+        _requests.Clear();
+        var changed = new List<string?>();
+        media.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+        media.PreventDeviceEncryption = true;
+        media.NoReservedStorage = true;
+        Assert.Contains(nameof(InstallMediaViewModel.SummaryText), changed);
+        Assert.Contains(Loc.Instance["Media_EncryptionTitle"], media.SummaryText);
+        Assert.Contains(Loc.Instance["Media_ReservedTitle"], media.SummaryText);
+        var review = media.ReviewRequest()!;
+        Assert.Contains(review.Changes, l => l.Target == Loc.Instance["Media_EncryptionTitle"]);
+        Assert.Contains(review.Changes, l => l.Target == Loc.Instance["Media_ReservedTitle"]);
+        Assert.Equal(2, review.Warnings.Count(w => w.Contains(Loc.Instance["Media_EncryptionText"], StringComparison.Ordinal) || w.Contains(Loc.Instance["Media_ReservedText"], StringComparison.Ordinal)));
+
+        _dialogs.SaveFile = Path.Combine(_root, "settings.json");
+        media.SaveChoicesCommand.Execute(null);
+        var saved = MediaRequestFile.Parse(File.ReadAllText(_dialogs.SaveFile), Keyboards);
+        Assert.True(saved.PreventDeviceEncryption);
+        Assert.True(saved.NoReservedStorage);
+
+        await media.BuildCommand.ExecuteAsync(null);
+        Assert.Equal(new MediaImageSettings(true, true, false), Assert.Single(_requests).Settings);
+    }
+
+    [Fact]
+    public async Task ALoadedFileSetsTheImageSettingsAndResetTurnsThemOff()
+    {
+        var media = await WithCatalog();
+        var json = Saved();
+        json["preventDeviceEncryption"] = true;
+        json["noReservedStorage"] = true;
+        _dialogs.OpenFile = Write(json, "settings.json");
+        media.LoadChoicesCommand.Execute(null);
+        Assert.True(media.PreventDeviceEncryption);
+        Assert.True(media.NoReservedStorage);
+
+        media.ResetChoicesCommand.Execute(null);
+        Assert.False(media.PreventDeviceEncryption);
+        Assert.False(media.NoReservedStorage);
+    }
+
+    [Fact]
+    public async Task TheStageListIncludesSettingsWhenAnImageSettingIsOn()
+    {
+        var media = await WithCatalog();
+        media.RemoveApps = false;
+        media.PreventDeviceEncryption = true;
+        await media.BuildCommand.ExecuteAsync(null);
+        Assert.Contains(MediaStage.Settings, media.Stages.Select(s => s.Stage));
     }
 
     [Fact]

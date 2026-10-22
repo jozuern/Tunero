@@ -35,7 +35,8 @@ public sealed record MediaDroppedValue(string Field, string? Item = null);
 ///   "keyboard": "0407:00000407" } or null, "profile": "gaming" or null, "allowUnsupported": false, "output": "C:\\out\\Win11.iso",
 ///   optional: "appLanguage": "en" or "de", "theme": "System", "Light" or "Dark" (absent or null: the app's),
 ///   "installApps": ["Mozilla.Firefox", ...] (app catalog ids, needs a profile), "removeUnreviewed": ["Contoso.App", ...],
-///   "compression": "wim" (default, faster build) or "recovery" (install.esd, smaller ISO, longer build) }
+///   "compression": "wim" (default, faster build) or "recovery" (install.esd, smaller ISO, longer build),
+///   "preventDeviceEncryption": false, "noReservedStorage": false (true writes the setting into install.wim) }
 /// </code>
 /// </summary>
 public sealed record MediaRequestFile(
@@ -59,6 +60,12 @@ public sealed record MediaRequestFile(
     /// <summary>How the install image is stored (<see cref="MediaChoices.Compression"/>); the file's "compression" is "wim" or "recovery".</summary>
     public MediaCompression Compression { get; init; } = MediaCompression.Wim;
 
+    /// <summary>Expert: keep automatic device encryption off in the image (<see cref="MediaImageSettings.PreventDeviceEncryption"/>).</summary>
+    public bool PreventDeviceEncryption { get; init; }
+
+    /// <summary>Expert: keep no space reserved for updates in the image (<see cref="MediaImageSettings.NoReservedStorage"/>).</summary>
+    public bool NoReservedStorage { get; init; }
+
     /// <summary>What <see cref="ParseKeepingWhatFits"/> could not use. Named to the user; the page keeps its own value for each.</summary>
     public IReadOnlyList<MediaDroppedValue> Dropped { get; init; } = [];
 
@@ -73,7 +80,7 @@ public sealed record MediaRequestFile(
     /// <summary>The top-level fields of a request file (the page names one that is refused by its Media_Field_ label).</summary>
     public static IReadOnlyList<string> FieldNames => Fields;
 
-    private static readonly string[] Fields = ["source", "language", "edition", "removeApps", "skipSetup", "profile", "allowUnsupported", "output", "appLanguage", "theme", "installApps", "removeUnreviewed", "compression"];
+    private static readonly string[] Fields = ["source", "language", "edition", "removeApps", "skipSetup", "profile", "allowUnsupported", "output", "appLanguage", "theme", "installApps", "removeUnreviewed", "compression", "preventDeviceEncryption", "noReservedStorage"];
     private static readonly string[] AppLanguages = ["en", "de"];
     private static readonly string[] Themes = ["System", "Light", "Dark"];
     private static readonly string[] SetupFields = ["accountName", "region", "keyboard"];
@@ -157,7 +164,13 @@ public sealed record MediaRequestFile(
 
         return new MediaRequestFile(source, language, edition, apps, setup, profile, unsupported.GetBoolean(), output,
             Optional(root, "appLanguage", AppLanguages), Optional(root, "theme", Themes))
-        { InstallApps = install, RemoveUnreviewed = unreviewed, Compression = CompressionOf(root) };
+        {
+            InstallApps = install,
+            RemoveUnreviewed = unreviewed,
+            Compression = CompressionOf(root),
+            PreventDeviceEncryption = OptionalBool(root, "preventDeviceEncryption"),
+            NoReservedStorage = OptionalBool(root, "noReservedStorage"),
+        };
     }
 
     /// <summary>
@@ -238,6 +251,8 @@ public sealed record MediaRequestFile(
             InstallApps = choices.InstallApps.ToList(),
             RemoveUnreviewed = choices.RemoveUnreviewed.ToList(),
             Compression = choices.Compression,
+            PreventDeviceEncryption = choices.Settings.PreventDeviceEncryption,
+            NoReservedStorage = choices.Settings.NoReservedStorage,
         };
     }
 
@@ -262,6 +277,8 @@ public sealed record MediaRequestFile(
         root["installApps"] = new JsonArray(InstallApps.Select(a => (JsonNode?)a).ToArray());
         root["removeUnreviewed"] = new JsonArray(RemoveUnreviewed.Select(a => (JsonNode?)a).ToArray());
         root["compression"] = Compression == MediaCompression.Recovery ? RecoveryName : WimName;
+        root["preventDeviceEncryption"] = PreventDeviceEncryption;
+        root["noReservedStorage"] = NoReservedStorage;
         return root.ToJsonString(new JsonSerializerOptions { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
     }
 
@@ -297,6 +314,7 @@ public sealed record MediaRequestFile(
             InstallApps = InstallApps,
             RemoveUnreviewed = RemoveUnreviewed,
             Compression = Compression,
+            Settings = new MediaImageSettings(PreventDeviceEncryption, NoReservedStorage, false),
         };
     }
 
@@ -337,6 +355,14 @@ public sealed record MediaRequestFile(
         if (Same(text, WimName)) return MediaCompression.Wim;
         if (Same(text, RecoveryName)) return MediaCompression.Recovery;
         throw new MediaRequestFileException("compression", $"must be \"{WimName}\" (faster build) or \"{RecoveryName}\" (smaller ISO), or null for \"{WimName}\"");
+    }
+
+    /// <summary>An optional true or false: absent or null is false.</summary>
+    private static bool OptionalBool(JsonElement obj, string field)
+    {
+        if (!obj.TryGetProperty(field, out var value) || value.ValueKind == JsonValueKind.Null) return false;
+        if (value.ValueKind is not (JsonValueKind.True or JsonValueKind.False)) throw new MediaRequestFileException(field, "must be true or false (or null for false)");
+        return value.GetBoolean();
     }
 
     /// <summary>An optional list of names: absent or null gives none; <paramref name="check"/> returns the name to keep, or null to refuse it.</summary>

@@ -356,6 +356,56 @@ public sealed class MediaRequestFileTests : IDisposable
         Assert.Equal(MediaCompression.Wim, file.Compression);
     }
 
+    [Fact]
+    public void TheImageSettingsAreOptionalAndOffWhenAbsent()
+    {
+        var json = Download();
+        Assert.Equal(MediaImageSettings.None, Parse(json).ToChoices(Files, "en", Path.Combine(_root, "Tunero.exe"), "Dark").Settings);
+        json["preventDeviceEncryption"] = null;
+        json["noReservedStorage"] = null;
+        Assert.Equal(MediaImageSettings.None, Parse(json).ToChoices(Files, "en", Path.Combine(_root, "Tunero.exe"), "Dark").Settings);
+        json["preventDeviceEncryption"] = true;
+        json["noReservedStorage"] = false;
+        var request = Parse(json).ToChoices(Files, "en", Path.Combine(_root, "Tunero.exe"), "Dark").ToRequest();
+        Assert.Equal(new MediaImageSettings(true, false, false), request.Settings);
+        json["noReservedStorage"] = true;
+        Assert.Equal(new MediaImageSettings(true, true, false), Parse(json).ToChoices(Files, "en", Path.Combine(_root, "Tunero.exe"), "Dark").Settings);
+    }
+
+    [Theory]
+    [InlineData("preventDeviceEncryption", "\"yes\"")]
+    [InlineData("preventDeviceEncryption", "1")]
+    [InlineData("noReservedStorage", "\"true\"")]
+    [InlineData("noReservedStorage", "[]")]
+    public void ABadImageSettingIsRefusedByName(string field, string value)
+    {
+        var json = Download();
+        json[field] = JsonNode.Parse(value);
+        var refused = Refused(json);
+        Assert.Equal(field, refused.Field);
+        Assert.Contains("true or false", refused.Message);
+    }
+
+    [Fact]
+    public void AllowUnsupportedUpgradesIsNotAFieldYet()
+    {
+        var json = Download();
+        json["allowUnsupportedUpgrades"] = true;
+        Assert.Equal("allowUnsupportedUpgrades", Refused(json).Field);
+    }
+
+    [Fact]
+    public void ABadImageSettingIsDroppedAndNamedWhenKeepingWhatFits()
+    {
+        var json = Download();
+        json["preventDeviceEncryption"] = "yes";
+        json["noReservedStorage"] = true;
+        var file = MediaRequestFile.ParseKeepingWhatFits(json.ToJsonString(), Keyboards);
+        Assert.Equal([new("preventDeviceEncryption")], file.Dropped);
+        Assert.False(file.PreventDeviceEncryption);
+        Assert.True(file.NoReservedStorage);
+    }
+
     [Theory]
     [InlineData("installApps", "[\"Contoso.NotAnApp\"]", "Contoso.NotAnApp")]
     [InlineData("installApps", "\"Valve.Steam\"", "list")]
@@ -517,6 +567,8 @@ public sealed class MediaRequestFileTests : IDisposable
             RemoveApps = MediaChoices.PageApps(CatalogData.Current.Appx, MediaChoices.MeasuredApps(CatalogData.Current.MediaImages, Files[1])).Select(a => a.Name).Take(5).ToList(),
         },
         "recovery" => Choices(new MediaSource(Files[1], null, null)) with { Compression = MediaCompression.Recovery },
+        "settings" => Choices(new MediaSource(Files[1], null, null)) with { Settings = new(true, true, false) },
+        "encryptionOnly" => Choices(new MediaSource(Files[1], null, null)) with { Settings = new(true, false, false) },
         _ => Choices(new MediaSource(null, OwnIso(), null)) with
         {
             SkipSetup = false, AccountName = null, Region = null, Keyboard = null, AllowUnsupported = false, Tunero = null, RemoveApps = [],
@@ -529,6 +581,8 @@ public sealed class MediaRequestFileTests : IDisposable
     [InlineData("allOn")]
     [InlineData("allOff")]
     [InlineData("recovery")]
+    [InlineData("settings")]
+    [InlineData("encryptionOnly")]
     public void ChoicesRoundTripThroughTheRequestFile(string name)
     {
         var c = Set(name);
@@ -538,6 +592,7 @@ public sealed class MediaRequestFileTests : IDisposable
         // The file written again is the same file.
         Assert.Equal(json, MediaRequestFile.FromChoices(back, c.Tunero?.Profile, c.Tunero?.Theme).ToJson());
         Assert.Equal(c.Compression, back.Compression);
+        Assert.Equal(c.Settings, back.Settings);
     }
 
     [Fact]

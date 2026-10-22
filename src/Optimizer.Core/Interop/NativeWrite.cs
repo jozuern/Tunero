@@ -119,6 +119,27 @@ internal static partial class NativeWrite
     [DllImport("cfgmgr32.dll")]
     internal static extern uint CM_Enable_DevNode(uint devInst, uint flags);
 
+    // ---------- advapi32: DWORD values in a loaded offline hive (install media) ----------
+    // Opened and created with REG_OPTION_BACKUP_RESTORE: with SeBackupPrivilege and SeRestorePrivilege enabled the access
+    // check is skipped, so keys of the image that only TrustedInstaller may write are written without changing their ACL.
+    internal const uint RegOptionBackupRestore = 0x4, RegDword = 4, KeySetValue = 0x2, KeyQueryValue = 0x1;
+
+    [LibraryImport("advapi32.dll", EntryPoint = "RegCreateKeyExW", StringMarshalling = StringMarshalling.Utf16)]
+    internal static partial int RegCreateKeyEx(IntPtr key, string subKey, int reserved, string? keyClass, uint options, uint samDesired,
+        IntPtr securityAttributes, out IntPtr result, out uint disposition);
+
+    [LibraryImport("advapi32.dll", EntryPoint = "RegOpenKeyExW", StringMarshalling = StringMarshalling.Utf16)]
+    internal static partial int RegOpenKeyEx(IntPtr key, string subKey, uint options, uint samDesired, out IntPtr result);
+
+    [LibraryImport("advapi32.dll", EntryPoint = "RegSetValueExW", StringMarshalling = StringMarshalling.Utf16)]
+    internal static partial int RegSetValueEx(IntPtr key, string valueName, int reserved, uint type, ref int data, uint size);
+
+    [LibraryImport("advapi32.dll", EntryPoint = "RegQueryValueExW", StringMarshalling = StringMarshalling.Utf16)]
+    internal static partial int RegQueryValueEx(IntPtr key, string valueName, IntPtr reserved, out uint type, out int data, ref uint size);
+
+    [LibraryImport("advapi32.dll")]
+    internal static partial int RegCloseKey(IntPtr key);
+
     // ---------- virtdisk: an ISO attached read-only, without a drive letter, for as long as its handle is open ----------
     // A temporary change: IsoReader attaches to read the ISO and detaches in a finally (no permanent lifetime).
     internal const uint VirtualStorageTypeDeviceIso = 1;

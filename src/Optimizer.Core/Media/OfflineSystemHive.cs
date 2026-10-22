@@ -16,7 +16,8 @@ public interface IOfflineHive : IDisposable
 /// The SYSTEM hive of a mounted image, loaded under HKLM (<see cref="HiveFile"/>, as <see cref="DefaultProfileHive"/>
 /// loads the Default profile) and only read. The name carries the process id: a hive that a killed Tunero left loaded
 /// holds its file open, so its image cannot be unmounted until <see cref="UnloadLeftovers"/> unloads it, and another
-/// running Tunero's hive is never touched. Not covered by unit tests beyond <see cref="LeftoversToUnload"/> (it loads a
+/// running Tunero's hive is never touched. <see cref="OfflineImageRegistry"/> (the writable hives of install.wim) shares
+/// the bookkeeping: its names are held in the same set and <see cref="UnloadLeftovers"/> unloads both kinds. Not covered by unit tests beyond <see cref="LeftoversToUnload"/> (it loads a
 /// hive into the registry); the VM test drives it.
 /// </summary>
 public sealed class OfflineSystemHive : IOfflineHive
@@ -26,6 +27,20 @@ public sealed class OfflineSystemHive : IOfflineHive
 
     /// <summary>This process's hives that a build holds now; any other one of this process is a leftover.</summary>
     private static readonly HashSet<string> Held = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The name prefixes of the hives this class unloads as leftovers: the read-only SYSTEM hives and the writable image hives.</summary>
+    private static readonly string[] Prefixes = [MountPrefix, OfflineImageRegistry.MountPrefix];
+
+    /// <summary>Marks a hive name as held by a build; it exists from here on, before it is loaded, so a leftover unload running meanwhile never takes it.</summary>
+    internal static void Hold(string name)
+    {
+        lock (Held) Held.Add(name);
+    }
+
+    internal static void Release(string name)
+    {
+        lock (Held) Held.Remove(name);
+    }
 
     private readonly string _name;
     private int _unloaded;
@@ -37,11 +52,11 @@ public sealed class OfflineSystemHive : IOfflineHive
     {
         var name = $"{MountPrefix}{Environment.ProcessId}-{Interlocked.Increment(ref _count)}";
         // Held before it exists: UnloadLeftovers running meanwhile never takes it for a leftover.
-        lock (Held) Held.Add(name);
+        Hold(name);
         var rc = HiveFile.Load(HiveFile.LocalMachine, name, file);
         if (rc != 0)
         {
-            lock (Held) Held.Remove(name);
+            Release(name);
             if (rc is null) throw new UnauthorizedAccessException("Loading a registry hive needs administrator rights.");
             throw new IOException($"{file} could not be loaded as a registry hive: {new Win32Exception(rc.Value).Message}");
         }
@@ -74,7 +89,7 @@ public sealed class OfflineSystemHive : IOfflineHive
         }
         finally
         {
-            lock (Held) Held.Remove(_name);
+            Release(_name);
         }
     }
 
@@ -97,15 +112,16 @@ public sealed class OfflineSystemHive : IOfflineHive
     }
 
     /// <summary>
-    /// Of the loaded hive <paramref name="names"/>, this class's ones that no build holds: this process's that are not
+    /// Of the loaded hive <paramref name="names"/>, the media build's ones (<see cref="Prefixes"/>) that no build holds: this process's that are not
     /// <paramref name="held"/>, and those of processes that are no running Tunero (or whose name has no readable id).
     /// </summary>
     internal static List<string> LeftoversToUnload(IEnumerable<string> names, int ownPid, IReadOnlyCollection<string> held, Func<int, bool> isTuneroRunning)
     {
         var leftovers = new List<string>();
-        foreach (var name in names.Where(n => n.StartsWith(MountPrefix, StringComparison.OrdinalIgnoreCase)))
+        foreach (var name in names)
         {
-            var pid = name.AsSpan(MountPrefix.Length);
+            if (Prefixes.FirstOrDefault(p => name.StartsWith(p, StringComparison.OrdinalIgnoreCase)) is not { } prefix) continue;
+            var pid = name.AsSpan(prefix.Length);
             if (pid.IndexOf('-') is var dash and > 0) pid = pid[..dash];
             if (int.TryParse(pid, out var id) && (id == ownPid ? held.Contains(name, StringComparer.OrdinalIgnoreCase) : isTuneroRunning(id))) continue;
             leftovers.Add(name);
@@ -113,16 +129,16 @@ public sealed class OfflineSystemHive : IOfflineHive
         return leftovers;
     }
 
-    private static void Unload(string name) => HiveFile.Retry(lastTry =>
+    internal static void Unload(string name) => HiveFile.Retry(lastTry =>
     {
         var rc = HiveFile.TryUnload(HiveFile.LocalMachine, name);
         if (rc is 0 or 2 /* ERROR_FILE_NOT_FOUND: not loaded */)
         {
-            if (rc == 0) AppLog.Info("media", "offline SYSTEM hive unloaded", new { name });
+            if (rc == 0) AppLog.Info("media", "offline hive unloaded", new { name });
             return true;
         }
         if (!lastTry) return false;
-        AppLog.Warn("media", $"offline SYSTEM hive {name} not unloaded: {new Win32Exception(rc).Message}");
+        AppLog.Warn("media", $"offline hive {name} not unloaded: {new Win32Exception(rc).Message}");
         return true;
     });
 }

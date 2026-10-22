@@ -521,6 +521,16 @@ public sealed partial class InstallMediaViewModel : PageViewModel
 
     partial void OnAllowUnsupportedChanged(bool value) => Changed();
 
+    /// <summary>Expert: keep automatic device encryption off in every PC installed from the ISO (a registry value written into install.wim).</summary>
+    [ObservableProperty] private bool _preventDeviceEncryption;
+
+    partial void OnPreventDeviceEncryptionChanged(bool value) => Changed();
+
+    /// <summary>Expert: keep no space reserved for updates in every PC installed from the ISO (a registry value written into install.wim).</summary>
+    [ObservableProperty] private bool _noReservedStorage;
+
+    partial void OnNoReservedStorageChanged(bool value) => Changed();
+
     /// <summary>Expert: also remove apps of the own ISO's image that the reviewed list does not cover (off, none ticked).</summary>
     [ObservableProperty] private bool _removeUnreviewed;
 
@@ -1270,6 +1280,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
             RemoveUnreviewed = RemoveUnreviewed && !UseDownload ? UnreviewedRows.Where(r => r.IsChecked).Select(r => r.Key).ToList() : [],
             InstallApps = InstallApps && tunero is not null ? InstallRows.Where(r => r.IsChecked).Select(r => r.Key).ToList() : [],
             Compression = SmallerIso ? MediaCompression.Recovery : MediaCompression.Wim,
+            Settings = new MediaImageSettings(PreventDeviceEncryption, NoReservedStorage, false),
         };
     }
 
@@ -1759,6 +1770,8 @@ public sealed partial class InstallMediaViewModel : PageViewModel
 
         if (Given("allowUnsupported")) AllowUnsupported = f.AllowUnsupported;
         if (Given("compression")) SmallerIso = f.Compression == MediaCompression.Recovery;
+        if (Given("preventDeviceEncryption")) PreventDeviceEncryption = f.PreventDeviceEncryption;
+        if (Given("noReservedStorage")) NoReservedStorage = f.NoReservedStorage;
 
         if (Given("installApps"))
         {
@@ -1888,6 +1901,8 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         SkipSetup = true;
         AllowUnsupported = false;
         SmallerIso = false;
+        PreventDeviceEncryption = false;
+        NoReservedStorage = false;
         RemoveUnreviewed = false;
         InstallApps = false;
         AccountNameText = _pc.UserName is { } user && AccountName.Problem(user) is null ? user : "";
@@ -1952,6 +1967,8 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         }
         // "review": the choices a review has something to warn about (the review itself is shown by --confirm-shot).
         AllowUnsupported = shows.Contains("review");
+        PreventDeviceEncryption = shows.Contains("review");
+        NoReservedStorage = shows.Contains("review");
         SmallerIso = shows.Contains("smaller");
         _demo = true;
         _catalog = new InstallMediaDemo.Catalog();

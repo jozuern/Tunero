@@ -60,6 +60,24 @@ public sealed class InstallMediaSummaryTests
     }
 
     [Fact]
+    public void TheImageSettingsAppearInTheBarTheReviewAndTheWarningsOnlyWhenOn()
+    {
+        var off = Choices();
+        Assert.DoesNotContain(Loc.Instance["Media_EncryptionTitle"], InstallMediaSummary.Bar(off, "Windows 11 Pro", null, 1));
+        Assert.DoesNotContain(InstallMediaSummary.Review(off, "Windows 11 Pro", null, 1).Changes, l => l.Target == Loc.Instance["Media_ReservedTitle"]);
+
+        var on = off with { Settings = new(true, true, false) };
+        var bar = InstallMediaSummary.Bar(on, "Windows 11 Pro", null, 1);
+        Assert.Contains(Loc.Instance["Media_EncryptionTitle"], bar);
+        Assert.Contains(Loc.Instance["Media_ReservedTitle"], bar);
+        var review = InstallMediaSummary.Review(on, "Windows 11 Pro", null, 1);
+        Assert.Contains(review.Changes, l => l.Target == Loc.Instance["Media_EncryptionTitle"] && l.After == Loc.Instance["Media_Review_On"]);
+        Assert.Contains(review.Changes, l => l.Target == Loc.Instance["Media_ReservedTitle"] && l.After == Loc.Instance["Media_Review_On"]);
+        Assert.Contains(review.Warnings, w => w.Contains(Loc.Instance["Media_EncryptionText"], StringComparison.Ordinal));
+        Assert.Contains(review.Warnings, w => w.Contains(Loc.Instance["Media_ReservedText"], StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void ReviewListsEveryActiveChoiceAndWarnsForExpertOptions()
     {
         var r = InstallMediaSummary.Review(Choices(apps: 18, account: "joshu", allowUnsupported: true, profile: "office", unreviewed: 2, install: 3), "Windows 11 Pro", "26300", 1);

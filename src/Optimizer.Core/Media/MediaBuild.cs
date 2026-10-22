@@ -45,6 +45,38 @@ public sealed record MediaRequest(
 
     /// <summary>How the install image is stored on the media (<see cref="MediaCompression"/>).</summary>
     public MediaCompression Compression { get; init; } = MediaCompression.Wim;
+
+    /// <summary>Registry values written into install.wim (Expert); none by default.</summary>
+    public MediaImageSettings Settings { get; init; } = MediaImageSettings.None;
+}
+
+/// <summary>
+/// Expert settings written into the registry of the mounted install.wim, so they apply to every PC installed from the ISO.
+/// <paramref name="PreventDeviceEncryption"/> keeps Windows from turning on device encryption by itself;
+/// <paramref name="NoReservedStorage"/> keeps no space for updates;
+/// <paramref name="AllowUnsupportedUpgrades"/> is refused by <see cref="MediaBuild.Validate"/> until it is implemented.
+/// </summary>
+public sealed record MediaImageSettings(bool PreventDeviceEncryption, bool NoReservedStorage, bool AllowUnsupportedUpgrades)
+{
+    public static MediaImageSettings None { get; } = new(false, false, false);
+
+    /// <summary>Whether any setting is on.</summary>
+    public bool Any => PreventDeviceEncryption || NoReservedStorage || AllowUnsupportedUpgrades;
+
+    /// <summary>
+    /// The DWORD values of the settings that are on: the hive (SYSTEM or SOFTWARE), the key inside it, the name and the
+    /// value. The one place for them. <paramref name="controlSet"/> is the image's ("ControlSet001"); an offline SYSTEM
+    /// hive has no CurrentControlSet.
+    /// </summary>
+    internal static IReadOnlyList<(string Hive, string Key, string Name, int Value)> Values(MediaImageSettings s, string controlSet)
+    {
+        var values = new List<(string, string, string, int)>();
+        // Documented by Microsoft: PreventDeviceEncryption = 1 under HKLM\SYSTEM\CurrentControlSet\Control\BitLocker.
+        if (s.PreventDeviceEncryption) values.Add(("SYSTEM", $@"{controlSet}\Control\BitLocker", "PreventDeviceEncryption", 1));
+        // Microsoft does not document 0 for this value: Preview on the page until the test VM shows reserved storage Disabled.
+        if (s.NoReservedStorage) values.Add(("SOFTWARE", @"Microsoft\Windows\CurrentVersion\ReserveManager", "ShippedWithReserves", 0));
+        return values;
+    }
 }
 
 /// <summary>
@@ -83,7 +115,7 @@ public sealed class MediaBuildException(MediaStage stage, string message, int? c
         "Media_OutputMoveFailed", "Media_SourceMissing", "Media_WorkFolderFailed",
         "Media_NotEnoughSpace", "Media_NotWindows11", "Media_NotX64", "Media_NoUefiBoot", "Media_EditionMissing",
         "Media_ImageCheckFailed", "Media_Unhealthy", "Media_FilesCheckFailed", "Media_BootImageAnswerFile", "Media_IsoInUse",
-        "Media_VerifyFailed",
+        "Media_VerifyFailed", "Media_SettingsFailed",
     ];
 }
 
@@ -156,6 +188,12 @@ public interface IMediaSteps
     /// Throws IOException or UnauthorizedAccessException when it cannot be loaded.
     /// </summary>
     IOfflineHive LoadSystemHive(string file);
+
+    /// <summary>
+    /// Loads a hive file of the mounted install.wim (SYSTEM or SOFTWARE) for writing, until the result is disposed
+    /// (<see cref="OfflineImageRegistry"/>). Throws IOException or UnauthorizedAccessException when it cannot be loaded.
+    /// </summary>
+    IWritableHive LoadWritableHive(string file);
 
     /// <summary>
     /// Unloads the hives no build holds: those of Tuneros no longer running and this process's given-up ones
@@ -233,14 +271,21 @@ public sealed class MediaBuild(IMediaSteps steps)
     public static IReadOnlyList<MediaStage> PlannedStages(MediaRequest r)
     {
         List<MediaStage> stages = r.Source.Download is not null ? [MediaStage.Download, MediaStage.Check, MediaStage.Unpack] : [MediaStage.Unpack];
-        if (ChangesInstallImage(r)) stages.AddRange([MediaStage.Apps, MediaStage.Shrink]);
+        if (ChangesInstallImage(r))
+        {
+            if (ChangesApps(r)) stages.Add(MediaStage.Apps);
+            if (r.Settings.Any) stages.Add(MediaStage.Settings);
+            stages.Add(MediaStage.Shrink);
+        }
         if (r.Compression == MediaCompression.Recovery) stages.Add(MediaStage.Compress);
         stages.AddRange([MediaStage.Files, MediaStage.Iso, MediaStage.Verify]);
         return stages;
     }
 
-    /// <summary>Whether install.wim is mounted for changes (today: when apps are removed).</summary>
-    private static bool ChangesInstallImage(MediaRequest r) => r.RemoveApps.Count > 0 || r.RemoveUnreviewed.Count > 0;
+    /// <summary>Whether install.wim is mounted for changes: when apps are removed or settings are written.</summary>
+    private static bool ChangesInstallImage(MediaRequest r) => ChangesApps(r) || r.Settings.Any;
+
+    private static bool ChangesApps(MediaRequest r) => r.RemoveApps.Count > 0 || r.RemoveUnreviewed.Count > 0;
 
     /// <summary>Runs the build and returns the verified ISO with its size and SHA-256. A wrong request throws <see cref="ArgumentException"/> before any step.</summary>
     public Task<MediaBuildResult> RunAsync(MediaRequest r, IProgress<MediaProgress> p, CancellationToken ct)
@@ -277,6 +322,9 @@ public sealed class MediaBuild(IMediaSteps steps)
         foreach (var name in r.RemoveUnreviewed)
             if (!DebloatService.IsSafeName(name) || apps.Any(a => a.Matches(name)) || appx.IsProtected(name) || appx.IsUnreviewedExcluded(name))
                 throw new ArgumentException($"{name} cannot be removed as an app nobody reviewed.", nameof(r));
+        ArgumentNullException.ThrowIfNull(r.Settings);
+        // No code writes this setting yet: a request must not look as if it did.
+        if (r.Settings.AllowUnsupportedUpgrades) throw new ArgumentException("Allowing unsupported upgrades is not implemented yet.", nameof(r));
         // Only keyboards and locales Windows knows reach the answer file (Setup ignores or stops at others).
         if (!MediaLocales.IsInputLocale(r.Answers.InputLocale)) throw new ArgumentException($"{r.Answers.InputLocale} is not an input profile.", nameof(r));
         foreach (var locale in new[] { r.Answers.UiLanguage, r.Answers.SystemLocale, r.Answers.UserLocale })
@@ -1086,16 +1134,56 @@ public sealed class MediaBuild(IMediaSteps steps)
         /// </summary>
         private async Task ChangeInstallImageAsync()
         {
-            var apps = r.RemoveApps.Count > 0 || r.RemoveUnreviewed.Count > 0;
-            if (apps) Begin(MediaStage.Apps);
+            var apps = ChangesApps(r);
+            var settings = r.Settings.Any;
+            // The mount belongs to the first stage that changes the image.
+            Begin(apps ? MediaStage.Apps : MediaStage.Settings);
             await MountAsync(InstallWim, 1, _mount!, readOnly: false, "install.wim");
             var removed = apps ? await RemoveAppsInMountAsync() : 0;
+            if (settings)
+            {
+                if (apps) Begin(MediaStage.Settings);
+                WriteSettings();
+            }
             Begin(MediaStage.Shrink);
             var cleaned = await ComponentCleanupAsync();
             var health = await Dism(DismArgs.CheckHealth(_mount!), () => steps.Dism.CheckHealthAsync(_mount!, ct));
             if (!DismOutput.Healthy(health)) throw Fail("The image reports component store corruption; the changes were not saved.", "Media_Unhealthy");
             // Nothing removed and nothing cleaned: the image stays exactly as it was.
-            await UnmountAsync(_mount!, commit: removed > 0 || cleaned, "install.wim");
+            await UnmountAsync(_mount!, commit: removed > 0 || cleaned || settings, "install.wim");
+        }
+
+        /// <summary>
+        /// Writes <see cref="MediaImageSettings.Values"/> into the hives of the mounted image, each hive loaded only for its
+        /// values and unloaded again before the next step (a loaded hive holds its file of the mount open, so the commit
+        /// and the discard would fail). Every value is read back; one that does not read back as written fails the build.
+        /// </summary>
+        private void WriteSettings()
+        {
+            // The key names carry the control set, which only the SYSTEM hive knows: it is loaded first.
+            var controlSet = "";
+            try
+            {
+                foreach (var hiveName in (string[])["SYSTEM", "SOFTWARE"])
+                {
+                    // Which hives are needed does not depend on the control set.
+                    if (!MediaImageSettings.Values(r.Settings, "").Any(v => v.Hive == hiveName)) continue;
+                    ct.ThrowIfCancellationRequested();
+                    using var hive = steps.LoadWritableHive(Path.Combine(_mount!, @"Windows\System32\config", hiveName));
+                    ct.ThrowIfCancellationRequested();
+                    if (hiveName == "SYSTEM") controlSet = hive.ControlSet;
+                    foreach (var (_, key, name, value) in MediaImageSettings.Values(r.Settings, controlSet).Where(v => v.Hive == hiveName))
+                    {
+                        hive.SetDword(key, name, value);
+                        if (hive.GetDword(key, name) != value) throw new IOException($@"{hiveName}\{key}\{name} does not read back as {value}.");
+                        steps.Log($@"Image registry: {hiveName}\{key}\{name} = {value}");
+                    }
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+            {
+                throw Fail($"The settings could not be written into the image: {ex.Message}", "Media_SettingsFailed");
+            }
         }
 
         /// <summary>
@@ -1643,6 +1731,8 @@ public sealed class MediaSteps : IMediaSteps
     public long FreeBytes(string path) => new DriveInfo(Path.GetPathRoot(Path.GetFullPath(path))!).AvailableFreeSpace;
 
     public IOfflineHive LoadSystemHive(string file) => OfflineSystemHive.Load(file);
+
+    public IWritableHive LoadWritableHive(string file) => OfflineImageRegistry.Load(file);
 
     public void UnloadLeftoverHives() => OfflineSystemHive.UnloadLeftovers();
 

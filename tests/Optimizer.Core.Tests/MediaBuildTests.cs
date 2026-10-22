@@ -72,6 +72,7 @@ public sealed class MediaBuildTests : IDisposable
         Assert.False(File.Exists(OutputIso), "ISO at the output path");
         Assert.Empty(_steps.Dism.Mounted);
         Assert.Empty(_steps.LoadedHives);
+        Assert.Empty(_steps.LoadedWritableHives);
     }
 
     // ---- stage order and the download path ----
@@ -132,6 +133,9 @@ public sealed class MediaBuildTests : IDisposable
     [InlineData("iso unreviewed")]
     [InlineData("download smaller")]
     [InlineData("iso apps smaller")]
+    [InlineData("download settings")]
+    [InlineData("iso apps settings")]
+    [InlineData("download settings smaller")]
     public async Task PlannedStagesAreExactlyTheStagesARunBegins(string kind)
     {
         var apps = kind.Contains("apps", StringComparison.Ordinal) ? new[] { "Microsoft.BingNews" } : [];
@@ -139,6 +143,7 @@ public sealed class MediaBuildTests : IDisposable
         if (kind.Contains("unreviewed", StringComparison.Ordinal)) r = r with { RemoveUnreviewed = ["Contoso.Notes"] };
         if (kind.Contains("tunero", StringComparison.Ordinal)) r = WithTunero(r);
         if (kind.Contains("smaller", StringComparison.Ordinal)) r = Smaller(r);
+        if (kind.Contains("settings", StringComparison.Ordinal)) r = r with { Settings = new(true, true, false) };
         await Run(r);
         var begun = _steps.Progress.Where(p => p.Percent is null && p.Stage != MediaStage.Cleanup).Select(p => p.Stage).Distinct();
         Assert.Equal(MediaBuild.PlannedStages(r), begun);
@@ -1744,6 +1749,141 @@ public sealed class MediaBuildTests : IDisposable
         Assert.Equal(["TuneroMediaSystem-100-2", "TuneroMediaSystem-300-4", "TuneroMediaSystem-x"], leftovers);
     }
 
+    // ---- Settings: values written into the registry of the mounted install.wim ----
+
+    private static MediaImageSettings Both => new(true, true, false);
+
+    [Fact]
+    public async Task SettingsAreWrittenReadBackAndUnloadedBeforeTheCommit()
+    {
+        await Run(Download() with { Settings = Both });
+        Assert.Equal(1, _steps.Hives["SYSTEM"].Get(@"ControlSet001\Control\BitLocker", "PreventDeviceEncryption"));
+        Assert.Equal(0, _steps.Hives["SOFTWARE"].Get(@"Microsoft\Windows\CurrentVersion\ReserveManager", "ShippedWithReserves"));
+        Assert.True(_steps.Calls.IndexOf("UnloadWritableHive SOFTWARE") < _steps.Calls.IndexOf("Unmount commit"));
+        Assert.True(_steps.Calls.IndexOf("UnloadWritableHive SYSTEM") < _steps.Calls.IndexOf("CheckHealth"));
+        Assert.Contains(MediaStage.Settings, _steps.Progress.Select(p => p.Stage));
+        Assert.Empty(_steps.LoadedWritableHives);
+    }
+
+    /// <summary>Settings alone mount the image, commit it and begin no Apps stage.</summary>
+    [Fact]
+    public async Task SettingsAloneMountAndCommitTheImage()
+    {
+        await Run(Download() with { Settings = new(true, false, false) });
+        Assert.Contains("Mount install.wim 1", _steps.Calls);
+        Assert.Contains("Unmount commit", _steps.Calls);
+        Assert.DoesNotContain(MediaStage.Apps, _steps.Progress.Select(p => p.Stage));
+        Assert.Equal(["LoadWritableHive SYSTEM", "UnloadWritableHive SYSTEM"], _steps.Calls.Where(c => c.Contains("WritableHive", StringComparison.Ordinal)));
+        Assert.False(_steps.Hives.ContainsKey("SOFTWARE"));
+    }
+
+    /// <summary>A cleanup that is skipped for pending operations changed nothing: the settings still need the commit.</summary>
+    [Fact]
+    public async Task SettingsAreCommittedWhenTheComponentCleanupIsSkipped()
+    {
+        _steps.Dism.ComponentCleanupFails = unchecked((int)0x800F0806);
+        await Run(Download() with { Settings = new(false, true, false) });
+        Assert.Contains("Unmount commit", _steps.Calls);
+        Assert.DoesNotContain("Unmount discard", _steps.Calls.SkipWhile(c => c != "Mount install.wim 1").TakeWhile(c => c != "Mount boot.wim 2"));
+    }
+
+    /// <summary>The control set is the one SYSTEM names in Select\Current, never assumed.</summary>
+    [Fact]
+    public async Task TheControlSetComesFromSelectCurrent()
+    {
+        _steps.CurrentControlSet = 2;
+        await Run(Download() with { Settings = new(true, false, false) });
+        Assert.Equal(1, _steps.Hives["SYSTEM"].Get(@"ControlSet002\Control\BitLocker", "PreventDeviceEncryption"));
+        Assert.Null(_steps.Hives["SYSTEM"].Get(@"ControlSet001\Control\BitLocker", "PreventDeviceEncryption"));
+    }
+
+    [Fact]
+    public async Task ASystemHiveWithoutSelectCurrentFailsAtSettings()
+    {
+        _steps.CurrentControlSet = null;
+        await FailsAt(Download() with { Settings = new(true, false, false) }, MediaStage.Settings, "Media_SettingsFailed");
+        Assert.Contains("Unmount discard", _steps.Calls);
+        AssertCleanedUp();
+    }
+
+    [Fact]
+    public async Task AValueThatDoesNotReadBackFailsAtSettings()
+    {
+        _steps.HiveDropsWrites = true;
+        await FailsAt(Download() with { Settings = new(true, false, false) }, MediaStage.Settings, "Media_SettingsFailed");
+        Assert.DoesNotContain("Unmount commit", _steps.Calls);
+        AssertCleanedUp();
+    }
+
+    [Fact]
+    public async Task AHiveThatCannotBeLoadedFailsAtSettings()
+    {
+        _steps.WritableHiveLoadFails = true;
+        await FailsAt(Download() with { Settings = new(false, true, false) }, MediaStage.Settings, "Media_SettingsFailed");
+        AssertCleanedUp();
+    }
+
+    [Fact]
+    public async Task StopWhileAHiveIsLoadedUnloadsItBeforeTheDiscard()
+    {
+        using var stop = new CancellationTokenSource();
+        _steps.StopOnHiveLoad = stop;
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Run(Download() with { Settings = Both }, stop.Token));
+        var unload = _steps.Calls.IndexOf("UnloadWritableHive SYSTEM");
+        Assert.True(unload > 0 && unload < _steps.Calls.IndexOf("Unmount discard"));
+        Assert.DoesNotContain("Unmount commit", _steps.Calls);
+        AssertCleanedUp();
+    }
+
+    /// <summary>A hive whose own unload gave up holds a file of the mounted install.wim: the cleanup unloads it before the discard.</summary>
+    [Fact]
+    public async Task AWritableHiveLeftLoadedIsUnloadedBeforeTheDiscard()
+    {
+        _steps.HiveUnloadGivesUp = true;
+        _steps.HiveDropsWrites = true;
+        await FailsAt(Download() with { Settings = new(true, false, false) }, MediaStage.Settings, "Media_SettingsFailed");
+        var calls = _steps.Calls.SkipWhile(c => c != "LoadWritableHive SYSTEM").ToList();
+        var leftover = calls.IndexOf("UnloadLeftoverHives");
+        Assert.True(leftover > 0 && leftover < calls.IndexOf("Unmount discard"));
+        AssertCleanedUp();
+    }
+
+    [Fact]
+    public async Task NoSettingsMeansNoHiveIsLoaded()
+    {
+        await Run(Download());
+        Assert.DoesNotContain(_steps.Calls, c => c.StartsWith("LoadWritableHive", StringComparison.Ordinal));
+        Assert.DoesNotContain(MediaStage.Settings, _steps.Progress.Select(p => p.Stage));
+    }
+
+    [Fact]
+    public async Task AllowUnsupportedUpgradesIsRefusedUntilItIsImplemented()
+    {
+        await Assert.ThrowsAsync<ArgumentException>(() => Run(Download() with { Settings = new(false, false, true) }));
+        Assert.Empty(_steps.Calls);
+    }
+
+    [Fact]
+    public void TheSettingsHaveOnePlaceForTheirValues()
+    {
+        Assert.Empty(MediaImageSettings.Values(MediaImageSettings.None, "ControlSet001"));
+        Assert.False(MediaImageSettings.None.Any);
+        Assert.True(new MediaImageSettings(false, false, true).Any);
+        Assert.Equal([("SYSTEM", @"ControlSet003\Control\BitLocker", "PreventDeviceEncryption", 1)],
+            MediaImageSettings.Values(new(true, false, false), "ControlSet003"));
+        Assert.Equal([("SOFTWARE", @"Microsoft\Windows\CurrentVersion\ReserveManager", "ShippedWithReserves", 0)],
+            MediaImageSettings.Values(new(false, true, false), "ControlSet003"));
+    }
+
+    [Fact]
+    public void LeftoverUnloadCoversImageHives() =>
+        Assert.Equal(["TuneroMediaImage-999-1"], OfflineSystemHive.LeftoversToUnload(["TuneroMediaImage-999-1", "Other"], 1, [], _ => false));
+
+    [Fact]
+    public void ImageHivesOfARunningTuneroOrHeldByThisBuildStay() =>
+        Assert.Equal(["TuneroMediaImage-300-2"],
+            OfflineSystemHive.LeftoversToUnload(["TuneroMediaImage-100-1", "TuneroMediaImage-200-1", "TuneroMediaImage-300-2"], 100, ["TuneroMediaImage-100-1"], pid => pid == 200));
+
     [Fact]
     public void WorkFolderNamesAreRecognized()
     {
@@ -1940,6 +2080,12 @@ internal sealed class FakeMediaSteps : IMediaSteps
         Calls.Clear();
         LogLines.Clear();
         LoadedHives.Clear();
+        LoadedWritableHives.Clear();
+        Hives.Clear();
+        CurrentControlSet = 1;
+        HiveDropsWrites = false;
+        WritableHiveLoadFails = false;
+        StopOnHiveLoad = null;
         Progress.Clear();
         DeletedFolders.Clear();
         IsoContents = [];
@@ -2163,6 +2309,38 @@ internal sealed class FakeMediaSteps : IMediaSteps
         return new FakeHive(this, file, File.ReadAllText(file));
     }
 
+    // ---- writable hives of a mounted install.wim ----
+
+    /// <summary>The hives loaded through <see cref="LoadWritableHive"/> (by name: SYSTEM, SOFTWARE), kept after they are unloaded so a test can read what was written.</summary>
+    public Dictionary<string, FakeWritableHive> Hives { get; } = [];
+
+    /// <summary>Hive names loaded and not unloaded yet.</summary>
+    public List<string> LoadedWritableHives { get; } = [];
+
+    /// <summary>Select\Current of the fake SYSTEM hive; null: the value is missing.</summary>
+    public int? CurrentControlSet { get; set; } = 1;
+
+    /// <summary>A write is dropped, so the read-back differs.</summary>
+    public bool HiveDropsWrites { get; set; }
+    public bool WritableHiveLoadFails { get; set; }
+
+    /// <summary>Cancelled when a writable hive is loaded.</summary>
+    public CancellationTokenSource? StopOnHiveLoad { get; set; }
+
+    public IWritableHive LoadWritableHive(string file)
+    {
+        Assert.True(Path.IsPathFullyQualified(file), $"{file} is not absolute");
+        var name = Path.GetFileName(file);
+        Assert.EndsWith(@"\Windows\System32\config\" + name, file);
+        Calls.Add("LoadWritableHive " + name);
+        if (WritableHiveLoadFails) throw new IOException($"{file} could not be loaded as a registry hive: Access is denied.");
+        var hive = new FakeWritableHive(this, name);
+        Hives[name] = hive;
+        LoadedWritableHives.Add(name);
+        StopOnHiveLoad?.Cancel();
+        return hive;
+    }
+
     /// <summary>The hive's own unload gives up (a handle stays open) and leaves it loaded; the leftover unload then works.</summary>
     public bool HiveUnloadGivesUp { get; set; }
 
@@ -2170,6 +2348,7 @@ internal sealed class FakeMediaSteps : IMediaSteps
     {
         Calls.Add("UnloadLeftoverHives");
         LoadedHives.Clear();
+        LoadedWritableHives.Clear();
     }
 
     public void Log(string line) => LogLines.Add(line);
@@ -2191,6 +2370,38 @@ internal sealed class FakeMediaSteps : IMediaSteps
             steps.Calls.Add("UnloadHive");
             if (!steps.HiveUnloadGivesUp) steps.LoadedHives.Remove(file);
         }
+    }
+}
+
+/// <summary>A registry hive of the mounted image, in memory: values by key and name.</summary>
+internal sealed class FakeWritableHive(FakeMediaSteps steps, string name) : IWritableHive
+{
+    private readonly Dictionary<(string Key, string Name), int> _values = new();
+    private bool _unloaded;
+
+    public int? Get(string key, string valueName) => _values.TryGetValue((key, valueName), out var v) ? v : null;
+
+    public string ControlSet =>
+        steps.CurrentControlSet is { } n ? $"ControlSet{n:D3}" : throw new IOException(@"The Select\Current value of the SYSTEM hive is missing.");
+
+    public void SetDword(string key, string valueName, int value)
+    {
+        Assert.False(_unloaded, "the hive was written after it was unloaded");
+        if (!steps.HiveDropsWrites) _values[(key, valueName)] = value;
+    }
+
+    public int? GetDword(string key, string valueName)
+    {
+        Assert.False(_unloaded, "the hive was read after it was unloaded");
+        return Get(key, valueName);
+    }
+
+    public void Dispose()
+    {
+        if (_unloaded) return;
+        _unloaded = true;
+        steps.Calls.Add("UnloadWritableHive " + name);
+        if (!steps.HiveUnloadGivesUp) steps.LoadedWritableHives.Remove(name);
     }
 }
 

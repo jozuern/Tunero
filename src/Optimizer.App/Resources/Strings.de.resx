@@ -1806,6 +1806,14 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Media_CompressionSmallerText" xml:space="preserve"><value>Windows wird in install.esd stärker komprimiert gespeichert. Die ISO-Datei wird kleiner; das Erstellen dauert länger und braucht währenddessen Platz für beide Abbilder.</value></data>
   <data name="Media_UnsupportedSourceSupport" xml:space="preserve"><value>Microsoft: Windows 11 auf Geräten, die die Mindestsystemanforderungen nicht erfüllen</value></data>
   <data name="Media_UnsupportedSourceSpecs" xml:space="preserve"><value>Microsoft: Spezifikationen und Systemanforderungen für Windows 11</value></data>
+  <data name="Media_EncryptionTitle" xml:space="preserve"><value>Geräteverschlüsselung ausgeschaltet lassen</value></data>
+  <data name="Media_EncryptionText" xml:space="preserve"><value>Die automatische Geräteverschlüsselung bleibt aus: Das Laufwerk wird nicht verschlüsselt, solange Sie BitLocker nicht selbst einschalten. Das gilt für jeden PC, der von dieser ISO installiert wird, und wer das Laufwerk ausbaut, kann es lesen. Microsoft empfiehlt, die Geräteverschlüsselung auf PCs, die sie unterstützen, eingeschaltet zu lassen.</value></data>
+  <data name="Media_EncryptionSource" xml:space="preserve"><value>Microsoft: BitLocker-Übersicht, Geräteverschlüsselung deaktivieren</value></data>
+  <data name="Media_ReservedTitle" xml:space="preserve"><value>Kein reservierter Speicher</value></data>
+  <data name="Media_ReservedText" xml:space="preserve"><value>Es wird kein Platz für Updates freigehalten: Ein Update kann auf einem vollen Laufwerk fehlschlagen. Das gilt für jeden PC, der von dieser ISO installiert wird. Microsoft dokumentiert diesen Wert nicht, und er wurde noch nicht in einer Testinstallation geprüft.</value></data>
+  <data name="Media_Field_preventDeviceEncryption" xml:space="preserve"><value>Geräteverschlüsselung ausgeschaltet lassen</value></data>
+  <data name="Media_Field_noReservedStorage" xml:space="preserve"><value>Kein reservierter Speicher</value></data>
+  <data name="Media_SettingsFailed" xml:space="preserve"><value>Tunero konnte die Einstellungen nicht in das Windows-Abbild schreiben.</value></data>
   <data name="Media_BuildTitle" xml:space="preserve"><value>Erstellen</value></data>
   <data name="Media_Output" xml:space="preserve"><value>ISO-Datei</value></data>
   <data name="Media_PickOutput" xml:space="preserve"><value>Ändern</value></data>

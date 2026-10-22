@@ -25,6 +25,8 @@ internal static class InstallMediaSummary
         if (LanguageName(c) is { } language) parts.Add(T.Format("Media_Summary_Language", language));
         if (c.RemoveApps.Count > 0) parts.Add(T.Format("Media_Summary_Apps", c.RemoveApps.Count));
         if (c.Compression == MediaCompression.Recovery) parts.Add(T["Media_CompressionSmaller"]);
+        if (c.Settings.PreventDeviceEncryption) parts.Add(T["Media_EncryptionTitle"]);
+        if (c.Settings.NoReservedStorage) parts.Add(T["Media_ReservedTitle"]);
         if (c.SkipSetup && c.AccountName?.Trim() is { Length: > 0 } account) parts.Add(T.Format("Media_Summary_Account", account));
         if (c.Tunero is { } copy) parts.Add(T.Format("Media_Summary_Profile", ProfileTitle(copy)));
         if (neededBytes > 0) parts.Add(T.Format("Media_Summary_Needed", ByteSize.Format(neededBytes)));
@@ -53,6 +55,16 @@ internal static class InstallMediaSummary
         {
             changes.Add(Line(T["Media_UnreviewedTitle"], T.Format("Media_AppsSummary", c.RemoveUnreviewed.Count)));
             warnings.Add(T.Format("Media_Review_Warning", T["Media_UnreviewedTitle"], T["Media_UnreviewedText"]));
+        }
+        if (c.Settings.PreventDeviceEncryption)
+        {
+            changes.Add(Line(T["Media_EncryptionTitle"], T["Media_Review_On"]));
+            warnings.Add(T.Format("Media_Review_Warning", T["Media_EncryptionTitle"], T["Media_EncryptionText"]));
+        }
+        if (c.Settings.NoReservedStorage)
+        {
+            changes.Add(Line(T["Media_ReservedTitle"], T["Media_Review_On"]));
+            warnings.Add(T.Format("Media_Review_Warning", T["Media_ReservedTitle"], T["Media_ReservedText"]));
         }
         if (c.AllowUnsupported)
         {
