@@ -41,6 +41,9 @@ jobs:
 
     # Every commit on main raises the patch version (.githooks/pre-commit); a commit made without the hook fails here.
     # All commits of the push are checked, not only the last: a push of several commits can carry one without the hook.
+    # Dependabot's commits and merge commits made on GitHub (the merge button) cannot run the hook: they may keep the
+    # version but never lower it, and the next local commit raises it. Every other commit a merge brings in is checked
+    # on its own, so a commit of yours merged through the button still needs the hook.
     - name: Version raised
       if: github.event_name == 'push'
       shell: pwsh
@@ -48,6 +51,7 @@ jobs:
         BEFORE: ${{ github.event.before }}
       run: |
         $csproj = "src/Optimizer.App/Optimizer.App.csproj"
+        $dependabot = '49699333+dependabot[bot]@users.noreply.github.com'
         function Version($commit) { if (((git show "${commit}:$csproj" 2>$null) -join "`n") -match '<Version>([0-9.]+)</Version>') { $Matches[1] } }
         # A new branch or a forced push has no usable "before": then the last commit only.
         $known = $env:BEFORE -and $env:BEFORE -notmatch '^0+$' -and (git cat-file -t $env:BEFORE 2>$null) -eq 'commit'
@@ -55,10 +59,14 @@ jobs:
         foreach ($commit in $commits) {
           $now = Version $commit
           # Every parent: a merge commit whose sides both raised the version to the same number keeps one of them.
-          $parents = (git rev-list --parents -n 1 $commit) -split ' ' | Select-Object -Skip 1
+          $parents = @((git rev-list --parents -n 1 $commit) -split ' ' | Select-Object -Skip 1)
+          $author, $committer = (git log -1 --format='%ae%n%ce' $commit)
+          $mayKeep = $author -eq $dependabot -or ($parents.Count -gt 1 -and $committer -eq 'noreply@github.com')
           foreach ($parent in $parents) {
             $before = Version $parent
-            if ($before -and [version]$now -le [version]$before) { Write-Error "<Version> ${now} of $commit is not above ${before} (parent $parent): enable the hooks (git config core.hooksPath .githooks)"; exit 1 }
+            if (-not $before) { continue }
+            if ($mayKeep -and [version]$now -lt [version]$before) { Write-Error "<Version> ${now} of $commit is below ${before} (parent $parent)"; exit 1 }
+            if (-not $mayKeep -and [version]$now -le [version]$before) { Write-Error "<Version> ${now} of $commit is not above ${before} (parent $parent): enable the hooks (git config core.hooksPath .githooks)"; exit 1 }
           }
         }
 

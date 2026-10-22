@@ -2,8 +2,8 @@
 # npm packages, one grouped pull request per ecosystem (security updates come at once and on their own). Versions of
 # actions and packages are proposed only once they are a week old: a hijacked release is usually found and pulled
 # within days. The SDK has no wait, since it comes from Microsoft and carries security fixes.
-# They are notices, not merge buttons: a commit merged on GitHub has no version raise and fails "Version raised" on main.
-# Make the change locally instead (CONTRIBUTING, "Dependency updates"); Dependabot closes its pull request once main has it.
+# Merge them on GitHub once their checks pass: "Version raised" on main lets Dependabot's commits and GitHub's merge
+# commits keep the version, and the next local commit raises it (CONTRIBUTING, "Dependency updates").
 # A new SDK ships a new runtime and a NuGet package a new version: both fail EveryShippedPackageHasItsLicense until
 # licenses.json and THIRD-PARTY-NOTICES.md name the new version.
 version: 2
