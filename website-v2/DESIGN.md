@@ -1,7 +1,7 @@
 # tunero.dev v2 design
 
-v2 is a new site, built from scratch next to v1 (`website/`), which stays as it is and keeps serving tunero.dev until
-the owner switches. The v1 design notes do not apply here. What still applies, because it is about the product and not
+v2 is a new site, built from scratch next to v1 (`website/`), and serves tunero.dev since it replaced v1, which is no
+longer deployed. The v1 design notes do not apply here. What still applies, because it is about the product and not
 the look: nothing untrue (no invented numbers, no performance claims the sources do not carry), counts and catalog
 facts read from the repository at build time, no telemetry, the copy rules (no en or em dashes, middle dots, ellipsis
 characters, bullets or "(s)" plurals in visible text), English and German.

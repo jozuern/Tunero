@@ -49,3 +49,7 @@ updates:
     groups:
       website-v2:
         patterns: [ "*" ]
+    ignore:
+      # @astrojs/check (astro check in npm run build) accepts TypeScript 5 and 6 only; 7.0.2 broke npm ci.
+      - dependency-name: typescript
+        update-types: [ "version-update:semver-major" ]

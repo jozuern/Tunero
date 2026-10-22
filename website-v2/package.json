@@ -17,6 +17,6 @@
     "@astrojs/check": "0.9.10",
     "@fluentui/svg-icons": "1.1.344",
     "@types/node": "26.6.5",
-    "typescript": "7.0.2"
+    "typescript": "6.0.3"
   }
 }

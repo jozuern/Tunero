@@ -68,7 +68,9 @@ const canonical = lang === 'de' ? german : english;
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={new URL('/og.png', Astro.site)} />
     <meta property="og:locale" content={lang === 'en' ? 'en_US' : 'de_DE'} />
+    <meta name="twitter:card" content="summary_large_image" />
   </head>
   <body>
     <a class="skip" href={skipTo ?? localPath(lang, '/classic/')}>{skipTo ? copy.skipContent : copy.skip}</a>

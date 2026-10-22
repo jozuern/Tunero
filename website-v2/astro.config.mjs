@@ -1,4 +1,5 @@
-// The next tunero.dev (v2), a static site. Not deployed yet: .github/workflows/pages.yml builds website/ (v1).
+// Static site for tunero.dev (v2), built by .github/workflows/pages.yml and served by GitHub Pages. website/ (v1) is no
+// longer deployed.
 import { defineConfig } from 'astro/config';
 import svelte from '@astrojs/svelte';
 
