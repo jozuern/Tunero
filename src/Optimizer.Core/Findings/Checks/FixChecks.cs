@@ -203,7 +203,7 @@ public sealed class LeftoverCheck : IFindingCheck
         var found = new List<Fact>();
         var bcd = SafeBcd(_bcd);
         // Only "Yes" forces the platform timer; "No" is what Windows does anyway (and what the fix of other tools leaves).
-        if (bcd is not null && bcd.TryGetValue("useplatformclock", out var clock) && IsYes(clock)) found.Add(new Fact("fact.leftoverValue", "BCD {current} useplatformclock"));
+        if (bcd is not null && bcd.TryGetValue("useplatformclock", out var clock) && BcdAction.Normalize(clock) == "yes") found.Add(new Fact("fact.leftoverValue", "BCD {current} useplatformclock"));
 
         yield return new Finding
         {
@@ -215,8 +215,6 @@ public sealed class LeftoverCheck : IFindingCheck
             Facts = found.Count > 0 ? found : [new Fact("fact.leftoverValue", "@none")],
         };
     }
-
-    private static bool IsYes(string value) => value.Trim() is var v && (v.Equals("Yes", StringComparison.OrdinalIgnoreCase) || v == "1" || v.Equals("true", StringComparison.OrdinalIgnoreCase) || v.Equals("on", StringComparison.OrdinalIgnoreCase));
 
     private static IReadOnlyDictionary<string, string>? SafeBcd(Func<IReadOnlyDictionary<string, string>?> read)
     {

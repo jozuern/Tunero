@@ -7,6 +7,7 @@
 - **Undo:** a registry key that Tunero could delete only in part (a subkey Windows protects) comes back in full on Undo. Before, Undo took what was left for a key Windows had made again, reported success and did not restore the deleted values.
 - **Uninstall leftovers:** Move to Recycle Bin asks first, and checks each folder again right before it moves it, with the same evidence as Find unused program folders (autostart entries, services, scheduled tasks, running programs, taskbar pins). A folder something uses by now, such as a program installed again into it, stays and says why.
 - **Storage:** a file or folder right below a drive root (such as `D:\Old backups`) moves to the Recycle Bin. Before, the move always ended as "not moved".
+- **Scan:** the check for leftovers of other tools finds the forced platform timer on German Windows too, where bcdedit prints "Ja".
 
 ## 1.5.0
 

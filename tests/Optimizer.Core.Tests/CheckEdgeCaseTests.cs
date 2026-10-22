@@ -429,6 +429,9 @@ public class CheckEdgeCaseTests
         Assert.Equal(FindingStatus.Ok, One(new LeftoverCheck(() => new Dictionary<string, string> { ["description"] = "Windows 11" }), P()).Status);
         // "No" is the timer Windows picks anyway: not a problem.
         Assert.Equal(FindingStatus.Ok, One(new LeftoverCheck(() => new Dictionary<string, string> { ["useplatformclock"] = "No" }), P()).Status);
+        // bcdedit prints booleans in the display language: Ja and Nein on German Windows.
+        Assert.Equal(FindingStatus.Problem, One(new LeftoverCheck(() => new Dictionary<string, string> { ["useplatformclock"] = "Ja" }), P()).Status);
+        Assert.Equal(FindingStatus.Ok, One(new LeftoverCheck(() => new Dictionary<string, string> { ["useplatformclock"] = "Nein" }), P()).Status);
         Assert.Equal(FindingStatus.Unknown, One(new LeftoverCheck(() => null), P()).Status);
         Assert.Equal(FindingStatus.Unknown, One(new LeftoverCheck(() => throw new UnauthorizedAccessException()), P()).Status);
     }
