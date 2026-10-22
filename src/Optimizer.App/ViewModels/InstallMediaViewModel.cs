@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -232,7 +233,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     private readonly Dictionary<string, bool> _ticks = new(StringComparer.OrdinalIgnoreCase);
     private bool _outputPicked;
     private string? _defaultOutput;
-    private bool _demo;
+    private bool _demo, _demoProgress;
     private CancellationTokenSource? _stop;
     private Task? _running;
     private Task? _cleanup;
@@ -586,6 +587,23 @@ public sealed partial class InstallMediaViewModel : PageViewModel
 
     public bool HasResult => ResultText is not null;
 
+    // ---- stages of the running build ----
+
+    /// <summary>The stages of the last build (<see cref="MediaBuild.PlannedStages"/>) with their state; empty until the first Build.</summary>
+    public ObservableCollection<MediaStageRow> Stages { get; } = [];
+
+    [ObservableProperty] private bool _hasStages;
+
+    /// <summary>"Stage 3 of 8, 12:40" while a build runs.</summary>
+    [ObservableProperty] private string? _stagesText;
+
+    /// <summary>The list was filled for a new build: the page scrolls it into view.</summary>
+    public event EventHandler? StagesShown;
+
+    private MediaStageRow? _currentStage;
+    private bool _stagesRunning;
+    private readonly Stopwatch _stageClock = new();
+
     partial void OnResultTextChanged(string? value) => OnPropertyChanged(nameof(HasResult));
 
     private void Changed()
@@ -721,6 +739,8 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         OnPropertyChanged(nameof(ArchitectureNote));
         OnPropertyChanged(nameof(ProfileNote));
         if (_demo && _files is null) await CheckCatalogAsync();
+        // --media-demo progress: the build starts by itself and stops in the middle of Apps.
+        if (_demoProgress && !IsBuilding && Request() is { } request) _running = RunBuildAsync(request);
     }
 
     protected override Task RelabelAsync()
@@ -1165,6 +1185,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         ResultText = null;
         ResultLogPath = null;
         ResultIso = null;
+        StartStages(MediaBuild.PlannedStages(request));
         string? iso = null;
         Exception? failure = null;
         var stopped = false;
@@ -1175,9 +1196,14 @@ public sealed partial class InstallMediaViewModel : PageViewModel
                 // The banner: the stage, its percentage, and the time the build has taken so far (refreshed every second).
                 var clock = Stopwatch.StartNew();
                 (double? Percent, string Stage) last = (null, Loc.Instance["Media_Building"]);
-                void Show() => scope.Report(last.Percent, Loc.Instance.Format("Media_Progress", last.Stage, Elapsed(clock.Elapsed)));
-                var progress = new Progress<MediaProgress>(p =>
+                void Show()
                 {
+                    scope.Report(last.Percent, Loc.Instance.Format("Media_Progress", last.Stage, Elapsed(clock.Elapsed)));
+                    ShowStageClock(clock.Elapsed);
+                }
+                var progress = new WindowProgress(p =>
+                {
+                    ApplyProgress(p);
                     last = (p.Percent, StageText(p));
                     Show();
                 });
@@ -1219,10 +1245,120 @@ public sealed partial class InstallMediaViewModel : PageViewModel
             IsBuilding = false;
         }
 
+        FinishStages(iso is not null, stopped, failure);
         if (iso is not null) ShowSuccess(iso);
         else if (failure is not null) ShowFailure(failure);
         else if (stopped) Show(Loc.Instance["Media_Stopped"], InfoBarSeverity.Informational);
     }
+
+    /// <summary>
+    /// <see cref="Progress{T}"/> for the window: reports reach the handler on the window's thread, in the order they were
+    /// made. Without a window (a test) the handler runs where the report is made, so nothing depends on a thread pool.
+    /// </summary>
+    private sealed class WindowProgress(Action<MediaProgress> handler) : IProgress<MediaProgress>
+    {
+        private readonly SynchronizationContext? _window = SynchronizationContext.Current is System.Windows.Threading.DispatcherSynchronizationContext ? SynchronizationContext.Current : null;
+
+        public void Report(MediaProgress value)
+        {
+            if (_window is { } window) window.Post(_ => handler(value), null);
+            else handler(value);
+        }
+    }
+
+    private void StartStages(IReadOnlyList<MediaStage> stages)
+    {
+        Stages.Clear();
+        foreach (var stage in stages) Stages.Add(new MediaStageRow(stage));
+        HasStages = true;
+        StagesText = null;
+        _currentStage = null;
+        _stagesRunning = true;
+        StagesShown?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>A stage begins (the one before is done) or reports its percent and what it is working on.</summary>
+    private void ApplyProgress(MediaProgress p)
+    {
+        if (!_stagesRunning) return;
+        if (p.Stage == MediaStage.Cleanup)
+        {
+            // The ISO is verified; only the work folder is left.
+            CloseCurrent(MediaStageState.Done);
+            return;
+        }
+        var index = Stages.ToList().FindIndex(s => s.Stage == p.Stage);
+        if (index < 0) return;
+        var row = Stages[index];
+        if (_currentStage != row)
+        {
+            if (_currentStage is not null && Stages.IndexOf(_currentStage) > index) return;
+            CloseCurrent(MediaStageState.Done);
+            foreach (var earlier in Stages.Take(index).Where(s => s.State == MediaStageState.Waiting)) earlier.State = MediaStageState.Done;
+            _currentStage = row;
+            _stageClock.Restart();
+            row.State = MediaStageState.Running;
+        }
+        if (p.Percent is null && p.Detail is null)
+        {
+            row.Detail = null;
+        }
+        else if (p.Detail is not null)
+        {
+            row.Detail = p.Detail;
+        }
+        row.Percent = p.Percent;
+    }
+
+    private void CloseCurrent(MediaStageState state)
+    {
+        if (_currentStage is not { } row) return;
+        _currentStage = null;
+        row.Duration = _stageClock.Elapsed;
+        row.Percent = null;
+        if (state == MediaStageState.Done) row.Detail = null;
+        row.State = state;
+    }
+
+    /// <summary>Once a second: the running stage's time and "Stage 3 of 8, 12:40".</summary>
+    private void ShowStageClock(TimeSpan elapsed)
+    {
+        if (!_stagesRunning || _currentStage is not { } row) return;
+        row.Duration = _stageClock.Elapsed;
+        StagesText = Loc.Instance.Format("Media_StagesCount", Stages.IndexOf(row) + 1, Stages.Count, Elapsed(elapsed));
+    }
+
+    /// <summary>The build ended: the running stage is done, stopped or failed (with the reason), the stages after it did not run.</summary>
+    private void FinishStages(bool succeeded, bool stopped, Exception? failure)
+    {
+        _stagesRunning = false;
+        StagesText = null;
+        if (succeeded) CloseCurrent(MediaStageState.Done);
+        else if (stopped) CloseCurrent(MediaStageState.Stopped);
+        else if (failure is not null)
+        {
+            var row = _currentStage ?? (failure is MediaBuildException m ? Stages.FirstOrDefault(s => s.Stage == m.Stage) : null);
+            if (row is not null)
+            {
+                var detail = FailureDetail(failure);
+                if (row == _currentStage) CloseCurrent(MediaStageState.Failed);
+                row.State = MediaStageState.Failed;
+                row.Detail = detail;
+            }
+        }
+        foreach (var row in Stages.Where(s => s.State == MediaStageState.Waiting)) row.State = MediaStageState.NotRun;
+    }
+
+    /// <summary>The reason in words with DISM's or Windows' error code, as the result line says it (without the stage).</summary>
+    private static string FailureDetail(Exception ex)
+    {
+        if (ex is not MediaBuildException m) return Loc.Instance.Format("Media_FailedRequest", ex.Message);
+        var text = Reason(m);
+        return m.Code is { } code ? text + " " + Loc.Instance.Format("Media_ErrorCode", CodeText(code)) : text;
+    }
+
+    private static string Reason(MediaBuildException m) =>
+        m.Key is { } key ? Loc.Instance[key] : m.InUse ? Loc.Instance["Media_IsoInUse"] : Loc.Instance["Media_FailedUnknown"];
 
     private static async Task TickAsync(Action show, CancellationToken ct)
     {
@@ -1273,8 +1409,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
             Show(Loc.Instance.Format("Media_FailedRequest", ex.Message), InfoBarSeverity.Error, window);
             return;
         }
-        var reason = m.Key is { } key ? Loc.Instance[key] : m.InUse ? Loc.Instance["Media_IsoInUse"] : Loc.Instance["Media_FailedUnknown"];
-        var text = Loc.Instance.Format("Media_Failed", Loc.Instance[$"Media_Stage_{m.Stage}"], reason);
+        var text = Loc.Instance.Format("Media_Failed", Loc.Instance[$"Media_Stage_{m.Stage}"], Reason(m));
         if (m.Code is { } code) text += " " + Loc.Instance.Format("Media_ErrorCode", CodeText(code));
         if (m.LogPath is { } log) text += " " + Loc.Instance.Format("Media_LogAt", log);
         ResultLogPath = m.LogPath;
@@ -1335,11 +1470,38 @@ public sealed partial class InstallMediaViewModel : PageViewModel
 
     // ---- demo (--media-demo) ----
 
+    /// <summary>The stage list of a finished sample build: all done, or stopped by <paramref name="failure"/> (the stages after it did not run).</summary>
+    private void DemoStages(MediaBuildException? failure)
+    {
+        var minutes = new[] { 21, 1, 12, 3, 2, 1, 4, 1 };
+        Stages.Clear();
+        var failed = false;
+        foreach (var (stage, i) in new[] { MediaStage.Download, MediaStage.Check, MediaStage.Unpack, MediaStage.Apps, MediaStage.Shrink, MediaStage.Files, MediaStage.Iso, MediaStage.Verify }.Select((s, i) => (s, i)))
+        {
+            var row = new MediaStageRow(stage);
+            if (failed) row.State = MediaStageState.NotRun;
+            else if (failure is not null && failure.Stage == stage)
+            {
+                row.State = MediaStageState.Failed;
+                row.Detail = FailureDetail(failure);
+                row.Duration = TimeSpan.FromMinutes(minutes[i]) + TimeSpan.FromSeconds(7);
+                failed = true;
+            }
+            else
+            {
+                row.State = MediaStageState.Done;
+                row.Duration = TimeSpan.FromMinutes(minutes[i]) + TimeSpan.FromSeconds(7 * (i + 1));
+            }
+            Stages.Add(row);
+        }
+        HasStages = true;
+    }
+
     /// <summary>
     /// Developer aid: the sample catalog instead of Microsoft's, a sample own ISO, and a build that only shows its stages,
     /// then a sample failure and the next time a sample success. Nothing goes to the network, attaches or runs.
     /// <paramref name="show"/>, comma-separated: "fail" or "done" shows that result at once, "expand" unfolds the change
-    /// cards, "review" turns on the Expert option that warns in the review, "iso" chooses the sample own ISO, "umlaut" types an account name Setup cannot create, "cleanup" shows the Build card while the start cleanup
+    /// cards, "progress" starts a build that stays in the middle of Apps (the stage list mid-build), "review" turns on the Expert option that warns in the review, "iso" chooses the sample own ISO, "umlaut" types an account name Setup cannot create, "cleanup" shows the Build card while the start cleanup
     /// runs (for screenshots).
     /// </summary>
     public void UseDemo(string? show)
@@ -1356,7 +1518,8 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         AllowUnsupported = shows.Contains("review");
         _demo = true;
         _catalog = new InstallMediaDemo.Catalog();
-        var demo = new InstallMediaDemo.Build();
+        _demoProgress = shows.Contains("progress");
+        var demo = new InstallMediaDemo.Build { Freeze = _demoProgress };
         _build = demo.RunAsync;
         _system = _system with
         {
@@ -1373,9 +1536,14 @@ public sealed partial class InstallMediaViewModel : PageViewModel
             IsoPath = Path.Combine(Path.GetTempPath(), "Win11_26H2_German_x64.iso");
         }
         if (shows.Contains("cleanup")) _cleanup = new TaskCompletionSource().Task;   // never ends: the card shows the running cleanup
-        if (shows.Contains("fail")) ShowFailure(InstallMediaDemo.Failure(), window: false);
+        if (shows.Contains("fail"))
+        {
+            ShowFailure(InstallMediaDemo.Failure(), window: false);
+            DemoStages(InstallMediaDemo.Failure());
+        }
         else if (shows.Contains("done"))
         {
+            DemoStages(null);
             ResultIso = Path.Combine(Path.GetTempPath(), "Windows11_Tunero.iso");
             Show(Loc.Instance.Format("Media_Done", ResultIso, ByteSize.Format(5_712_000_000)), InfoBarSeverity.Success, window: false);
         }

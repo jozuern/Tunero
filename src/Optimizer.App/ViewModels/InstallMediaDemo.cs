@@ -25,21 +25,31 @@ internal static class InstallMediaDemo
         }
     }
 
-    /// <summary>The first run fails in Unpack with a sample DISM error, every later one succeeds.</summary>
+    /// <summary>
+    /// The first run fails in Unpack with a sample DISM error, every later one succeeds. With <see cref="Freeze"/> the run
+    /// stops in the middle of Apps (at half, on a sample package) and waits for Stop.
+    /// </summary>
     public sealed class Build
     {
         private int _runs;
 
+        public bool Freeze { get; init; }
+
         public async Task<string> RunAsync(MediaRequest request, IProgress<MediaProgress> progress, CancellationToken ct)
         {
-            var fail = _runs++ == 0;
+            var fail = _runs++ == 0 && !Freeze;
             foreach (var stage in new[] { MediaStage.Download, MediaStage.Check, MediaStage.Unpack, MediaStage.Apps, MediaStage.Files, MediaStage.Iso, MediaStage.Verify })
             {
                 if (stage == MediaStage.Apps && request.RemoveApps.Count == 0 && request.RemoveUnreviewed.Count == 0) continue;
                 progress.Report(new MediaProgress(stage, null, null));
+                if (Freeze && stage == MediaStage.Apps)
+                {
+                    progress.Report(new MediaProgress(stage, 50, "Microsoft.BingNews"));
+                    await Task.Delay(Timeout.Infinite, ct);
+                }
                 for (var percent = 0; percent <= 100; percent += 25)
                 {
-                    await Task.Delay(150, ct);
+                    if (!Freeze) await Task.Delay(150, ct);
                     progress.Report(new MediaProgress(stage, percent, stage == MediaStage.Unpack ? "install.wim" : null));
                     if (fail && stage == MediaStage.Unpack && percent == 50) throw Failure();
                 }

@@ -1866,6 +1866,14 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Media_IsoReadFailed" xml:space="preserve"><value>The ISO file could not be opened. Choose another one, or check that it is not damaged.</value></data>
   <data name="Media_CatalogStepUnknown" xml:space="preserve"><value>unexpected error</value></data>
   <data name="Media_Progress" xml:space="preserve"><value>{0} ({1} elapsed)</value></data>
+  <data name="Media_StagesTitle" xml:space="preserve"><value>Build progress</value></data>
+  <data name="Media_StagesCount" xml:space="preserve"><value>Stage {0} of {1}, {2}</value></data>
+  <data name="Media_StageStopped" xml:space="preserve"><value>Stopped</value></data>
+  <data name="Media_StageNotRun" xml:space="preserve"><value>Not run</value></data>
+  <data name="Media_StageDone" xml:space="preserve"><value>Done</value></data>
+  <data name="Media_StageRunning" xml:space="preserve"><value>Running</value></data>
+  <data name="Media_StageFailed" xml:space="preserve"><value>Failed</value></data>
+  <data name="Media_StageWaiting" xml:space="preserve"><value>Waiting</value></data>
   <data name="Media_AppsSummary" xml:space="preserve"><value>Apps to remove: {0}</value></data>
   <data name="Media_SetupSummary" xml:space="preserve"><value>Account {0}, {1}</value></data>
   <data name="Media_Off" xml:space="preserve"><value>Off</value></data>

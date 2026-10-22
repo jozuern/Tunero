@@ -25,6 +25,9 @@ public sealed class InstallMediaViewModelTests : IDisposable
     /// <summary>What the fake build does with a request; null: records it and returns its output path.</summary>
     private Func<MediaRequest, CancellationToken, Task<string>>? _build;
 
+    /// <summary>What the fake build reports before it ends; null: one report of Unpack at 50 percent.</summary>
+    private Action<IProgress<MediaProgress>>? _reports;
+
     /// <summary>What the fake ISO reader finds in an own ISO.</summary>
     private IsoInfo _iso = Iso(Image(1, "Core", "Windows 11 Home"), Image(2, "Professional", "Windows 11 Pro"));
 
@@ -91,7 +94,8 @@ public sealed class InstallMediaViewModelTests : IDisposable
         (request, progress, ct) =>
         {
             _requests.Add(request);
-            progress.Report(new MediaProgress(MediaStage.Unpack, 50, null));
+            if (_reports is { } reports) reports(progress);
+            else progress.Report(new MediaProgress(MediaStage.Unpack, 50, null));
             return _build?.Invoke(request, ct) ?? Task.FromResult(request.OutputIso);
         },
         system ?? System(edition, published), cleanup);
@@ -503,6 +507,109 @@ public sealed class InstallMediaViewModelTests : IDisposable
         Assert.False(media.IsBuilding);
         await build;
         Assert.Equal(Loc.Instance["Media_Stopped"], media.ResultText);
+    }
+
+    private static MediaStageRow Row(InstallMediaViewModel media, MediaStage stage) => media.Stages.Single(s => s.Stage == stage);
+
+    /// <summary>Progress arrives on the window's context after the build reported it: wait for the row to show it.</summary>
+    private static async Task WaitFor(Func<bool> condition)
+    {
+        for (var i = 0; i < 200 && !condition(); i++) await Task.Delay(10);
+        Assert.True(condition());
+    }
+
+    private static void Begin(IProgress<MediaProgress> progress, params MediaStage[] stages)
+    {
+        foreach (var stage in stages) progress.Report(new MediaProgress(stage, null, null));
+    }
+
+    [Fact]
+    public async Task TheStageListIsThePlannedStagesOfTheRequest()
+    {
+        var media = await WithCatalog();
+        _build = (_, _) => Task.FromResult("");
+        await media.BuildCommand.ExecuteAsync(null);
+        var request = Assert.Single(_requests);
+        Assert.Equal(MediaBuild.PlannedStages(request), media.Stages.Select(s => s.Stage));
+        Assert.All(media.Stages, s => Assert.Equal(Loc.Instance[$"Media_Stage_{s.Stage}"], s.Title));
+        Assert.True(media.HasStages);
+    }
+
+    [Fact]
+    public async Task RowsFollowTheProgressAndTheFailure()
+    {
+        _reports = p => Begin(p, MediaStage.Download, MediaStage.Check, MediaStage.Unpack);
+        _build = (_, _) => throw new MediaBuildException(MediaStage.Unpack, "x", 87, "Media_ImageCheckFailed");
+        var media = await WithCatalog();
+        await media.BuildCommand.ExecuteAsync(null);
+
+        Assert.Equal(MediaStageState.Done, Row(media, MediaStage.Download).State);
+        Assert.Equal(MediaStageState.Done, Row(media, MediaStage.Check).State);
+        Assert.NotNull(Row(media, MediaStage.Download).Duration);
+        var failed = Row(media, MediaStage.Unpack);
+        Assert.Equal(MediaStageState.Failed, failed.State);
+        // The reason as the result line says it, and the error code.
+        Assert.Contains(Loc.Instance["Media_ImageCheckFailed"], failed.Detail);
+        Assert.Contains("87", failed.Detail);
+        Assert.Contains(Loc.Instance["Media_ImageCheckFailed"], media.ResultText);
+        Assert.All(media.Stages.SkipWhile(s => s.Stage != MediaStage.Unpack).Skip(1), s => Assert.Equal(MediaStageState.NotRun, s.State));
+    }
+
+    [Fact]
+    public async Task StopMarksTheRunningStageStopped()
+    {
+        var started = new TaskCompletionSource();
+        _reports = p => Begin(p, MediaStage.Download, MediaStage.Check, MediaStage.Unpack, MediaStage.Apps);
+        _build = async (_, ct) =>
+        {
+            started.SetResult();
+            await Task.Delay(Timeout.Infinite, ct);
+            return "";
+        };
+        var media = await WithCatalog();
+        var build = media.BuildCommand.ExecuteAsync(null);
+        await started.Task;
+        await WaitFor(() => media.Stages.Count > 0 && Row(media, MediaStage.Apps).State == MediaStageState.Running
+            && Row(media, MediaStage.Unpack).State == MediaStageState.Done);
+        await media.StopAndWaitAsync();
+        await build;
+
+        Assert.Equal(MediaStageState.Stopped, Row(media, MediaStage.Apps).State);
+        Assert.Equal(MediaStageState.Done, Row(media, MediaStage.Unpack).State);
+        Assert.All(media.Stages.SkipWhile(s => s.Stage != MediaStage.Apps).Skip(1), s => Assert.Equal(MediaStageState.NotRun, s.State));
+    }
+
+    [Fact]
+    public async Task TheRowShowsTheCurrentPackageAndPercent()
+    {
+        var reported = new TaskCompletionSource();
+        var finish = new TaskCompletionSource<string>();
+        _reports = p =>
+        {
+            Begin(p, MediaStage.Download, MediaStage.Check, MediaStage.Unpack, MediaStage.Apps);
+            p.Report(new MediaProgress(MediaStage.Apps, 50, "Microsoft.BingNews"));
+        };
+        _build = (_, _) =>
+        {
+            reported.SetResult();
+            return finish.Task;
+        };
+        var media = await WithCatalog();
+        var build = media.BuildCommand.ExecuteAsync(null);
+        await reported.Task;
+        await WaitFor(() => Row(media, MediaStage.Apps).Percent is not null);
+
+        var row = Row(media, MediaStage.Apps);
+        Assert.Equal(MediaStageState.Running, row.State);
+        Assert.Equal("Microsoft.BingNews", row.Detail);
+        Assert.Equal(50, row.Percent);
+        Assert.StartsWith(Loc.Instance.Format("Media_StagesCount", 4, media.Stages.Count, ""), media.StagesText);
+
+        finish.SetResult(media.OutputPath!);
+        await build;
+        Assert.All(media.Stages.Take(4), s => Assert.Equal(MediaStageState.Done, s.State));
+        Assert.All(media.Stages, s => Assert.Null(s.Percent));
+        Assert.Null(Row(media, MediaStage.Apps).Detail);
     }
 
     /// <summary>A running build uses the choices it started with: the page locks them until it ends.</summary>

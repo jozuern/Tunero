@@ -327,6 +327,69 @@
 
             <!-- 4. Build -->
             <ui:TextBlock Style="{StaticResource SectionHeader}" Text="{l:Tr Media_BuildTitle}" />
+            <!-- Every stage of the build with its state, from the first Build until the page closes (the banner stays for other pages) -->
+            <ui:Card x:Name="StagesCard" Padding="16,12" Margin="{StaticResource CardRowMargin}"
+                     Visibility="{Binding InstallMedia.HasStages, Converter={StaticResource BoolToVisibility}}">
+                <DockPanel>
+                <ui:SymbolIcon Style="{StaticResource MediaCardIcon}" Symbol="TextBulletListSquare24" VerticalAlignment="Top" Margin="0,2,16,0" />
+                <StackPanel>
+                    <DockPanel>
+                        <ui:TextBlock DockPanel.Dock="Right" Style="{StaticResource Caption}" Text="{Binding InstallMedia.StagesText}" VerticalAlignment="Center"
+                                      Visibility="{Binding InstallMedia.StagesText, Converter={StaticResource NullToVisibility}}" />
+                        <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Media_StagesTitle}" />
+                    </DockPanel>
+                    <ItemsControl ItemsSource="{Binding InstallMedia.Stages}" Margin="0,8,0,0" IsTabStop="False" Focusable="False">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,4,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="32" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <!-- The state glyph: one of these five shows; the words are in AutomationProperties.Name and the note -->
+                                    <Grid Width="20" Height="20" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0,1,0,0" AutomationProperties.Name="{Binding StateText}">
+                                        <ui:SymbolIcon Symbol="Circle20" FontSize="16" Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                                       Visibility="{Binding IsWaiting, Converter={StaticResource BoolToVisibility}}" />
+                                        <ui:ProgressRing IsIndeterminate="True" Width="16" Height="16"
+                                                         Visibility="{Binding IsRunning, Converter={StaticResource BoolToVisibility}}" />
+                                        <ui:SymbolIcon Symbol="CheckmarkCircle20" Filled="True" FontSize="16" Foreground="{DynamicResource SystemFillColorSuccessBrush}"
+                                                       Visibility="{Binding IsDone, Converter={StaticResource BoolToVisibility}}" />
+                                        <ui:SymbolIcon Symbol="ErrorCircle20" Filled="True" FontSize="16" Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                                                       Visibility="{Binding IsFailed, Converter={StaticResource BoolToVisibility}}" />
+                                        <ui:SymbolIcon Symbol="Stop20" Filled="True" FontSize="16" Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                                                       Visibility="{Binding IsStopped, Converter={StaticResource BoolToVisibility}}" />
+                                    </Grid>
+                                    <ui:TextBlock Grid.Column="1" FontTypography="Body" Text="{Binding Title}" TextWrapping="Wrap" />
+                                    <ui:TextBlock Grid.Column="2" Style="{StaticResource Caption}" Text="{Binding DurationText}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="16,0,0,0" />
+                                    <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2">
+                                    <ui:TextBlock TextWrapping="Wrap" Text="{Binding Note}"
+                                                  Visibility="{Binding Note, Converter={StaticResource NullToVisibility}}">
+                                        <ui:TextBlock.Style>
+                                            <Style TargetType="ui:TextBlock" BasedOn="{StaticResource Caption}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsFailed}" Value="True">
+                                                        <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </ui:TextBlock.Style>
+                                    </ui:TextBlock>
+                                    <ProgressBar Minimum="0" Maximum="100" Height="4" Margin="0,4,0,0"
+                                                 Value="{Binding Percent, Mode=OneWay}" Visibility="{Binding HasPercent, Converter={StaticResource BoolToVisibility}}" />
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+                </DockPanel>
+            </ui:Card>
+
             <ui:Card Padding="16,12" Margin="{StaticResource CardRowMargin}">
                 <DockPanel>
                 <ui:SymbolIcon Style="{StaticResource MediaCardIcon}" Symbol="DocumentSave24" VerticalAlignment="Top" Margin="0,2,16,0" />

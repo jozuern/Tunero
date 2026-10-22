@@ -101,6 +101,26 @@ public sealed class MediaBuildTests : IDisposable
         Assert.Contains(@"sources\boot.wim", _steps.IsoContents.Keys);
     }
 
+    /// <summary>The page lists these stages before the build; the engine must begin exactly them, in this order (not Catalog, not Cleanup).</summary>
+    [Theory]
+    [InlineData("download")]
+    [InlineData("download apps")]
+    [InlineData("download apps tunero")]
+    [InlineData("iso")]
+    [InlineData("iso apps")]
+    [InlineData("iso unreviewed")]
+    public async Task PlannedStagesAreExactlyTheStagesARunBegins(string kind)
+    {
+        var apps = kind.Contains("apps", StringComparison.Ordinal) ? new[] { "Microsoft.BingNews" } : [];
+        var r = kind.StartsWith("download", StringComparison.Ordinal) ? Download(apps: apps) : OwnIso() with { RemoveApps = apps };
+        if (kind.Contains("unreviewed", StringComparison.Ordinal)) r = r with { RemoveUnreviewed = ["Contoso.Notes"] };
+        if (kind.Contains("tunero", StringComparison.Ordinal)) r = WithTunero(r);
+        await Run(r);
+        var begun = _steps.Progress.Where(p => p.Percent is null && p.Stage != MediaStage.Cleanup).Select(p => p.Stage).Distinct();
+        Assert.Equal(MediaBuild.PlannedStages(r), begun);
+        Assert.DoesNotContain(MediaStage.Catalog, MediaBuild.PlannedStages(r));
+    }
+
     [Fact]
     public async Task EditionIsFoundByEditionId()
     {

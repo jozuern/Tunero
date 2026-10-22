@@ -1866,6 +1866,14 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Media_IsoReadFailed" xml:space="preserve"><value>Die ISO-Datei ließ sich nicht öffnen. Wähle eine andere oder prüfe, ob sie beschädigt ist.</value></data>
   <data name="Media_CatalogStepUnknown" xml:space="preserve"><value>unerwarteter Fehler</value></data>
   <data name="Media_Progress" xml:space="preserve"><value>{0}, bisher {1}</value></data>
+  <data name="Media_StagesTitle" xml:space="preserve"><value>Fortschritt beim Erstellen</value></data>
+  <data name="Media_StagesCount" xml:space="preserve"><value>Schritt {0} von {1}, {2}</value></data>
+  <data name="Media_StageStopped" xml:space="preserve"><value>Angehalten</value></data>
+  <data name="Media_StageNotRun" xml:space="preserve"><value>Nicht ausgeführt</value></data>
+  <data name="Media_StageDone" xml:space="preserve"><value>Fertig</value></data>
+  <data name="Media_StageRunning" xml:space="preserve"><value>Läuft</value></data>
+  <data name="Media_StageFailed" xml:space="preserve"><value>Fehlgeschlagen</value></data>
+  <data name="Media_StageWaiting" xml:space="preserve"><value>Wartet</value></data>
   <data name="Media_AppsSummary" xml:space="preserve"><value>Zu entfernende Apps: {0}</value></data>
   <data name="Media_SetupSummary" xml:space="preserve"><value>Konto {0}, {1}</value></data>
   <data name="Media_Off" xml:space="preserve"><value>Aus</value></data>

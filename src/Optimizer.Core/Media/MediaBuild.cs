@@ -205,6 +205,22 @@ public sealed class MediaBuild(IMediaSteps steps)
         return IsWorkFolderName(first) ? path[..3] + first : null;
     }
 
+    /// <summary>
+    /// The stages a run of <paramref name="r"/> begins, in order: what the page lists while the build runs. Without Catalog
+    /// (the page's own step) and Cleanup (shown only when a build fails or is stopped). Mirrors <c>Run.ExecuteAsync</c>;
+    /// a test keeps the two equal, so a stage added there is added here.
+    /// </summary>
+    public static IReadOnlyList<MediaStage> PlannedStages(MediaRequest r)
+    {
+        List<MediaStage> stages = r.Source.Download is not null ? [MediaStage.Download, MediaStage.Check, MediaStage.Unpack] : [MediaStage.Unpack];
+        if (ChangesInstallImage(r)) stages.AddRange([MediaStage.Apps, MediaStage.Shrink]);
+        stages.AddRange([MediaStage.Files, MediaStage.Iso, MediaStage.Verify]);
+        return stages;
+    }
+
+    /// <summary>Whether install.wim is mounted for changes (today: when apps are removed).</summary>
+    private static bool ChangesInstallImage(MediaRequest r) => r.RemoveApps.Count > 0 || r.RemoveUnreviewed.Count > 0;
+
     /// <summary>Runs the build and returns the verified ISO's path. A wrong request throws <see cref="ArgumentException"/> before any step.</summary>
     public Task<string> RunAsync(MediaRequest r, IProgress<MediaProgress> p, CancellationToken ct)
     {
@@ -677,7 +693,7 @@ public sealed class MediaBuild(IMediaSteps steps)
                 }
                 var build = await CheckImagesAsync(edition);
 
-                if (r.RemoveApps.Count > 0 || r.RemoveUnreviewed.Count > 0) await ChangeInstallImageAsync();
+                if (ChangesInstallImage(r)) await ChangeInstallImageAsync();
                 Begin(MediaStage.Files);
                 await WriteFilesAsync();
                 Begin(MediaStage.Iso);
