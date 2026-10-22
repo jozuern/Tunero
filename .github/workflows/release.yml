@@ -125,6 +125,9 @@ jobs:
         $signing = [bool]$env:CODE_SIGNING_SUBJECT
         $mode = if ($env:GITHUB_EVENT_NAME -eq 'workflow_dispatch') { 'signed' } elseif ($signing) { 'await-signature' } else { 'unsigned' }
         if ($mode -eq 'signed' -and -not $signing) { Write-Error "CODE_SIGNING_SUBJECT is not set: the second run is only for signed releases"; exit 1 }
+        # Releases from 1.2.3 on are signed (README, website): a missing or renamed variable must stop the release, not
+        # publish an unsigned exe that winget and Chocolatey would pass on.
+        if ($mode -eq 'unsigned' -and [version]$env:TAG.Substring(1) -ge [version]'1.2.3') { Write-Error "CODE_SIGNING_SUBJECT is not set: releases from 1.2.3 on are signed"; exit 1 }
         "mode=$mode" | Out-File -Encoding utf8 -Append $env:GITHUB_OUTPUT
         "Mode: $mode" | Out-File -Encoding utf8 -Append $env:GITHUB_STEP_SUMMARY
 
