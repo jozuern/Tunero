@@ -14,7 +14,8 @@
   const store = useStore();
 
   const windowOpen = $derived(Object.values(store.windows).some((w) => w.open && !w.minimized));
-  const intro = $derived(ready && !store.guiding && !store.compare && !windowOpen && store.clutter > 0);
+  // Not while Undo all plays: the desktop is still filling up, and Watch would start from the middle of it.
+  const intro = $derived(ready && !store.guiding && !store.rewinding && !store.compare && !windowOpen && store.clutter > 0);
   const end = $derived(ready && store.finale && !store.guiding && !store.compare && store.clutter === 0);
   const counts = $derived(tally(store.state, store.demo));
 
@@ -23,6 +24,30 @@
   const swap = (node: Element) => fly(node, { y: reducedMotion() ? 0 : 6, duration: reducedMotion() ? 0 : 280, opacity: 0 });
   const quick = (node: Element) => fade(node, { duration: reducedMotion() ? 0 : 160 });
   const pop = (node: Element) => scale(node, { start: 0.94, duration: reducedMotion() ? 0 : 420, delay: reducedMotion() ? 0 : 500, opacity: 0 });
+
+  /**
+   * The end card is a dialog: it takes the keyboard focus on its first action (Install), Escape closes it, and when it
+   * goes the focus returns where it was, unless something new took it (the comparison focuses its own handle).
+   */
+  function dialog(node: HTMLElement) {
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    requestAnimationFrame(() => node.querySelector<HTMLElement>('.cta')?.focus({ preventScroll: true }));
+    const onKeydown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.stopPropagation();
+      store.finale = false;
+    };
+    node.addEventListener('keydown', onKeydown);
+    return {
+      destroy() {
+        node.removeEventListener('keydown', onKeydown);
+        requestAnimationFrame(() => {
+          const lost = !document.activeElement || document.activeElement === document.body || node.contains(document.activeElement);
+          if (lost && opener?.isConnected) opener.focus({ preventScroll: true });
+        });
+      },
+    };
+  }
 
   function watch(event: MouseEvent) {
     const from = event.detail === 0 ? { x: innerWidth / 2, y: innerHeight / 2 } : { x: event.clientX, y: event.clientY };
@@ -60,7 +85,7 @@
 {/if}
 
 {#if end}
-  <div class="end" role="dialog" aria-labelledby="end-title" in:pop out:quick>
+  <div class="end" role="dialog" aria-labelledby="end-title" use:dialog in:pop out:quick>
     <span class="seal"><Icon name="check" size={32} /></span>
     <h2 id="end-title">{copy.end.title}</h2>
     <ul>

@@ -60,6 +60,13 @@ test('an effect shows while any of its changes is not applied', () => {
   assert.equal(isActive(apply(initial(), [s1, s2]), demo, 'tray'), false);
 });
 
+test('deserialize leaves out saved changes the demo no longer has', () => {
+  const saved = serialize({ ...initial(), applied: [tweakA, { kind: 'tweak', id: 'renamed' }, { kind: 'startup', id: 's2' }, { kind: 'app', id: 'gone' }] });
+  assert.deepEqual(deserialize(saved, demo).applied, [tweakA, { kind: 'startup', id: 's2' }]);
+  // Without a demo nothing is checked against one.
+  assert.equal(deserialize(saved).applied.length, 4);
+});
+
 test('deserialize falls back to the initial state', () => {
   assert.deepEqual(deserialize(null), initial());
   assert.deepEqual(deserialize('garbage'), initial());

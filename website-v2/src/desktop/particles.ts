@@ -53,7 +53,8 @@ function ensureCanvas() {
 
 function resize() {
   if (!canvas || !context) return;
-  const ratio = Math.min(devicePixelRatio || 1, 2);
+  // Soft dots need no more pixels than the wallpaper under them.
+  const ratio = Math.min(devicePixelRatio || 1, 1.5);
   const width = Math.round(innerWidth * ratio);
   const height = Math.round(innerHeight * ratio);
   if (canvas.width !== width || canvas.height !== height) {
@@ -214,6 +215,9 @@ function step(now: number) {
   if (specks.length > 0) frameId = requestAnimationFrame(step);
   else {
     frameId = 0;
-    context.clearRect(0, 0, innerWidth, innerHeight);
+    // Nothing left to draw: give the full screen buffer back, so the browser neither keeps it in memory nor blends an
+    // empty layer over the moving wallpaper on every frame. resize() makes it again for the next burst.
+    canvas.width = 0;
+    canvas.height = 0;
   }
 }

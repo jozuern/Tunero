@@ -37,7 +37,7 @@ const facts = {
 };
 ---
 
-<Base lang={lang} title={copy.meta.title} description={copy.meta.description} path="/" phoneTo={localPath(lang, '/classic/')}>
+<Base lang={lang} title={copy.meta.title} description={copy.meta.description} path="/" phoneTo={localPath(lang, '/classic/')} software={{ version: release.version }}>
   <main>
     <h1 class="visually-hidden">{copy.meta.title}</h1>
     <noscript>

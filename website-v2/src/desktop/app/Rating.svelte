@@ -4,7 +4,8 @@
   let { value, label }: { value: number; label: string } = $props();
 </script>
 
-<span class="rating" class:none={value <= 0} title={label} aria-label={label}>
+<!-- An image to screen readers, named by its label ("Impact 4 of 5"); a 0 shows no mark and says nothing. -->
+<span class="rating" class:none={value <= 0} title={label} role={value > 0 ? 'img' : undefined} aria-label={value > 0 ? label : undefined} aria-hidden={value > 0 ? undefined : 'true'}>
   <span class="number" aria-hidden="true">{value}</span>
   <span class="bars" aria-hidden="true">
     {#each [1, 2, 3, 4, 5] as bar (bar)}<span class:on={bar <= value}></span>{/each}

@@ -196,7 +196,7 @@ public partial class DocLintTests(ITestOutputHelper output)
 
     /// <summary>
     /// The text of tunero.dev: its English and German copy and its pages and components, of the current site
-    /// (website/src) and of the next one (website-v2/src).
+    /// (website-v2/src) and of the previous one, no longer deployed (website/src).
     /// </summary>
     private static IEnumerable<string> WebsiteCopy() =>
         RepositoryFiles("*.ts").Concat(RepositoryFiles("*.astro")).Concat(RepositoryFiles("*.svelte"))

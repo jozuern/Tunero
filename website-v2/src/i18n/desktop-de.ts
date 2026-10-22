@@ -44,7 +44,6 @@ const desktopDe: DesktopStrings = {
     syncAd: { title: 'Deine Dateien sind nicht gesichert', body: 'Schalte die Cloud-Sicherung ein, um Desktop, Dokumente und Bilder zu schützen.', action: 'Einschalten', hint: 'Öffnet Tunero bei dem Tweak, der diese Werbung abschaltet' },
   },
   notepad: {
-    file: 'Changelog.txt',
     note: 'Die neuesten Versionen, aus CHANGELOG.md im Repository (auf Englisch).',
     full: 'Vollständiger Changelog auf GitHub (Englisch)',
   },
@@ -161,10 +160,10 @@ const desktopDe: DesktopStrings = {
   window: { minimize: 'Minimieren', maximize: 'Maximieren', restore: 'Wiederherstellen', close: 'Schließen' },
   trayMore: 'Ausgeblendete Symbole anzeigen',
   clockLabel: 'Uhr',
+  taskbarLabel: 'Taskleiste',
   network: 'Netzwerk',
   soundOn: 'Ton einschalten',
   soundOff: 'Ton ausschalten',
-  volume: 'Lautstärke',
 };
 
 export default desktopDe;

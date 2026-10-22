@@ -59,7 +59,7 @@
   const trayItems = $derived(store.demo.startup.filter((item) => !store.applied({ kind: 'startup', id: item.id })));
 </script>
 
-<nav class="taskbar" aria-label="Taskbar">
+<nav class="taskbar" aria-label={copy.taskbarLabel}>
   <div class="left">
     <a class="corner" href={classicHref} title={copy.classicPage}>
       <Icon name="arrowLeft" size={16} />
@@ -149,7 +149,7 @@
         <Icon name={sound ? 'speaker' : 'speakerMute'} size={16} />
       </button>
     </span>
-    <span class="clock" aria-label={copy.clockLabel}>
+    <span class="clock" role="group" aria-label={copy.clockLabel}>
       <span>{time}</span>
       <span>{date}</span>
     </span>

@@ -97,14 +97,9 @@
   scroll-margin-top: 16px;
 }
 
-.classic .part > p,
-.classic .prose {
+.classic .part > p {
   color: var(--ink-2);
   max-width: 68ch;
-}
-
-.classic .muted {
-  color: var(--ink-2);
 }
 
 .classic .card {

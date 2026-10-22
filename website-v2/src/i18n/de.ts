@@ -96,7 +96,7 @@ const de: Strings = {
         body: 'Manche beliebten Tweaks gibt es gar nicht, weil sie schaden oder nichts ändern, etwa Echtzeitpriorität für Spiele, abgeschalteter Schutz vor Spectre und Meltdown oder Registry-Reinigung. Suchst du in der App danach, sagt sie dir, warum.',
         link: { label: 'Die ganze Liste, mit Quellen (Englisch)', href: `${repo}/blob/main/docs/not-included.md` },
       },
-    ] as TrustItem[],
+    ] satisfies TrustItem[] as TrustItem[],
   },
   board: {
     title: 'Eine 5 gibt es nur für Probleme, die der Scan findet. Für keinen Tweak.',
@@ -176,7 +176,7 @@ const de: Strings = {
       'Diese Erklärung gilt für die Website tunero.dev. Was die App Tunero selbst sendet, steht in der ',
       { text: 'Datenschutzerklärung der App', href: `${repo}/blob/main/docs/PRIVACY.md#datenschutz` },
       '.',
-    ] as Rich,
+    ] satisfies Rich as Rich,
     controller: 'Verantwortlicher',
     email: 'E-Mail',
     sections: (email) => [
@@ -229,7 +229,7 @@ const de: Strings = {
     title: 'Impressum',
     metaTitle: 'Impressum, Tunero',
     description: 'Anbieterkennzeichnung für tunero.dev.',
-    intro: [] as Rich,
+    intro: [] satisfies Rich as Rich,
     operator: 'Angaben gemäß § 5 DDG',
     contact: 'Kontakt',
     email: 'E-Mail',

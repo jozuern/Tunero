@@ -61,9 +61,24 @@ export function trail(effect: Effect, direction: 'apply' | 'undo') {
   flight.onfinish = () => dot.remove();
   flight.oncancel = () => dot.remove();
 
-  target.animate([{ filter: 'brightness(1)' }, { filter: 'brightness(1.8) drop-shadow(0 0 8px var(--accent))' }, { filter: 'brightness(1)' }], {
-    duration: 520,
-    delay: direction === 'apply' ? 560 : 0,
-    easing: 'ease-out',
-  });
+  glow(target, direction, direction === 'apply' ? 560 : 0);
+}
+
+/**
+ * Lights the place the trail reaches: a glowing outline laid over it whose opacity is animated. The place itself is
+ * left alone: a filter on it would repaint it on every frame and, on the notifications, cut their background blur.
+ */
+function glow(target: Element, direction: 'apply' | 'undo', delay: number) {
+  // Measured when it lights, not when the trail starts: the place can move meanwhile (a notification above it leaves).
+  setTimeout(() => {
+    const rect = target.getBoundingClientRect();
+    if (!target.isConnected || rect.width === 0 || rect.height === 0) return;
+    const ring = document.createElement('span');
+    ring.className = `trail-glow ${direction}`;
+    Object.assign(ring.style, { left: `${rect.left}px`, top: `${rect.top}px`, width: `${rect.width}px`, height: `${rect.height}px` });
+    document.body.append(ring);
+    const light = ring.animate([{ opacity: 0 }, { opacity: 1, offset: 0.3 }, { opacity: 0 }], { duration: 620, easing: 'ease-out' });
+    light.onfinish = () => ring.remove();
+    light.oncancel = () => ring.remove();
+  }, delay);
 }

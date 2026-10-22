@@ -62,7 +62,7 @@
   }
 </script>
 
-<section
+<div
   bind:this={element}
   class="window"
   data-window={id}
@@ -80,13 +80,18 @@
   onpointerdown={() => store.focused !== id && store.focus(id)}
   onkeydown={onKeydown}
 >
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <!-- Dragging and double click to maximize are mouse shortcuts; the caption buttons do the same by keyboard. -->
   <header
     class="titlebar"
     onpointerdown={startDrag}
     onpointermove={moveDrag}
     onpointerup={endDrag}
     onpointercancel={endDrag}
-    ondblclick={() => store.toggleMaximize(id)}
+    ondblclick={(event) => {
+      // A double click on a caption button is two clicks on that button, as in Windows, not one on the title bar.
+      if (!(event.target as HTMLElement).closest('button')) store.toggleMaximize(id);
+    }}
   >
     <span class="title">
       {#if icon === 'tunero'}<TuneroMark size={16} />{:else}<Icon name={icon} size={16} />{/if}
@@ -112,7 +117,7 @@
   <div class="body">
     {@render children()}
   </div>
-</section>
+</div>
 
 <style>
   .window {

@@ -7,6 +7,7 @@ import { autoplayPlan, type AutoPage } from '../lib/autoplay.ts';
 import type { DesktopStore } from './store.svelte.ts';
 import { reducedMotion } from './motion.ts';
 import { click } from './sound.ts';
+import { cascadeStep } from './app/flash.ts';
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -20,8 +21,6 @@ const rhythm: Record<AutoPage, { dwell: number; after: number }> = {
   startup: { dwell: 90, after: 160 },
   apps: { dwell: 140, after: 330 },
 };
-/** Extra time per switch a group's "Turn on" flips, matching the cascade in app/Tweaks.svelte. */
-const perSwitch = 110;
 /** After a page change, before the cursor moves on: the page is seen first. */
 const pageSettle = 280;
 
@@ -94,13 +93,23 @@ function makeCursor(from: Point) {
   };
 }
 
-/** Glides the Tunero page so `element` is in view, without moving the window frame; resolves when it is there. */
+/** True when what is on screen at the cursor's aim on `element` is `element` itself, not a notification over it. */
+function uncovered(element: Element) {
+  const point = aim(element);
+  const hit = document.elementFromPoint(point.x, point.y);
+  return hit !== null && (hit === element || element.contains(hit));
+}
+
+/**
+ * Glides the Tunero page so `element` is in view and not under a notification, without moving the window frame;
+ * resolves when it is there.
+ */
 async function reveal(element: Element) {
   const page = element.closest('.content');
   if (!page) return;
   const rect = element.getBoundingClientRect();
   const box = page.getBoundingClientRect();
-  if (rect.top >= box.top + 24 && rect.bottom <= box.bottom - 24) return;
+  if (rect.top >= box.top + 24 && rect.bottom <= box.bottom - 24 && uncovered(element)) return;
   const start = page.scrollTop;
   const end = Math.max(0, Math.min(page.scrollHeight - page.clientHeight, start + rect.top - box.top - box.height / 3));
   const duration = 420;
@@ -129,6 +138,9 @@ async function find(selector: string, tries = 20): Promise<HTMLElement | null> {
 export async function playGuide(store: DesktopStore, from: Point) {
   if (store.guiding) return;
   store.guiding = true;
+  // A running Undo all ends first: the plan must start from the state it was heading for, or its first click (which
+  // ends the rewind) would undo what the plan counts as done.
+  store.stopRewind();
   store.open('tunero');
   if (!store.state.scanned) store.markScanned();
   const plan = autoplayPlan(store.state, store.demo);
@@ -178,7 +190,7 @@ export async function playGuide(store: DesktopStore, from: Point) {
       if (stopped) break;
       await cursor.press(target);
       target.click();
-      const cascade = step.page === 'tweaks' ? step.changes.length * perSwitch : 0;
+      const cascade = step.page === 'tweaks' ? step.changes.length * cascadeStep : 0;
       await wait(rhythm[step.page].after + cascade);
     }
     if (!stopped) {

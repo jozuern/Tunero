@@ -44,7 +44,7 @@
       return item.title.toLowerCase().includes(q) || item.words.split(' ').some((word) => word.startsWith(q));
     });
   });
-  let panel: HTMLElement;
+  let panel: HTMLElement | undefined = $state();
 
   function onWindowClick(event: MouseEvent) {
     if (store.startOpen && panel && !panel.contains(event.target as Node)) store.startOpen = false;

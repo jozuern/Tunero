@@ -97,14 +97,33 @@
     color: #f3f3f3;
   }
 
+  /* The pulse scales the icon and fades a soft glow behind it: transform and opacity only, which the compositor runs
+     without repainting (an animated drop-shadow would repaint it on every frame for as long as the hint shows). */
   .hint .glyph {
+    position: relative;
     animation: pulse 2.4s ease-in-out infinite;
+  }
+
+  .hint .glyph::before {
+    content: '';
+    position: absolute;
+    inset: -8px;
+    z-index: -1;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(96, 205, 255, 0.75), rgba(96, 205, 255, 0.25) 60%, transparent);
+    opacity: 0;
+    animation: glow 2.4s ease-in-out infinite;
   }
 
   @keyframes pulse {
     50% {
       transform: scale(1.1);
-      filter: drop-shadow(0 0 14px rgba(96, 205, 255, 0.9));
+    }
+  }
+
+  @keyframes glow {
+    50% {
+      opacity: 1;
     }
   }
 
@@ -133,7 +152,8 @@
     transform: translateY(-50%) rotate(45deg);
   }
 
-  :global([data-motion='reduce']) .hint .glyph {
+  :global([data-motion='reduce']) .hint .glyph,
+  :global([data-motion='reduce']) .hint .glyph::before {
     animation: none;
   }
 </style>

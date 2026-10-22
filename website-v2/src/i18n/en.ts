@@ -111,7 +111,7 @@ const en = {
         body: 'Some popular tweaks are not offered at all, because they do harm or change nothing, such as realtime priority for games, turning off the Spectre and Meltdown mitigations, or registry cleaning. Search for one in the app, and it tells you why.',
         link: { label: 'The full list, with sources', href: `${repo}/blob/main/docs/not-included.md` },
       },
-    ] as TrustItem[],
+    ] satisfies TrustItem[] as TrustItem[],
   },
   board: {
     title: 'Only problems the scan finds rate 5. No tweak does.',
@@ -193,7 +193,7 @@ const en = {
       'This policy covers the website tunero.dev. What the Tunero app itself sends is in the ',
       { text: 'privacy policy of the app', href: `${repo}/blob/main/docs/PRIVACY.md` },
       '.',
-    ] as Rich,
+    ] satisfies Rich as Rich,
     controller: 'Controller',
     email: 'Email',
     sections: (email: string): { heading: string; paragraphs: Rich[] }[] => [
@@ -250,7 +250,7 @@ const en = {
       'Information under § 5 of the German Digital Services Act (DDG). The ',
       { text: 'German version', href: '/de/impressum/', lang: 'de' },
       ' is the binding one.',
-    ] as Rich,
+    ] satisfies Rich as Rich,
     operator: 'Operator',
     contact: 'Contact',
     email: 'Email',

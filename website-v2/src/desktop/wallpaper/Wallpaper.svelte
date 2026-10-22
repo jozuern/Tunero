@@ -7,10 +7,13 @@
   let {
     clutter,
     theme,
+    paused = false,
   }: {
     /** 1 for the neglected demo PC, 0 when everything is fixed; the shader eases toward it. */
     clutter: number;
     theme: 'light' | 'dark';
+    /** Nothing of the wallpaper can be seen moving (the boot, a window over everything): no frames are drawn. */
+    paused?: boolean;
   } = $props();
 
   let canvas: HTMLCanvasElement | undefined = $state();
@@ -28,6 +31,7 @@
       onFail: () => {
         live = false;
       },
+      isPaused: () => paused,
     }));
     return () => {
       stop();
@@ -40,7 +44,6 @@
 <div
   class="fallback"
   class:live
-  data-theme={theme}
   style:--clutter={Math.min(1, Math.max(0, clutter))}
   aria-hidden="true"
 ></div>
@@ -78,7 +81,8 @@
       linear-gradient(180deg, #03050d, #060c1f 55%, #050b1c);
   }
 
-  .fallback[data-theme='light'] {
+  /* The theme on <html>, which Base.astro sets before the first paint: right before this component has started. */
+  :global(html[data-theme='light']) .fallback {
     background:
       radial-gradient(ellipse 125% 118% at 100% -10%, transparent 75.2%, rgb(255 255 255 / 0.95) 76%, transparent 76.9%),
       radial-gradient(ellipse 120% 110% at 100% -8%, transparent 61%, rgb(80 125 240 / 0.45) 67%, rgb(170 200 255 / 0.85) 71.5%, rgb(70 115 235 / 0.5) 76%, transparent 82%),

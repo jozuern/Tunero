@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "build": "astro check && astro build",
+    "build": "astro check && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings && astro build",
     "preview": "astro preview",
     "test": "node --test \"src/**/*.test.ts\""
   },
@@ -17,6 +17,7 @@
     "@astrojs/check": "0.9.10",
     "@fluentui/svg-icons": "1.1.344",
     "@types/node": "26.6.5",
+    "svelte-check": "4.7.6",
     "typescript": "6.0.3"
   }
 }
