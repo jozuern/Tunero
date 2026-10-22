@@ -1901,6 +1901,8 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Media_ChoicesRefused" xml:space="preserve"><value>Die Datei wurde nicht geladen, nichts hat sich geändert. Problem bei: {0}.</value></data>
   <data name="Media_ChoicesDropped" xml:space="preserve"><value>Diese gespeicherten Angaben passen nicht mehr und bleiben auf ihrem Standard: {0}.</value></data>
   <data name="Media_ChoicesReset" xml:space="preserve"><value>Die Auswahl ist wieder auf dem Standard, die gemerkte Auswahl ist gelöscht.</value></data>
+  <data name="Media_Field_appLanguage" xml:space="preserve"><value>App-Sprache</value></data>
+  <data name="Media_Field_theme" xml:space="preserve"><value>Design</value></data>
   <data name="Media_Field_source" xml:space="preserve"><value>Quelle</value></data>
   <data name="Media_Field_language" xml:space="preserve"><value>Sprache</value></data>
   <data name="Media_Field_edition" xml:space="preserve"><value>Edition</value></data>

@@ -1343,14 +1343,30 @@ public sealed class InstallMediaViewModelTests : IDisposable
         Loc.Instance.SetLanguage("de");
         _dialogs.OpenFile = Path.Combine(_root, "bad.json");
         media.LoadChoicesCommand.Execute(null);
-        Assert.Contains("Edition", media.ChoicesNote);
         Assert.Contains("Problem bei", media.ChoicesNote);
+        json["theme"] = 5;
+        json["edition"] = "Core";
+        _dialogs.OpenFile = Write(json, "bad3.json");
+        media.LoadChoicesCommand.Execute(null);
+        Assert.Contains("Problem bei: Design.", media.ChoicesNote);
+        json.Remove("theme");
         json["skipSetup"]!["region"] = 5;
         json["edition"] = "Core";
         _dialogs.OpenFile = Write(json, "bad2.json");
         media.LoadChoicesCommand.Execute(null);
         Assert.Contains("Konto und Einrichtungsfragen", media.ChoicesNote);
         Assert.DoesNotContain("must be", media.ChoicesNote);
+    }
+
+    [Fact]
+    public void EveryRequestFileFieldHasALabelInBothLanguages()
+    {
+        foreach (var language in new[] { "en", "de" })
+        {
+            Loc.Instance.SetLanguage(language);
+            foreach (var field in MediaRequestFile.FieldNames)
+                Assert.NotEqual($"Media_Field_{field}", Loc.Instance[$"Media_Field_{field}"]);
+        }
     }
 
     [Fact]

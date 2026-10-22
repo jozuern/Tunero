@@ -66,6 +66,9 @@ public sealed record MediaRequestFile(
     /// <summary>"consumer" in removeApps: the apps the page ticks when it opens.</summary>
     public const string DefaultApps = "consumer";
 
+    /// <summary>The top-level fields of a request file (the page names one that is refused by its Media_Field_ label).</summary>
+    public static IReadOnlyList<string> FieldNames => Fields;
+
     private static readonly string[] Fields = ["source", "language", "edition", "removeApps", "skipSetup", "profile", "allowUnsupported", "output", "appLanguage", "theme", "installApps", "removeUnreviewed"];
     private static readonly string[] AppLanguages = ["en", "de"];
     private static readonly string[] Themes = ["System", "Light", "Dark"];
