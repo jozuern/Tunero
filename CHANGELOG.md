@@ -9,6 +9,7 @@
 - **Storage:** a file or folder right below a drive root (such as `D:\Old backups`) moves to the Recycle Bin. Before, the move always ended as "not moved".
 - **Scan:** the check for leftovers of other tools finds the forced platform timer on German Windows too, where bcdedit prints "Ja".
 - **Screen readers:** the result of a change, a cleanup or another task is read out also when the result bar had closed by itself before.
+- **Remove apps:** the warning for an app that is not on the reviewed list says that its data in every account goes with it (for a Linux distribution of WSL: all its files).
 
 ## 1.5.0
 

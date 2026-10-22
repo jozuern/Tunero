@@ -1640,7 +1640,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Debloat_UnreviewedHint" xml:space="preserve"><value>Weitere entfernbare Apps auf diesem PC. Niemand hat geprüft, was sie tun: Entferne nur Apps, die du kennst, denn ein Programm oder Gerät könnte eine davon brauchen.</value></data>
   <data name="Debloat_UnreviewedEmpty" xml:space="preserve"><value>Keine weiteren entfernbaren Apps gefunden.</value></data>
   <data name="Debloat_UnreviewedMeta" xml:space="preserve"><value>Nicht geprüft, Version {0}</value></data>
-  <data name="Debloat_UnreviewedConfirm" xml:space="preserve"><value>{0} steht nicht auf der geprüften Liste, niemand hat also geprüft, was die App tut oder was sie braucht. Sie wird für alle Benutzer entfernt, und diese App kann das nicht rückgängig machen; installiere sie bei Bedarf aus dem Microsoft Store oder vom Hersteller neu.</value></data>
+  <data name="Debloat_UnreviewedConfirm" xml:space="preserve"><value>{0} steht nicht auf der geprüften Liste, niemand hat also geprüft, was die App tut oder was sie braucht. Sie wird für alle Benutzer entfernt, zusammen mit ihren Daten in jedem Konto (bei einer Linux-Distribution von WSL: allen ihren Dateien), und diese App kann das nicht rückgängig machen; installiere sie bei Bedarf aus dem Microsoft Store oder vom Hersteller neu.</value></data>
   <data name="Tweaks_CountByApp" xml:space="preserve"><value>{0} von dieser App geändert</value></data>
   <data name="Tweaks_CountAlreadySet" xml:space="preserve"><value>{0} schon gesetzt</value></data>
   <data name="Tweaks_CountRecommended" xml:space="preserve"><value>{0} für diesen PC empfohlen</value></data>
