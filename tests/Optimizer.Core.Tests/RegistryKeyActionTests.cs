@@ -36,4 +36,35 @@ public class RegistryKeyActionTests
         Assert.Equal("key with 2 values and 1 subkeys", Docs.Labels.Current.Display("en", line.Before));
         Assert.Equal("Schlüssel mit 2 Werten und 1 Unterschlüsseln", Docs.Labels.Current.Display("de", line.Before));
     }
+
+    [Fact]
+    public void UndoWritesTheKeyBackOverWhatAHalfDeleteLeft()
+    {
+        using var fx = new EngineFixture();
+        RegistryValue.Write(fx.Registry, Hive.Machine, @"SOFTWARE\Fixture\Half", "A", "string", "x");
+        RegistryValue.Write(fx.Registry, Hive.Machine, @"SOFTWARE\Fixture\Half\Locked", "B", "dword", "1");
+        var action = new RegistryKeyAction { Hive = Hive.Machine, Path = @"SOFTWARE\Fixture\Half" };
+        var original = action.Read(fx.Context)!;
+        // The delete stopped at the locked subkey: the key and that subkey are left, the value A is gone.
+        using (var key = fx.Registry.Open(Hive.Machine, @"SOFTWARE\Fixture\Half", writable: true)) key!.DeleteValue("A");
+        var left = action.Read(fx.Context)!;
+
+        Assert.True(action.IsStillApplied(fx.Context, left));
+        Assert.Equal(RestoreOutcome.Restored, action.RestoreIfUnchanged(fx.Context, original, StoredValue.Missing));
+        Assert.True(action.Read(fx.Context)!.SameAs(original));
+    }
+
+    [Fact]
+    public void AKeyMadeAgainWithOtherDataIsLeftAlone()
+    {
+        using var fx = new EngineFixture();
+        RegistryValue.Write(fx.Registry, Hive.Machine, @"SOFTWARE\Fixture\Again", "A", "string", "x");
+        var action = new RegistryKeyAction { Hive = Hive.Machine, Path = @"SOFTWARE\Fixture\Again" };
+        var original = action.Read(fx.Context)!;
+        action.Apply(fx.Context);
+        RegistryValue.Write(fx.Registry, Hive.Machine, @"SOFTWARE\Fixture\Again", "A", "string", "new");
+
+        Assert.Equal(RestoreOutcome.ChangedSince, action.RestoreIfUnchanged(fx.Context, original, StoredValue.Missing));
+        Assert.Equal("new", RegistryValue.Read(fx.Registry, Hive.Machine, @"SOFTWARE\Fixture\Again", "A").Data);
+    }
 }

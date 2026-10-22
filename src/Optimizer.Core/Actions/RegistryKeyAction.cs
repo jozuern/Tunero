@@ -33,13 +33,46 @@ public sealed class RegistryKeyAction : TweakAction
 
     public override void Apply(ActionContext c) => DeleteTree(c);
 
-    /// <summary>Still applied only while the key is gone: a key Windows or a program made again is left alone by undo.</summary>
-    public override bool IsStillApplied(ActionContext c, StoredValue applied) => !KeyExists(c);
+    /// <summary>
+    /// Still applied while the key is gone, or while it is exactly what a delete that stopped half-way left of it (a
+    /// subkey it could not delete): a key Windows or a program made again is left alone by undo.
+    /// </summary>
+    public override bool IsStillApplied(ActionContext c, StoredValue applied) =>
+        !KeyExists(c) || applied.Existed && Read(c) is { } current && current.SameAs(applied);
+
+    /// <summary>
+    /// A key that holds nothing but parts of the saved one is what a delete or an undo that stopped half-way left behind,
+    /// not a key made again: undo writes the saved key back, which loses nothing. Only a key with something the saved one
+    /// does not have (another value, another data) counts as changed since.
+    /// </summary>
+    public override RestoreOutcome RestoreIfUnchanged(ActionContext c, StoredValue original, StoredValue? applied)
+    {
+        if (applied is not null && !IsStillApplied(c, applied) && !IsPartOf(c, original)) return RestoreOutcome.ChangedSince;
+        Restore(c, original);
+        return RestoreOutcome.Restored;
+    }
+
+    private bool IsPartOf(ActionContext c, StoredValue original)
+    {
+        if (!original.Existed || original.Data is null || Read(c) is not { Existed: true, Data: { } data }) return false;
+        try
+        {
+            return JsonSerializer.Deserialize<KeySnapshot>(data) is { } current && JsonSerializer.Deserialize<KeySnapshot>(original.Data) is { } saved && Within(current, saved);
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+
+        static bool Within(KeySnapshot part, KeySnapshot whole) =>
+            part.Values.All(v => whole.Values.TryGetValue(v.Key, out var w) && w == v.Value)
+            && part.Keys.All(k => whole.Keys.TryGetValue(k.Key, out var w) && Within(k.Value, w));
+    }
 
     public override void Restore(ActionContext c, StoredValue original)
     {
-        // Undo runs only while the key is still gone (a key Windows made again is left alone, see IsStillApplied); a
-        // remainder of an undo that stopped half-way is cleared first, so the saved key comes back exactly.
+        // Undo runs only while the key is still gone or a remainder of the saved one (a key Windows made again is left
+        // alone, see RestoreIfUnchanged); a remainder is cleared first, so the saved key comes back exactly.
         DeleteTree(c);
         if (!original.Existed || original.Data is null) return;
         var snapshot = JsonSerializer.Deserialize<KeySnapshot>(original.Data) ?? throw new InvalidOperationException($"{TargetKey}: the saved key is unreadable");
