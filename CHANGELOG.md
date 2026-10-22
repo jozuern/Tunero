@@ -17,7 +17,7 @@
 
 ### Changed
 
-- **Windows install media:** the finished build has its own card: the ISO's path and size, its SHA-256 (hashed from the verified file, selectable, with Copy), Show in folder, Show log and the next step (a virtual machine, or a USB stick of at least 8 GB with a tool such as Rufus, with links). A failed build keeps its message with Show log and Show the stage. `--build-media` prints `SHA-256 <hash>` after the path.
+- **Windows install media:** the finished build has its own card: the ISO's path and size, its SHA-256 (hashed from the verified file, selectable, with Copy), Show in folder, Show log and the next step (a virtual machine, or a USB stick larger than the ISO with a tool such as Rufus, with links). A failed build keeps its message with Show log and Show the stage. `--build-media` prints `SHA-256 <hash>` after the path.
 - **Windows install media:** while the build runs, the page lists every stage with its state, the app or file it is working on, how long each took and, where it stopped, the reason.
 - **Windows install media:** a summary bar stays at the bottom of the page with the image, your choices, the space needed and Build (Stop while it runs). Build first shows what goes into the ISO, with a warning for each Expert option that is on. Every card has an icon.
 - **Windows install media:** every change to the install image happens in one mount, then a component cleanup without `/ResetBase` (installed updates stay removable) before the one commit; pending operations skip the cleanup and the build goes on. Size gain not yet measured in the test VM.

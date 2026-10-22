@@ -1828,7 +1828,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Media_NextStepTitle" xml:space="preserve"><value>Next step</value></data>
   <data name="Media_NextStepVm" xml:space="preserve"><value>Start a virtual machine from the ISO to try it first.</value></data>
   <data name="Media_NextStepVmLink" xml:space="preserve"><value>Create a virtual machine in Hyper-V</value></data>
-  <data name="Media_NextStepUsb" xml:space="preserve"><value>Or write it to a USB stick of at least 8 GB with a tool such as Rufus. The stick is erased.</value></data>
+  <data name="Media_NextStepUsb" xml:space="preserve"><value>Or write it to a USB stick larger than the ISO with a tool such as Rufus. The stick is erased.</value></data>
   <data name="Media_NextStepUsbRufus" xml:space="preserve"><value>Rufus</value></data>
   <data name="Media_NextStepUsbMicrosoft" xml:space="preserve"><value>Microsoft: install Windows from a flash drive</value></data>
   <data name="Media_ShowStage" xml:space="preserve"><value>Show the stage</value></data>
