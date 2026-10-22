@@ -242,6 +242,26 @@ public sealed class CommandLineMediaTests : IDisposable
         Assert.Contains(Loc.Instance.Format("Cli_ExitCode", CommandLineApply.MediaBuildFailed), log);
     }
 
+    /// <summary>A failure that kept a saved build names its folder and size: --build-media has no Resume, the next run deletes it.</summary>
+    [Fact]
+    public async Task AFailureThatKeptTheWorkFolderNamesItAndItsSize()
+    {
+        var saved = new ResumableBuild(@"C:\TuneroMedia.0000abcd",
+            new MediaCheckpoint(CheckpointKind.ImageReady, new string('1', 64), new string('2', 64), new string('3', 64), "26300", DateTimeOffset.Now) { UiLanguage = "en-US" })
+        {
+            Bytes = 9_874_000_000,
+        };
+        _build = (_, _) => throw new MediaBuildException(MediaStage.Iso, "The ISO could not be written.", unchecked((int)0x80070070));
+        Assert.Equal(CommandLineApply.MediaBuildFailed, await Run(Request(), System() with { FindResumable = () => [saved] }));
+        var log = await File.ReadAllTextAsync(LogPath);
+        Assert.Contains(@"Work folder kept for Resume: C:\TuneroMedia.0000abcd, 9874000000 bytes", log);
+
+        // Without a saved build the line is not there.
+        File.Delete(LogPath);
+        Assert.Equal(CommandLineApply.MediaBuildFailed, await Run(Request()));
+        Assert.DoesNotContain("Work folder kept", await File.ReadAllTextAsync(LogPath));
+    }
+
     [Fact]
     public async Task AFailedCatalogIsAFailedBuild()
     {

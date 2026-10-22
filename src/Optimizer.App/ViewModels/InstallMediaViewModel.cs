@@ -139,13 +139,14 @@ public sealed record InstallMediaSystem
     /// drive root no build left anything (its mounted image lies inside one), so a start without leftovers runs no DISM.
     /// It runs on the thread pool, never on the window's thread: it may poll DISM through WMI for minutes (waiting for a
     /// DISM a killed build left running) and deletes gigabytes, and Core's awaits would come back to the dispatcher.
+    /// With <paramref name="keepSaved"/> false (--build-media, which has no Resume) saved builds are deleted too.
     /// </summary>
-    public static Task CleanLeftoversAsync(CancellationToken ct) => CleanLeftoversAsync(new MediaSteps(), ct);
+    public static Task CleanLeftoversAsync(CancellationToken ct, bool keepSaved = true) => CleanLeftoversAsync(new MediaSteps(), ct, keepSaved);
 
-    internal static Task CleanLeftoversAsync(IMediaSteps steps, CancellationToken ct) => Task.Run(async () =>
+    internal static Task CleanLeftoversAsync(IMediaSteps steps, CancellationToken ct, bool keepSaved = true) => Task.Run(async () =>
     {
         if (!steps.LocalDrives().Any(d => steps.LeftoverWorkFolders(d).Any())) return;
-        await new MediaBuild(steps).CleanLeftoversAsync(ct);
+        await new MediaBuild(steps).CleanLeftoversAsync(ct, keepSaved);
     }, ct);
 
     private static long? FreeBytesOf(string path)
@@ -776,6 +777,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         OnPropertyChanged(nameof(ShowResumeBar));
         OnPropertyChanged(nameof(ResumeNoteOnFailureCard));
         OnPropertyChanged(nameof(CanResumeAfterFailure));
+        OnPropertyChanged(nameof(SavedBuildText));
         ResumeCommand.NotifyCanExecuteChanged();
         DiscardCommand.NotifyCanExecuteChanged();
     }
@@ -1368,13 +1370,16 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         Problem() is null && Choices() is { } choices ? InstallMediaSummary.Review(choices, Edition!.Text, BuildLabel(), Needed() ?? 0) : null;
 
     /// <summary>
-    /// Builds from the beginning. A saved build is discarded first, after asking: a new build starts in a new work folder,
-    /// and the saved one would keep its gigabytes on the drive (Resume goes on from it instead).
+    /// Builds from the beginning. A saved build is discarded first, after the review and one more question: a new build
+    /// starts in a new work folder, and the saved one would keep its gigabytes on the drive (Resume goes on from it
+    /// instead). Cancelling either keeps the saved build.
     /// </summary>
     [RelayCommand(CanExecute = nameof(CanBuild))]
     private async Task BuildAsync()
     {
         if (Request() is not { } request || ReviewRequest() is not { } review) return;
+        // The review shows every choice once more; cancelling it builds nothing.
+        if (_dialogs.ConfirmApply(review) is null) return;
         if (Resumable is { } saved)
         {
             if (!_dialogs.Ask(Loc.Instance["Media_DiscardTitle"], Loc.Instance.Format("Media_DiscardFirstText", ByteSize.Format(saved.Bytes), DriveOf(saved)),
@@ -1382,8 +1387,6 @@ public sealed partial class InstallMediaViewModel : PageViewModel
                 return;
             if (!await DiscardSavedAsync(saved)) return;
         }
-        // The review shows every choice once more; cancelling it builds nothing.
-        if (_dialogs.ConfirmApply(review) is null) return;
         await (_running = RunBuildAsync(request, Choices()));
     }
 
@@ -1701,7 +1704,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     /// or once the Windows image was finished. The page offers Resume (with the same choices) or Discard.
     /// </summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ResumeText), nameof(ShowResumeBar), nameof(CanResumeAfterFailure))]
+    [NotifyPropertyChangedFor(nameof(ResumeText), nameof(ShowResumeBar), nameof(CanResumeAfterFailure), nameof(SavedBuildText))]
     [NotifyCanExecuteChangedFor(nameof(ResumeCommand), nameof(DiscardCommand))]
     private ResumableBuild? _resumable;
 
@@ -1723,6 +1726,11 @@ public sealed partial class InstallMediaViewModel : PageViewModel
 
     /// <summary>The failed build left a saved build: the failure card offers Resume too.</summary>
     public bool CanResumeAfterFailure => HasFailed && Resumable is not null && !IsBuilding;
+
+    /// <summary>On the failure card with Resume: "The saved build takes 9.2 GB on drive C." (the gigabytes stay until Resume or Discard).</summary>
+    public string? SavedBuildText => CanResumeAfterFailure && Resumable is { } saved
+        ? Loc.Instance.Format("Media_SavedBuildSize", ByteSize.Format(saved.Bytes), DriveOf(saved))
+        : null;
 
     private bool CanResumeOrDiscard => Resumable is not null && !IsBuilding && !IsWorking && !IsCleaning;
 

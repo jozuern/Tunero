@@ -1910,6 +1910,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Media_DiscardFirstText" xml:space="preserve"><value>A saved build takes {0} on drive {1}. Build starts from the beginning, so the saved build is deleted first. Resume goes on from it instead.</value></data>
   <data name="Media_DiscardAndBuild" xml:space="preserve"><value>Discard and build</value></data>
   <data name="Media_DiscardFailed" xml:space="preserve"><value>The saved build could not be deleted now. Try again after the next start of Tunero.</value></data>
+  <data name="Media_SavedBuildSize" xml:space="preserve"><value>The saved build takes {0} on drive {1}.</value></data>
   <data name="Media_StageDone" xml:space="preserve"><value>Done</value></data>
   <data name="Media_StageRunning" xml:space="preserve"><value>Running</value></data>
   <data name="Media_StageFailed" xml:space="preserve"><value>Failed</value></data>

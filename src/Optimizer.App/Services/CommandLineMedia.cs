@@ -26,8 +26,14 @@ public sealed record MediaCommandLineSystem
     /// <summary>The keyboards the page offers (Windows' list).</summary>
     public Func<IReadOnlyList<InputProfile>> Keyboards { get; init; } = () => MediaLocales.Keyboards;
 
-    /// <summary>The cleanup after earlier builds that the app start runs, under its single-instance rule.</summary>
+    /// <summary>
+    /// The cleanup after earlier builds that the app start runs, under its single-instance rule, which here also deletes
+    /// saved builds: --build-media has no Resume, and scripted runs must not pile up work folders of several GB.
+    /// </summary>
     public Func<CancellationToken, Task> CleanLeftovers { get; init; } = _ => Task.CompletedTask;
+
+    /// <summary>The saved builds (<see cref="MediaBuild.FindResumable"/>): after a failure the run names the one it kept.</summary>
+    public Func<IReadOnlyList<ResumableBuild>> FindResumable { get; init; } = () => [];
 
     /// <summary>Where the progress and result lines go besides the --log file (standard output).</summary>
     public TextWriter Output { get; init; } = TextWriter.Null;
@@ -41,11 +47,12 @@ public sealed record MediaCommandLineSystem
         Catalog = InstallMediaSystem.CatalogSource(services),
         Build = InstallMediaSystem.BuildAsync,
         CleanLeftovers = CleanLeftoversAsOnlyCopy,
+        FindResumable = () => new MediaBuild(new MediaSteps()).FindResumable(),
         Output = Console.Out,
     };
 
     /// <summary>
-    /// The app start's cleanup (<see cref="InstallMediaSystem.CleanLeftoversAsync"/>) only while this run holds the
+    /// The app start's cleanup (<see cref="InstallMediaSystem.CleanLeftoversAsync"/>), saved builds included, only while this run holds the
     /// single-instance lock, which it takes for the cleanup alone (a window of this session cleans up at its own start
     /// and never beside its builds; a build of any Tunero keeps its work folder locked). The lock belongs to a thread, so
     /// the cleanup runs to its end on one.
@@ -60,7 +67,7 @@ public sealed record MediaCommandLineSystem
         }
         try
         {
-            InstallMediaSystem.CleanLeftoversAsync(ct).GetAwaiter().GetResult();
+            InstallMediaSystem.CleanLeftoversAsync(ct, keepSaved: false).GetAwaiter().GetResult();
         }
         finally
         {
@@ -169,6 +176,9 @@ public static class CommandLineMedia
             var code = ex.Code is { } c ? $", code {(c is < 0 or > 0xFFFF ? $"0x{c:X8}" : c.ToString(CultureInfo.InvariantCulture))}" : "";
             lines.Write($"Build failed at stage {ex.Stage}: key {ex.Key ?? (ex.InUse ? "Media_IsoInUse" : "none")}{code}: {ex.Message}");
             if (ex.LogPath is { } log) lines.Write("Build log: " + log);
+            // The start cleanup deleted every saved build: one listed now is this run's.
+            foreach (var saved in system.FindResumable())
+                lines.Write($"Work folder kept for Resume: {saved.WorkFolder}, {saved.Bytes} bytes ({ByteSize.Format(saved.Bytes)}); the window offers Resume or Discard, the next --build-media deletes it");
             return CommandLineApply.MediaBuildFailed;
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)

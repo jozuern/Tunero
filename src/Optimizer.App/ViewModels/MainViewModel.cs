@@ -80,7 +80,7 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
         Tools = new ToolsViewModel(this, services, Runner, dialogs);
         InstallMedia = new InstallMediaViewModel(this, dialogs, InstallMediaSystem.CatalogSource(services), InstallMediaSystem.BuildAsync,
             InstallMediaSystem.ForThisPc(services, () => _usage.Id, () => _settings.Theme, path => ShowInExplorerCommand.Execute(path), Install.IsPublishedExe),
-            InstallMediaSystem.CleanLeftoversAsync);
+            ct => InstallMediaSystem.CleanLeftoversAsync(ct));
         Health = new HealthViewModel(this, dialogs, exe =>
         {
             Tools.PrefillPriorityRule(exe);

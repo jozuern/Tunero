@@ -266,7 +266,7 @@ public sealed class MediaBuildTests : IDisposable
     {
         await FailsAt(Download("Education"), MediaStage.Unpack, "Media_EditionMissing");
         Assert.DoesNotContain(_steps.Calls, c => c.StartsWith("Export", StringComparison.Ordinal) && c.EndsWith("install.wim", StringComparison.Ordinal));
-        AssertKeptForResume(CheckpointKind.Downloaded);
+        AssertCleanedUp();
     }
 
     [Fact]
@@ -274,7 +274,7 @@ public sealed class MediaBuildTests : IDisposable
     {
         _steps.EsdImages.Add(new Img("Windows 11 Pro copy", "Professional"));
         await FailsAt(Download(), MediaStage.Unpack, "Media_ImageCheckFailed");
-        AssertKeptForResume(CheckpointKind.Downloaded);
+        AssertCleanedUp();
     }
 
     [Fact]
@@ -291,7 +291,7 @@ public sealed class MediaBuildTests : IDisposable
         _steps.EsdImages[2] = new Img("Windows 11 Home", "Core");
         await FailsAt(Download(), MediaStage.Check, "Media_NotWindows11");
         Assert.DoesNotContain(_steps.Calls, c => c.StartsWith("Apply", StringComparison.Ordinal));
-        AssertKeptForResume(CheckpointKind.Downloaded);
+        AssertCleanedUp();
     }
 
     [Fact]
@@ -299,7 +299,7 @@ public sealed class MediaBuildTests : IDisposable
     {
         _steps.EsdImages[0] = new Img("Windows 11 Home", "Core");
         await FailsAt(Download(), MediaStage.Check, "Media_NotWindows11");
-        AssertKeptForResume(CheckpointKind.Downloaded);
+        AssertCleanedUp();
     }
 
     [Fact]
@@ -307,7 +307,7 @@ public sealed class MediaBuildTests : IDisposable
     {
         _steps.EsdImages.RemoveRange(3, _steps.EsdImages.Count - 3);
         await FailsAt(Download(), MediaStage.Check, "Media_NotWindows11");
-        AssertKeptForResume(CheckpointKind.Downloaded);
+        AssertCleanedUp();
     }
 
     [Fact]
@@ -316,7 +316,7 @@ public sealed class MediaBuildTests : IDisposable
         _steps.ApplyPlantsImage = true;
         await FailsAt(Download(), MediaStage.Unpack, "Media_ImageCheckFailed");
         Assert.DoesNotContain(_steps.Calls, c => c.StartsWith("Export", StringComparison.Ordinal));
-        AssertKeptForResume(CheckpointKind.Downloaded);
+        AssertCleanedUp();
     }
 
     // ---- request and output checks before anything runs ----
@@ -641,8 +641,8 @@ public sealed class MediaBuildTests : IDisposable
         else _steps.OwnBootImages![1] = _steps.OwnBootImages[1] with { Files = pointer };
         await FailsAt(download ? Download() : OwnIso(), MediaStage.Files, "Media_BootImageAnswerFile");
         // The hive is unloaded before the image is discarded.
-        Assert.Equal(["Mount boot.wim 2", "LoadHive", "UnloadHive", "UnloadLeftoverHives", "Unmount discard"], _steps.Calls.SkipWhile(c => c != "Mount boot.wim 2"));
-        AssertKeptForResume(CheckpointKind.ImageReady);
+        Assert.Equal(["Mount boot.wim 2", "LoadHive", "UnloadHive", "UnloadLeftoverHives", "Unmount discard", "DeleteWorkFolder"], _steps.Calls.SkipWhile(c => c != "Mount boot.wim 2"));
+        AssertCleanedUp();
     }
 
     /// <summary>A hive whose own unload gave up holds a file of the mounted image: the cleanup unloads it before the discard.</summary>
@@ -1542,14 +1542,14 @@ public sealed class MediaBuildTests : IDisposable
     public async Task AFailureAfterTheDownloadKeepsItAndTheResumeRunsFromCheck()
     {
         var request = CheckedDownload();
-        // DISM's Apply leaves an install.wim in the setup files: Unpack refuses it, before the ESD is deleted.
-        _steps.ApplyPlantsImage = true;
-        await FailsAt(request, MediaStage.Unpack, "Media_ImageCheckFailed");
+        // DISM's Apply fails (a retry can fix that), before the ESD is deleted.
+        _steps.Dism.ApplyFails = true;
+        await FailsAt(request, MediaStage.Unpack, null);
         AssertKeptForResume(CheckpointKind.Downloaded);
         var folder = _steps.WorkFolder!;
         Assert.True(File.Exists(Path.Combine(folder, "image.esd")));
         Assert.Equal(request.Source.Download!.Sha256.ToUpperInvariant(), MediaCheckpoint.Read(folder)!.FileSha256);
-        _steps.ApplyPlantsImage = false;
+        _steps.Dism.ApplyFails = false;
         _steps.Calls.Clear();
         _steps.Progress.Clear();
 
@@ -1565,8 +1565,8 @@ public sealed class MediaBuildTests : IDisposable
     public async Task ResumeRefusesAChangedDownload()
     {
         var request = CheckedDownload();
-        _steps.ApplyPlantsImage = true;
-        await FailsAt(request, MediaStage.Unpack, "Media_ImageCheckFailed");
+        _steps.Dism.ApplyFails = true;
+        await FailsAt(request, MediaStage.Unpack, null);
         File.AppendAllText(Path.Combine(_steps.WorkFolder!, "image.esd"), "changed");
         _steps.Calls.Clear();
         var ex = await ResumeRefused(request);
@@ -1666,6 +1666,54 @@ public sealed class MediaBuildTests : IDisposable
         Assert.Throws<ArgumentException>(() => Build().Discard(Path.Combine(_root, "Downloads")));
         Build().Discard(folder);
         Assert.Equal([folder], _steps.DeletedFolders);
+    }
+
+    /// <summary>--build-media has no Resume: its start cleanup deletes saved builds like any leftover.</summary>
+    [Fact]
+    public async Task CleanLeftoversWithoutKeepingSavedBuildsDeletesThem()
+    {
+        var saved = SavedLeftover("0000000a", TimeSpan.FromHours(1));
+        await Build().CleanLeftoversAsync(CancellationToken.None, keepSaved: false);
+        Assert.Equal([saved], _steps.DeletedFolders);
+    }
+
+    /// <summary>Only a failure a retry can fix keeps the saved build; what the saved files themselves fail deletes it.</summary>
+    [Theory]
+    [InlineData("Media_NotWindows11", MediaStage.Check, false)]
+    [InlineData("Media_NotX64", MediaStage.Unpack, false)]
+    [InlineData("Media_NoUefiBoot", MediaStage.Unpack, false)]
+    [InlineData("Media_EditionMissing", MediaStage.Unpack, false)]
+    [InlineData("Media_Unhealthy", MediaStage.Shrink, false)]
+    [InlineData("Media_BootImageAnswerFile", MediaStage.Files, false)]
+    [InlineData("Media_ImageCheckFailed", MediaStage.Check, false)]
+    [InlineData("Media_ImageCheckFailed", MediaStage.Unpack, false)]
+    [InlineData("Media_ImageCheckFailed", MediaStage.Files, true)]
+    [InlineData(null, MediaStage.Iso, true)]
+    [InlineData("Media_NotEnoughSpace", MediaStage.Unpack, true)]
+    [InlineData("Media_IsoInUse", MediaStage.Iso, true)]
+    [InlineData("Media_OutputInUse", MediaStage.Verify, true)]
+    [InlineData("Media_OutputReadOnly", MediaStage.Verify, true)]
+    [InlineData("Media_OutputMoveFailed", MediaStage.Verify, true)]
+    [InlineData("Media_OutputInvalid", MediaStage.Verify, true)]
+    [InlineData("Media_WorkFolderFailed", MediaStage.Check, true)]
+    [InlineData("Media_VerifyFailed", MediaStage.Verify, true)]
+    [InlineData("Media_FilesCheckFailed", MediaStage.Files, true)]
+    public void OnlyAFailureARetryCanFixKeepsTheSavedBuild(string? key, MediaStage stage, bool keeps)
+    {
+        Assert.Equal(keeps, MediaBuild.KeepsSavedBuild(new MediaBuildException(stage, "x", key: key), stage));
+        Assert.True(MediaBuild.KeepsSavedBuild(new OperationCanceledException(), stage));
+        Assert.True(MediaBuild.KeepsSavedBuild(new IOException("disk full"), stage));
+        Assert.True(MediaBuild.KeepsSavedBuild(new DismException(112, "Error: 112"), stage));
+    }
+
+    /// <summary>The ESD fails its check after the download checkpoint: a resume would fail the same way, so nothing stays.</summary>
+    [Fact]
+    public async Task ADownloadThatFailsItsCheckDeletesTheSavedBuild()
+    {
+        _steps.EsdImages[0] = new Img("Windows 11 Home", "Core");
+        await FailsAt(CheckedDownload(), MediaStage.Check, "Media_NotWindows11");
+        AssertCleanedUp();
+        Assert.Contains(_steps.LogLines, l => l.Contains("a retry cannot fix that", StringComparison.Ordinal));
     }
 
     // ---- leftovers ----
@@ -2873,6 +2921,9 @@ internal sealed class FakeDism(FakeMediaSteps steps) : IDism
 {
     public List<string> Provisioned { get; set; } = [];
 
+    /// <summary>/Apply-Image fails with a DISM error that a retry can fix (a full disk).</summary>
+    public bool ApplyFails { get; set; }
+
     /// <summary>The capabilities and features the image holds (name to state), as /Get-Capabilities and /Get-Features list them.</summary>
     public Dictionary<string, string> Capabilities { get; set; } = [];
     public Dictionary<string, string> Features { get; set; } = [];
@@ -2943,6 +2994,7 @@ internal sealed class FakeDism(FakeMediaSteps steps) : IDism
         Absolute(image);
         Absolute(target);
         steps.Calls.Add($"Apply {Name(image)} {index}");
+        if (ApplyFails) throw new DismException(112, "Error: 112\n\nThere is not enough space on the disk.");
         steps.WriteSetupFiles(target);
         if (steps.ApplyPlantsImage) steps.PutImages(Path.Combine(target, "sources", "install.wim"), [new Img("Windows 11 Pro", "Professional")]);
         p?.Report(50);

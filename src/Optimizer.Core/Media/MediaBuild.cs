@@ -442,6 +442,29 @@ public sealed class MediaBuild(IMediaSteps steps)
     }
 
     /// <summary>
+    /// Whether a build that failed with <paramref name="failure"/> in <paramref name="stage"/> keeps its saved build (when it
+    /// has one): only when a retry can fix the failure. The one place for this rule.
+    /// <para>
+    /// Deleted: what the saved files themselves fail and would fail again on every resume: Media_NotWindows11,
+    /// Media_NotX64, Media_NoUefiBoot, Media_EditionMissing, Media_Unhealthy, Media_BootImageAnswerFile, and
+    /// Media_ImageCheckFailed when Check or Unpack raised it (the ESD or the unpacked images).
+    /// </para>
+    /// <para>
+    /// Kept: a Stop, errors without a key (an I/O or access error, a DISM or IMAPI code such as 0x80070070 for a full disk),
+    /// the output and space keys (Media_NotEnoughSpace, Media_IsoInUse, Media_OutputInUse, Media_OutputReadOnly,
+    /// Media_OutputMoveFailed, Media_OutputInvalid), Media_WorkFolderFailed, Media_VerifyFailed, Media_FilesCheckFailed,
+    /// Media_ImageCheckFailed raised in Files (a commit of boot.wim that went wrong; the resume puts the untouched copy
+    /// back), and any other key. A crash or a kill never reaches this: its folder keeps its checkpoint.
+    /// </para>
+    /// </summary>
+    internal static bool KeepsSavedBuild(Exception failure, MediaStage stage) => failure switch
+    {
+        MediaBuildException { Key: "Media_NotWindows11" or "Media_NotX64" or "Media_NoUefiBoot" or "Media_EditionMissing" or "Media_Unhealthy" or "Media_BootImageAnswerFile" } => false,
+        MediaBuildException { Key: "Media_ImageCheckFailed" } => stage is not (MediaStage.Check or MediaStage.Unpack),
+        _ => true,
+    };
+
+    /// <summary>
     /// Removes what killed or crashed builds left: images still mounted in a work folder are discarded (remounted first
     /// where DISM needs that, also after a restart of the PC: <see cref="DiscardMountsAsync"/>), then the work folders at
     /// the root of every local fixed drive are deleted. A folder whose lock file is held (a build that still
@@ -465,14 +488,15 @@ public sealed class MediaBuild(IMediaSteps steps)
     /// </para>
     /// <para>
     /// A saved build (a trusted folder whose checkpoint reads and is younger than <see cref="MediaCheckpoint.KeptFor"/>) has
-    /// its mounts discarded like any leftover but is kept for <see cref="ResumeAsync"/>; an older one is deleted.
+    /// its mounts discarded like any leftover but is kept for <see cref="ResumeAsync"/>; an older one is deleted. Without
+    /// <paramref name="keepSaved"/> (--build-media, which has no Resume) saved builds are deleted like any leftover.
     /// </para>
     /// </summary>
-    public async Task CleanLeftoversAsync(CancellationToken ct)
+    public async Task CleanLeftoversAsync(CancellationToken ct, bool keepSaved = true)
     {
         try
         {
-            await CleanLeftoversCoreAsync(ct);
+            await CleanLeftoversCoreAsync(ct, keepSaved);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -484,7 +508,7 @@ public sealed class MediaBuild(IMediaSteps steps)
         }
     }
 
-    private async Task CleanLeftoversCoreAsync(CancellationToken ct)
+    private async Task CleanLeftoversCoreAsync(CancellationToken ct, bool keepSaved)
     {
         if (await WaitForDismAsync(ct) is not { } busy) return;
         var mounted = await steps.Dism.MountedImagesAsync(ct);
@@ -512,7 +536,7 @@ public sealed class MediaBuild(IMediaSteps steps)
         }
         // A saved build (a trusted folder with a checkpoint younger than 14 days) loses its mounts like any leftover but stays
         // for Resume; an older or untrusted one is deleted like any leftover.
-        var saved = folders.Where(f => SavedBuild(f) is not null).ToList();
+        var saved = keepSaved ? folders.Where(f => SavedBuild(f) is not null).ToList() : [];
         // A SYSTEM hive a killed build left loaded holds a file of its mounted boot.wim open: unloaded first, or the discard fails.
         steps.UnloadLeftoverHives();
         var cleanedUp = false;
@@ -932,7 +956,7 @@ public sealed class MediaBuild(IMediaSteps steps)
                 steps.Log(stopped
                     ? $"Stopped in stage {failed} after {_clock.Elapsed:hh\\:mm\\:ss}"
                     : $"{failed} failed after {_clock.Elapsed:hh\\:mm\\:ss}: {ex.GetType().Name}: {ex.Message}");
-                await CleanUpAfterFailureAsync();
+                await CleanUpAfterFailureAsync(ex, failed);
                 if (stopped) throw;
                 throw Wrap(failed, ex);
             }
@@ -1917,9 +1941,11 @@ public sealed class MediaBuild(IMediaSteps steps)
         /// <summary>
         /// Never throws: discards a mounted image (<see cref="DiscardMountsAsync"/>) and deletes the work folder (each retried),
         /// logging what it could not do. With a checkpoint the folder stays for Resume, without the mount and without this
-        /// run's ISO. A resume that was refused never took the folder (<see cref="OpenSavedAsync"/>): it stays as it is.
+        /// run's ISO, unless a retry cannot fix <paramref name="failure"/> (<see cref="KeepsSavedBuild"/>): then the checkpoint
+        /// goes first and the folder is deleted as without one. A resume that was refused never took the folder
+        /// (<see cref="OpenSavedAsync"/>): it stays as it is.
         /// </summary>
-        private async Task CleanUpAfterFailureAsync()
+        private async Task CleanUpAfterFailureAsync(Exception failure, MediaStage failed)
         {
             Report(MediaStage.Cleanup, null, null);
             if (_mounted is { } mount)
@@ -1939,6 +1965,19 @@ public sealed class MediaBuild(IMediaSteps steps)
                 catch (Exception ex)
                 {
                     steps.Log("DISM cleanup failed: " + ex.Message);
+                }
+            }
+            if (_work is not null && _checkpoint is { } lost && !KeepsSavedBuild(failure, failed))
+            {
+                steps.Log($"{failed} failed with {(failure as MediaBuildException)?.Key}: a retry cannot fix that, so the saved build goes too");
+                try
+                {
+                    MediaCheckpoint.Delete(_work);
+                    _checkpoint = null;
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    Warn(steps, $"The checkpoint {lost.Kind} could not be deleted, so the folder stays for Resume: {ex.Message}");
                 }
             }
             if (_work is not null && _mounted is null && _checkpoint is not null)

@@ -1910,6 +1910,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Media_DiscardFirstText" xml:space="preserve"><value>Ein gespeicherter Build belegt {0} auf Laufwerk {1}. Erstellen beginnt von vorn, deshalb wird der gespeicherte Build zuerst gelöscht. Fortsetzen macht stattdessen mit ihm weiter.</value></data>
   <data name="Media_DiscardAndBuild" xml:space="preserve"><value>Verwerfen und erstellen</value></data>
   <data name="Media_DiscardFailed" xml:space="preserve"><value>Der gespeicherte Build ließ sich gerade nicht löschen. Versuch es nach dem nächsten Start von Tunero noch einmal.</value></data>
+  <data name="Media_SavedBuildSize" xml:space="preserve"><value>Der gespeicherte Build belegt {0} auf Laufwerk {1}.</value></data>
   <data name="Media_StageDone" xml:space="preserve"><value>Fertig</value></data>
   <data name="Media_StageRunning" xml:space="preserve"><value>Läuft</value></data>
   <data name="Media_StageFailed" xml:space="preserve"><value>Fehlgeschlagen</value></data>

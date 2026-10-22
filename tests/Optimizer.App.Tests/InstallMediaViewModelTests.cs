@@ -1821,12 +1821,31 @@ public sealed class InstallMediaViewModelTests : IDisposable
         Assert.Empty(_requests);
         Assert.Empty(discarded);
         Assert.Equal(Loc.Instance["Media_DiscardTitle"], _dialogs.Asked[^1]);
+        // The review came first; answering no to the discard question keeps the saved build.
+        Assert.Equal(1, _dialogs.ConfirmApplyCalls);
+        Assert.Same(saved, media.Resumable);
 
         _dialogs.Answer = true;
         await media.BuildCommand.ExecuteAsync(null);
         Assert.Equal([saved.WorkFolder], discarded);
         Assert.Single(_requests);
         Assert.Empty(resumed);
+    }
+
+    /// <summary>The review comes first: cancelling it asks nothing more and keeps the saved build.</summary>
+    [Fact]
+    public async Task CancellingTheReviewKeepsTheSavedBuild()
+    {
+        var saved = SavedBuild(await SavedChoices());
+        var (system, discarded, _) = WithSaved(() => saved);
+        var media = await WithCatalog(Media(system: system));
+        _dialogs.ConfirmApplyResult = null;
+        await media.BuildCommand.ExecuteAsync(null);
+        Assert.Equal(1, _dialogs.ConfirmApplyCalls);
+        Assert.Empty(_dialogs.Asked);
+        Assert.Empty(discarded);
+        Assert.Empty(_requests);
+        Assert.Same(saved, media.Resumable);
     }
 
     [Fact]
@@ -1837,6 +1856,7 @@ public sealed class InstallMediaViewModelTests : IDisposable
         var (system, _, _) = WithSaved(() => saved);
         var media = await WithCatalog(Media(system: system));
         Assert.False(media.ShowResumeBar);
+        Assert.Null(media.SavedBuildText);
         _build = (_, _) =>
         {
             saved = SavedBuild(choices);
@@ -1845,6 +1865,8 @@ public sealed class InstallMediaViewModelTests : IDisposable
         await media.BuildCommand.ExecuteAsync(null);
         Assert.True(media.HasFailed);
         Assert.True(media.CanResumeAfterFailure);
+        // The card says how much stays on which drive.
+        Assert.Equal(Loc.Instance.Format("Media_SavedBuildSize", ByteSize.Format(9_870_000_000), Path.GetPathRoot(_root)!.TrimEnd('\\', ':')), media.SavedBuildText);
         // The failure card offers Resume and Discard; the info bar would say it twice.
         Assert.False(media.ShowResumeBar);
         Assert.True(media.ResumeCommand.CanExecute(null));

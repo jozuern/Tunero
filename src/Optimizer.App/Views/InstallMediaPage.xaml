@@ -502,6 +502,9 @@
                     <!-- A failure or a stop; a success has the finished card below -->
                     <ui:InfoBar Title="" Message="{Binding InstallMedia.ResultText}" Severity="{Binding InstallMedia.ResultSeverity}" IsClosable="False" Margin="0,16,0,0"
                                 IsOpen="{Binding InstallMedia.ShowResultBar}" />
+                    <!-- The failed build left a saved build: how much it keeps on which drive, so Resume or Discard is an informed choice -->
+                    <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding InstallMedia.SavedBuildText}" TextWrapping="Wrap" Margin="0,8,0,0"
+                                  Visibility="{Binding InstallMedia.SavedBuildText, Converter={StaticResource NullToVisibility}}" />
                     <!-- One row of buttons; Resume and Discard when the failed build left a saved build (the info bar below stays closed then) -->
                     <WrapPanel Margin="0,8,0,0" Visibility="{Binding InstallMedia.HasFailed, Converter={StaticResource BoolToVisibility}}">
                         <ui:Button Content="{l:Tr Media_ResumeButton}" Icon="{ui:SymbolIcon ArrowForward20}" Command="{Binding InstallMedia.ResumeCommand}" Margin="0,0,8,0"
