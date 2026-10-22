@@ -62,6 +62,8 @@ public sealed class InstallMediaSummaryTests
     public void ReviewNamesSpeechRecognitionWhenTextToSpeechTakesItAlong()
     {
         var only = InstallMediaSummary.Review(Choices() with { RemoveParts = ["textToSpeech"] }, "Windows 11 Pro", null, 1);
+        // The bar counts what the review names.
+        Assert.Contains(Loc.Instance.Format("Media_PartsSummary", 2), InstallMediaSummary.Bar(Choices() with { RemoveParts = ["textToSpeech"] }, "Windows 11 Pro", null, 1));
         var line = Assert.Single(only.Changes, l => l.Target == Loc.Instance["Media_PartsTitle"]).After;
         Assert.Contains(CatalogData.Current.MediaParts.Single(p => p.Id == "textToSpeech").Label("en"), line);
         Assert.Contains(CatalogData.Current.MediaParts.Single(p => p.Id == "speech").Label("en"), line);

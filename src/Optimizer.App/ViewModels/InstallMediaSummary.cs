@@ -24,7 +24,8 @@ internal static class InstallMediaSummary
         var parts = new List<string> { EditionText(editionTitle, build) };
         if (LanguageName(c) is { } language) parts.Add(T.Format("Media_Summary_Language", language));
         if (c.RemoveApps.Count > 0) parts.Add(T.Format("Media_Summary_Apps", c.RemoveApps.Count));
-        if (c.RemoveParts.Count > 0) parts.Add(T.Format("Media_PartsSummary", c.RemoveParts.Count));
+        // Counted as the review names them: with the parts another chosen part takes along.
+        if (c.RemoveParts.Count > 0) parts.Add(T.Format("Media_PartsSummary", MediaParts.WithImplied(CatalogData.Current.MediaParts, c.RemoveParts).Count));
         if (c.Compression == MediaCompression.Recovery) parts.Add(T["Media_CompressionSmaller"]);
         if (c.Settings.PreventDeviceEncryption) parts.Add(T["Media_EncryptionTitle"]);
         if (c.Settings.NoReservedStorage) parts.Add(T["Media_ReservedTitle"]);

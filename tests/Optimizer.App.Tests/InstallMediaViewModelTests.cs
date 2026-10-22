@@ -725,6 +725,36 @@ public sealed class InstallMediaViewModelTests : IDisposable
         Assert.Null(Row(media, MediaStage.Apps).Detail);
     }
 
+    /// <summary>The build names a part by its id; the row shows its title in the app's language.</summary>
+    [Fact]
+    public async Task ThePartsRowNamesThePartInTheAppsLanguage()
+    {
+        Loc.Instance.SetLanguage("de");
+        var reported = new TaskCompletionSource();
+        var finish = new TaskCompletionSource<string>();
+        _reports = p =>
+        {
+            Begin(p, MediaStage.Download, MediaStage.Check, MediaStage.Unpack, MediaStage.Parts);
+            p.Report(new MediaProgress(MediaStage.Parts, 0, "stepsRecorder"));
+        };
+        _build = (_, _) =>
+        {
+            reported.SetResult();
+            return finish.Task;
+        };
+        var media = await WithCatalog();
+        media.RemoveApps = false;
+        media.RemoveParts = true;
+        media.PartRows.First(r => r.Key == "stepsRecorder").IsChecked = true;
+        var build = media.BuildCommand.ExecuteAsync(null);
+        await reported.Task;
+        await WaitFor(() => Row(media, MediaStage.Parts).Detail is not null);
+
+        Assert.Equal(CatalogData.Current.MediaParts.Single(p => p.Id == "stepsRecorder").TitleDe, Row(media, MediaStage.Parts).Detail);
+        finish.SetResult(media.OutputPath!);
+        await build;
+    }
+
     /// <summary>A running build uses the choices it started with: the page locks them until it ends.</summary>
     [Fact]
     public async Task ChoicesAreLockedWhileABuildRuns()

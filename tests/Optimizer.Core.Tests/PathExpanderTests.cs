@@ -80,13 +80,35 @@ public class PathExpanderTests
         Assert.Null(unknown.ProfilePath);
     }
 
+    /// <summary>
+    /// The machine's USERNAME is SYSTEM: a user's path takes the account name of the user's session, and without one the
+    /// name stays as it is, never C:\Users\SYSTEM.
+    /// </summary>
+    [Fact]
+    public void TheUsersAccountNameComesFromTheirSessionNotTheMachine()
+    {
+        var machine = new Dictionary<string, string>(Machine, StringComparer.OrdinalIgnoreCase) { ["USERNAME"] = "SYSTEM" };
+        var anna = PathExpander.ForUser(Profile, Vars(("Tools", @"D:\Tools\%USERNAME%")), machine, Vars(("USERNAME", "anna"), ("USERDOMAIN", "PC1"), ("APPDATA", @"E:\x")));
+        Assert.Equal(@"C:\Users\anna\app.exe", anna.Expand(@"C:\Users\%USERNAME%\app.exe"));
+        Assert.Equal(@"PC1\anna", anna.Expand(@"%USERDOMAIN%\%USERNAME%"));
+        Assert.Equal(@"D:\Tools\anna", anna.Expand("%Tools%"));
+        // The folders come from the profile, not the session key.
+        Assert.Equal(@"D:\Users\anna\AppData\Roaming", anna.Expand("%APPDATA%"));
+
+        var notSignedIn = PathExpander.ForUser(Profile, Vars(), machine);
+        Assert.Equal(@"C:\Users\%USERNAME%\app.exe", notSignedIn.Expand(@"C:\Users\%USERNAME%\app.exe"));
+    }
+
     [Fact]
     public void TheUsersVariablesAreReadFromTheirHive()
     {
         using var r = new SandboxRegistry();
         RegistryValue.Write(r, Hive.User, "Environment", "OneDrive", "expandString", @"%USERPROFILE%\OneDrive - Contoso");
+        RegistryValue.Write(r, Hive.User, "Volatile Environment", "USERNAME", "string", "anna");
         var anna = PathExpander.ForUser(Profile, r);
         Assert.Equal(@"D:\Users\anna\OneDrive - Contoso\x", anna.Expand(@"%OneDrive%\x"));
+        Assert.Equal(@"C:\Users\anna", anna.Expand(@"C:\Users\%USERNAME%"));
+        Assert.DoesNotContain("%", PathExpander.Machine.Expand(@"%PUBLIC%\Desktop"));
         Assert.Same(anna, anna.For(Hive.User));
         Assert.Same(PathExpander.Machine, anna.For(Hive.Machine));
     }

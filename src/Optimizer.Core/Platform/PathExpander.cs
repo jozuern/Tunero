@@ -10,7 +10,8 @@ namespace Optimizer.Core.Platform;
 /// (HKLM\...\Session Manager\Environment), without any user's variables. <see cref="ForUser(string?, IRegistryRoots?)"/>
 /// expands as a program started for the target user sees it: the signed-in user whose profile a change affects, who is not
 /// the account this app runs as when an administrator elevated it with a separate account. On top of the machine
-/// variables come that user's profile folders and that user's own variables (HKU\&lt;SID&gt;\Environment).
+/// variables come that user's profile folders, account name (instead of the machine's USERNAME, which is SYSTEM) and own
+/// variables (HKU\&lt;SID&gt;\Environment).
 /// </para>
 /// <para>
 /// This process's own environment is never used: it belongs to the account the app runs as, and it inherits that
@@ -57,20 +58,32 @@ public sealed partial class PathExpander
     /// variables).
     /// </summary>
     public static PathExpander ForUser(string? profilePath, IRegistryRoots? registry = null) =>
-        ForUser(profilePath, registry is null ? new Dictionary<string, string>() : ReadUserVariables(registry), MachineVariables.Value);
+        registry is null
+            ? ForUser(profilePath, new Dictionary<string, string>(), MachineVariables.Value)
+            : ForUser(profilePath, ReadUserKey(registry, "Environment"), MachineVariables.Value, ReadUserKey(registry, "Volatile Environment"));
+
+    /// <summary>The user's account as Windows sets it for their session (HKU\&lt;SID&gt;\Volatile Environment).</summary>
+    private static readonly string[] AccountNames = ["USERNAME", "USERDOMAIN"];
 
     /// <summary>
-    /// The variables in the order Windows builds a user's environment: the machine's, the profile folder, the user's own
-    /// variables (which may set TEMP and TMP), then the per-session folders (APPDATA, LOCALAPPDATA, HOMEDRIVE, HOMEPATH).
+    /// The variables in the order Windows builds a user's environment: the machine's, the profile folder and the account's
+    /// names, the user's own variables (which may set TEMP and TMP), then the per-session folders (APPDATA, LOCALAPPDATA,
+    /// HOMEDRIVE, HOMEPATH). <paramref name="session"/> is the user's Volatile Environment, of which only
+    /// <see cref="AccountNames"/> are taken (the folders come from the profile path); null or without them (the user is not
+    /// signed in) the account's names stay as they are.
     /// </summary>
-    internal static PathExpander ForUser(string? profilePath, IReadOnlyDictionary<string, string> userVariables, IReadOnlyDictionary<string, string> machine)
+    internal static PathExpander ForUser(string? profilePath, IReadOnlyDictionary<string, string> userVariables, IReadOnlyDictionary<string, string> machine,
+        IReadOnlyDictionary<string, string>? session = null)
     {
         var vars = new Dictionary<string, string>(machine, StringComparer.OrdinalIgnoreCase);
-        // The machine's TEMP is the system's (C:\Windows\TEMP): a user's programs use the user's own.
+        // The machine's TEMP is the system's (C:\Windows\TEMP): a user's programs use the user's own. Its USERNAME is SYSTEM.
         vars.Remove("TEMP");
         vars.Remove("TMP");
+        vars.Remove("USERNAME");
         var profile = profilePath is { Length: > 0 } p && Path.IsPathFullyQualified(p) ? p.TrimEnd('\\') : null;
         if (profile is not null) vars["USERPROFILE"] = profile;
+        foreach (var name in AccountNames)
+            if (session is not null && session.TryGetValue(name, out var value) && value.Length > 0 && !value.Contains('%')) vars[name] = value;
         foreach (var (name, value) in userVariables)
         {
             // Path is joined with the machine's, never a folder of its own.
@@ -90,13 +103,13 @@ public sealed partial class PathExpander
         return new PathExpander(vars, profile);
     }
 
-    /// <summary>The user's own variables as stored (HKU\&lt;SID&gt;\Environment), their %names% not yet expanded.</summary>
-    private static Dictionary<string, string> ReadUserVariables(IRegistryRoots registry)
+    /// <summary>The string values of a key of the user's hive (HKU\&lt;SID&gt;\Environment) as stored, their %names% not yet expanded.</summary>
+    private static Dictionary<string, string> ReadUserKey(IRegistryRoots registry, string path)
     {
         var vars = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         try
         {
-            using var key = registry.Open(Hive.User, "Environment", writable: false);
+            using var key = registry.Open(Hive.User, path, writable: false);
             foreach (var name in key?.GetValueNames() ?? [])
                 if (name.Length > 0 && key!.GetValue(name, null, Microsoft.Win32.RegistryValueOptions.DoNotExpandEnvironmentNames) is string value)
                     vars[name] = value;
@@ -128,7 +141,19 @@ public sealed partial class PathExpander
             ["CommonProgramFiles(x86)"] = Folder(Environment.SpecialFolder.CommonProgramFilesX86),
             ["ProgramData"] = Folder(Environment.SpecialFolder.CommonApplicationData),
             ["ALLUSERSPROFILE"] = Folder(Environment.SpecialFolder.CommonApplicationData),
+            ["COMPUTERNAME"] = Environment.MachineName,
         };
+        try
+        {
+            // Windows sets PUBLIC for every account from the profile list (%SystemDrive%\Users\Public).
+            using var profiles = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList");
+            if (profiles?.GetValue("Public", null, Microsoft.Win32.RegistryValueOptions.DoNotExpandEnvironmentNames) is string { Length: > 0 } publicFolder)
+                vars["PUBLIC"] = publicFolder;
+        }
+        catch (Exception ex) when (ex is System.Security.SecurityException or UnauthorizedAccessException or IOException)
+        {
+            Logging.Log.Warn("environment", $"the public profile folder is not readable: {ex.Message}");
+        }
         try
         {
             using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Control\Session Manager\Environment");

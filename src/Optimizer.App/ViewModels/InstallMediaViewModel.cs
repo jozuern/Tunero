@@ -136,7 +136,8 @@ public sealed record InstallMediaSystem
 
     /// <summary>
     /// The real cleanup after earlier builds (<see cref="MediaBuild.CleanLeftoversAsync"/>). Without a work folder at a
-    /// drive root no build left anything (its mounted image lies inside one), so a start without leftovers runs no DISM.
+    /// drive root no build left anything (its mounted image lies inside one), so a start without leftovers runs no DISM,
+    /// and neither does one with only saved builds kept for Resume (<see cref="MediaBuild.HasLeftovers"/>).
     /// It runs on the thread pool, never on the window's thread: it may poll DISM through WMI for minutes (waiting for a
     /// DISM a killed build left running) and deletes gigabytes, and Core's awaits would come back to the dispatcher.
     /// With <paramref name="keepSaved"/> false (--build-media, which has no Resume) saved builds are deleted too.
@@ -145,8 +146,9 @@ public sealed record InstallMediaSystem
 
     internal static Task CleanLeftoversAsync(IMediaSteps steps, CancellationToken ct, bool keepSaved = true) => Task.Run(async () =>
     {
-        if (!steps.LocalDrives().Any(d => steps.LeftoverWorkFolders(d).Any())) return;
-        await new MediaBuild(steps).CleanLeftoversAsync(ct, keepSaved);
+        var build = new MediaBuild(steps);
+        if (!build.HasLeftovers(keepSaved)) return;
+        await build.CleanLeftoversAsync(ct, keepSaved);
     }, ct);
 
     private static long? FreeBytesOf(string path)
@@ -605,8 +607,10 @@ public sealed partial class InstallMediaViewModel : PageViewModel
 
     private readonly HashSet<string> _partTicks = new(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>What the folded parts card holds: "Parts to remove: 3", or off.</summary>
-    public string PartsSummary => RemoveParts ? Loc.Instance.Format("Media_PartsSummary", PartRows.Count(r => r.IsChecked)) : Loc.Instance["Media_Off"];
+    /// <summary>What the folded parts card holds: "Parts to remove: 3" (with the parts a ticked one takes along), or off.</summary>
+    public string PartsSummary => RemoveParts
+        ? Loc.Instance.Format("Media_PartsSummary", MediaParts.WithImplied(CatalogData.Current.MediaParts, PartRows.Where(r => r.IsChecked).Select(r => r.Key)).Count)
+        : Loc.Instance["Media_Off"];
 
     /// <summary>The parts in the current language, the ticks kept by id.</summary>
     private void BuildPartRows()
@@ -1425,8 +1429,9 @@ public sealed partial class InstallMediaViewModel : PageViewModel
                     scope.Report(last.Percent, Loc.Instance.Format("Media_Progress", last.Stage, Elapsed(clock.Elapsed)));
                     ShowStageClock(clock.Elapsed);
                 }
-                var progress = new WindowProgress(p =>
+                var progress = new WindowProgress(reported =>
                 {
+                    var p = Named(reported);
                     ApplyProgress(p);
                     last = (p.Percent, StageText(p));
                     Show();
@@ -1608,6 +1613,10 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     /// <summary>"12:05" or "1:02:05".</summary>
     private static string Elapsed(TimeSpan t) =>
         t.TotalHours >= 1 ? t.ToString(@"h\:mm\:ss", CultureInfo.InvariantCulture) : t.ToString(@"m\:ss", CultureInfo.InvariantCulture);
+
+    /// <summary>The Parts stage reports a part by its id: shown by its title in the app's language.</summary>
+    private MediaProgress Named(MediaProgress p) =>
+        p.Stage == MediaStage.Parts && p.Detail is { } id && MediaParts.Find(CatalogData.Current.MediaParts, id) is { } part ? p with { Detail = part.Label(Lang) } : p;
 
     private static string StageText(MediaProgress p)
     {

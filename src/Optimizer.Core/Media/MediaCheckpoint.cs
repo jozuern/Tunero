@@ -59,8 +59,9 @@ public sealed record MediaCheckpoint(CheckpointKind Kind, string RequestHash, st
     /// The SHA-256 of the request's choices as canonical JSON: every choice that shapes the media, lists sorted and names
     /// in lower case. Left out: the output path (a resume may write elsewhere on the same drive), the running Tunero's path,
     /// the app's language and theme in the first sign-in file (they follow the app, not a choice of the page, and the file
-    /// is written after both checkpoints), and the catalog's download address and location (the file is named by its name,
-    /// size and SHA-256).
+    /// is written after both checkpoints), the catalog's download address and location (the file is named by its name,
+    /// size and SHA-256), and without Skip setup the region and keyboard (the page greys them out, choices.json keeps them
+    /// only with Skip setup, and the answer file they go into is written after both checkpoints).
     /// </summary>
     public static string HashOf(MediaRequest r)
     {
@@ -89,9 +90,10 @@ public sealed record MediaCheckpoint(CheckpointKind Kind, string RequestHash, st
             ["allowUnsupportedUpgrades"] = r.Settings.AllowUnsupportedUpgrades,
             ["answers"] = new JsonObject
             {
-                ["architecture"] = a.Architecture, ["uiLanguage"] = a.UiLanguage, ["inputLocale"] = a.InputLocale, ["systemLocale"] = a.SystemLocale,
-                ["userLocale"] = a.UserLocale, ["accountName"] = a.AccountName, ["skipSetup"] = a.SkipSetup, ["allowUnsupported"] = a.AllowUnsupported,
-                ["firstSignInTunero"] = a.FirstSignInTunero,
+                ["architecture"] = a.Architecture, ["uiLanguage"] = a.UiLanguage,
+                ["inputLocale"] = a.SkipSetup ? a.InputLocale : null, ["systemLocale"] = a.SkipSetup ? a.SystemLocale : null,
+                ["userLocale"] = a.SkipSetup ? a.UserLocale : null, ["accountName"] = a.AccountName, ["skipSetup"] = a.SkipSetup,
+                ["allowUnsupported"] = a.AllowUnsupported, ["firstSignInTunero"] = a.FirstSignInTunero,
             },
             ["tunero"] = r.FirstSignIn is { } first ? new JsonObject { ["profile"] = first.Profile, ["apps"] = List(first.Apps) } : null,
         };

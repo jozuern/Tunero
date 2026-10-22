@@ -1677,6 +1677,31 @@ public sealed class MediaBuildTests : IDisposable
         Assert.Equal([saved], _steps.DeletedFolders);
     }
 
+    /// <summary>
+    /// A start with only saved builds has nothing to clean: the app skips the cleanup's DISM calls. A leftover beside them, an
+    /// image in a mount folder, a running DISM, or --build-media (which deletes saved builds) has something.
+    /// </summary>
+    [Fact]
+    public void HasLeftoversIsFalseWhenOnlySavedBuildsAreKept()
+    {
+        Assert.False(Build().HasLeftovers());
+        var saved = SavedLeftover("0000000a", TimeSpan.FromHours(1));
+        Assert.False(Build().HasLeftovers());
+        Assert.True(Build().HasLeftovers(keepSaved: false));
+        Assert.Empty(_steps.Calls);
+
+        _steps.DismRunning.Add(@"dism.exe /Export-Image /SourceImageFile:" + saved + @"\image.esd");
+        Assert.True(Build().HasLeftovers());
+        _steps.DismRunning.Clear();
+
+        FakeMediaSteps.Put(saved, @"mount\Windows\x.dll", "still mounted");
+        Assert.True(Build().HasLeftovers());
+        Directory.Delete(Path.Combine(saved, "mount"), recursive: true);
+
+        SavedLeftover("0000000b", TimeSpan.FromDays(15));
+        Assert.True(Build().HasLeftovers());
+    }
+
     /// <summary>Only a failure a retry can fix keeps the saved build; what the saved files themselves fail deletes it.</summary>
     [Theory]
     [InlineData("Media_NotWindows11", MediaStage.Check, false)]

@@ -47,7 +47,6 @@ public sealed class MediaCheckpointTests : IDisposable
             a with { Settings = new MediaImageSettings(true, false, false) },
             a with { RemoveParts = ["wordpad"] },
             a with { Answers = a.Answers with { SkipSetup = true, AccountName = "Anna" } },
-            a with { Answers = a.Answers with { InputLocale = "0407:00000407" } },
             a with { Source = new MediaSource(Esd with { Sha256 = new string('b', 64) }, null, null) },
             a with { Source = new MediaSource(null, @"C:\iso\Win11.iso", null), IsoIndex = 2 },
             a with { Answers = a.Answers with { FirstSignInTunero = true }, TuneroExe = @"C:\Tunero.exe", FirstSignIn = new FirstSignInFile("gaming", "en", "System") },
@@ -67,6 +66,20 @@ public sealed class MediaCheckpointTests : IDisposable
         Assert.Equal(MediaCheckpoint.HashOf(a), MediaCheckpoint.HashOf(a with { FirstSignIn = new FirstSignInFile("gaming", "de", "Dark") }));
         Assert.Equal(MediaCheckpoint.HashOf(a), MediaCheckpoint.HashOf(a with { Source = new MediaSource(Esd with { Url = new Uri("http://example.invalid/x.esd") }, null, null) }));
         Assert.NotEqual(MediaCheckpoint.HashOf(a), MediaCheckpoint.HashOf(a with { FirstSignIn = new FirstSignInFile("office", "en", "System") }));
+    }
+
+    /// <summary>
+    /// Region and keyboard are choices only with Skip setup: without it the page greys them out and choices.json does not
+    /// keep them, so a resume after a restart must not depend on them.
+    /// </summary>
+    [Fact]
+    public void HashCoversRegionAndKeyboardOnlyWithSkipSetup()
+    {
+        var a = Download();
+        Assert.Equal(MediaCheckpoint.HashOf(a), MediaCheckpoint.HashOf(a with { Answers = a.Answers with { InputLocale = "0407:00000407", SystemLocale = "de-DE", UserLocale = "de-DE" } }));
+        var skipped = a with { Answers = a.Answers with { SkipSetup = true, AccountName = "Anna" } };
+        Assert.NotEqual(MediaCheckpoint.HashOf(skipped), MediaCheckpoint.HashOf(skipped with { Answers = skipped.Answers with { InputLocale = "0407:00000407" } }));
+        Assert.NotEqual(MediaCheckpoint.HashOf(skipped), MediaCheckpoint.HashOf(skipped with { Answers = skipped.Answers with { UserLocale = "de-DE" } }));
     }
 
     [Fact]

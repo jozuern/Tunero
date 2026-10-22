@@ -383,6 +383,21 @@ public sealed class MediaBuild(IMediaSteps steps)
         steps.Log("Discarded the saved build in " + folder);
     }
 
+    /// <summary>
+    /// Whether <see cref="CleanLeftoversAsync"/> has anything to do: a work folder at a drive root that is not a saved build
+    /// it keeps (with <paramref name="keepSaved"/>: trusted, a checkpoint that reads and has not expired, nothing in a mount
+    /// folder), or only saved builds while a dism.exe runs (a killed build's DISM may still export into one; the cleanup
+    /// waits for it). Runs no DISM: while only saved builds are kept, a start does not run the cleanup's DISM calls every time.
+    /// </summary>
+    public bool HasLeftovers(bool keepSaved = true)
+    {
+        var folders = steps.LocalDrives().SelectMany(steps.LeftoverWorkFolders).Select(f => f.TrimEnd('\\'))
+            .Where(f => IsWorkFolderName(Path.GetFileName(f))).ToList();
+        if (folders.Count == 0) return false;
+        if (!keepSaved || folders.Any(f => HasMountContent(f) || SavedBuild(f) is null)) return true;
+        return steps.DismCommandLines() is not { Count: 0 };
+    }
+
     /// <summary>The checkpoint of a leftover folder that is kept for a resume: trusted, readable and not expired; else null.</summary>
     private MediaCheckpoint? SavedBuild(string folder) =>
         steps.IsTrustedWorkFolder(folder) && MediaCheckpoint.Read(folder) is { } checkpoint && !checkpoint.IsExpired(DateTimeOffset.Now) ? checkpoint : null;
@@ -1598,7 +1613,8 @@ public sealed class MediaBuild(IMediaSteps steps)
             for (var i = 0; i < chosen.Count; i++)
             {
                 var part = chosen[i];
-                Report(_stage, i * 100.0 / chosen.Count, part.Title);
+                // The id: the page names the part in the app's language, which the build does not know.
+                Report(_stage, i * 100.0 / chosen.Count, part.Id);
                 var isCapability = part.Kind == MediaPart.Capability;
                 var present = MediaParts.Present(part, isCapability ? capabilities : features).Where(n => !done.Contains(n)).ToList();
                 if (present.Count == 0 && !part.Names.Any(n => done.Any(d => d.StartsWith(n, StringComparison.OrdinalIgnoreCase))))

@@ -242,19 +242,30 @@ public sealed class CommandLineMediaTests : IDisposable
         Assert.Contains(Loc.Instance.Format("Cli_ExitCode", CommandLineApply.MediaBuildFailed), log);
     }
 
-    /// <summary>A failure that kept a saved build names its folder and size: --build-media has no Resume, the next run deletes it.</summary>
+    /// <summary>
+    /// A failure that kept a saved build names its folder and size: --build-media has no Resume, the next run deletes it. A
+    /// saved build that was there before the run (an open window's, whose cleanup the run left alone) is not named.
+    /// </summary>
     [Fact]
     public async Task AFailureThatKeptTheWorkFolderNamesItAndItsSize()
     {
-        var saved = new ResumableBuild(@"C:\TuneroMedia.0000abcd",
+        static ResumableBuild Saved(string folder) => new(folder,
             new MediaCheckpoint(CheckpointKind.ImageReady, new string('1', 64), new string('2', 64), new string('3', 64), "26300", DateTimeOffset.Now) { UiLanguage = "en-US" })
         {
             Bytes = 9_874_000_000,
         };
-        _build = (_, _) => throw new MediaBuildException(MediaStage.Iso, "The ISO could not be written.", unchecked((int)0x80070070));
-        Assert.Equal(CommandLineApply.MediaBuildFailed, await Run(Request(), System() with { FindResumable = () => [saved] }));
+        var window = Saved(@"D:\TuneroMedia.0000ffff");
+        var built = false;
+        _build = (_, _) =>
+        {
+            built = true;
+            throw new MediaBuildException(MediaStage.Iso, "The ISO could not be written.", unchecked((int)0x80070070));
+        };
+        Assert.Equal(CommandLineApply.MediaBuildFailed,
+            await Run(Request(), System() with { FindResumable = () => built ? [window, Saved(@"C:\TuneroMedia.0000abcd")] : [window] }));
         var log = await File.ReadAllTextAsync(LogPath);
         Assert.Contains(@"Work folder kept for Resume: C:\TuneroMedia.0000abcd, 9874000000 bytes", log);
+        Assert.DoesNotContain(window.WorkFolder, log);
 
         // Without a saved build the line is not there.
         File.Delete(LogPath);

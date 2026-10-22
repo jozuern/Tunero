@@ -2,6 +2,7 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 using Optimizer.App.ViewModels;
+using Optimizer.Core.Catalog;
 using Optimizer.Core.Logging;
 using Optimizer.Core.Media;
 using Optimizer.Core.Platform;
@@ -127,12 +128,15 @@ public static class CommandLineMedia
             return Invalid(lines, $"request: {requestPath} cannot be read: {ex.Message}");
         }
 
+        var before = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         try
         {
             // A request that cannot be built is refused before the cleanup or the network.
             file.CheckTuneroCopy(system.TuneroExe);
             lines.Write("Cleaning up after earlier builds");
             await system.CleanLeftovers(CancellationToken.None);
+            // The cleanup is left to an open Tunero window, which keeps its saved builds: only a new one is this run's.
+            foreach (var saved in system.FindResumable()) before.Add(saved.WorkFolder);
 
             IReadOnlyList<EsdFile>? catalog = null;
             if (file.IsDownload)
@@ -176,9 +180,9 @@ public static class CommandLineMedia
             var code = ex.Code is { } c ? $", code {(c is < 0 or > 0xFFFF ? $"0x{c:X8}" : c.ToString(CultureInfo.InvariantCulture))}" : "";
             lines.Write($"Build failed at stage {ex.Stage}: key {ex.Key ?? (ex.InUse ? "Media_IsoInUse" : "none")}{code}: {ex.Message}");
             if (ex.LogPath is { } log) lines.Write("Build log: " + log);
-            // The start cleanup deleted every saved build: one listed now is this run's.
-            foreach (var saved in system.FindResumable())
-                lines.Write($"Work folder kept for Resume: {saved.WorkFolder}, {saved.Bytes} bytes ({ByteSize.Format(saved.Bytes)}); the window offers Resume or Discard, the next --build-media deletes it");
+            foreach (var saved in system.FindResumable().Where(s => !before.Contains(s.WorkFolder)))
+                lines.Write($"Work folder kept for Resume: {saved.WorkFolder}, {saved.Bytes} bytes ({ByteSize.Format(saved.Bytes)}); the window offers Resume or Discard, " +
+                            "the next --build-media while no Tunero window is open deletes it");
             return CommandLineApply.MediaBuildFailed;
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
@@ -212,7 +216,9 @@ public static class CommandLineMedia
             if (p.Percent is not { } percent || percent < _next) return;
             var whole = (int)Math.Clamp(percent, 0, 100);
             _next = whole / 5 * 5 + 5;
-            lines.Write(p.Detail is { Length: > 0 } detail ? $"{p.Stage} {whole}% ({detail})" : $"{p.Stage} {whole}%");
+            // The Parts stage reports a part by its id.
+            var detail = p.Stage == MediaStage.Parts && p.Detail is { } id && MediaParts.Find(CatalogData.Current.MediaParts, id) is { } part ? part.Title : p.Detail;
+            lines.Write(detail is { Length: > 0 } ? $"{p.Stage} {whole}% ({detail})" : $"{p.Stage} {whole}%");
         }
     }
 
