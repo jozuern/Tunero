@@ -1799,6 +1799,11 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Media_UnsupportedTitle" xml:space="preserve"><value>Allow unsupported PCs</value></data>
   <data name="Media_PreviewTag" xml:space="preserve"><value>Preview</value></data>
   <data name="Media_UnsupportedText" xml:space="preserve"><value>Windows Setup skips its checks for TPM 2.0, Secure Boot, the processor and memory: Tunero adds the values Setup reads for that to the answer file. Microsoft says a PC that does not meet the requirements will not receive support from Microsoft and is not guaranteed to get updates, security updates included. Microsoft does not document these values.</value></data>
+  <data name="Media_CompressionTitle" xml:space="preserve"><value>Install image</value></data>
+  <data name="Media_CompressionFaster" xml:space="preserve"><value>Faster build</value></data>
+  <data name="Media_CompressionFasterText" xml:space="preserve"><value>Windows stays in install.wim. The build is faster and the ISO is larger.</value></data>
+  <data name="Media_CompressionSmaller" xml:space="preserve"><value>Smaller ISO</value></data>
+  <data name="Media_CompressionSmallerText" xml:space="preserve"><value>Windows is stored with stronger compression in install.esd. The ISO is smaller; the build takes longer and needs room for both images while it runs.</value></data>
   <data name="Media_UnsupportedSourceSupport" xml:space="preserve"><value>Microsoft: Windows 11 on devices that don't meet minimum system requirements</value></data>
   <data name="Media_UnsupportedSourceSpecs" xml:space="preserve"><value>Microsoft: Windows 11 specifications and system requirements</value></data>
   <data name="Media_BuildTitle" xml:space="preserve"><value>Build</value></data>
@@ -1913,6 +1918,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Media_Field_output" xml:space="preserve"><value>ISO file</value></data>
   <data name="Media_Field_installApps" xml:space="preserve"><value>Apps to install</value></data>
   <data name="Media_Field_removeUnreviewed" xml:space="preserve"><value>Other apps to remove</value></data>
+  <data name="Media_Field_compression" xml:space="preserve"><value>Install image</value></data>
   <data name="Media_IsoFacts" xml:space="preserve"><value>Windows, build {0}, {1}, {2}</value></data>
   <data name="Media_SetupSummaryNoName" xml:space="preserve"><value>No account name yet, {0}</value></data>
   <data name="Media_FirstSignInTitle" xml:space="preserve"><value>Setting up this PC with the {0} profile</value></data>

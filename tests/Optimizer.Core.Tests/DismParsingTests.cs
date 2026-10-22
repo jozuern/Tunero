@@ -251,6 +251,7 @@ public class DismParsingTests
     }
 
     [Fact] public void ExportArgs() => Assert.Equal("/English /Export-Image /SourceImageFile:\"C:\\w\\a.esd\" /SourceIndex:6 /DestinationImageFile:\"C:\\w\\m\\sources\\install.wim\" /Compress:max", DismArgs.Export(@"C:\w\a.esd", 6, @"C:\w\m\sources\install.wim", bootable: false));
+    [Fact] public void RecoveryExportArgs() => Assert.Equal("/English /Export-Image /SourceImageFile:\"C:\\w\\install.wim\" /SourceIndex:1 /DestinationImageFile:\"C:\\w\\install.esd\" /Compress:recovery", DismArgs.ExportRecovery(@"C:\w\install.wim", 1, @"C:\w\install.esd"));
     [Fact] public void ExportBootableArgs() => Assert.Equal("/English /Export-Image /SourceImageFile:\"C:\\a.wim\" /SourceIndex:2 /DestinationImageFile:\"C:\\b.wim\" /Compress:max /Bootable", DismArgs.Export(@"C:\a.wim", 2, @"C:\b.wim", bootable: true));
 
     [Fact]

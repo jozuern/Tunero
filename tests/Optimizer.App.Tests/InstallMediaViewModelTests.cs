@@ -1384,6 +1384,59 @@ public sealed class InstallMediaViewModelTests : IDisposable
     }
 
     [Fact]
+    public async Task TheInstallImageDefaultsToFasterBuildAndTheChoiceReachesTheRequest()
+    {
+        var media = await WithCatalog();
+        Assert.False(media.SmallerIso);
+        Assert.True(media.FasterBuild);
+        await media.BuildCommand.ExecuteAsync(null);
+        Assert.Equal(MediaCompression.Wim, Assert.Single(_requests).Compression);
+
+        _requests.Clear();
+        media.SmallerIso = true;
+        Assert.False(media.FasterBuild);
+        await media.BuildCommand.ExecuteAsync(null);
+        Assert.Equal(MediaCompression.Recovery, Assert.Single(_requests).Compression);
+    }
+
+    [Fact]
+    public async Task SmallerIsoChangesTheBarTheSpaceAndTheSavedFile()
+    {
+        var media = await WithCatalog();
+        var changed = new List<string?>();
+        media.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+        var bytes = media.NeededText;
+        media.SmallerIso = true;
+        Assert.Contains(nameof(InstallMediaViewModel.SummaryText), changed);
+        Assert.Contains(nameof(InstallMediaViewModel.NeededText), changed);
+        Assert.NotEqual(bytes, media.NeededText);
+        Assert.Contains(Loc.Instance["Media_CompressionSmaller"], media.SummaryText);
+        Assert.Contains(media.ReviewRequest()!.Changes, l => l.Target == Loc.Instance["Media_CompressionTitle"]);
+
+        _dialogs.SaveFile = Path.Combine(_root, "smaller.json");
+        media.SaveChoicesCommand.Execute(null);
+        Assert.Equal(MediaCompression.Recovery, MediaRequestFile.Parse(File.ReadAllText(_dialogs.SaveFile), Keyboards).Compression);
+
+        media.FasterBuild = true;
+        Assert.False(media.SmallerIso);
+        Assert.DoesNotContain(Loc.Instance["Media_CompressionSmaller"], media.SummaryText);
+    }
+
+    [Fact]
+    public async Task ALoadedFileSetsTheInstallImageAndResetGoesBackToFasterBuild()
+    {
+        var media = await WithCatalog();
+        var json = Saved();
+        json["compression"] = "recovery";
+        _dialogs.OpenFile = Write(json, "smaller.json");
+        media.LoadChoicesCommand.Execute(null);
+        Assert.True(media.SmallerIso);
+
+        media.ResetChoicesCommand.Execute(null);
+        Assert.True(media.FasterBuild);
+    }
+
+    [Fact]
     public async Task SaveWritesTheChoicesWithACaptionThatNamesWhatTheFileHolds()
     {
         var media = await WithCatalog();

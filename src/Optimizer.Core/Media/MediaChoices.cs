@@ -40,6 +40,9 @@ public sealed record MediaChoices(
     /// <summary>Apps of the app catalog (ids) the copied Tunero installs with winget at the first sign-in; needs <see cref="Tunero"/>.</summary>
     public IReadOnlyList<string> InstallApps { get; init; } = [];
 
+    /// <summary>How the install image is stored on the media: Faster build (install.wim) or Smaller ISO (install.esd).</summary>
+    public MediaCompression Compression { get; init; } = MediaCompression.Wim;
+
     /// <summary>The answer file's architecture: x64 media only in this version.</summary>
     public const string Architecture = "amd64";
 
@@ -130,7 +133,7 @@ public sealed record MediaChoices(
         var answers = new AnswerChoices(Architecture, uiLanguage, Keyboard ?? FallbackKeyboard, MediaLocales.SystemLocale(region), region,
             SkipSetup ? AccountName?.Trim() : null, SkipSetup, AllowUnsupported, Tunero is not null);
         var first = Tunero is { } copy ? new FirstSignInFile(copy.Profile, AppLanguage, copy.Theme) { Apps = InstallApps.Count > 0 ? InstallApps : null } : null;
-        return new MediaRequest(Source, Edition, IsoIndex, RemoveApps, answers, Tunero?.Exe, first, OutputIso) { RemoveUnreviewed = RemoveUnreviewed };
+        return new MediaRequest(Source, Edition, IsoIndex, RemoveApps, answers, Tunero?.Exe, first, OutputIso) { RemoveUnreviewed = RemoveUnreviewed, Compression = Compression };
     }
 
     /// <summary>A language tag as Windows writes it ("de-DE"), or <paramref name="fallback"/> for one .NET does not know.</summary>

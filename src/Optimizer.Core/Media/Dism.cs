@@ -214,6 +214,10 @@ public static class DismArgs
     public static string Export(string source, int index, string target, bool bootable) =>
         $"/English /Export-Image /SourceImageFile:{Q(source)} /SourceIndex:{index} /DestinationImageFile:{Q(target)} /Compress:max" + (bootable ? " /Bootable" : "");
 
+    /// <summary>Exports one image with recovery compression (the format of install.esd: smaller than /Compress:max, slower to write).</summary>
+    public static string ExportRecovery(string source, int index, string target) =>
+        $"/English /Export-Image /SourceImageFile:{Q(source)} /SourceIndex:{index} /DestinationImageFile:{Q(target)} /Compress:recovery";
+
     public static string Mount(string image, int index, string mountDir, bool readOnly = false) =>
         $"/English /Mount-Image /ImageFile:{Q(image)} /Index:{index} /MountDir:{Q(mountDir)}" + (readOnly ? " /ReadOnly" : "");
 
@@ -263,6 +267,7 @@ public interface IDism
     Task<string> GetWimInfoAsync(string image, int? index, CancellationToken ct);
     Task ApplyAsync(string image, int index, string target, IProgress<double>? p, CancellationToken ct);
     Task ExportAsync(string source, int index, string target, bool bootable, IProgress<double>? p, CancellationToken ct);
+    Task ExportRecoveryAsync(string source, int index, string target, IProgress<double>? p, CancellationToken ct);
     /// <summary>Mounts the image; a read-only mount can only be unmounted without commit.</summary>
     Task MountAsync(string image, int index, string mountDir, bool readOnly, IProgress<double>? p, CancellationToken ct);
     Task<IReadOnlyList<string>> ProvisionedAsync(string mountDir, CancellationToken ct);
@@ -297,6 +302,9 @@ public sealed class DismTool(IProcessRunner? processes = null) : IDism
 
     public async Task ExportAsync(string source, int index, string target, bool bootable, IProgress<double>? p, CancellationToken ct) =>
         await RunAsync(DismArgs.Export(source, index, target, bootable), p, ct);
+
+    public async Task ExportRecoveryAsync(string source, int index, string target, IProgress<double>? p, CancellationToken ct) =>
+        await RunAsync(DismArgs.ExportRecovery(source, index, target), p, ct);
 
     public async Task MountAsync(string image, int index, string mountDir, bool readOnly, IProgress<double>? p, CancellationToken ct) =>
         await RunAsync(DismArgs.Mount(image, index, mountDir, readOnly), p, ct);

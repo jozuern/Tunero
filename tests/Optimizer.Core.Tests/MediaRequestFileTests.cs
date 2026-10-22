@@ -316,6 +316,46 @@ public sealed class MediaRequestFileTests : IDisposable
         Assert.Equal(["Contoso.Notes"], request.RemoveUnreviewed);
     }
 
+    [Fact]
+    public void CompressionIsOptionalAndWimWhenAbsent()
+    {
+        var json = Download();
+        Assert.Equal(MediaCompression.Wim, Parse(json).Compression);
+        json["compression"] = null;
+        Assert.Equal(MediaCompression.Wim, Parse(json).Compression);
+        json["compression"] = "wim";
+        Assert.Equal(MediaCompression.Wim, Parse(json).Compression);
+        json["compression"] = "Recovery";
+        var file = Parse(json);
+        Assert.Equal(MediaCompression.Recovery, file.Compression);
+        Assert.Equal(MediaCompression.Recovery, file.ToChoices(Files, "en", Path.Combine(_root, "Tunero.exe"), "Dark").ToRequest().Compression);
+    }
+
+    [Theory]
+    [InlineData("\"zip\"")]
+    [InlineData("\"\"")]
+    [InlineData("1")]
+    [InlineData("true")]
+    public void ABadCompressionIsRefusedByName(string value)
+    {
+        var json = Download();
+        json["compression"] = JsonNode.Parse(value);
+        var refused = Refused(json);
+        Assert.Equal("compression", refused.Field);
+        Assert.Contains("wim", refused.Message);
+        Assert.Contains("recovery", refused.Message);
+    }
+
+    [Fact]
+    public void ABadCompressionIsDroppedAndNamedWhenKeepingWhatFits()
+    {
+        var json = Download();
+        json["compression"] = "zip";
+        var file = MediaRequestFile.ParseKeepingWhatFits(json.ToJsonString(), Keyboards);
+        Assert.Equal([new("compression")], file.Dropped);
+        Assert.Equal(MediaCompression.Wim, file.Compression);
+    }
+
     [Theory]
     [InlineData("installApps", "[\"Contoso.NotAnApp\"]", "Contoso.NotAnApp")]
     [InlineData("installApps", "\"Valve.Steam\"", "list")]
@@ -476,6 +516,7 @@ public sealed class MediaRequestFileTests : IDisposable
             AllowUnsupported = true, InstallApps = ["Valve.Steam", "Mozilla.Firefox"], RemoveUnreviewed = ["Contoso.Notes"],
             RemoveApps = MediaChoices.PageApps(CatalogData.Current.Appx, MediaChoices.MeasuredApps(CatalogData.Current.MediaImages, Files[1])).Select(a => a.Name).Take(5).ToList(),
         },
+        "recovery" => Choices(new MediaSource(Files[1], null, null)) with { Compression = MediaCompression.Recovery },
         _ => Choices(new MediaSource(null, OwnIso(), null)) with
         {
             SkipSetup = false, AccountName = null, Region = null, Keyboard = null, AllowUnsupported = false, Tunero = null, RemoveApps = [],
@@ -487,6 +528,7 @@ public sealed class MediaRequestFileTests : IDisposable
     [InlineData("ownIso")]
     [InlineData("allOn")]
     [InlineData("allOff")]
+    [InlineData("recovery")]
     public void ChoicesRoundTripThroughTheRequestFile(string name)
     {
         var c = Set(name);
@@ -495,6 +537,7 @@ public sealed class MediaRequestFileTests : IDisposable
         Assert.Equal(System.Text.Json.JsonSerializer.Serialize(c.ToRequest()), System.Text.Json.JsonSerializer.Serialize(back.ToRequest()));
         // The file written again is the same file.
         Assert.Equal(json, MediaRequestFile.FromChoices(back, c.Tunero?.Profile, c.Tunero?.Theme).ToJson());
+        Assert.Equal(c.Compression, back.Compression);
     }
 
     [Fact]

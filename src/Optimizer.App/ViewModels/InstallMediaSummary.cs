@@ -24,6 +24,7 @@ internal static class InstallMediaSummary
         var parts = new List<string> { EditionText(editionTitle, build) };
         if (LanguageName(c) is { } language) parts.Add(T.Format("Media_Summary_Language", language));
         if (c.RemoveApps.Count > 0) parts.Add(T.Format("Media_Summary_Apps", c.RemoveApps.Count));
+        if (c.Compression == MediaCompression.Recovery) parts.Add(T["Media_CompressionSmaller"]);
         if (c.SkipSetup && c.AccountName?.Trim() is { Length: > 0 } account) parts.Add(T.Format("Media_Summary_Account", account));
         if (c.Tunero is { } copy) parts.Add(T.Format("Media_Summary_Profile", ProfileTitle(copy)));
         if (neededBytes > 0) parts.Add(T.Format("Media_Summary_Needed", ByteSize.Format(neededBytes)));
@@ -46,6 +47,7 @@ internal static class InstallMediaSummary
             changes.Add(Line(T["Media_ProfileTitle"], ProfileTitle(copy)));
             if (c.InstallApps.Count > 0) changes.Add(Line(T["Media_InstallTitle"], T.Format("Media_InstallSummary", c.InstallApps.Count)));
         }
+        if (c.Compression == MediaCompression.Recovery) changes.Add(Line(T["Media_CompressionTitle"], T["Media_CompressionSmaller"]));
         var warnings = new List<string>();
         if (c.RemoveUnreviewed.Count > 0)
         {

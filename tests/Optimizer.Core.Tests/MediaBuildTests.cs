@@ -130,12 +130,15 @@ public sealed class MediaBuildTests : IDisposable
     [InlineData("iso")]
     [InlineData("iso apps")]
     [InlineData("iso unreviewed")]
+    [InlineData("download smaller")]
+    [InlineData("iso apps smaller")]
     public async Task PlannedStagesAreExactlyTheStagesARunBegins(string kind)
     {
         var apps = kind.Contains("apps", StringComparison.Ordinal) ? new[] { "Microsoft.BingNews" } : [];
         var r = kind.StartsWith("download", StringComparison.Ordinal) ? Download(apps: apps) : OwnIso() with { RemoveApps = apps };
         if (kind.Contains("unreviewed", StringComparison.Ordinal)) r = r with { RemoveUnreviewed = ["Contoso.Notes"] };
         if (kind.Contains("tunero", StringComparison.Ordinal)) r = WithTunero(r);
+        if (kind.Contains("smaller", StringComparison.Ordinal)) r = Smaller(r);
         await Run(r);
         var begun = _steps.Progress.Where(p => p.Percent is null && p.Stage != MediaStage.Cleanup).Select(p => p.Stage).Distinct();
         Assert.Equal(MediaBuild.PlannedStages(r), begun);
@@ -999,6 +1002,88 @@ public sealed class MediaBuildTests : IDisposable
         _steps.OwnBootImages = [new Img("PE", "WindowsPE", "ARM64"), new Img("Setup", "WindowsPE", "ARM64", Bootable: true)];
         await FailsAt(OwnIso(), MediaStage.Unpack, "Media_NotX64");
         AssertCleanedUp();
+    }
+
+    // ---- Smaller ISO: install.esd with recovery compression ----
+
+    private MediaRequest Smaller(MediaRequest r) => r with { Compression = MediaCompression.Recovery };
+
+    [Fact]
+    public async Task RecoveryLeavesOnlyInstallEsdOnTheMedia()
+    {
+        await Run(Smaller(Download()));
+        Assert.Contains(@"sources\install.esd", _steps.IsoContents.Keys);
+        Assert.DoesNotContain(@"sources\install.wim", _steps.IsoContents.Keys);
+        Assert.Contains("ExportRecovery install.wim 1 install.esd", _steps.Calls);
+        Assert.Contains(MediaStage.Compress, _steps.Progress.Select(p => p.Stage));
+        var images = _steps.ImagesOf(_steps.IsoContents[@"sources\install.esd"]);
+        Assert.Equal("Professional", Assert.Single(images).Edition);
+    }
+
+    [Fact]
+    public async Task RecoveryFromAnOwnIsoWithInstallEsdEndsWithOneImage()
+    {
+        _steps.OwnImageFile = "install.esd";
+        await Run(Smaller(OwnIso()));
+        Assert.Contains(@"sources\install.esd", _steps.IsoContents.Keys);
+        Assert.DoesNotContain(@"sources\install.wim", _steps.IsoContents.Keys);
+        Assert.Equal(1, Count("ExportRecovery install.wim 1 install.esd"));
+        Assert.Equal("Professional", Assert.Single(_steps.ImagesOf(_steps.IsoContents[@"sources\install.esd"])).Edition);
+    }
+
+    [Fact]
+    public async Task RecoveryIsTheLastChangeToTheInstallImage()
+    {
+        await Run(Smaller(Download(apps: ["Microsoft.BingNews"])));
+        Assert.True(_steps.Calls.LastIndexOf("Unmount commit") < _steps.Calls.IndexOf("ExportRecovery install.wim 1 install.esd"));
+    }
+
+    [Fact]
+    public async Task VerifyReadsBackTheInstallImageThatIsOnTheMedia()
+    {
+        await Run(Smaller(Download()));
+        Assert.Contains(@"sources\install.esd", _steps.IsoReader.Verified);
+        Assert.DoesNotContain(@"sources\install.wim", _steps.IsoReader.Verified);
+    }
+
+    [Fact]
+    public async Task VerifyOfTheEsdMismatchFailsTheBuild()
+    {
+        _steps.IsoReader.Mismatch = [@"sources\install.esd"];
+        await FailsAt(Smaller(Download()), MediaStage.Verify, "Media_VerifyFailed");
+        AssertCleanedUp();
+    }
+
+    [Fact]
+    public async Task RecoveryExportOfTwoImagesFailsTheBuild()
+    {
+        _steps.Dism.DoubleRecoveryExport = true;
+        await FailsAt(Smaller(Download()), MediaStage.Compress, "Media_ImageCheckFailed");
+        AssertCleanedUp();
+    }
+
+    [Fact]
+    public async Task WimBuildNeverExportsRecovery()
+    {
+        await Run(Download());
+        Assert.DoesNotContain(_steps.Calls, c => c.StartsWith("ExportRecovery", StringComparison.Ordinal));
+        Assert.DoesNotContain(MediaStage.Compress, _steps.Progress.Select(p => p.Stage));
+    }
+
+    [Fact]
+    public void RecoveryNeedsRoomForBothImages()
+    {
+        var download = new MediaSource(Esd, null, null);
+        var own = new MediaSource(null, @"C:\a.iso", null);
+        Assert.Equal(MediaBuild.NeededBytes(download, 5L << 30) + (5L << 30), MediaBuild.NeededBytes(download, 5L << 30, MediaCompression.Recovery));
+        Assert.Equal(MediaBuild.NeededBytes(own, 5L << 30) + (5L << 30), MediaBuild.NeededBytes(own, 5L << 30, MediaCompression.Recovery));
+    }
+
+    [Fact]
+    public async Task RecoveryChecksTheSpaceForBothImages()
+    {
+        _steps.Free = MediaBuild.NeededBytes(new MediaSource(Esd, null, null), Esd.Size, MediaCompression.Recovery) - 1;
+        await FailsAt(Smaller(Download()), MediaStage.Download, "Media_NotEnoughSpace");
     }
 
     // ---- ISO, Verify and the output path ----
@@ -2197,6 +2282,21 @@ internal sealed class FakeDism(FakeMediaSteps steps) : IDism
         p?.Report(50);
         return Task.CompletedTask;
     }
+
+    public Task ExportRecoveryAsync(string source, int index, string target, IProgress<double>? p, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        Absolute(source);
+        Absolute(target);
+        steps.Calls.Add($"ExportRecovery {Name(source)} {index} {Name(target)}");
+        steps.AddImage(target, steps.ImagesAt(source)[index - 1]);
+        if (DoubleRecoveryExport) steps.AddImage(target, steps.ImagesAt(source)[index - 1]);
+        p?.Report(50);
+        return Task.CompletedTask;
+    }
+
+    /// <summary>The export writes the image twice into install.esd (DISM adds to an existing file).</summary>
+    public bool DoubleRecoveryExport { get; set; }
 
     public Task MountAsync(string image, int index, string mountDir, bool readOnly, IProgress<double>? p, CancellationToken ct)
     {

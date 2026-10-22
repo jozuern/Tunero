@@ -1799,6 +1799,11 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Media_UnsupportedTitle" xml:space="preserve"><value>Nicht unterstützte PCs zulassen</value></data>
   <data name="Media_PreviewTag" xml:space="preserve"><value>Vorschau</value></data>
   <data name="Media_UnsupportedText" xml:space="preserve"><value>Das Windows-Setup überspringt die Prüfungen auf TPM 2.0, Secure Boot, Prozessor und Arbeitsspeicher: Tunero schreibt die Werte, die das Setup dafür liest, in die Antwortdatei. Laut Microsoft erhält ein PC, der die Anforderungen nicht erfüllt, keinen Support von Microsoft, und Updates sind nicht garantiert, auch Sicherheitsupdates nicht. Microsoft dokumentiert diese Werte nicht.</value></data>
+  <data name="Media_CompressionTitle" xml:space="preserve"><value>Installationsabbild</value></data>
+  <data name="Media_CompressionFaster" xml:space="preserve"><value>Schneller erstellen</value></data>
+  <data name="Media_CompressionFasterText" xml:space="preserve"><value>Windows bleibt in install.wim. Das Erstellen geht schneller, die ISO-Datei wird größer.</value></data>
+  <data name="Media_CompressionSmaller" xml:space="preserve"><value>Kleinere ISO-Datei</value></data>
+  <data name="Media_CompressionSmallerText" xml:space="preserve"><value>Windows wird in install.esd stärker komprimiert gespeichert. Die ISO-Datei wird kleiner; das Erstellen dauert länger und braucht währenddessen Platz für beide Abbilder.</value></data>
   <data name="Media_UnsupportedSourceSupport" xml:space="preserve"><value>Microsoft: Windows 11 auf Geräten, die die Mindestsystemanforderungen nicht erfüllen</value></data>
   <data name="Media_UnsupportedSourceSpecs" xml:space="preserve"><value>Microsoft: Spezifikationen und Systemanforderungen für Windows 11</value></data>
   <data name="Media_BuildTitle" xml:space="preserve"><value>Erstellen</value></data>
@@ -1913,6 +1918,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Media_Field_output" xml:space="preserve"><value>ISO-Datei</value></data>
   <data name="Media_Field_installApps" xml:space="preserve"><value>Zu installierende Apps</value></data>
   <data name="Media_Field_removeUnreviewed" xml:space="preserve"><value>Weitere zu entfernende Apps</value></data>
+  <data name="Media_Field_compression" xml:space="preserve"><value>Installationsabbild</value></data>
   <data name="Media_IsoFacts" xml:space="preserve"><value>Windows, Build {0}, {1}, {2}</value></data>
   <data name="Media_SetupSummaryNoName" xml:space="preserve"><value>Noch kein Kontoname, {0}</value></data>
   <data name="Media_FirstSignInTitle" xml:space="preserve"><value>Dieser PC wird mit dem Profil {0} eingerichtet</value></data>

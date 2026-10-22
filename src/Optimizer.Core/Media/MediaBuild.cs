@@ -14,6 +14,12 @@ namespace Optimizer.Core.Media;
 /// <summary>The stages of a build in their order. Catalog is the page's own step before <see cref="MediaBuild.RunAsync"/>.</summary>
 public enum MediaStage { Catalog, Download, Check, Unpack, Apps, Parts, Settings, Shrink, Compress, Files, Iso, Verify, Cleanup }
 
+/// <summary>
+/// How the install image is stored on the media. Wim: install.wim with maximum compression (the build is faster).
+/// Recovery: install.esd with recovery compression (a smaller ISO; the build takes longer).
+/// </summary>
+public enum MediaCompression { Wim, Recovery }
+
 /// <summary>Where the Windows image comes from: exactly one of a catalog file to download or the user's own ISO. Cab is the catalog the page checked.</summary>
 public sealed record MediaSource(EsdFile? Download, string? IsoPath, CabLocation? Cab);
 
@@ -36,6 +42,9 @@ public sealed record MediaRequest(
 {
     /// <summary>Package names outside the allowlist, removed only when the image holds exactly that name (<see cref="MediaChoices.UnreviewedApps"/>).</summary>
     public IReadOnlyList<string> RemoveUnreviewed { get; init; } = [];
+
+    /// <summary>How the install image is stored on the media (<see cref="MediaCompression"/>).</summary>
+    public MediaCompression Compression { get; init; } = MediaCompression.Wim;
 }
 
 /// <summary>
@@ -200,9 +209,11 @@ public sealed class MediaBuild(IMediaSteps steps)
     /// <summary>
     /// Free space the build needs on the output drive. Download: the ESD, 2.2 times its size for the media and the ISO, and
     /// 1 GB to spare. Own ISO (<paramref name="esdSize"/> is then the ISO's size): 2.5 times the ISO and 1 GB.
+    /// Recovery compression adds the size once more: install.wim and install.esd exist side by side during the export.
     /// </summary>
-    public static long NeededBytes(MediaSource s, long esdSize) =>
-        s.Download is not null ? esdSize + esdSize * 22 / 10 + Gigabyte : esdSize * 25 / 10 + Gigabyte;
+    public static long NeededBytes(MediaSource s, long esdSize, MediaCompression compression = MediaCompression.Wim) =>
+        (s.Download is not null ? esdSize + esdSize * 22 / 10 + Gigabyte : esdSize * 25 / 10 + Gigabyte)
+        + (compression == MediaCompression.Recovery ? esdSize : 0);
 
     internal static bool IsWorkFolderName(string name) => WorkFolderName.IsMatch(name);
 
@@ -223,6 +234,7 @@ public sealed class MediaBuild(IMediaSteps steps)
     {
         List<MediaStage> stages = r.Source.Download is not null ? [MediaStage.Download, MediaStage.Check, MediaStage.Unpack] : [MediaStage.Unpack];
         if (ChangesInstallImage(r)) stages.AddRange([MediaStage.Apps, MediaStage.Shrink]);
+        if (r.Compression == MediaCompression.Recovery) stages.Add(MediaStage.Compress);
         stages.AddRange([MediaStage.Files, MediaStage.Iso, MediaStage.Verify]);
         return stages;
     }
@@ -665,6 +677,10 @@ public sealed class MediaBuild(IMediaSteps steps)
 
         private string Sources => Path.Combine(_media!, "sources");
         private string InstallWim => Path.Combine(Sources, "install.wim");
+        private string InstallEsd => Path.Combine(Sources, "install.esd");
+
+        /// <summary>The install image the media ends with: install.esd after the Compress stage, else install.wim.</summary>
+        private string InstallImageName => r.Compression == MediaCompression.Recovery ? "install.esd" : "install.wim";
         private string BootWim => Path.Combine(Sources, "boot.wim");
         private string TuneroFolder => Path.Combine(_media!, TuneroOnMedia);
 
@@ -704,6 +720,7 @@ public sealed class MediaBuild(IMediaSteps steps)
                 var build = await CheckImagesAsync(edition);
 
                 if (ChangesInstallImage(r)) await ChangeInstallImageAsync();
+                if (r.Compression == MediaCompression.Recovery) await CompressAsync(edition);
                 Begin(MediaStage.Files);
                 await WriteFilesAsync();
                 Begin(MediaStage.Iso);
@@ -815,7 +832,7 @@ public sealed class MediaBuild(IMediaSteps steps)
                 if (!info.Exists) throw Fail($"{iso} does not exist.", "Media_SourceMissing");
                 size = info.Length;
             }
-            var needed = NeededBytes(r.Source, size);
+            var needed = NeededBytes(r.Source, size, r.Compression);
             var free = steps.FreeBytes(output);
             steps.Log($"Space: {needed} bytes needed, {free} free");
             if (free < needed) throw Fail($"The output drive has {free} bytes free; the build needs {needed}.", "Media_NotEnoughSpace");
@@ -1081,6 +1098,25 @@ public sealed class MediaBuild(IMediaSteps steps)
             await UnmountAsync(_mount!, commit: removed > 0 || cleaned, "install.wim");
         }
 
+        /// <summary>
+        /// Smaller ISO: exports the one image of install.wim into sources\install.esd with recovery compression, checks that
+        /// the new file holds exactly that image, then deletes install.wim, so the media ends with one install image.
+        /// </summary>
+        private async Task CompressAsync(string edition)
+        {
+            Begin(MediaStage.Compress);
+            // DISM adds to an existing destination file: the export must start from nothing.
+            if (File.Exists(InstallEsd)) throw Fail("sources\\install.esd exists before the export.", "Media_ImageCheckFailed");
+            await Dism(DismArgs.ExportRecovery(InstallWim, 1, InstallEsd), () => steps.Dism.ExportRecoveryAsync(InstallWim, 1, InstallEsd, Percent("install.esd"), ct));
+            var images = DismOutput.ParseWimInfo(await Dism(DismArgs.WimInfo(InstallEsd, null), () => steps.Dism.GetWimInfoAsync(InstallEsd, null, ct)));
+            if (images.Count != 1) throw Fail($"install.esd holds {images.Count} images, not 1.", "Media_ImageCheckFailed");
+            var (image, _) = await DetailAsync(InstallEsd, 1);
+            if (!Same(image.Edition, edition)) throw Fail($"install.esd holds edition {image.Edition}, not {edition}.", "Media_ImageCheckFailed");
+            File.SetAttributes(InstallWim, FileAttributes.Normal);
+            File.Delete(InstallWim);
+            steps.Log($"install.esd written ({new FileInfo(InstallEsd).Length} bytes), install.wim removed");
+        }
+
         /// <summary>Removes the chosen provisioned apps from the mounted image and returns how many it removed.</summary>
         private async Task<int> RemoveAppsInMountAsync()
         {
@@ -1335,7 +1371,7 @@ public sealed class MediaBuild(IMediaSteps steps)
         private async Task VerifyAsync()
         {
             // boot.wim carries the answer file (WriteBootWimAsync): compared byte for byte like install.wim.
-            var files = new List<string> { @"sources\install.wim", @"sources\boot.wim" };
+            var files = new List<string> { @"sources\" + InstallImageName, @"sources\boot.wim" };
             // Without etfsboot.com the media has no BIOS entry at all; the UEFI files are required (RequireUefiBoot).
             if (File.Exists(Path.Combine(_media!, IsoBoot.BiosImage))) files.Add(IsoBoot.BiosImage);
             files.Add(IsoBoot.UefiImage);

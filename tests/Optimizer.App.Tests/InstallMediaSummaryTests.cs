@@ -9,7 +9,7 @@ namespace Optimizer.App.Tests;
 /// <summary>The summary bar and the review before the build: pure text from the choices, nothing is read from this PC.</summary>
 public sealed class InstallMediaSummaryTests
 {
-    private static MediaChoices Choices(int apps = 0, string? account = null, bool allowUnsupported = false, string? profile = null, int unreviewed = 0, int install = 0)
+    private static MediaChoices Choices(int apps = 0, string? account = null, bool allowUnsupported = false, string? profile = null, int unreviewed = 0, int install = 0, bool smaller = false)
     {
         // Real app names of the reviewed list, so the review can sort them into their groups.
         var names = CatalogData.Current.Appx.Apps.Select(a => a.Name).Take(apps).ToList();
@@ -19,6 +19,7 @@ public sealed class InstallMediaSummaryTests
         {
             RemoveUnreviewed = Enumerable.Range(0, unreviewed).Select(i => $"Vendor.App{i}").ToList(),
             InstallApps = Enumerable.Range(0, install).Select(i => $"Vendor.Install{i}").ToList(),
+            Compression = smaller ? MediaCompression.Recovery : MediaCompression.Wim,
         };
     }
 
@@ -40,6 +41,22 @@ public sealed class InstallMediaSummaryTests
         Assert.DoesNotContain(Loc.Instance.Format("Media_Summary_Apps", 0), text);
         Assert.DoesNotContain(Loc.Instance.Format("Media_Summary_Account", ""), text);
         Assert.StartsWith("Windows 11 Pro,", text);
+    }
+
+    [Fact]
+    public void BarSaysSmallerIsoOnlyWhenChosen()
+    {
+        Assert.Contains(Loc.Instance["Media_CompressionSmaller"], InstallMediaSummary.Bar(Choices(smaller: true), "Windows 11 Pro", null, 1));
+        Assert.DoesNotContain(Loc.Instance["Media_CompressionSmaller"], InstallMediaSummary.Bar(Choices(), "Windows 11 Pro", null, 1));
+    }
+
+    [Fact]
+    public void ReviewHasALineForSmallerIsoAndNoneForTheDefault()
+    {
+        var smaller = InstallMediaSummary.Review(Choices(smaller: true), "Windows 11 Pro", null, 1);
+        Assert.Contains(smaller.Changes, l => l.Target == Loc.Instance["Media_CompressionTitle"] && l.After == Loc.Instance["Media_CompressionSmaller"]);
+        Assert.Empty(smaller.Warnings);
+        Assert.DoesNotContain(InstallMediaSummary.Review(Choices(), "Windows 11 Pro", null, 1).Changes, l => l.Target == Loc.Instance["Media_CompressionTitle"]);
     }
 
     [Fact]

@@ -500,6 +500,21 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         OnPropertyChanged(nameof(InstallRows));
     }
 
+    // ---- install image ----
+
+    /// <summary>Smaller ISO (install.esd with recovery compression, the build takes longer) or, off, Faster build (install.wim).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(FasterBuild))]
+    private bool _smallerIso;
+
+    public bool FasterBuild
+    {
+        get => !SmallerIso;
+        set => SmallerIso = !value;
+    }
+
+    partial void OnSmallerIsoChanged(bool value) => Changed();
+
     // ---- expert ----
 
     [ObservableProperty] private bool _allowUnsupported;
@@ -767,11 +782,12 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     private long? Needed()
     {
         if (Source() is not { } source) return null;
-        if (source.Download is { } esd) return MediaBuild.NeededBytes(source, esd.Size);
+        var compression = SmallerIso ? MediaCompression.Recovery : MediaCompression.Wim;
+        if (source.Download is { } esd) return MediaBuild.NeededBytes(source, esd.Size, compression);
         try
         {
             var info = new FileInfo(source.IsoPath!);
-            return info.Exists ? MediaBuild.NeededBytes(source, info.Length) : null;
+            return info.Exists ? MediaBuild.NeededBytes(source, info.Length, compression) : null;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
         {
@@ -1253,6 +1269,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         {
             RemoveUnreviewed = RemoveUnreviewed && !UseDownload ? UnreviewedRows.Where(r => r.IsChecked).Select(r => r.Key).ToList() : [],
             InstallApps = InstallApps && tunero is not null ? InstallRows.Where(r => r.IsChecked).Select(r => r.Key).ToList() : [],
+            Compression = SmallerIso ? MediaCompression.Recovery : MediaCompression.Wim,
         };
     }
 
@@ -1741,6 +1758,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         }
 
         if (Given("allowUnsupported")) AllowUnsupported = f.AllowUnsupported;
+        if (Given("compression")) SmallerIso = f.Compression == MediaCompression.Recovery;
 
         if (Given("installApps"))
         {
@@ -1869,6 +1887,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         RemoveApps = true;
         SkipSetup = true;
         AllowUnsupported = false;
+        SmallerIso = false;
         RemoveUnreviewed = false;
         InstallApps = false;
         AccountNameText = _pc.UserName is { } user && AccountName.Problem(user) is null ? user : "";
@@ -1919,7 +1938,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     /// then a sample failure and the next time a sample success. Nothing goes to the network, attaches or runs.
     /// <paramref name="show"/>, comma-separated: "fail" or "done" shows that result at once, "expand" unfolds the change
     /// cards, "progress" starts a build that stays in the middle of Apps (the stage list mid-build), "review" turns on the Expert option that warns in the review, "iso" chooses the sample own ISO, "umlaut" types an account name Setup cannot create, "cleanup" shows the Build card while the start cleanup
-    /// runs, "dropped" shows the note about remembered choices that no longer fit (for screenshots).
+    /// runs, "dropped" shows the note about remembered choices that no longer fit, "smaller" chooses Smaller ISO (for screenshots).
     /// </summary>
     public void UseDemo(string? show)
     {
@@ -1933,6 +1952,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         }
         // "review": the choices a review has something to warn about (the review itself is shown by --confirm-shot).
         AllowUnsupported = shows.Contains("review");
+        SmallerIso = shows.Contains("smaller");
         _demo = true;
         _catalog = new InstallMediaDemo.Catalog();
         _demoProgress = shows.Contains("progress");

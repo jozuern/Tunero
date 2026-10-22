@@ -34,7 +34,8 @@ public sealed record MediaDroppedValue(string Field, string? Item = null);
 ///   "removeApps": "consumer" or ["Microsoft.BingNews", ...], "skipSetup": { "accountName": "Anna", "region": "de-AT",
 ///   "keyboard": "0407:00000407" } or null, "profile": "gaming" or null, "allowUnsupported": false, "output": "C:\\out\\Win11.iso",
 ///   optional: "appLanguage": "en" or "de", "theme": "System", "Light" or "Dark" (absent or null: the app's),
-///   "installApps": ["Mozilla.Firefox", ...] (app catalog ids, needs a profile), "removeUnreviewed": ["Contoso.App", ...] }
+///   "installApps": ["Mozilla.Firefox", ...] (app catalog ids, needs a profile), "removeUnreviewed": ["Contoso.App", ...],
+///   "compression": "wim" (default, faster build) or "recovery" (install.esd, smaller ISO, longer build) }
 /// </code>
 /// </summary>
 public sealed record MediaRequestFile(
@@ -55,6 +56,9 @@ public sealed record MediaRequestFile(
     /// <summary>Package names outside the reviewed list (<see cref="MediaChoices.RemoveUnreviewed"/>).</summary>
     public IReadOnlyList<string> RemoveUnreviewed { get; init; } = [];
 
+    /// <summary>How the install image is stored (<see cref="MediaChoices.Compression"/>); the file's "compression" is "wim" or "recovery".</summary>
+    public MediaCompression Compression { get; init; } = MediaCompression.Wim;
+
     /// <summary>What <see cref="ParseKeepingWhatFits"/> could not use. Named to the user; the page keeps its own value for each.</summary>
     public IReadOnlyList<MediaDroppedValue> Dropped { get; init; } = [];
 
@@ -69,7 +73,7 @@ public sealed record MediaRequestFile(
     /// <summary>The top-level fields of a request file (the page names one that is refused by its Media_Field_ label).</summary>
     public static IReadOnlyList<string> FieldNames => Fields;
 
-    private static readonly string[] Fields = ["source", "language", "edition", "removeApps", "skipSetup", "profile", "allowUnsupported", "output", "appLanguage", "theme", "installApps", "removeUnreviewed"];
+    private static readonly string[] Fields = ["source", "language", "edition", "removeApps", "skipSetup", "profile", "allowUnsupported", "output", "appLanguage", "theme", "installApps", "removeUnreviewed", "compression"];
     private static readonly string[] AppLanguages = ["en", "de"];
     private static readonly string[] Themes = ["System", "Light", "Dark"];
     private static readonly string[] SetupFields = ["accountName", "region", "keyboard"];
@@ -152,7 +156,8 @@ public sealed record MediaRequestFile(
             "is in the reviewed list, protected, a part of Windows or not a package name");
 
         return new MediaRequestFile(source, language, edition, apps, setup, profile, unsupported.GetBoolean(), output,
-            Optional(root, "appLanguage", AppLanguages), Optional(root, "theme", Themes)) { InstallApps = install, RemoveUnreviewed = unreviewed };
+            Optional(root, "appLanguage", AppLanguages), Optional(root, "theme", Themes))
+        { InstallApps = install, RemoveUnreviewed = unreviewed, Compression = CompressionOf(root) };
     }
 
     /// <summary>
@@ -232,6 +237,7 @@ public sealed record MediaRequestFile(
         {
             InstallApps = choices.InstallApps.ToList(),
             RemoveUnreviewed = choices.RemoveUnreviewed.ToList(),
+            Compression = choices.Compression,
         };
     }
 
@@ -255,6 +261,7 @@ public sealed record MediaRequestFile(
         if (Theme is not null) root["theme"] = Theme;
         root["installApps"] = new JsonArray(InstallApps.Select(a => (JsonNode?)a).ToArray());
         root["removeUnreviewed"] = new JsonArray(RemoveUnreviewed.Select(a => (JsonNode?)a).ToArray());
+        root["compression"] = Compression == MediaCompression.Recovery ? RecoveryName : WimName;
         return root.ToJsonString(new JsonSerializerOptions { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
     }
 
@@ -289,6 +296,7 @@ public sealed record MediaRequestFile(
         {
             InstallApps = InstallApps,
             RemoveUnreviewed = RemoveUnreviewed,
+            Compression = Compression,
         };
     }
 
@@ -316,6 +324,19 @@ public sealed record MediaRequestFile(
             if (!names.Contains(app.Name)) names.Add(app.Name);
         }
         return names;
+    }
+
+    private const string WimName = "wim";
+    private const string RecoveryName = "recovery";
+
+    /// <summary>The optional "compression": absent or null is "wim"; anything but "wim" or "recovery" (any case) is refused.</summary>
+    private static MediaCompression CompressionOf(JsonElement obj)
+    {
+        if (!obj.TryGetProperty("compression", out var value) || value.ValueKind == JsonValueKind.Null) return MediaCompression.Wim;
+        var text = value.ValueKind == JsonValueKind.String ? value.GetString()! : "";
+        if (Same(text, WimName)) return MediaCompression.Wim;
+        if (Same(text, RecoveryName)) return MediaCompression.Recovery;
+        throw new MediaRequestFileException("compression", $"must be \"{WimName}\" (faster build) or \"{RecoveryName}\" (smaller ISO), or null for \"{WimName}\"");
     }
 
     /// <summary>An optional list of names: absent or null gives none; <paramref name="check"/> returns the name to keep, or null to refuse it.</summary>
