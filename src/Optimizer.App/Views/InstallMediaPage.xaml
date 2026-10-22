@@ -502,12 +502,19 @@
                     <!-- A failure or a stop; a success has the finished card below -->
                     <ui:InfoBar Title="" Message="{Binding InstallMedia.ResultText}" Severity="{Binding InstallMedia.ResultSeverity}" IsClosable="False" Margin="0,16,0,0"
                                 IsOpen="{Binding InstallMedia.ShowResultBar}" />
-                    <!-- One row of buttons: a later Resume joins them -->
+                    <!-- One row of buttons; Resume and Discard when the failed build left a saved build (the info bar below stays closed then) -->
                     <WrapPanel Margin="0,8,0,0" Visibility="{Binding InstallMedia.HasFailed, Converter={StaticResource BoolToVisibility}}">
+                        <ui:Button Content="{l:Tr Media_ResumeButton}" Icon="{ui:SymbolIcon ArrowForward20}" Command="{Binding InstallMedia.ResumeCommand}" Margin="0,0,8,0"
+                                   Visibility="{Binding InstallMedia.CanResumeAfterFailure, Converter={StaticResource BoolToVisibility}}" />
+                        <ui:Button Content="{l:Tr Media_DiscardButton}" Icon="{ui:SymbolIcon Delete20}" Command="{Binding InstallMedia.DiscardCommand}" Margin="0,0,8,0"
+                                   Visibility="{Binding InstallMedia.CanResumeAfterFailure, Converter={StaticResource BoolToVisibility}}" />
                         <ui:Button Content="{l:Tr Media_OpenLog}" Icon="{ui:SymbolIcon DocumentText20}" Command="{Binding InstallMedia.ShowLogCommand}" Margin="0,0,8,0"
                                    Visibility="{Binding InstallMedia.ResultLogPath, Converter={StaticResource NullToVisibility}}" />
                         <ui:Button Content="{l:Tr Media_ShowStage}" Icon="{ui:SymbolIcon TextBulletListSquare20}" Command="{Binding InstallMedia.ShowStageCommand}" Margin="0,0,8,0" />
                     </WrapPanel>
+                    <!-- Why Resume did not start or Discard failed, when they were used from this card -->
+                    <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding InstallMedia.ResumeNote}" TextWrapping="Wrap" Margin="0,8,0,0"
+                                  Visibility="{Binding InstallMedia.ResumeNoteOnFailureCard, Converter={StaticResource BoolToVisibility}}" />
                 </StackPanel>
                 </DockPanel>
             </ui:Card>
@@ -553,6 +560,16 @@
 
     <!-- The summary bar: the chosen image in one line, the space it needs, and Build (Stop while it runs) -->
     <StackPanel Grid.Row="1" Style="{StaticResource EdgeContent}" Margin="24,8,0,16">
+        <!-- A build that stopped after a checkpoint left a saved build: Resume goes on from it, Discard deletes it -->
+        <StackPanel Margin="0,0,0,8" Visibility="{Binding InstallMedia.ShowResumeBar, Converter={StaticResource BoolToVisibility}}">
+            <ui:InfoBar Title="" Message="{Binding InstallMedia.ResumeText}" Severity="Informational" IsClosable="False" IsOpen="True" />
+            <WrapPanel Margin="0,8,0,0">
+                <ui:Button Content="{l:Tr Media_ResumeButton}" Icon="{ui:SymbolIcon ArrowForward20}" Command="{Binding InstallMedia.ResumeCommand}" Margin="0,0,8,0" />
+                <ui:Button Content="{l:Tr Media_DiscardButton}" Icon="{ui:SymbolIcon Delete20}" Command="{Binding InstallMedia.DiscardCommand}" Margin="0,0,16,0" />
+                <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding InstallMedia.ResumeNote}" TextWrapping="Wrap" VerticalAlignment="Center"
+                              Visibility="{Binding InstallMedia.ResumeNote, Converter={StaticResource NullToVisibility}}" />
+            </WrapPanel>
+        </StackPanel>
         <!-- What Save, Load or Reset did, or which remembered choices no longer fit -->
         <ui:InfoBar Title="" Message="{Binding InstallMedia.ChoicesNote}" Severity="{Binding InstallMedia.ChoicesNoteSeverity}" IsClosable="False" Margin="0,0,0,8"
                     IsOpen="{Binding InstallMedia.ChoicesNote, Converter={StaticResource NullToBool}}" />

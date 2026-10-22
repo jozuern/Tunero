@@ -35,11 +35,19 @@ internal static class InstallMediaDemo
 
         public bool Freeze { get; init; }
 
-        public async Task<MediaBuildResult> RunAsync(MediaRequest request, IProgress<MediaProgress> progress, CancellationToken ct)
+        public Task<MediaBuildResult> RunAsync(MediaRequest request, IProgress<MediaProgress> progress, CancellationToken ct) =>
+            RunAsync(request, progress, MediaStage.Download, ct);
+
+        /// <summary>A resume of the sample saved build: the stages from Files on (the sample failure is in Unpack, so it always succeeds).</summary>
+        public Task<MediaBuildResult> ResumeAsync(string folder, MediaRequest request, IProgress<MediaProgress> progress, CancellationToken ct) =>
+            RunAsync(request, progress, MediaStage.Files, ct);
+
+        private async Task<MediaBuildResult> RunAsync(MediaRequest request, IProgress<MediaProgress> progress, MediaStage from, CancellationToken ct)
         {
             var fail = _runs++ == 0 && !Freeze;
             foreach (var stage in new[] { MediaStage.Download, MediaStage.Check, MediaStage.Unpack, MediaStage.Apps, MediaStage.Parts, MediaStage.Files, MediaStage.Iso, MediaStage.Verify })
             {
+                if (stage < from) continue;
                 if (stage == MediaStage.Apps && request.RemoveApps.Count == 0 && request.RemoveUnreviewed.Count == 0) continue;
                 if (stage == MediaStage.Parts && request.RemoveParts.Count == 0) continue;
                 progress.Report(new MediaProgress(stage, null, null));
@@ -92,6 +100,21 @@ internal static class InstallMediaDemo
             "Microsoft.XboxSpeechToTextOverlay", "Microsoft.YourPhone", "Microsoft.ZuneMusic", "MicrosoftCorporationII.QuickAssist", "MicrosoftWindows.CrossDevice",
         }.Select(name => $"{name}_1.0.0.0_x64__8wekyb3d8bbwe"),
     ];
+
+    /// <summary>A sample saved build: a stop after the Windows image was finished, with a size that belongs to no folder (the demo writes none).</summary>
+    public static ResumableBuild Saved() =>
+        new(@"C:\TuneroMedia.5e3a9b1c", new MediaCheckpoint(CheckpointKind.ImageReady, new string('0', 64), new string('0', 64), new string('0', 64), "26300",
+            DateTimeOffset.Now.AddHours(-2)) { UiLanguage = "en-US" })
+        {
+            Bytes = 9_874_000_000,
+        };
+
+    /// <summary>A failure after the image was finished, which leaves the saved build: the ISO could not be written (disk full).</summary>
+    public static MediaBuildException IsoFailure() =>
+        new(MediaStage.Iso, "Demo: the ISO could not be written.", unchecked((int)0x80070070))
+        {
+            LogPath = Path.Combine(Optimizer.Core.Platform.DataPaths.Logs, "media-demo.log"),
+        };
 
     /// <summary>What a DISM failure looks like on the page: stage, reason, DISM's code and the log.</summary>
     public static MediaBuildException Failure() =>

@@ -122,7 +122,7 @@ public sealed class MediaBuildException(MediaStage stage, string message, int? c
         "Media_OutputMoveFailed", "Media_SourceMissing", "Media_WorkFolderFailed",
         "Media_NotEnoughSpace", "Media_NotWindows11", "Media_NotX64", "Media_NoUefiBoot", "Media_EditionMissing",
         "Media_ImageCheckFailed", "Media_Unhealthy", "Media_FilesCheckFailed", "Media_BootImageAnswerFile", "Media_IsoInUse",
-        "Media_VerifyFailed", "Media_SettingsFailed",
+        "Media_VerifyFailed", "Media_SettingsFailed", "Media_ResumeInvalid",
     ];
 }
 
@@ -145,6 +145,17 @@ public sealed class WorkFolder : IDisposable
     /// <summary>Creates the lock file in <paramref name="path"/> (it must not exist yet) and holds it.</summary>
     public static WorkFolder Hold(string path) =>
         new(path, new FileStream(System.IO.Path.Combine(path, MediaBuild.LockFileName), FileMode.CreateNew, FileAccess.Write, FileShare.None));
+
+    /// <summary>
+    /// Holds the lock file of a saved build again for its resume (created when it is missing). IOException while another
+    /// build holds it, or when the lock file is or lies in a link.
+    /// </summary>
+    public static WorkFolder Reopen(string path)
+    {
+        var file = System.IO.Path.Combine(path, MediaBuild.LockFileName);
+        if (!SafeDelete.HasNoLinks(file)) throw new IOException($"{file} is or lies in a link.");
+        return new(path, new FileStream(file, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None));
+    }
 
     public void Dispose()
     {
@@ -208,6 +219,13 @@ public interface IMediaSteps
     /// </summary>
     void UnloadLeftoverHives();
 
+    /// <summary>
+    /// Whether <paramref name="folder"/> may be resumed from or kept for that: named like a work folder, at the root of a
+    /// local fixed drive, no link, owned by Administrators and locked to them and SYSTEM (as <see cref="DeleteWorkFolder"/>
+    /// requires), so no other account can have changed what it holds. Never throws.
+    /// </summary>
+    bool IsTrustedWorkFolder(string folder);
+
     /// <summary>Appends a line to the build's log. Never throws.</summary>
     void Log(string line);
 
@@ -220,7 +238,9 @@ public interface IMediaSteps
 /// and only then moved to the output path, so that path only ever holds a verified ISO and an older file there survives
 /// every failure. Every safety check fails the build with a <see cref="MediaBuildException"/>; on any failure or Stop a
 /// mounted image is discarded and the work folder deleted. A folder whose image cannot be unmounted is kept (deleting it
-/// would reach into the mounted image) and removed by <see cref="CleanLeftoversAsync"/> at the next start.
+/// would reach into the mounted image) and removed by <see cref="CleanLeftoversAsync"/> at the next start. After the
+/// download and once the install image is final a checkpoint is saved (<see cref="MediaCheckpoint"/>): a failure or Stop
+/// after one keeps the folder, without a mount, for <see cref="ResumeAsync"/> or <see cref="Discard"/>.
 /// </summary>
 public sealed class MediaBuild(IMediaSteps steps)
 {
@@ -305,6 +325,74 @@ public sealed class MediaBuild(IMediaSteps steps)
     }
 
     /// <summary>
+    /// Goes on with the build saved in <paramref name="workFolder"/> (<see cref="FindResumable"/>) from its checkpoint, with
+    /// <paramref name="r"/>, which must be the request it was saved for (<see cref="MediaCheckpoint.HashOf"/>; only the output
+    /// path may differ, on the same drive). Before anything runs the folder must be a work folder by name (else
+    /// <see cref="ArgumentException"/>), trusted (<see cref="IMediaSteps.IsTrustedWorkFolder"/>), its lock free, its
+    /// checkpoint readable and not expired, and the saved files must hash as the checkpoint says; otherwise the resume is
+    /// refused with Media_ResumeInvalid and the folder is left as it is, for Discard. Downloaded runs from Check on (the
+    /// unpacked files of the earlier run are deleted first), ImageReady puts the untouched boot.wim back, deletes the Tunero
+    /// folder on the media and runs Files, Iso, Verify and Publish. Failures and Stop then behave as in
+    /// <see cref="RunAsync"/>.
+    /// </summary>
+    public Task<MediaBuildResult> ResumeAsync(string workFolder, MediaRequest r, IProgress<MediaProgress> p, CancellationToken ct)
+    {
+        Validate(r);
+        ArgumentException.ThrowIfNullOrEmpty(workFolder);
+        if (!IsWorkFolderName(Path.GetFileName(workFolder.TrimEnd('\\')))) throw new ArgumentException($"{workFolder} is not a Tunero work folder.", nameof(workFolder));
+        return new Run(steps, r, p, RetryDelay, ct).ExecuteAsync(workFolder.TrimEnd('\\'));
+    }
+
+    /// <summary>
+    /// The saved builds at the roots of the local fixed drives that can be resumed, the newest first: trusted work folders
+    /// (<see cref="IMediaSteps.IsTrustedWorkFolder"/>) that no running build holds, with no image left in a mount folder
+    /// (the next start's cleanup discards it first) and a checkpoint that reads and has not expired. Reads only; never throws.
+    /// </summary>
+    public IReadOnlyList<ResumableBuild> FindResumable()
+    {
+        var found = new List<ResumableBuild>();
+        try
+        {
+            foreach (var drive in steps.LocalDrives())
+                foreach (var listed in steps.LeftoverWorkFolders(drive))
+                {
+                    var folder = listed.TrimEnd('\\');
+                    if (!IsWorkFolderName(Path.GetFileName(folder)) || IsHeldByABuild(folder) || HasMountContent(folder)) continue;
+                    if (SavedBuild(folder) is { } checkpoint) found.Add(new ResumableBuild(folder, checkpoint) { Bytes = SizeOf(folder) });
+                }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            AppLog.Warn("media", "saved builds could not be listed: " + ex.Message);
+        }
+        return found.OrderByDescending(b => b.Checkpoint.Saved).ToList();
+    }
+
+    /// <summary>
+    /// Deletes a saved build (<see cref="FindResumable"/>) through <see cref="IMediaSteps.DeleteWorkFolder"/>, which refuses
+    /// a folder that is not locked to administrators. Refused with IOException while a build holds it or an image is still
+    /// mounted in it (the next start's cleanup discards that first), with ArgumentException for a path that is no work folder.
+    /// </summary>
+    public void Discard(string workFolder)
+    {
+        var folder = Path.GetFullPath(workFolder).TrimEnd('\\');
+        if (!IsWorkFolderName(Path.GetFileName(folder))) throw new ArgumentException($"{workFolder} is not a Tunero work folder.", nameof(workFolder));
+        if (IsHeldByABuild(folder)) throw new IOException($"{folder} belongs to a build that is running.");
+        if (HasMountContent(folder)) throw new IOException($"An image is still mounted in {folder}; the next start of Tunero cleans it up.");
+        steps.DeleteWorkFolder(folder);
+        steps.Log("Discarded the saved build in " + folder);
+    }
+
+    /// <summary>The checkpoint of a leftover folder that is kept for a resume: trusted, readable and not expired; else null.</summary>
+    private MediaCheckpoint? SavedBuild(string folder) =>
+        steps.IsTrustedWorkFolder(folder) && MediaCheckpoint.Read(folder) is { } checkpoint && !checkpoint.IsExpired(DateTimeOffset.Now) ? checkpoint : null;
+
+    /// <summary>The bytes of the files in a trusted work folder, links not followed; what cannot be read counts as nothing.</summary>
+    private static long SizeOf(string folder) =>
+        new DirectoryInfo(folder).EnumerateFiles("*", new EnumerationOptions { RecurseSubdirectories = true, AttributesToSkip = FileAttributes.ReparsePoint, IgnoreInaccessible = true })
+            .Sum(f => f.Length);
+
+    /// <summary>
     /// The engine's check of a request, which <see cref="RunAsync"/> runs first; --build-media calls it before the build
     /// to tell a refused request from a failure inside the build. Throws <see cref="ArgumentException"/>.
     /// </summary>
@@ -375,6 +463,10 @@ public sealed class MediaBuild(IMediaSteps steps)
     /// in this cleanup already, also for a discard) and the list is read again before anything is deleted; a folder whose
     /// image is listed then is discarded or kept as above.
     /// </para>
+    /// <para>
+    /// A saved build (a trusted folder whose checkpoint reads and is younger than <see cref="MediaCheckpoint.KeptFor"/>) has
+    /// its mounts discarded like any leftover but is kept for <see cref="ResumeAsync"/>; an older one is deleted.
+    /// </para>
     /// </summary>
     public async Task CleanLeftoversAsync(CancellationToken ct)
     {
@@ -418,6 +510,9 @@ public sealed class MediaBuild(IMediaSteps steps)
             Warn(steps, $"{working} left alone: DISM still works in it after {DismWaitLimit.TotalMinutes:0} minutes; the next start tries again");
             folders.Remove(working);
         }
+        // A saved build (a trusted folder with a checkpoint younger than 14 days) loses its mounts like any leftover but stays
+        // for Resume; an older or untrusted one is deleted like any leftover.
+        var saved = folders.Where(f => SavedBuild(f) is not null).ToList();
         // A SYSTEM hive a killed build left loaded holds a file of its mounted boot.wim open: unloaded first, or the discard fails.
         steps.UnloadLeftoverHives();
         var cleanedUp = false;
@@ -452,6 +547,11 @@ public sealed class MediaBuild(IMediaSteps steps)
         foreach (var folder in folders)
         {
             if (StillMounted(folder)) continue;
+            if (saved.Contains(folder, StringComparer.OrdinalIgnoreCase))
+            {
+                steps.Log($"{folder} kept: a saved build can resume from it");
+                continue;
+            }
             var refused = TryDelete(folder);
             // Refused while a mount folder has content: an image that DISM did not list may still be mounted there.
             if (!cleanedUp && (refused is IOException or UnauthorizedAccessException) && HasMountContent(folder))
@@ -734,6 +834,9 @@ public sealed class MediaBuild(IMediaSteps steps)
         /// <summary>The folder an image is mounted in right now (from the start of the mount on), or null. A failure or Stop discards it.</summary>
         private string? _mounted;
 
+        /// <summary>The checkpoint the work folder holds now (saved by this run or checked for its resume), or null: with one, a failure or Stop keeps the folder.</summary>
+        private MediaCheckpoint? _checkpoint;
+
         /// <summary>The page's choices with Setup's language set to one the chosen image has (<see cref="AnswersFor"/>).</summary>
         private AnswerChoices _answers = r.Answers;
 
@@ -746,44 +849,75 @@ public sealed class MediaBuild(IMediaSteps steps)
         private string BootWim => Path.Combine(Sources, "boot.wim");
         private string TuneroFolder => Path.Combine(_media!, TuneroOnMedia);
 
-        public async Task<MediaBuildResult> ExecuteAsync()
+        /// <summary>
+        /// Runs the build, or with <paramref name="resumeFolder"/> goes on with the build saved there (<see cref="ResumeAsync"/>).
+        /// A checkpoint is saved after the download and once the install image is final; from then on a failure or Stop keeps
+        /// the folder for a resume (<see cref="CleanUpAfterFailureAsync"/>).
+        /// </summary>
+        public async Task<MediaBuildResult> ExecuteAsync(string? resumeFolder = null)
         {
             var download = r.Source.Download;
-            Begin(download is not null ? MediaStage.Download : MediaStage.Unpack);
-            steps.Log($"Build from {download?.FileName ?? r.Source.IsoPath}, edition {r.Edition}{(r.IsoIndex is { } i ? $" (index {i})" : "")}, to {r.OutputIso}");
+            // Only for the first stage the page shows: the checkpoint is read again, and checked, under the folder's lock.
+            var peeked = resumeFolder is not null ? MediaCheckpoint.Read(resumeFolder) : null;
+            Begin(resumeFolder is not null ? peeked?.ResumesAt ?? MediaStage.Files : download is not null ? MediaStage.Download : MediaStage.Unpack);
+            steps.Log(resumeFolder is not null
+                ? $"Resume of the saved build in {resumeFolder}, edition {r.Edition}, to {r.OutputIso}"
+                : $"Build from {download?.FileName ?? r.Source.IsoPath}, edition {r.Edition}{(r.IsoIndex is { } i ? $" (index {i})" : "")}, to {r.OutputIso}");
             try
             {
-                CheckOutputAndSpace();
-                // Comes with its lock file held: CleanLeftoversAsync of another Tunero leaves it alone from the start.
-                _workFolder = steps.NewWorkFolder(r.OutputIso);
-                _work = _workFolder.Path;
-                if (!Path.IsPathFullyQualified(_work)) throw Fail($"The work folder {_work} is not an absolute path.", "Media_WorkFolderFailed");
-                steps.Log("Work folder " + _work);
-                _media = Path.Combine(_work, "media");
-                _mount = Path.Combine(_work, MountFolder);
-                _bootMount = Path.Combine(_work, BootMountFolder);
-
-                string edition;
-                if (download is not null)
+                string? build = null;
+                if (resumeFolder is null)
                 {
-                    var esd = Path.Combine(_work, "image.esd");
-                    var stage = _stage;
-                    await steps.DownloadAsync(download, esd,
-                        new Relay<(long Done, long Total)>(v => Report(stage, v.Total > 0 ? v.Done * 100.0 / v.Total : null, null)), ct);
-                    Begin(MediaStage.Check);
-                    var images = await CheckEsdAsync(esd);
-                    Begin(MediaStage.Unpack);
-                    edition = await UnpackDownloadAsync(esd, images);
+                    CheckOutputAndSpace();
+                    // Comes with its lock file held: CleanLeftoversAsync of another Tunero leaves it alone from the start.
+                    _workFolder = steps.NewWorkFolder(r.OutputIso);
+                    UseWorkFolder(_workFolder.Path);
+                    if (download is not null)
+                    {
+                        var stage = _stage;
+                        await steps.DownloadAsync(download, Esd,
+                            new Relay<(long Done, long Total)>(v => Report(stage, v.Total > 0 ? v.Done * 100.0 / v.Total : null, null)), ct);
+                        // DownloadAsync checked the file against the catalog's size and SHA-256.
+                        SaveCheckpoint(new MediaCheckpoint(CheckpointKind.Downloaded, MediaCheckpoint.HashOf(r), download.Sha256.ToUpperInvariant(), null, "", DateTimeOffset.Now));
+                    }
                 }
                 else
                 {
-                    edition = await UnpackIsoAsync();
+                    CheckOutput();
+                    var saved = await OpenSavedAsync(resumeFolder);
+                    if (saved.Kind == CheckpointKind.ImageReady)
+                    {
+                        build = saved.Build;
+                        RestoreReadyMedia(saved);
+                    }
+                    else
+                    {
+                        // The files an earlier Unpack left are unpacked again from the checked ESD.
+                        if (Path.Exists(_media)) SecureFolder.DeleteTree(_media!);
+                    }
                 }
-                var build = await CheckImagesAsync(edition);
 
-                if (ChangesInstallImage(r)) await ChangeInstallImageAsync();
-                if (r.Compression == MediaCompression.Recovery) await CompressAsync(edition);
-                Begin(MediaStage.Files);
+                if (build is null)
+                {
+                    string edition;
+                    if (download is not null)
+                    {
+                        if (_stage != MediaStage.Check) Begin(MediaStage.Check);
+                        var images = await CheckEsdAsync(Esd);
+                        Begin(MediaStage.Unpack);
+                        edition = await UnpackDownloadAsync(Esd, images);
+                    }
+                    else
+                    {
+                        edition = await UnpackIsoAsync();
+                    }
+                    build = await CheckImagesAsync(edition);
+
+                    if (ChangesInstallImage(r)) await ChangeInstallImageAsync();
+                    if (r.Compression == MediaCompression.Recovery) await CompressAsync(edition);
+                    await SaveImageReadyAsync(build);
+                }
+                if (_stage != MediaStage.Files) Begin(MediaStage.Files);
                 await WriteFilesAsync();
                 Begin(MediaStage.Iso);
                 await WriteIsoAsync(build);
@@ -805,6 +939,8 @@ public sealed class MediaBuild(IMediaSteps steps)
 
             // The verified ISO is at the output path: nothing from here on may fail the build or touch it.
             Begin(MediaStage.Cleanup);
+            // A folder that cannot be deleted now must never be offered for Resume at the next start.
+            ForgetCheckpoint();
             ReleaseLock();
             if (!await DeleteWorkFolderAsync()) Warn(steps, $"work folder {_work} stays until the next start of Tunero removes it");
             steps.Log($"Cleanup done in {_clock.Elapsed:hh\\:mm\\:ss}");
@@ -874,13 +1010,184 @@ public sealed class MediaBuild(IMediaSteps steps)
 
         private Task Dism(string arguments, Func<Task> call) => LoggedAsync(steps, arguments, call);
 
-        private void CheckOutputAndSpace()
+        private string Esd => Path.Combine(_work!, "image.esd");
+
+        /// <summary>Sets the work folder and the paths in it; it must be absolute.</summary>
+        private void UseWorkFolder(string work)
+        {
+            if (!Path.IsPathFullyQualified(work)) throw Fail($"The work folder {work} is not an absolute path.", "Media_WorkFolderFailed");
+            _work = work;
+            steps.Log("Work folder " + _work);
+            _media = Path.Combine(_work, "media");
+            _mount = Path.Combine(_work, MountFolder);
+            _bootMount = Path.Combine(_work, BootMountFolder);
+        }
+
+        // ---- checkpoints ----
+
+        /// <summary>
+        /// Writes choices.json (the request as a request file, for the page) and then checkpoint.json. A checkpoint that
+        /// cannot be written is logged and the build goes on without it: a later failure then deletes the folder as before.
+        /// </summary>
+        private void SaveCheckpoint(MediaCheckpoint checkpoint)
+        {
+            try
+            {
+                File.WriteAllText(Path.Combine(_work!, MediaCheckpoint.ChoicesFileName), MediaRequestFile.FromRequest(r).ToJson());
+                checkpoint.Save(_work!);
+                _checkpoint = checkpoint;
+                steps.Log($"Checkpoint {checkpoint.Kind} saved: a failure or Stop from here on keeps the work folder for Resume");
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                Warn(steps, $"Checkpoint {checkpoint.Kind} not saved, the build goes on without it: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// The install image is final: boot.wim is copied to <see cref="MediaCheckpoint.BootWimCopy"/> before Files commits
+        /// into it, and both files are hashed into the ImageReady checkpoint, with Setup's language as the build set it.
+        /// </summary>
+        private async Task SaveImageReadyAsync(string build)
+        {
+            var copy = Path.Combine(_work!, MediaCheckpoint.BootWimCopy);
+            try
+            {
+                File.Copy(BootWim, copy, overwrite: true);
+                var boot = await HashFileAsync(copy, null);
+                var image = await HashFileAsync(Path.Combine(Sources, InstallImageName), null);
+                SaveCheckpoint(new MediaCheckpoint(CheckpointKind.ImageReady, MediaCheckpoint.HashOf(r), image, boot, build, DateTimeOffset.Now) { UiLanguage = _answers.UiLanguage });
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                Warn(steps, $"Checkpoint ImageReady not saved, the build goes on without it: {ex.Message}");
+            }
+        }
+
+        /// <summary>The ESD is about to be deleted: the download checkpoint goes first (a failure here fails the build with the ESD and its checkpoint still in place).</summary>
+        private void DropDownloadCheckpoint()
+        {
+            if (_checkpoint is null) return;
+            MediaCheckpoint.Delete(_work!);
+            _checkpoint = null;
+            steps.Log("Checkpoint Downloaded removed with the ESD: a failure from here on deletes the work folder");
+        }
+
+        /// <summary>The build finished: checkpoint.json goes before the folder (never throws).</summary>
+        private void ForgetCheckpoint()
+        {
+            try
+            {
+                MediaCheckpoint.Delete(_work!);
+                _checkpoint = null;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                Warn(steps, "The checkpoint of the finished build could not be deleted: " + ex.Message);
+            }
+        }
+
+        private MediaBuildException Refuse(string reason) => Fail("The saved build cannot be resumed: " + reason, "Media_ResumeInvalid");
+
+        /// <summary>
+        /// Checks the saved build before anything in it is used: a trusted work folder whose lock this run takes, no image
+        /// left mounted in it, a checkpoint that reads, is the one the page showed, has not expired and was saved for this
+        /// request, an output on the folder's drive, and saved files that hash as the checkpoint says. Any of these failing
+        /// refuses the resume (Media_ResumeInvalid) before the work folder is taken: the failure cleanup then leaves it as it
+        /// is, for Discard.
+        /// </summary>
+        private async Task<MediaCheckpoint> OpenSavedAsync(string folder)
+        {
+            if (!steps.IsTrustedWorkFolder(folder)) throw Refuse($"{folder} is not a work folder locked to administrators.");
+            try
+            {
+                _workFolder = WorkFolder.Reopen(folder);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                throw Refuse($"the lock of {folder} cannot be taken ({ex.Message}).");
+            }
+            if (HasMountContent(folder)) throw Refuse($"an image is still mounted in {folder}.");
+            if (MediaCheckpoint.Read(folder) is not { } saved) throw Refuse("its checkpoint is missing or cannot be read.");
+            if (saved.ResumesAt != _stage) throw Refuse("its checkpoint changed while the resume began.");
+            if (saved.IsExpired(DateTimeOffset.Now)) throw Refuse($"it was saved more than {MediaCheckpoint.KeptFor.TotalDays:0} days ago.");
+            if (saved.RequestHash != MediaCheckpoint.HashOf(r)) throw Refuse("the choices differ from those it was saved with.");
+            if (!Same(Path.GetPathRoot(Path.GetFullPath(folder)), Path.GetPathRoot(Path.GetFullPath(r.OutputIso))))
+                throw Refuse("the output file is on another drive.");
+            var media = Path.Combine(folder, "media");
+            try
+            {
+                if (saved.Kind == CheckpointKind.Downloaded)
+                {
+                    if (r.Source.Download is not { } download || !Same(saved.FileSha256, download.Sha256)) throw Refuse("it holds another download.");
+                    if (!Same(await HashFileAsync(Path.Combine(folder, "image.esd"), "image.esd"), saved.FileSha256)) throw Refuse("the downloaded file changed.");
+                }
+                else
+                {
+                    if (!Same(await HashFileAsync(Path.Combine(media, "sources", InstallImageName), InstallImageName), saved.FileSha256))
+                        throw Refuse($"{InstallImageName} changed.");
+                    if (!Same(await HashFileAsync(Path.Combine(folder, MediaCheckpoint.BootWimCopy), "boot.wim"), saved.BootSha256))
+                        throw Refuse("the saved boot.wim changed.");
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                throw Refuse($"a saved file cannot be read ({ex.Message}).");
+            }
+            UseWorkFolder(folder);
+            _checkpoint = saved;
+            steps.Log($"Saved build checked: {saved.Kind}, saved {saved.Saved:O}; going on from {saved.ResumesAt}");
+            return saved;
+        }
+
+        /// <summary>
+        /// ImageReady: what Files changed in the earlier run is undone. The untouched boot.wim is copied back (and checked),
+        /// the Tunero folder and the ISO of that run are deleted, and Setup's language is the one the build set from the image.
+        /// </summary>
+        private void RestoreReadyMedia(MediaCheckpoint saved)
+        {
+            if (File.Exists(BootWim)) File.SetAttributes(BootWim, FileAttributes.Normal);
+            File.Copy(Path.Combine(_work!, MediaCheckpoint.BootWimCopy), BootWim, overwrite: true);
+            using (var stream = File.OpenRead(BootWim))
+                if (!Same(Convert.ToHexString(SHA256.HashData(stream)), saved.BootSha256))
+                    throw Fail("boot.wim does not match the saved copy after it was put back.", "Media_ResumeInvalid");
+            steps.Log("boot.wim put back from the saved copy");
+            if (Path.Exists(TuneroFolder))
+            {
+                SecureFolder.DeleteTree(TuneroFolder);
+                steps.Log($"Removed {TuneroOnMedia} of the earlier run");
+            }
+            DeleteRunIso();
+            if (!Same(saved.UiLanguage, r.Answers.UiLanguage)) steps.Log($"Setup language {saved.UiLanguage} (the image's) instead of {r.Answers.UiLanguage}");
+            _answers = r.Answers with { UiLanguage = saved.UiLanguage! };
+        }
+
+        /// <summary>The ISO an earlier run or this one wrote into the work folder (and its partial file): a resume writes it again.</summary>
+        private void DeleteRunIso()
+        {
+            foreach (var file in new[] { "output.iso", "output.iso.part" }.Select(f => Path.Combine(_work!, f)))
+            {
+                if (!File.Exists(file)) continue;
+                File.SetAttributes(file, FileAttributes.Normal);
+                File.Delete(file);
+            }
+        }
+
+        /// <summary>The output path, as every run checks it; a resume skips the space check (the saved build already holds most of what it needs).</summary>
+        private void CheckOutput()
         {
             var output = r.OutputIso;
             if (!Path.IsPathFullyQualified(output) || !Same(Path.GetExtension(output), ".iso") || Directory.Exists(output) ||
                 Path.GetDirectoryName(output) is not { } folder || !Directory.Exists(folder))
                 throw Fail($"{output} is not a usable .iso file path in an existing folder.", "Media_OutputInvalid");
+            if (r.Source.IsoPath is { } source && Same(Path.GetFullPath(source), Path.GetFullPath(output))) throw Fail("The output file is the source ISO.", "Media_OutputInvalid");
             CheckOutputCanBeReplaced(output, folder);
+        }
+
+        private void CheckOutputAndSpace()
+        {
+            CheckOutput();
+            var output = r.OutputIso;
             long size;
             if (r.Source.Download is { } download)
             {
@@ -889,7 +1196,6 @@ public sealed class MediaBuild(IMediaSteps steps)
             else
             {
                 var iso = Path.GetFullPath(r.Source.IsoPath!);
-                if (Same(iso, Path.GetFullPath(output))) throw Fail("The output file is the source ISO.", "Media_OutputInvalid");
                 var info = new FileInfo(iso);
                 if (!info.Exists) throw Fail($"{iso} does not exist.", "Media_SourceMissing");
                 size = info.Length;
@@ -958,6 +1264,7 @@ public sealed class MediaBuild(IMediaSteps steps)
             await Dism(DismArgs.Export(esd, 3, BootWim, true), () => steps.Dism.ExportAsync(esd, 3, BootWim, true, Percent("boot.wim"), ct));
             var chosen = await FindEditionAsync(esd, images.Where(i => i.Index > 3), byName: false);
             await Dism(DismArgs.Export(esd, chosen.Index, InstallWim, false), () => steps.Dism.ExportAsync(esd, chosen.Index, InstallWim, false, Percent("install.wim"), ct));
+            DropDownloadCheckpoint();
             File.Delete(esd);
             return chosen.Edition!;
         }
@@ -1546,10 +1853,23 @@ public sealed class MediaBuild(IMediaSteps steps)
         }
 
         /// <summary>The size and SHA-256 (upper-case hex) of the verified ISO, read in 1 MB blocks while it is still in the work folder: the bytes that <see cref="Publish"/> then moves.</summary>
-        private async Task<(long Bytes, string Hash)> HashIsoAsync()
+        private Task<(long Bytes, string Hash)> HashIsoAsync()
         {
             var stage = _stage;
-            await using var stream = new FileStream(_workIso!, FileMode.Open, FileAccess.Read, FileShare.Read, 1 << 20, FileOptions.SequentialScan | FileOptions.Asynchronous);
+            return HashAsync(_workIso!, percent => Report(stage, 50 + percent / 2.0, null));
+        }
+
+        /// <summary>The SHA-256 of a saved file; with <paramref name="detail"/> the stage's bar follows it (a 5 GB image takes a while).</summary>
+        private async Task<string> HashFileAsync(string path, string? detail)
+        {
+            var stage = _stage;
+            return (await HashAsync(path, detail is null ? null : percent => Report(stage, percent, detail))).Hash;
+        }
+
+        /// <summary>Size and SHA-256 (upper-case hex) of a file, read in 1 MB blocks; <paramref name="percent"/> gets each new whole percent.</summary>
+        private async Task<(long Bytes, string Hash)> HashAsync(string path, Action<int>? percent)
+        {
+            await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 1 << 20, FileOptions.SequentialScan | FileOptions.Asynchronous);
             using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
             var buffer = new byte[1 << 20];
             long done = 0;
@@ -1559,10 +1879,10 @@ public sealed class MediaBuild(IMediaSteps steps)
             {
                 hash.AppendData(buffer, 0, read);
                 done += read;
-                var percent = (int)(done * 100 / Math.Max(stream.Length, 1));
-                if (percent == lastPercent) continue;
-                lastPercent = percent;
-                Report(stage, 50 + percent / 2.0, null);
+                var now = (int)(done * 100 / Math.Max(stream.Length, 1));
+                if (now == lastPercent) continue;
+                lastPercent = now;
+                percent?.Invoke(now);
             }
             return (done, Convert.ToHexString(hash.GetHashAndReset()));
         }
@@ -1594,7 +1914,11 @@ public sealed class MediaBuild(IMediaSteps steps)
             if (!inherited) Warn(steps, $"{r.OutputIso} keeps the work folder's permissions (administrators only)");
         }
 
-        /// <summary>Never throws: discards a mounted image (<see cref="DiscardMountsAsync"/>) and deletes the work folder (each retried), logging what it could not do.</summary>
+        /// <summary>
+        /// Never throws: discards a mounted image (<see cref="DiscardMountsAsync"/>) and deletes the work folder (each retried),
+        /// logging what it could not do. With a checkpoint the folder stays for Resume, without the mount and without this
+        /// run's ISO. A resume that was refused never took the folder (<see cref="OpenSavedAsync"/>): it stays as it is.
+        /// </summary>
         private async Task CleanUpAfterFailureAsync()
         {
             Report(MediaStage.Cleanup, null, null);
@@ -1617,11 +1941,30 @@ public sealed class MediaBuild(IMediaSteps steps)
                     steps.Log("DISM cleanup failed: " + ex.Message);
                 }
             }
+            if (_work is not null && _mounted is null && _checkpoint is not null)
+            {
+                try
+                {
+                    DeleteRunIso();
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    // The resume deletes it before it writes the ISO again.
+                    steps.Log("The ISO of this run could not be deleted: " + ex.Message);
+                }
+            }
             ReleaseLock();
             if (_work is null) return;
             if (_mounted is not null)
             {
-                Warn(steps, $"The image is still mounted at {_mounted}; {_work} stays until the next start of Tunero removes it.");
+                Warn(steps, _checkpoint is not null
+                    ? $"The image is still mounted at {_mounted}; the next start of Tunero discards it and keeps {_work} for Resume."
+                    : $"The image is still mounted at {_mounted}; {_work} stays until the next start of Tunero removes it.");
+                return;
+            }
+            if (_checkpoint is { } saved)
+            {
+                steps.Log($"The work folder {_work} stays for Resume from {saved.ResumesAt} (checkpoint {saved.Kind})");
                 return;
             }
             if (await DeleteWorkFolderAsync()) steps.Log("Deleted " + _work);
@@ -1789,6 +2132,25 @@ public sealed class MediaSteps : IMediaSteps
         if ((attributes & FileAttributes.Directory) == 0 || !_trusted(new DirectoryInfo(full)))
             throw new IOException($"{full} is not a folder locked to Administrators and SYSTEM; left in place.");
         SecureFolder.DeleteTree(full);
+    }
+
+    /// <summary>The check <see cref="DeleteWorkFolder"/> makes before it deletes content, plus the place: the root of a local fixed drive.</summary>
+    public bool IsTrustedWorkFolder(string folder)
+    {
+        try
+        {
+            var full = Path.GetFullPath(folder).TrimEnd('\\');
+            if (!MediaBuild.IsWorkFolderName(Path.GetFileName(full)) || !TrustedPath.IsOnLocalFixedDrive(full)) return false;
+            if (!string.Equals(Path.GetDirectoryName(full), Path.GetPathRoot(full), StringComparison.OrdinalIgnoreCase)) return false;
+            if (SafeDelete.AttributesAndTag(full) is not { } found
+                || (found.Attributes & (uint)FileAttributes.Directory) == 0 || (found.Attributes & (uint)FileAttributes.ReparsePoint) != 0) return false;
+            return SafeDelete.HasNoLinks(full) && _trusted(new DirectoryInfo(full));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException
+                                       or InvalidOperationException or System.Security.SecurityException)
+        {
+            return false;
+        }
     }
 
     public long FreeBytes(string path) => new DriveInfo(Path.GetPathRoot(Path.GetFullPath(path))!).AvailableFreeSpace;

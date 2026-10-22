@@ -1899,6 +1899,17 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Media_StagesCount" xml:space="preserve"><value>Schritt {0} von {1}, {2}</value></data>
   <data name="Media_StageStopped" xml:space="preserve"><value>Angehalten</value></data>
   <data name="Media_StageNotRun" xml:space="preserve"><value>Nicht ausgeführt</value></data>
+  <data name="Media_ResumeInvalid" xml:space="preserve"><value>Der gespeicherte Build passt nicht mehr: Seine Auswahl, seine Dateien oder sein Ordner haben sich geändert, oder ein anderes Tunero nutzt ihn. Verwirf ihn und erstelle die ISO neu.</value></data>
+  <data name="Media_ResumeDownloaded" xml:space="preserve"><value>Ein Build endete nach dem Download. Fortsetzen macht dort weiter und braucht dieselbe Auswahl. Der gespeicherte Build belegt {0} auf Laufwerk {1}.</value></data>
+  <data name="Media_ResumeImageReady" xml:space="preserve"><value>Ein Build endete, nachdem das Windows-Abbild fertig war. Fortsetzen macht dort weiter und braucht dieselbe Auswahl. Der gespeicherte Build belegt {0} auf Laufwerk {1}.</value></data>
+  <data name="Media_ResumeButton" xml:space="preserve"><value>Fortsetzen</value></data>
+  <data name="Media_DiscardButton" xml:space="preserve"><value>Verwerfen</value></data>
+  <data name="Media_StageSaved" xml:space="preserve"><value>Aus dem gespeicherten Build</value></data>
+  <data name="Media_DiscardTitle" xml:space="preserve"><value>Gespeicherten Build verwerfen?</value></data>
+  <data name="Media_DiscardText" xml:space="preserve"><value>Tunero löscht den gespeicherten Build und gibt {0} auf Laufwerk {1} frei. Ein späterer Build beginnt von vorn.</value></data>
+  <data name="Media_DiscardFirstText" xml:space="preserve"><value>Ein gespeicherter Build belegt {0} auf Laufwerk {1}. Erstellen beginnt von vorn, deshalb wird der gespeicherte Build zuerst gelöscht. Fortsetzen macht stattdessen mit ihm weiter.</value></data>
+  <data name="Media_DiscardAndBuild" xml:space="preserve"><value>Verwerfen und erstellen</value></data>
+  <data name="Media_DiscardFailed" xml:space="preserve"><value>Der gespeicherte Build ließ sich gerade nicht löschen. Versuch es nach dem nächsten Start von Tunero noch einmal.</value></data>
   <data name="Media_StageDone" xml:space="preserve"><value>Fertig</value></data>
   <data name="Media_StageRunning" xml:space="preserve"><value>Läuft</value></data>
   <data name="Media_StageFailed" xml:space="preserve"><value>Fehlgeschlagen</value></data>

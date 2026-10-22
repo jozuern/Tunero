@@ -988,6 +988,7 @@ public sealed class InstallMediaViewModelTests : IDisposable
         public IOfflineHive LoadSystemHive(string file) => throw new NotSupportedException();
         public IWritableHive LoadWritableHive(string file) => throw new NotSupportedException();
         public void UnloadLeftoverHives() => throw new NotSupportedException();
+        public bool IsTrustedWorkFolder(string folder) => false;
     }
 
     /// <summary>
@@ -1671,5 +1672,182 @@ public sealed class InstallMediaViewModelTests : IDisposable
         Assert.NotEmpty(consumer);
         Assert.All(consumer, r => Assert.True(r.IsChecked));
         Assert.All(media.AppRows.Where(r => r.Entry.Group != "consumer"), r => Assert.False(r.IsChecked));
+    }
+
+    // ---- a saved build: Resume and Discard ----
+
+    /// <summary>A work folder in the temp folder holding <paramref name="choices"/> as its saved choices, with a checkpoint for them.</summary>
+    private ResumableBuild SavedBuild(MediaChoices choices, CheckpointKind kind = CheckpointKind.ImageReady)
+    {
+        var folder = Path.Combine(_root, "TuneroMedia.0000abcd");
+        Directory.CreateDirectory(folder);
+        File.WriteAllText(Path.Combine(folder, MediaCheckpoint.ChoicesFileName), MediaRequestFile.FromChoices(choices, null, null).ToJson());
+        var ready = kind == CheckpointKind.ImageReady;
+        var checkpoint = new MediaCheckpoint(kind, MediaCheckpoint.HashOf(choices.ToRequest()), new string('A', 64), ready ? new string('B', 64) : null,
+            ready ? "26300" : "", DateTimeOffset.Now) { UiLanguage = ready ? "de-DE" : null };
+        return new ResumableBuild(folder, checkpoint) { Bytes = 9_870_000_000 };
+    }
+
+    /// <summary>The page's system with a saved build that FindResumable lists until it is discarded or resumed.</summary>
+    private (InstallMediaSystem System, List<string> Discarded, List<(string Folder, MediaRequest Request)> Resumed) WithSaved(Func<ResumableBuild?> saved)
+    {
+        var discarded = new List<string>();
+        var resumed = new List<(string, MediaRequest)>();
+        var system = System() with
+        {
+            FindResumable = () => saved() is { } s && !discarded.Contains(s.WorkFolder) && resumed.Count == 0 ? [s] : [],
+            DiscardBuild = discarded.Add,
+            ResumeBuild = (folder, request, progress, ct) =>
+            {
+                resumed.Add((folder, request));
+                progress.Report(new MediaProgress(MediaStage.Files, null, null));
+                progress.Report(new MediaProgress(MediaStage.Iso, null, null));
+                progress.Report(new MediaProgress(MediaStage.Verify, null, null));
+                return Task.FromResult(new MediaBuildResult(request.OutputIso, 1234, new string('A', 64)));
+            },
+        };
+        return (system, discarded, resumed);
+    }
+
+    /// <summary>The choices the page makes with the catalog when one app less is ticked and the setup questions stay.</summary>
+    private async Task<MediaChoices> SavedChoices()
+    {
+        var media = await WithCatalog();
+        media.AppRows.First(r => r.IsChecked).IsChecked = false;
+        media.SkipSetup = false;
+        await media.BuildCommand.ExecuteAsync(null);
+        var request = _requests[^1];
+        _requests.Clear();
+        _dialogs.ConfirmApplyRequests.Clear();
+        // A finished build is remembered: the page under test opens with its own defaults.
+        File.Delete(RememberedFile);
+        // Region and keyboard reach the answer file even when the setup questions stay (the page's defaults then, as on resume).
+        return new MediaChoices(request.Source, request.Edition, null, null, "en", request.RemoveApps, false, null, request.Answers.UserLocale, request.Answers.InputLocale, false,
+            new TuneroCopy(request.TuneroExe!, request.FirstSignIn!.Profile, request.FirstSignIn.Theme), request.OutputIso);
+    }
+
+    [Fact]
+    public async Task ASavedBuildOffersResumeAndDiscard()
+    {
+        Loc.Instance.SetLanguage("en");
+        var saved = SavedBuild(await SavedChoices());
+        var (system, discarded, _) = WithSaved(() => saved);
+        var media = await Loaded(Media(system: system));
+        Assert.True(media.ShowResumeBar);
+        Assert.Equal(Loc.Instance.Format("Media_ResumeImageReady", ByteSize.Format(saved.Bytes), Path.GetPathRoot(saved.WorkFolder)!.TrimEnd('\\', ':')), media.ResumeText);
+        Assert.True(media.ResumeCommand.CanExecute(null));
+
+        _dialogs.Answer = false;
+        await media.DiscardCommand.ExecuteAsync(null);
+        Assert.Empty(discarded);
+        Assert.True(media.ShowResumeBar);
+
+        _dialogs.Answer = true;
+        await media.DiscardCommand.ExecuteAsync(null);
+        Assert.Equal([saved.WorkFolder], discarded);
+        Assert.False(media.ShowResumeBar);
+        Assert.Null(media.Resumable);
+    }
+
+    [Fact]
+    public async Task ResumeAppliesTheSavedChoicesAndShowsTheSavedStagesAsDone()
+    {
+        Loc.Instance.SetLanguage("en");
+        var choices = await SavedChoices();
+        var saved = SavedBuild(choices);
+        var (system, _, resumed) = WithSaved(() => saved);
+        var media = await WithCatalog(Media(system: system));
+        // The page opens with its defaults: the setup questions skipped.
+        Assert.True(media.SkipSetup);
+
+        await media.ResumeCommand.ExecuteAsync(null);
+        var (folder, request) = Assert.Single(resumed);
+        Assert.Equal(saved.WorkFolder, folder);
+        Assert.Equal(saved.Checkpoint.RequestHash, MediaCheckpoint.HashOf(request));
+        Assert.False(media.SkipSetup);
+        Assert.Equal(choices.OutputIso, media.OutputPath);
+        Assert.Empty(_requests);
+        // No review before a resume: the choices are the saved ones.
+        Assert.Equal(0, _dialogs.ConfirmApplyCalls);
+
+        Assert.Equal(MediaBuild.PlannedStages(request), media.Stages.Select(s => s.Stage));
+        foreach (var row in media.Stages.TakeWhile(s => s.Stage < MediaStage.Files))
+        {
+            Assert.Equal(MediaStageState.Done, row.State);
+            Assert.Equal(Loc.Instance["Media_StageSaved"], row.Note);
+        }
+        Assert.All(media.Stages.SkipWhile(s => s.Stage < MediaStage.Files), s => Assert.Equal(MediaStageState.Done, s.State));
+        Assert.Null(Row(media, MediaStage.Files).Note);
+        Assert.True(media.HasFinished);
+        Assert.False(media.ShowResumeBar);
+    }
+
+    [Fact]
+    public async Task ResumeWithoutTheCatalogSaysWhatIsMissing()
+    {
+        Loc.Instance.SetLanguage("en");
+        var saved = SavedBuild(await SavedChoices());
+        var (system, _, resumed) = WithSaved(() => saved);
+        var media = await Loaded(Media(system: system));
+        await media.ResumeCommand.ExecuteAsync(null);
+        Assert.Empty(resumed);
+        Assert.Equal(Loc.Instance["Media_NeedsCatalog"], media.ResumeNote);
+        Assert.True(media.ShowResumeBar);
+    }
+
+    [Fact]
+    public async Task ResumeWithSavedChoicesThatCannotBeReadIsRefused()
+    {
+        Loc.Instance.SetLanguage("en");
+        var saved = SavedBuild(await SavedChoices());
+        File.WriteAllText(Path.Combine(saved.WorkFolder, MediaCheckpoint.ChoicesFileName), "not json");
+        var (system, _, resumed) = WithSaved(() => saved);
+        var media = await WithCatalog(Media(system: system));
+        await media.ResumeCommand.ExecuteAsync(null);
+        Assert.Empty(resumed);
+        Assert.Equal(Loc.Instance["Media_ResumeInvalid"], media.ResumeNote);
+    }
+
+    [Fact]
+    public async Task BuildWithASavedBuildAsksToDiscardItFirst()
+    {
+        Loc.Instance.SetLanguage("en");
+        var saved = SavedBuild(await SavedChoices());
+        var (system, discarded, resumed) = WithSaved(() => saved);
+        var media = await WithCatalog(Media(system: system));
+
+        _dialogs.Answer = false;
+        await media.BuildCommand.ExecuteAsync(null);
+        Assert.Empty(_requests);
+        Assert.Empty(discarded);
+        Assert.Equal(Loc.Instance["Media_DiscardTitle"], _dialogs.Asked[^1]);
+
+        _dialogs.Answer = true;
+        await media.BuildCommand.ExecuteAsync(null);
+        Assert.Equal([saved.WorkFolder], discarded);
+        Assert.Single(_requests);
+        Assert.Empty(resumed);
+    }
+
+    [Fact]
+    public async Task AFailureThatLeftASavedBuildOffersResumeOnTheFailureCard()
+    {
+        var choices = await SavedChoices();
+        ResumableBuild? saved = null;
+        var (system, _, _) = WithSaved(() => saved);
+        var media = await WithCatalog(Media(system: system));
+        Assert.False(media.ShowResumeBar);
+        _build = (_, _) =>
+        {
+            saved = SavedBuild(choices);
+            throw new MediaBuildException(MediaStage.Iso, "x") { LogPath = Path.Combine(_root, "build.log") };
+        };
+        await media.BuildCommand.ExecuteAsync(null);
+        Assert.True(media.HasFailed);
+        Assert.True(media.CanResumeAfterFailure);
+        // The failure card offers Resume and Discard; the info bar would say it twice.
+        Assert.False(media.ShowResumeBar);
+        Assert.True(media.ResumeCommand.CanExecute(null));
+        Assert.True(media.DiscardCommand.CanExecute(null));
     }
 }

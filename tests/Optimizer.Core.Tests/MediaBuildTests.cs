@@ -266,7 +266,7 @@ public sealed class MediaBuildTests : IDisposable
     {
         await FailsAt(Download("Education"), MediaStage.Unpack, "Media_EditionMissing");
         Assert.DoesNotContain(_steps.Calls, c => c.StartsWith("Export", StringComparison.Ordinal) && c.EndsWith("install.wim", StringComparison.Ordinal));
-        AssertCleanedUp();
+        AssertKeptForResume(CheckpointKind.Downloaded);
     }
 
     [Fact]
@@ -274,7 +274,7 @@ public sealed class MediaBuildTests : IDisposable
     {
         _steps.EsdImages.Add(new Img("Windows 11 Pro copy", "Professional"));
         await FailsAt(Download(), MediaStage.Unpack, "Media_ImageCheckFailed");
-        AssertCleanedUp();
+        AssertKeptForResume(CheckpointKind.Downloaded);
     }
 
     [Fact]
@@ -291,7 +291,7 @@ public sealed class MediaBuildTests : IDisposable
         _steps.EsdImages[2] = new Img("Windows 11 Home", "Core");
         await FailsAt(Download(), MediaStage.Check, "Media_NotWindows11");
         Assert.DoesNotContain(_steps.Calls, c => c.StartsWith("Apply", StringComparison.Ordinal));
-        AssertCleanedUp();
+        AssertKeptForResume(CheckpointKind.Downloaded);
     }
 
     [Fact]
@@ -299,7 +299,7 @@ public sealed class MediaBuildTests : IDisposable
     {
         _steps.EsdImages[0] = new Img("Windows 11 Home", "Core");
         await FailsAt(Download(), MediaStage.Check, "Media_NotWindows11");
-        AssertCleanedUp();
+        AssertKeptForResume(CheckpointKind.Downloaded);
     }
 
     [Fact]
@@ -307,7 +307,7 @@ public sealed class MediaBuildTests : IDisposable
     {
         _steps.EsdImages.RemoveRange(3, _steps.EsdImages.Count - 3);
         await FailsAt(Download(), MediaStage.Check, "Media_NotWindows11");
-        AssertCleanedUp();
+        AssertKeptForResume(CheckpointKind.Downloaded);
     }
 
     [Fact]
@@ -316,7 +316,7 @@ public sealed class MediaBuildTests : IDisposable
         _steps.ApplyPlantsImage = true;
         await FailsAt(Download(), MediaStage.Unpack, "Media_ImageCheckFailed");
         Assert.DoesNotContain(_steps.Calls, c => c.StartsWith("Export", StringComparison.Ordinal));
-        AssertCleanedUp();
+        AssertKeptForResume(CheckpointKind.Downloaded);
     }
 
     // ---- request and output checks before anything runs ----
@@ -641,8 +641,8 @@ public sealed class MediaBuildTests : IDisposable
         else _steps.OwnBootImages![1] = _steps.OwnBootImages[1] with { Files = pointer };
         await FailsAt(download ? Download() : OwnIso(), MediaStage.Files, "Media_BootImageAnswerFile");
         // The hive is unloaded before the image is discarded.
-        Assert.Equal(["Mount boot.wim 2", "LoadHive", "UnloadHive", "UnloadLeftoverHives", "Unmount discard", "DeleteWorkFolder"], _steps.Calls.SkipWhile(c => c != "Mount boot.wim 2"));
-        AssertCleanedUp();
+        Assert.Equal(["Mount boot.wim 2", "LoadHive", "UnloadHive", "UnloadLeftoverHives", "Unmount discard"], _steps.Calls.SkipWhile(c => c != "Mount boot.wim 2"));
+        AssertKeptForResume(CheckpointKind.ImageReady);
     }
 
     /// <summary>A hive whose own unload gave up holds a file of the mounted image: the cleanup unloads it before the discard.</summary>
@@ -651,9 +651,9 @@ public sealed class MediaBuildTests : IDisposable
     {
         _steps.HiveUnloadGivesUp = true;
         await FailsAt(Download(), MediaStage.Files, null);
-        Assert.Equal(["Mount boot.wim 2", "LoadHive", "UnloadHive", "Unmount discard", "UnloadLeftoverHives", "Unmount discard", "DeleteWorkFolder"],
+        Assert.Equal(["Mount boot.wim 2", "LoadHive", "UnloadHive", "Unmount discard", "UnloadLeftoverHives", "Unmount discard"],
             _steps.Calls.SkipWhile(c => c != "Mount boot.wim 2"));
-        AssertCleanedUp();
+        AssertKeptForResume(CheckpointKind.ImageReady);
     }
 
     [Fact]
@@ -661,7 +661,7 @@ public sealed class MediaBuildTests : IDisposable
     {
         _steps.OwnBootImages![1] = _steps.OwnBootImages[1] with { Files = new Dictionary<string, byte[]>() };
         await FailsAt(OwnIso(), MediaStage.Files, "Media_ImageCheckFailed");
-        AssertCleanedUp();
+        AssertKeptForResume(CheckpointKind.ImageReady);
     }
 
     [Fact]
@@ -670,7 +670,7 @@ public sealed class MediaBuildTests : IDisposable
         _steps.Dism.CommitBreaksHeader = true;
         await FailsAt(Download(answers: Plain with { SkipSetup = true, AccountName = "Anna" }), MediaStage.Files, "Media_ImageCheckFailed");
         Assert.DoesNotContain("WriteIso", _steps.Calls);
-        AssertCleanedUp();
+        AssertKeptForResume(CheckpointKind.ImageReady);
     }
 
     /// <summary>The committed image is mounted read-only and checked: what Setup will read, not what was written before the commit.</summary>
@@ -689,7 +689,7 @@ public sealed class MediaBuildTests : IDisposable
         await FailsAt(Download(answers: Plain with { SkipSetup = true, AccountName = "Anna" }), MediaStage.Files, "Media_FilesCheckFailed");
         Assert.Contains("Mount boot.wim 2 readonly", _steps.Calls);
         Assert.DoesNotContain("WriteIso", _steps.Calls);
-        AssertCleanedUp();
+        AssertKeptForResume(CheckpointKind.ImageReady);
     }
 
     [Fact]
@@ -699,8 +699,8 @@ public sealed class MediaBuildTests : IDisposable
         _steps.Dism.StopOnMountOf = "boot.wim";
         _steps.Dism.StopOnMount = stop;
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Run(Download(answers: Plain with { SkipSetup = true, AccountName = "Anna" }), stop.Token));
-        Assert.Equal(["Mount boot.wim 2", "UnloadLeftoverHives", "Unmount discard", "DeleteWorkFolder"], _steps.Calls.SkipWhile(c => c != "Mount boot.wim 2"));
-        AssertCleanedUp();
+        Assert.Equal(["Mount boot.wim 2", "UnloadLeftoverHives", "Unmount discard"], _steps.Calls.SkipWhile(c => c != "Mount boot.wim 2"));
+        AssertKeptForResume(CheckpointKind.ImageReady);
     }
 
     [Fact]
@@ -710,7 +710,7 @@ public sealed class MediaBuildTests : IDisposable
         var ex = await FailsAt(Download(), MediaStage.Files, null);
         Assert.Equal(5, ex.Code);
         Assert.Contains("Unmount discard", _steps.Calls);
-        AssertCleanedUp();
+        AssertKeptForResume(CheckpointKind.ImageReady);
     }
 
     [Fact]
@@ -719,7 +719,7 @@ public sealed class MediaBuildTests : IDisposable
         _steps.SetupFilesCarryAnswerFile = true;
         await FailsAt(Download(), MediaStage.Files, "Media_FilesCheckFailed");
         Assert.DoesNotContain("WriteIso", _steps.Calls);
-        AssertCleanedUp();
+        AssertKeptForResume(CheckpointKind.ImageReady);
     }
 
     [Fact]
@@ -857,9 +857,9 @@ public sealed class MediaBuildTests : IDisposable
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Run(Download(), stop.Token));
         Assert.Contains("WriteIso", _steps.Calls);
         Assert.DoesNotContain("VerifyIso", _steps.Calls);
-        // The partial ISO was written inside the work folder, which is gone.
+        // The partial ISO was written inside the work folder, which stays for Resume without it.
         Assert.StartsWith(_steps.WorkFolder!, _steps.IsoWriter.Target!, StringComparison.OrdinalIgnoreCase);
-        AssertCleanedUp();
+        AssertKeptForResume(CheckpointKind.ImageReady);
     }
 
     [Fact]
@@ -1131,7 +1131,7 @@ public sealed class MediaBuildTests : IDisposable
     {
         _steps.IsoReader.Mismatch = [@"sources\install.esd"];
         await FailsAt(Smaller(Download()), MediaStage.Verify, "Media_VerifyFailed");
-        AssertCleanedUp();
+        AssertKeptForResume(CheckpointKind.ImageReady);
     }
 
     [Fact]
@@ -1175,7 +1175,7 @@ public sealed class MediaBuildTests : IDisposable
         _steps.IsoReader.Mismatch = [@"sources\install.wim"];
         await FailsAt(Download(), MediaStage.Verify, "Media_VerifyFailed");
         Assert.Equal("older ISO", File.ReadAllText(OutputIso));
-        Assert.False(Directory.Exists(_steps.WorkFolder));
+        Assert.False(File.Exists(Path.Combine(_steps.WorkFolder!, "output.iso")));
     }
 
     [Fact]
@@ -1183,7 +1183,7 @@ public sealed class MediaBuildTests : IDisposable
     {
         _steps.IsoReader.Mismatch = [@"sources\install.wim"];
         await FailsAt(Download(), MediaStage.Verify, "Media_VerifyFailed");
-        AssertCleanedUp();
+        AssertKeptForResume(CheckpointKind.ImageReady);
     }
 
     [Fact]
@@ -1191,7 +1191,7 @@ public sealed class MediaBuildTests : IDisposable
     {
         _steps.IsoReader.BootCatalogOk = false;
         await FailsAt(Download(), MediaStage.Verify, "Media_VerifyFailed");
-        AssertCleanedUp();
+        AssertKeptForResume(CheckpointKind.ImageReady);
     }
 
     [Fact]
@@ -1202,7 +1202,7 @@ public sealed class MediaBuildTests : IDisposable
         await FailsAt(Download(apps: ["Microsoft.BingNews"]), MediaStage.Verify, "Media_VerifyFailed");
         Assert.Equal(1, Count("Unmount commit"));
         Assert.DoesNotContain(_steps.Calls.SkipWhile(c => c != "WriteIso"), c => c.StartsWith("Unmount", StringComparison.Ordinal));
-        AssertCleanedUp();
+        AssertKeptForResume(CheckpointKind.ImageReady);
     }
 
     [Fact]
@@ -1266,7 +1266,7 @@ public sealed class MediaBuildTests : IDisposable
         };
         await FailsAt(Download() with { OutputIso = Path.Combine(output, "Win11.iso") }, MediaStage.Verify, "Media_OutputInvalid");
         Assert.Empty(Directory.EnumerateFileSystemEntries(elsewhere));
-        Assert.False(Directory.Exists(_steps.WorkFolder));
+        Assert.False(File.Exists(Path.Combine(_steps.WorkFolder!, "output.iso")));
     }
 
     [Fact]
@@ -1330,6 +1330,342 @@ public sealed class MediaBuildTests : IDisposable
         Assert.Contains(_steps.LogPath, ex.Message);
         Assert.Equal(_steps.LogPath, ex.LogPath);
         Assert.Contains(_steps.LogLines, l => l.StartsWith("dism exit code 87", StringComparison.Ordinal));
+    }
+
+    // ---- checkpoints and resume ----
+
+    private Task<MediaBuildResult> Resume(MediaRequest r, string? folder = null, CancellationToken ct = default) =>
+        Build().ResumeAsync(folder ?? _steps.WorkFolder!, r, new Collect(_steps.Progress), ct);
+
+    private async Task<MediaBuildException> ResumeRefused(MediaRequest r, string? folder = null)
+    {
+        var ex = await Assert.ThrowsAsync<MediaBuildException>(() => Resume(r, folder));
+        Assert.Equal("Media_ResumeInvalid", ex.Key);
+        return ex;
+    }
+
+    /// <summary>The download with an ESD whose content the fake writes the same way each time, so its SHA-256 is known before.</summary>
+    private MediaRequest CheckedDownload(IReadOnlyList<string>? apps = null)
+    {
+        _steps.FixedEsd = true;
+        return Download(apps: apps) with { Source = new MediaSource(Esd with { Sha256 = _steps.EsdSha256() }, null, null) };
+    }
+
+    /// <summary>The folder stays for Resume: no mount, no ISO of the failed run, the lock released, the checkpoint in place.</summary>
+    private void AssertKeptForResume(CheckpointKind kind)
+    {
+        Assert.True(Directory.Exists(_steps.WorkFolder), "work folder deleted");
+        Assert.DoesNotContain("DeleteWorkFolder", _steps.Calls);
+        Assert.Equal(kind, MediaCheckpoint.Read(_steps.WorkFolder!)!.Kind);
+        Assert.True(File.Exists(Path.Combine(_steps.WorkFolder!, MediaCheckpoint.ChoicesFileName)), "choices.json missing");
+        Assert.False(File.Exists(Path.Combine(_steps.WorkFolder!, "output.iso")), "the failed run's ISO stayed");
+        Assert.False(File.Exists(Path.Combine(_steps.WorkFolder!, "output.iso.part")), "the failed run's partial ISO stayed");
+        Assert.False(File.Exists(OutputIso), "ISO at the output path");
+        Assert.Empty(_steps.Dism.Mounted);
+        Assert.Empty(_steps.LoadedHives);
+        Assert.Empty(_steps.LoadedWritableHives);
+        using var _ = new FileStream(Path.Combine(_steps.WorkFolder!, MediaBuild.LockFileName), FileMode.Open, FileAccess.Write, FileShare.None);
+    }
+
+    [Fact]
+    public async Task AFailedIsoWriteKeepsTheReadyImage()
+    {
+        _steps.IsoWriter.Fails = true;
+        await FailsAt(Download(), MediaStage.Iso, null);
+        AssertKeptForResume(CheckpointKind.ImageReady);
+        var checkpoint = MediaCheckpoint.Read(_steps.WorkFolder!)!;
+        Assert.Equal(MediaCheckpoint.HashOf(Download()), checkpoint.RequestHash);
+        Assert.Equal("26300", checkpoint.Build);
+        Assert.Equal("en-US", checkpoint.UiLanguage);
+        // The untouched boot.wim, from before Files commits into it.
+        var ready = Path.Combine(_steps.WorkFolder!, MediaCheckpoint.BootWimCopy);
+        Assert.Equal(Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(ready))), checkpoint.BootSha256);
+        Assert.Equal(Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Path.Combine(_steps.WorkFolder!, @"media\sources\install.wim")))), checkpoint.FileSha256);
+        Assert.Contains(_steps.LogLines, l => l.Contains("stays for Resume", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task AStopInTheIsoStageKeepsTheReadyImage()
+    {
+        using var stop = new CancellationTokenSource();
+        _steps.IsoWriter.StopWith = stop;
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Run(Download(), stop.Token));
+        AssertKeptForResume(CheckpointKind.ImageReady);
+    }
+
+    /// <summary>Files commits into boot.wim: its mount is discarded and the folder kept, with the untouched copy for the resume.</summary>
+    [Fact]
+    public async Task AFailureInFilesDiscardsTheBootMountAndKeepsTheFolder()
+    {
+        _steps.Dism.CommitBreaksHeader = true;
+        await FailsAt(Download(answers: Plain with { SkipSetup = true, AccountName = "Anna" }), MediaStage.Files, "Media_ImageCheckFailed");
+        AssertKeptForResume(CheckpointKind.ImageReady);
+    }
+
+    [Fact]
+    public async Task ResumeStartsAfterTheCheckpoint()
+    {
+        _steps.Dism.Provisioned = ["Microsoft.BingNews_4.55.62231.0_neutral_~_8wekyb3d8bbwe"];
+        var request = WithTunero(Download(apps: ["Microsoft.BingNews"]));
+        _steps.IsoWriter.Fails = true;
+        await FailsAt(request, MediaStage.Iso, null);
+        Assert.Contains("Mount install.wim 1", _steps.Calls);
+        var folder = _steps.WorkFolder!;
+        _steps.Calls.Clear();
+        _steps.Progress.Clear();
+        _steps.IsoWriter.Fails = false;
+
+        var result = await Resume(request with { OutputIso = OutputIso });
+        Assert.Equal(OutputIso, result.Iso);
+        Assert.Equal("Mount boot.wim 2", _steps.Calls[0]);
+        Assert.DoesNotContain("Download", _steps.Calls);
+        Assert.DoesNotContain("NewWorkFolder", _steps.Calls);
+        Assert.DoesNotContain("Mount install.wim 1", _steps.Calls);
+        Assert.Contains("WriteIso", _steps.Calls);
+        Assert.Equal("DeleteWorkFolder", _steps.Calls[^1]);
+        Assert.False(Directory.Exists(folder));
+        Assert.Equal("ISO WIN11_26300_X64", File.ReadAllText(OutputIso));
+        Assert.Equal([MediaStage.Files, MediaStage.Iso, MediaStage.Verify, MediaStage.Cleanup], _steps.Progress.Where(p => p.Percent is null).Select(p => p.Stage).Distinct());
+        // The Tunero copy of the failed run was replaced by a fresh one.
+        Assert.Contains(@"sources\$OEM$\$$\Setup\Tunero\Tunero.exe", _steps.IsoContents.Keys);
+    }
+
+    /// <summary>
+    /// A crash while Files committed into boot.wim can leave it broken: the resume puts the untouched copy back, and Setup's
+    /// language stays the one the image has (read before the checkpoint).
+    /// </summary>
+    [Fact]
+    public async Task ResumePutsTheUntouchedBootWimBackAndKeepsTheImageLanguage()
+    {
+        _steps.OwnLanguage = "de-DE";
+        var request = OwnIso() with { Answers = Plain with { SkipSetup = true, AccountName = "Anna" } };
+        _steps.IsoWriter.Fails = true;
+        await FailsAt(request, MediaStage.Iso, null);
+        var folder = _steps.WorkFolder!;
+        // As after a commit that was cut off: the media's boot.wim is not what the checkpoint saw, and a Tunero folder is left.
+        File.WriteAllText(Path.Combine(folder, @"media\sources\boot.wim"), "half a commit");
+        FakeMediaSteps.Put(Path.Combine(folder, "media"), @"sources\$OEM$\$$\Setup\Tunero\old.txt", "left over");
+        _steps.IsoWriter.Fails = false;
+        _steps.Calls.Clear();
+
+        await Resume(request);
+        Assert.Equal(AnswerFile.Build(request.Answers with { UiLanguage = "de-DE" }), Encoding.UTF8.GetString(BootFiles()["Autounattend.xml"]));
+        Assert.DoesNotContain(_steps.IsoContents.Keys, k => k.Contains("$OEM$", StringComparison.Ordinal));
+        Assert.Equal("Mount boot.wim 2", _steps.Calls[0]);
+    }
+
+    [Fact]
+    public async Task ResumeRefusesAChangedRequestOrImage()
+    {
+        _steps.IsoWriter.Fails = true;
+        await FailsAt(Download(), MediaStage.Iso, null);
+        var folder = _steps.WorkFolder!;
+        _steps.IsoWriter.Fails = false;
+        _steps.Calls.Clear();
+
+        // Other choices: refused, nothing runs, nothing is deleted.
+        var ex = await ResumeRefused(Download(apps: ["Microsoft.BingNews"]));
+        Assert.Equal(MediaStage.Files, ex.Stage);
+        Assert.Empty(_steps.Calls);
+        Assert.True(Directory.Exists(folder));
+
+        // An install image that is not the one the checkpoint saw.
+        var image = Path.Combine(folder, @"media\sources\install.wim");
+        var original = File.ReadAllBytes(image);
+        File.AppendAllText(image, "changed");
+        await ResumeRefused(Download());
+        File.WriteAllBytes(image, original);
+
+        // The same for the untouched boot.wim copy.
+        var ready = Path.Combine(folder, MediaCheckpoint.BootWimCopy);
+        var boot = File.ReadAllBytes(ready);
+        File.AppendAllText(ready, "changed");
+        await ResumeRefused(Download());
+        File.WriteAllBytes(ready, boot);
+
+        Assert.Empty(_steps.Calls);
+        Assert.True(Directory.Exists(folder));
+        Assert.NotNull(MediaCheckpoint.Read(folder));
+        // Everything back as it was: the resume runs.
+        await Resume(Download());
+        Assert.False(Directory.Exists(folder));
+    }
+
+    [Fact]
+    public async Task ResumeRefusesAFolderItCannotTrust()
+    {
+        _steps.IsoWriter.Fails = true;
+        await FailsAt(Download(), MediaStage.Iso, null);
+        var folder = _steps.WorkFolder!;
+        _steps.IsoWriter.Fails = false;
+        _steps.Calls.Clear();
+
+        // Not locked to administrators.
+        _steps.Untrusted.Add(folder);
+        await ResumeRefused(Download());
+        _steps.Untrusted.Clear();
+
+        // Another Tunero holds its lock.
+        using (new FileStream(Path.Combine(folder, MediaBuild.LockFileName), FileMode.Open, FileAccess.Write, FileShare.None))
+            await ResumeRefused(Download());
+
+        // Not a work folder by its name.
+        var renamed = Path.Combine(_root, "Other." + Path.GetFileName(folder));
+        await Assert.ThrowsAsync<ArgumentException>(() => Resume(Download(), renamed));
+
+        // Older than 14 days.
+        var checkpoint = MediaCheckpoint.Read(folder)!;
+        (checkpoint with { Saved = DateTimeOffset.Now.AddDays(-15) }).Save(folder);
+        await ResumeRefused(Download());
+
+        // No checkpoint at all.
+        File.Delete(Path.Combine(folder, MediaCheckpoint.FileName));
+        await ResumeRefused(Download());
+
+        Assert.Empty(_steps.Calls);
+        Assert.True(Directory.Exists(folder));
+    }
+
+    /// <summary>The work folder is created on the output's drive and the ISO renamed out of it: another drive cannot be resumed into.</summary>
+    [Fact]
+    public async Task ResumeRefusesAnOutputOnAnotherDrive()
+    {
+        _steps.IsoWriter.Fails = true;
+        await FailsAt(Download(), MediaStage.Iso, null);
+        var other = Path.GetPathRoot(_root)!.StartsWith("C", StringComparison.OrdinalIgnoreCase) ? @"D:\Win11.iso" : @"C:\Win11.iso";
+        var ex = await Assert.ThrowsAsync<MediaBuildException>(() => Resume(Download() with { OutputIso = other }));
+        Assert.True(ex.Key is "Media_ResumeInvalid" or "Media_OutputInvalid", ex.Key);
+        Assert.True(Directory.Exists(_steps.WorkFolder));
+    }
+
+    [Fact]
+    public async Task AFailureAfterTheDownloadKeepsItAndTheResumeRunsFromCheck()
+    {
+        var request = CheckedDownload();
+        // DISM's Apply leaves an install.wim in the setup files: Unpack refuses it, before the ESD is deleted.
+        _steps.ApplyPlantsImage = true;
+        await FailsAt(request, MediaStage.Unpack, "Media_ImageCheckFailed");
+        AssertKeptForResume(CheckpointKind.Downloaded);
+        var folder = _steps.WorkFolder!;
+        Assert.True(File.Exists(Path.Combine(folder, "image.esd")));
+        Assert.Equal(request.Source.Download!.Sha256.ToUpperInvariant(), MediaCheckpoint.Read(folder)!.FileSha256);
+        _steps.ApplyPlantsImage = false;
+        _steps.Calls.Clear();
+        _steps.Progress.Clear();
+
+        await Resume(request);
+        Assert.Equal("WimInfo image.esd", _steps.Calls[0]);
+        Assert.DoesNotContain("Download", _steps.Calls);
+        Assert.Equal(MediaStage.Check, _steps.Progress[0].Stage);
+        Assert.False(Directory.Exists(folder));
+        Assert.True(File.Exists(OutputIso));
+    }
+
+    [Fact]
+    public async Task ResumeRefusesAChangedDownload()
+    {
+        var request = CheckedDownload();
+        _steps.ApplyPlantsImage = true;
+        await FailsAt(request, MediaStage.Unpack, "Media_ImageCheckFailed");
+        File.AppendAllText(Path.Combine(_steps.WorkFolder!, "image.esd"), "changed");
+        _steps.Calls.Clear();
+        var ex = await ResumeRefused(request);
+        Assert.Equal(MediaStage.Check, ex.Stage);
+        Assert.Empty(_steps.Calls);
+    }
+
+    [Fact]
+    public async Task AFailureBeforeTheFirstCheckpointStillDeletesEverything()
+    {
+        using var stop = new CancellationTokenSource();
+        _steps.StopDownloadWith = stop;
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Run(CheckedDownload(), stop.Token));
+        AssertCleanedUp();
+    }
+
+    /// <summary>Once Unpack deleted the ESD the download checkpoint is gone: a failure while install.wim is changed leaves nothing.</summary>
+    [Fact]
+    public async Task AFailureBetweenTheCheckpointsStillDeletesEverything()
+    {
+        using var stop = new CancellationTokenSource();
+        _steps.Dism.Provisioned = ["Microsoft.BingNews_4.55.62231.0_neutral_~_8wekyb3d8bbwe"];
+        _steps.Dism.StopOnRemove = stop;
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Run(CheckedDownload(apps: ["Microsoft.BingNews"]), stop.Token));
+        AssertCleanedUp();
+    }
+
+    /// <summary>A finished build whose folder cannot be deleted leaves no checkpoint: the next start never offers it for Resume.</summary>
+    [Fact]
+    public async Task AFinishedBuildLeavesNoCheckpoint()
+    {
+        _steps.DeleteFailures = 3;
+        await Run(Download());
+        Assert.True(Directory.Exists(_steps.WorkFolder));
+        Assert.Null(MediaCheckpoint.Read(_steps.WorkFolder!));
+    }
+
+    /// <summary>A leftover folder named like a work folder under the test's stand-in drive, with a checkpoint saved <paramref name="age"/> ago.</summary>
+    private string SavedLeftover(string id, TimeSpan age, bool checkpoint = true)
+    {
+        var drive = Path.Combine(_root, "drive");
+        var folder = Path.Combine(drive, "TuneroMedia." + id);
+        FakeMediaSteps.Put(folder, @"media\sources\install.wim", "image");
+        if (checkpoint)
+            new MediaCheckpoint(CheckpointKind.ImageReady, new string('1', 64), new string('2', 64), new string('3', 64), "26300", DateTimeOffset.Now - age) { UiLanguage = "en-US" }.Save(folder);
+        if (!_steps.Drives.Contains(drive)) _steps.Drives.Add(drive);
+        _steps.Leftovers[drive] = [.. _steps.Leftovers.GetValueOrDefault(drive, []), folder];
+        return folder;
+    }
+
+    [Fact]
+    public async Task CleanLeftoversKeepsCheckpointedFoldersButDiscardsTheirMounts()
+    {
+        var saved = SavedLeftover("0000000a", TimeSpan.FromHours(1));
+        var mounted = SavedLeftover("0000000b", TimeSpan.FromHours(2));
+        _steps.Dism.Mounted.Add(Path.Combine(mounted, "bootmount"));
+        var old = SavedLeftover("0000000c", TimeSpan.FromDays(15));
+        var none = SavedLeftover("0000000d", TimeSpan.Zero, checkpoint: false);
+        var untrusted = SavedLeftover("0000000e", TimeSpan.FromHours(1));
+        _steps.Untrusted.Add(untrusted);
+
+        await Build().CleanLeftoversAsync(CancellationToken.None);
+        Assert.Contains("Unmount discard", _steps.Calls);
+        Assert.Empty(_steps.Dism.Mounted);
+        Assert.True(Directory.Exists(saved));
+        Assert.True(Directory.Exists(mounted));
+        Assert.Equal([old, none, untrusted], _steps.DeletedFolders.Order(StringComparer.OrdinalIgnoreCase));
+        Assert.Contains($"{saved} kept: a saved build can resume from it", _steps.LogLines);
+    }
+
+    [Fact]
+    public void FindResumableListsOnlyTrustedSavedBuilds()
+    {
+        var newer = SavedLeftover("0000000a", TimeSpan.FromHours(1));
+        var older = SavedLeftover("0000000b", TimeSpan.FromHours(5));
+        SavedLeftover("0000000c", TimeSpan.FromDays(15));
+        SavedLeftover("0000000d", TimeSpan.Zero, checkpoint: false);
+        _steps.Untrusted.Add(SavedLeftover("0000000e", TimeSpan.FromHours(1)));
+        FakeMediaSteps.Put(SavedLeftover("0000000f", TimeSpan.FromHours(1)), @"bootmount\Windows\x.dll", "still mounted");
+        var held = SavedLeftover("00000010", TimeSpan.FromHours(1));
+        using var lockFile = new FileStream(Path.Combine(held, MediaBuild.LockFileName), FileMode.CreateNew, FileAccess.Write, FileShare.None);
+
+        var found = Build().FindResumable();
+        Assert.Equal([newer, older], found.Select(f => f.WorkFolder));
+        Assert.Equal(CheckpointKind.ImageReady, found[0].Checkpoint.Kind);
+        Assert.True(found[0].Bytes > 0);
+        Assert.Empty(_steps.Calls);
+    }
+
+    [Fact]
+    public void DiscardDeletesTheFolderUnlessABuildHoldsIt()
+    {
+        var folder = SavedLeftover("0000000a", TimeSpan.FromHours(1));
+        using (new FileStream(Path.Combine(folder, MediaBuild.LockFileName), FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            Assert.Throws<IOException>(() => Build().Discard(folder));
+        Assert.True(Directory.Exists(folder));
+        Assert.Throws<ArgumentException>(() => Build().Discard(Path.Combine(_root, "Downloads")));
+        Build().Discard(folder);
+        Assert.Equal([folder], _steps.DeletedFolders);
     }
 
     // ---- leftovers ----
@@ -2216,24 +2552,39 @@ internal sealed class FakeMediaSteps : IMediaSteps
 
     // ---- fake image files ----
 
-    public void PutImages(string path, IEnumerable<Img> images)
+    public void PutImages(string path, IEnumerable<Img> images, string? token = null)
     {
-        var token = Guid.NewGuid().ToString("N");
+        token ??= Guid.NewGuid().ToString("N");
         _images[token] = images.ToList();
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         WriteImageFile(path, token);
     }
 
+    private void WriteImageFile(string path, string token) => File.WriteAllBytes(path, ImageBytes(_images[token], token));
+
+    private const string FixedEsdToken = "fixed-esd";
+
+    /// <summary>The download writes the same bytes each time (<see cref="EsdSha256"/>), as a real download of one catalog file does.</summary>
+    public bool FixedEsd { get; set; }
+
+    /// <summary>The SHA-256 of the ESD a download with <see cref="FixedEsd"/> writes, as the catalog would name it.</summary>
+    public string EsdSha256() => Convert.ToHexString(SHA256.HashData(ImageBytes(EsdImages, FixedEsdToken))).ToLowerInvariant();
+
+    /// <summary>Work folders <see cref="IsTrustedWorkFolder"/> refuses (not locked to administrators, in the real steps).</summary>
+    public HashSet<string> Untrusted { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    public bool IsTrustedWorkFolder(string folder) =>
+        MediaBuild.IsWorkFolderName(Path.GetFileName(folder.TrimEnd('\\'))) && Directory.Exists(folder) && !Untrusted.Contains(folder.TrimEnd('\\'));
+
     /// <summary>Header as in a real WIM: "MSWIM", header size 208, image count at 44, boot index at 120.</summary>
-    private void WriteImageFile(string path, string token)
+    private static byte[] ImageBytes(List<Img> images, string token)
     {
-        var images = _images[token];
         var header = new byte[HeaderSize];
         "MSWIM\0\0\0"u8.CopyTo(header);
         BitConverter.TryWriteBytes(header.AsSpan(8), (uint)HeaderSize);
         BitConverter.TryWriteBytes(header.AsSpan(44), (uint)images.Count);
         BitConverter.TryWriteBytes(header.AsSpan(120), (uint)(images.FindLastIndex(i => i.Bootable) + 1));
-        File.WriteAllBytes(path, [.. header, .. Encoding.UTF8.GetBytes(token)]);
+        return [.. header, .. Encoding.UTF8.GetBytes(token)];
     }
 
     private static string TokenOf(byte[] content) => Encoding.UTF8.GetString(content.AsSpan(HeaderSize));
@@ -2329,7 +2680,7 @@ internal sealed class FakeMediaSteps : IMediaSteps
             ct.ThrowIfCancellationRequested();
         }
         p?.Report((file.Size / 2, file.Size));
-        PutImages(target, EsdImages);
+        PutImages(target, EsdImages, FixedEsd ? FixedEsdToken : null);
         return Task.CompletedTask;
     }
 
@@ -2803,10 +3154,18 @@ internal sealed class FakeIsoWriter(FakeMediaSteps steps) : IIsoWriter
     public Action? BeforeWrite { get; set; }
     public string? Target { get; private set; }
 
+    /// <summary>The write fails halfway (IMAPI2 error), leaving its partial file.</summary>
+    public bool Fails { get; set; }
+
     public Task WriteAsync(string mediaFolder, string isoPath, string volumeName, IProgress<double>? p, CancellationToken ct)
     {
         steps.Calls.Add("WriteIso");
         BeforeWrite?.Invoke();
+        if (Fails)
+        {
+            File.WriteAllText(isoPath + ".part", "half an ISO");
+            throw new IOException("The ISO could not be written.");
+        }
         Target = isoPath;
         if (StopWith is { } stop)
         {

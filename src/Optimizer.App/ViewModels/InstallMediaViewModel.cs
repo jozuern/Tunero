@@ -60,6 +60,19 @@ public sealed record InstallMediaSystem
     /// <summary>Where the choices of the last successful build are remembered (media-choices.json in the data folder).</summary>
     public Func<string> ChoicesFile { get; init; } = () => Path.Combine(DataPaths.Root, "media-choices.json");
 
+    /// <summary>The saved builds that can be resumed, the newest first (<see cref="MediaBuild.FindResumable"/>); read off the window's thread.</summary>
+    public Func<IReadOnlyList<ResumableBuild>> FindResumable { get; init; } = () => [];
+
+    /// <summary>Deletes a saved build (<see cref="MediaBuild.Discard"/>); throws IOException, UnauthorizedAccessException or ArgumentException.</summary>
+    public Action<string> DiscardBuild { get; init; } = _ => { };
+
+    /// <summary>Goes on with the saved build in a work folder (<see cref="MediaBuild.ResumeAsync"/>).</summary>
+    public Func<string, MediaRequest, IProgress<MediaProgress>, CancellationToken, Task<MediaBuildResult>> ResumeBuild { get; init; } =
+        (_, _, _, _) => throw new NotSupportedException();
+
+    /// <summary>The choices a saved build was made with (choices.json of its work folder), or null when they cannot be read.</summary>
+    public Func<string, string?> SavedChoices { get; init; } = MediaCheckpoint.ReadChoices;
+
     /// <summary>Free bytes on the drive of a path, or null when that cannot be read.</summary>
     public Func<string, long?> FreeBytes { get; init; } = _ => null;
 
@@ -103,6 +116,10 @@ public sealed record InstallMediaSystem
         ReadIsoApps = new IsoReader().ReadAppsAsync,
         FreeBytes = FreeBytesOf,
         ShowInExplorer = showInExplorer,
+        FindResumable = () => new MediaBuild(new MediaSteps()).FindResumable(),
+        DiscardBuild = folder => new MediaBuild(new MediaSteps()).Discard(folder),
+        // On the thread pool, as BuildAsync and for the same reason.
+        ResumeBuild = (folder, request, progress, ct) => Task.Run(() => new MediaBuild(new MediaSteps()).ResumeAsync(folder, request, progress, ct), ct),
     };
 
     /// <summary>Microsoft's catalog as the page reads it: work folder on the Windows drive, expand.exe through the app's runner.</summary>
@@ -671,6 +688,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         OnPropertyChanged(nameof(BuildNote));
         OnPropertyChanged(nameof(CanBuild));
         BuildCommand.NotifyCanExecuteChanged();
+        RefreshResume();
     }
 
     public bool CanBuild => Problem() is null;
@@ -750,12 +768,25 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         SaveChoicesCommand.NotifyCanExecuteChanged();
         LoadChoicesCommand.NotifyCanExecuteChanged();
         ResetChoicesCommand.NotifyCanExecuteChanged();
+        RefreshResume();
+    }
+
+    private void RefreshResume()
+    {
+        OnPropertyChanged(nameof(ShowResumeBar));
+        OnPropertyChanged(nameof(ResumeNoteOnFailureCard));
+        OnPropertyChanged(nameof(CanResumeAfterFailure));
+        ResumeCommand.NotifyCanExecuteChanged();
+        DiscardCommand.NotifyCanExecuteChanged();
     }
 
     protected override void WorkingChanged() => Changed();
 
-    /// <summary>The Strings key of the first thing that keeps Build off, or null.</summary>
-    private string? Problem()
+    /// <summary>
+    /// The Strings key of the first thing that keeps Build off, or null. Without <paramref name="space"/> the free space is
+    /// not compared with a whole build's: Resume goes on in the saved build, which already holds most of it.
+    /// </summary>
+    private string? Problem(bool space = true)
     {
         if (IsBuilding || IsWorking) return "Media_Building";
         if (!_system.Elevated && !_demo) return "Media_NeedsAdmin";
@@ -789,7 +820,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         if (!UseDownload && IsoPath is { } source && SamePath(source, output)) return "Media_OutputInvalid";
         // While the start cleanup runs, a leftover may hold the space it is about to free; the build waits for the cleanup and
         // checks the space again (MediaBuild.CheckOutputAndSpace) before it writes anything.
-        if (!IsCleaning && Needed() is { } needed && _system.FreeBytes(output) is { } free && free < needed) return "Media_NotEnoughSpace";
+        if (space && !IsCleaning && Needed() is { } needed && _system.FreeBytes(output) is { } free && free < needed) return "Media_NotEnoughSpace";
         return null;
     }
 
@@ -859,11 +890,15 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         var system = _system;
         var demo = _demo;
         MediaRequestFile? remembered;
-        (_pc, _regionCultures, _keyboardProfiles, remembered) = await Task.Run(() =>
+        IReadOnlyList<ResumableBuild> resumable;
+        (_pc, _regionCultures, _keyboardProfiles, remembered, resumable) = await Task.Run(() =>
         {
             var keyboards = system.Keyboards();
-            return (system.ReadPc(), MediaLocales.Regions(), keyboards, demo ? null : ReadRemembered(system.ChoicesFile(), keyboards));
+            // A saved build is offered for Resume or Discard (its folders are locked to Administrators: elevated only).
+            return (system.ReadPc(), MediaLocales.Regions(), keyboards, demo ? null : ReadRemembered(system.ChoicesFile(), keyboards),
+                system.Elevated ? system.FindResumable() : []);
         });
+        if (!IsBuilding) Resumable = resumable.FirstOrDefault();
         if (AccountNameText.Length == 0 && _pc.UserName is { } user && AccountName.Problem(user) is null) AccountNameText = user;
         BuildLists();
         if (remembered is not null && !_rememberedApplied)
@@ -1332,17 +1367,33 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     internal ConfirmRequest? ReviewRequest() =>
         Problem() is null && Choices() is { } choices ? InstallMediaSummary.Review(choices, Edition!.Text, BuildLabel(), Needed() ?? 0) : null;
 
+    /// <summary>
+    /// Builds from the beginning. A saved build is discarded first, after asking: a new build starts in a new work folder,
+    /// and the saved one would keep its gigabytes on the drive (Resume goes on from it instead).
+    /// </summary>
     [RelayCommand(CanExecute = nameof(CanBuild))]
-    private Task BuildAsync()
+    private async Task BuildAsync()
     {
-        if (Request() is not { } request || ReviewRequest() is not { } review) return Task.CompletedTask;
+        if (Request() is not { } request || ReviewRequest() is not { } review) return;
+        if (Resumable is { } saved)
+        {
+            if (!_dialogs.Ask(Loc.Instance["Media_DiscardTitle"], Loc.Instance.Format("Media_DiscardFirstText", ByteSize.Format(saved.Bytes), DriveOf(saved)),
+                    Loc.Instance["Media_DiscardAndBuild"]))
+                return;
+            if (!await DiscardSavedAsync(saved)) return;
+        }
         // The review shows every choice once more; cancelling it builds nothing.
-        if (_dialogs.ConfirmApply(review) is null) return Task.CompletedTask;
-        return _running = RunBuildAsync(request, Choices());
+        if (_dialogs.ConfirmApply(review) is null) return;
+        await (_running = RunBuildAsync(request, Choices()));
     }
 
-    /// <summary>Runs the build; <paramref name="remember"/> are the choices it started with, kept for the next visit when it succeeds.</summary>
-    private async Task RunBuildAsync(MediaRequest request, MediaChoices? remember = null)
+    /// <summary>
+    /// Runs the build, or with <paramref name="resume"/> goes on with a saved build from <paramref name="resumesAt"/> (the
+    /// stages before it show as done from the saved build). <paramref name="remember"/> are the choices it started with,
+    /// kept for the next visit when it succeeds. Afterwards the page looks for a saved build again: one the failure left.
+    /// </summary>
+    private async Task RunBuildAsync(MediaRequest request, MediaChoices? remember = null,
+        Func<IProgress<MediaProgress>, CancellationToken, Task<MediaBuildResult>>? resume = null, MediaStage? resumesAt = null)
     {
         using var stop = new CancellationTokenSource();
         _stop = stop;
@@ -1354,7 +1405,8 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         ResultSha256 = null;
         HasFinished = false;
         HasFailed = false;
-        StartStages(MediaBuild.PlannedStages(request));
+        ResumeNote = null;
+        StartStages(MediaBuild.PlannedStages(request), resumesAt);
         MediaBuildResult? result = null;
         Exception? failure = null;
         var stopped = false;
@@ -1391,7 +1443,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
                         last = (null, Loc.Instance["Media_Building"]);
                         clock.Restart();
                     }
-                    result = await _build(request, progress, stop.Token);
+                    result = await (resume is not null ? resume(progress, stop.Token) : _build(request, progress, stop.Token));
                 }
                 catch (OperationCanceledException) when (stop.IsCancellationRequested)
                 {
@@ -1422,6 +1474,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         }
         else if (failure is not null) ShowFailure(failure);
         else if (stopped) Show(Loc.Instance["Media_Stopped"], InfoBarSeverity.Informational);
+        await RefreshResumableAsync();
     }
 
     /// <summary>
@@ -1439,10 +1492,14 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         }
     }
 
-    private void StartStages(IReadOnlyList<MediaStage> stages)
+    /// <summary>The list for a new run; with <paramref name="resumesAt"/> the stages before it are done, from the saved build (no time: this run did not take any).</summary>
+    private void StartStages(IReadOnlyList<MediaStage> stages, MediaStage? resumesAt = null)
     {
         Stages.Clear();
-        foreach (var stage in stages) Stages.Add(new MediaStageRow(stage));
+        foreach (var stage in stages)
+            Stages.Add(stage < resumesAt
+                ? new MediaStageRow(stage) { State = MediaStageState.Done, Detail = Loc.Instance["Media_StageSaved"] }
+                : new MediaStageRow(stage));
         HasStages = true;
         StagesText = null;
         _currentStage = null;
@@ -1620,6 +1677,8 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         {
             await cleanup;
             RefreshBuild();
+            // The cleanup discarded the mounts of saved builds: one may be offered now.
+            if (!IsBuilding) await RefreshResumableAsync();
         }
 
         static async Task Clean(Func<CancellationToken, Task> clean)
@@ -1633,6 +1692,132 @@ public sealed partial class InstallMediaViewModel : PageViewModel
                 Log.Error("media", "cleanup of earlier builds failed", ex);
             }
         }
+    }
+
+    // ---- a saved build: Resume and Discard ----
+
+    /// <summary>
+    /// The newest saved build (<see cref="MediaBuild.FindResumable"/>): a build that failed or was stopped after the download
+    /// or once the Windows image was finished. The page offers Resume (with the same choices) or Discard.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ResumeText), nameof(ShowResumeBar), nameof(CanResumeAfterFailure))]
+    [NotifyCanExecuteChangedFor(nameof(ResumeCommand), nameof(DiscardCommand))]
+    private ResumableBuild? _resumable;
+
+    /// <summary>Why Resume did not start (a missing catalog, choices that no longer fit), or why Discard failed; null otherwise.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ResumeNoteOnFailureCard))]
+    private string? _resumeNote;
+
+    /// <summary>The note shows on the failure card when Resume and Discard are there (else under the info bar's buttons).</summary>
+    public bool ResumeNoteOnFailureCard => HasFailed && ResumeNote is not null;
+
+    /// <summary>"A build stopped after the download. ... The saved build takes 9.9 GB on drive C:."</summary>
+    public string? ResumeText => Resumable is { } saved
+        ? Loc.Instance.Format(saved.Checkpoint.Kind == CheckpointKind.Downloaded ? "Media_ResumeDownloaded" : "Media_ResumeImageReady", ByteSize.Format(saved.Bytes), DriveOf(saved))
+        : null;
+
+    /// <summary>The info bar with Resume and Discard while no build runs; after a failure the failure card offers them.</summary>
+    public bool ShowResumeBar => Resumable is not null && !IsBuilding && !HasFailed;
+
+    /// <summary>The failed build left a saved build: the failure card offers Resume too.</summary>
+    public bool CanResumeAfterFailure => HasFailed && Resumable is not null && !IsBuilding;
+
+    private bool CanResumeOrDiscard => Resumable is not null && !IsBuilding && !IsWorking && !IsCleaning;
+
+    partial void OnHasFailedChanged(bool value) => RefreshResume();
+
+    /// <summary>The drive letter of the saved build ("C"): the text says "on drive C", where "C:." would read oddly at a sentence end.</summary>
+    private static string DriveOf(ResumableBuild saved) => Path.GetPathRoot(saved.WorkFolder)?.TrimEnd('\\', ':') ?? saved.WorkFolder;
+
+    /// <summary>Looks for saved builds again off the window's thread (administrator rights needed: the folders are locked to Administrators).</summary>
+    private async Task RefreshResumableAsync()
+    {
+        var system = _system;
+        if (!system.Elevated) return;
+        try
+        {
+            Resumable = (await Task.Run(() => system.FindResumable())).FirstOrDefault();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Log.Warn("media", "saved builds could not be listed: " + ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Resume needs the same choices: the saved build's choices.json is applied to the page (as a remembered file is, every
+    /// value that no longer fits named), and the build goes on from its checkpoint with the request the page then makes. The
+    /// engine refuses a request or saved files that do not match (Media_ResumeInvalid). An own ISO is read first, as for Build.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanResumeOrDiscard))]
+    private async Task ResumeAsync()
+    {
+        if (Resumable is not { } saved) return;
+        ResumeNote = null;
+        MediaRequestFile? file = null;
+        try
+        {
+            if (_system.SavedChoices(saved.WorkFolder) is { } text) file = MediaRequestFile.ParseKeepingWhatFits(text, _keyboardProfiles);
+        }
+        catch (MediaRequestFileException ex)
+        {
+            Log.Warn("media", $"the saved build's choices were not used: {ex.Message}");
+        }
+        if (file is null)
+        {
+            ResumeNote = Loc.Instance["Media_ResumeInvalid"];
+            return;
+        }
+        _droppedNames = [];
+        ShowDropped(ApplyChoices(file));
+        await IsoLoading;
+        await AppsLoading;
+        // A value that no longer fits (named in the choices note) makes another request: the engine would refuse it.
+        if (_droppedNames.Count > 0)
+        {
+            ResumeNote = Loc.Instance["Media_ResumeInvalid"];
+            return;
+        }
+        var problem = Problem(space: false);
+        if (problem is not null || Choices()?.ToRequest() is not { } request)
+        {
+            ResumeNote = Loc.Instance[problem ?? "Media_ResumeInvalid"];
+            return;
+        }
+        var folder = saved.WorkFolder;
+        await (_running = RunBuildAsync(request, Choices(), (progress, ct) => _system.ResumeBuild(folder, request, progress, ct), saved.Checkpoint.ResumesAt));
+    }
+
+    /// <summary>Deletes the saved build after asking (it frees its gigabytes; a later build starts from the beginning).</summary>
+    [RelayCommand(CanExecute = nameof(CanResumeOrDiscard))]
+    private async Task DiscardAsync()
+    {
+        if (Resumable is not { } saved) return;
+        if (!_dialogs.Ask(Loc.Instance["Media_DiscardTitle"], Loc.Instance.Format("Media_DiscardText", ByteSize.Format(saved.Bytes), DriveOf(saved)), Loc.Instance["Media_DiscardButton"]))
+            return;
+        await DiscardSavedAsync(saved);
+    }
+
+    /// <summary>Deletes the saved build off the window's thread (gigabytes); false, with the note, when that failed.</summary>
+    private async Task<bool> DiscardSavedAsync(ResumableBuild saved)
+    {
+        ResumeNote = null;
+        var system = _system;
+        try
+        {
+            await Task.Run(() => system.DiscardBuild(saved.WorkFolder));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            Log.Warn("media", $"the saved build in {saved.WorkFolder} could not be discarded: {ex.Message}");
+            ResumeNote = Loc.Instance["Media_DiscardFailed"];
+            return false;
+        }
+        Resumable = null;
+        await RefreshResumableAsync();
+        return true;
     }
 
     // ---- remembered, saved and loaded choices ----
@@ -1977,8 +2162,11 @@ public sealed partial class InstallMediaViewModel : PageViewModel
 
     // ---- demo (--media-demo) ----
 
-    /// <summary>The stage list of a finished sample build: all done, or stopped by <paramref name="failure"/> (the stages after it did not run).</summary>
-    private void DemoStages(MediaBuildException? failure)
+    /// <summary>
+    /// The stage list of a finished sample build: all done, or stopped by <paramref name="failure"/> (the stages after it did
+    /// not run). With <paramref name="resumesAt"/> a resume: the stages before it are done, from the saved build.
+    /// </summary>
+    private void DemoStages(MediaBuildException? failure, MediaStage? resumesAt = null)
     {
         var minutes = new[] { 21, 1, 12, 3, 2, 1, 4, 1 };
         Stages.Clear();
@@ -1986,7 +2174,12 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         foreach (var (stage, i) in new[] { MediaStage.Download, MediaStage.Check, MediaStage.Unpack, MediaStage.Apps, MediaStage.Shrink, MediaStage.Files, MediaStage.Iso, MediaStage.Verify }.Select((s, i) => (s, i)))
         {
             var row = new MediaStageRow(stage);
-            if (failed) row.State = MediaStageState.NotRun;
+            if (stage < resumesAt)
+            {
+                row.State = MediaStageState.Done;
+                row.Detail = Loc.Instance["Media_StageSaved"];
+            }
+            else if (failed) row.State = MediaStageState.NotRun;
             else if (failure is not null && failure.Stage == stage)
             {
                 row.State = MediaStageState.Failed;
@@ -2009,7 +2202,10 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     /// then a sample failure and the next time a sample success. Nothing goes to the network, attaches or runs.
     /// <paramref name="show"/>, comma-separated: "fail" or "done" shows that result at once, "expand" unfolds the change
     /// cards, "progress" starts a build that stays in the middle of Apps (the stage list mid-build), "review" turns on the Expert option that warns in the review (and the Windows parts card with four parts), "parts" turns on the Windows parts card with four parts ticked, "iso" chooses the sample own ISO, "umlaut" types an account name Setup cannot create, "cleanup" shows the Build card while the start cleanup
-    /// runs, "dropped" shows the note about remembered choices that no longer fit, "smaller" chooses Smaller ISO (for screenshots).
+    /// runs, "dropped" shows the note about remembered choices that no longer fit, "smaller" chooses Smaller ISO (for screenshots),
+    /// "resume" offers a sample saved build (the info bar with Resume and Discard; Resume runs the stages from Files on),
+    /// "resumefail" shows a failure in the ISO stage that left the saved build (the failure card with Resume), "resumed" the
+    /// stage list of a finished resume.
     /// </summary>
     public void UseDemo(string? show)
     {
@@ -2035,11 +2231,21 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         _demoProgress = shows.Contains("progress");
         var demo = new InstallMediaDemo.Build { Freeze = _demoProgress };
         _build = demo.RunAsync;
+        // "resume", "resumefail": a sample saved build that Discard or a resume removes; Resume applies the page's own choices.
+        var saved = shows.Contains("resume") || shows.Contains("resumefail") ? InstallMediaDemo.Saved() : null;
         _system = _system with
         {
             Elevated = true, ExePath = _system.ExePath ?? "Tunero.exe", IsPublishedExe = true,
             ReadIso = (_, _) => Task.FromResult(InstallMediaDemo.Iso()),
             ReadIsoApps = (_, _, _) => Task.FromResult(InstallMediaDemo.IsoApps()),
+            FindResumable = () => saved is not null ? [saved] : [],
+            DiscardBuild = _ => saved = null,
+            ResumeBuild = (folder, request, progress, ct) =>
+            {
+                saved = null;
+                return demo.ResumeAsync(folder, request, progress, ct);
+            },
+            SavedChoices = _ => Choices() is { } choices ? MediaRequestFile.FromChoices(choices, choices.Tunero?.Profile, choices.Tunero?.Theme).ToJson() : null,
         };
         CanApplyProfile = true;
         ApplyProfile = true;
@@ -2057,6 +2263,16 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         {
             ShowFailure(InstallMediaDemo.Failure(), window: false);
             DemoStages(InstallMediaDemo.Failure());
+        }
+        else if (shows.Contains("resumefail"))
+        {
+            ShowFailure(InstallMediaDemo.IsoFailure(), window: false);
+            DemoStages(InstallMediaDemo.IsoFailure());
+        }
+        else if (shows.Contains("resumed"))
+        {
+            DemoStages(null, MediaStage.Files);
+            ShowSuccess(InstallMediaDemo.Result(Path.Combine(Path.GetTempPath(), "Windows11_Tunero.iso")), window: false);
         }
         else if (shows.Contains("done"))
         {

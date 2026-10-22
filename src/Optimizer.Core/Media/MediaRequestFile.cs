@@ -275,6 +275,39 @@ public sealed record MediaRequestFile(
         };
     }
 
+    /// <summary>
+    /// The request file for a build's request, as <see cref="FromChoices"/> gives it for the choices the request came from
+    /// (<see cref="MediaChoices.ToRequest"/>): a work folder keeps it as choices.json (<see cref="MediaCheckpoint.ChoicesFileName"/>),
+    /// so the page can apply the same choices before a resume. The region is the answer file's user locale, the keyboard its
+    /// input locale; profile, theme and apps come from the first sign-in file.
+    /// </summary>
+    public static MediaRequestFile FromRequest(MediaRequest r)
+    {
+        ArgumentNullException.ThrowIfNull(r);
+        var download = r.Source.Download;
+        var a = r.Answers;
+        return new MediaRequestFile(
+            download is not null ? Download : r.Source.IsoPath ?? throw new ArgumentException("The request names no source.", nameof(r)),
+            download?.LanguageCode,
+            r.Edition,
+            r.RemoveApps.ToList(),
+            a.SkipSetup ? new MediaSetupChoice(a.AccountName?.Trim() ?? "", a.UserLocale, a.InputLocale) : null,
+            r.FirstSignIn?.Profile,
+            a.AllowUnsupported,
+            r.OutputIso,
+            AppLanguage: null,
+            Theme: r.FirstSignIn?.Theme)
+        {
+            InstallApps = r.FirstSignIn?.Apps?.ToList() ?? [],
+            RemoveUnreviewed = r.RemoveUnreviewed.ToList(),
+            RemoveParts = r.RemoveParts.ToList(),
+            Compression = r.Compression,
+            PreventDeviceEncryption = r.Settings.PreventDeviceEncryption,
+            NoReservedStorage = r.Settings.NoReservedStorage,
+            AllowUnsupportedUpgrades = r.Settings.AllowUnsupportedUpgrades,
+        };
+    }
+
     /// <summary>The file as <see cref="Parse"/> reads it: camelCase, indented, every field it knows (null where allowed), "source" being "download" or the ISO's path.</summary>
     public string ToJson()
     {

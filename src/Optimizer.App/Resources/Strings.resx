@@ -1899,6 +1899,17 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Media_StagesCount" xml:space="preserve"><value>Stage {0} of {1}, {2}</value></data>
   <data name="Media_StageStopped" xml:space="preserve"><value>Stopped</value></data>
   <data name="Media_StageNotRun" xml:space="preserve"><value>Not run</value></data>
+  <data name="Media_ResumeInvalid" xml:space="preserve"><value>The saved build no longer fits: its choices, its files or its folder changed, or another Tunero uses it. Discard it and build again.</value></data>
+  <data name="Media_ResumeDownloaded" xml:space="preserve"><value>A build stopped after the download. Resume goes on from there and needs the same choices. The saved build takes {0} on drive {1}.</value></data>
+  <data name="Media_ResumeImageReady" xml:space="preserve"><value>A build stopped after the Windows image was finished. Resume goes on from there and needs the same choices. The saved build takes {0} on drive {1}.</value></data>
+  <data name="Media_ResumeButton" xml:space="preserve"><value>Resume</value></data>
+  <data name="Media_DiscardButton" xml:space="preserve"><value>Discard</value></data>
+  <data name="Media_StageSaved" xml:space="preserve"><value>From the saved build</value></data>
+  <data name="Media_DiscardTitle" xml:space="preserve"><value>Discard the saved build?</value></data>
+  <data name="Media_DiscardText" xml:space="preserve"><value>Tunero deletes the saved build and frees {0} on drive {1}. A later build starts from the beginning.</value></data>
+  <data name="Media_DiscardFirstText" xml:space="preserve"><value>A saved build takes {0} on drive {1}. Build starts from the beginning, so the saved build is deleted first. Resume goes on from it instead.</value></data>
+  <data name="Media_DiscardAndBuild" xml:space="preserve"><value>Discard and build</value></data>
+  <data name="Media_DiscardFailed" xml:space="preserve"><value>The saved build could not be deleted now. Try again after the next start of Tunero.</value></data>
   <data name="Media_StageDone" xml:space="preserve"><value>Done</value></data>
   <data name="Media_StageRunning" xml:space="preserve"><value>Running</value></data>
   <data name="Media_StageFailed" xml:space="preserve"><value>Failed</value></data>
