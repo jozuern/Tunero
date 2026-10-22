@@ -1,7 +1,9 @@
 <script lang="ts">
   // The Tunero window: a recreation of the app's navigation and the pages the demo needs, in the app's words.
+  import { scale } from 'svelte/transition';
+  import { backOut } from 'svelte/easing';
   import type { DesktopStrings } from '../../i18n/desktop-en.ts';
-  import { useStore } from '../store.svelte.ts';
+  import { useStore, reducedMotion } from '../store.svelte.ts';
   import Icon from '../Icon.svelte';
   import type { IconName } from '../icons.ts';
   import type { AppStrings, Page } from './appKeys.ts';
@@ -20,6 +22,9 @@
   $effect(() => {
     if (store.showTweak) go('tweaks');
   });
+
+  // The Changes count pops when it changes, so each change is seen arriving there.
+  const bump = (node: Element) => scale(node, { start: 0.5, duration: reducedMotion() ? 0 : 360, easing: backOut });
 
   function go(next: Page) {
     store.appPage = next;
@@ -49,7 +54,7 @@
     <button type="button" data-changes data-nav="changes" class:current={page === 'changes'} aria-current={page === 'changes' ? 'page' : undefined} onclick={() => go('changes')}>
       <Icon name="history" size={16} />
       <span>{app.Nav_Changes}</span>
-      {#if store.undoable.length > 0}<span class="count">{store.undoable.length}</span>{/if}
+      {#if store.undoable.length > 0}{#key store.undoable.length}<span class="count" in:bump>{store.undoable.length}</span>{/key}{/if}
     </button>
   </nav>
 
