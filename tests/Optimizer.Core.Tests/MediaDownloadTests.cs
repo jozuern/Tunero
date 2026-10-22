@@ -318,7 +318,9 @@ public class MediaDownloadTests
     {
         var data = Body(1 << 20);
         var old = MediaDownload.StallTimeout;
-        MediaDownload.StallTimeout = TimeSpan.FromMilliseconds(200);
+        // The broken connection stalls for good, so any limit ends it; one the healthy second connection cannot reach on a
+        // busy CI runner (200 ms did, and a third request followed).
+        MediaDownload.StallTimeout = TimeSpan.FromSeconds(1);
         try
         {
             var handler = new FakeHandler((_, n) => n == 1
