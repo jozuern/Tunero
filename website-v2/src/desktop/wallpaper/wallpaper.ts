@@ -13,6 +13,11 @@ export interface WallpaperEvents {
   onFirstFrame?: () => void;
   /** The wallpaper cannot run or has stopped for good; the caller shows its fallback. `reason` is for debugging. */
   onFail?: (reason: string) => void;
+  /**
+   * True while nobody can see the wallpaper move (the boot screen covers it, or a window covers all but the taskbar):
+   * no frames are drawn then, and the motion goes on from where it stopped.
+   */
+  isPaused?: () => boolean;
 }
 
 const vertexSource = `#version 300 es
@@ -243,6 +248,10 @@ export function startWallpaper(
 
     function frame(now: number) {
       frameId = requestAnimationFrame(frame);
+      if (events.isPaused?.()) {
+        lastNow = null;
+        return;
+      }
       if (reduced) {
         // Still: draw again only when what the picture shows has changed.
         if (clamp01(getClutter()) !== stillClutter || themeTarget() !== stillTheme || split !== stillSplit) drawStill();

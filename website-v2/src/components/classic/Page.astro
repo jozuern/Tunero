@@ -30,7 +30,7 @@ const languages = [
 const legalPaths = { privacy: lang === 'de' ? '/de/datenschutz/' : '/privacy/', legal: lang === 'de' ? '/de/impressum/' : '/legal/' };
 ---
 
-<Base lang={lang} title={title} description={description} path={path} germanPath={germanPath} skipTo="#main">
+<Base lang={lang} title={title} description={description} path={path} germanPath={germanPath} skipTo="#main" software={version ? { version } : undefined}>
   <div class="classic">
     <header class="masthead">
       <div class="column masthead-row">

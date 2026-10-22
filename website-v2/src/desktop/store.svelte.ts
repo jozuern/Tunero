@@ -21,6 +21,7 @@ import {
   serialize,
   deserialize,
   type Change,
+  type ChangeKind,
   type DemoState,
   type WindowId,
 } from '../lib/demo-state.ts';
@@ -47,9 +48,9 @@ const sizes: Record<WindowId, { width: number; height: number }> = {
   settings: { width: 820, height: 440 },
 };
 
-function readSaved(): DemoState {
+function readSaved(demo: Demo): DemoState {
   try {
-    return deserialize(sessionStorage.getItem(storageKey));
+    return deserialize(sessionStorage.getItem(storageKey), demo);
   } catch {
     return initial();
   }
@@ -85,8 +86,10 @@ export class DesktopStore {
   guideStep = $state<{ page: 'overview' | 'tweaks' | 'startup' | 'apps'; index: number; total: number } | null>(null);
   /** True while the before/after comparison covers the desktop (Compare.svelte). */
   compare = $state(false);
+  // Read on every frame of the wallpaper: worked out again only when the state changes.
+  #clutter = $derived.by(() => clutter(this.state, this.demo));
   get clutter() {
-    return clutter(this.state, this.demo);
+    return this.#clutter;
   }
   /** The window in front, or null when none is open. */
   focused = $derived.by(() => {
@@ -104,7 +107,7 @@ export class DesktopStore {
 
   /** Reads the saved state and reopens the window that was in front; call once in the browser. */
   restore() {
-    this.state = readSaved();
+    this.state = readSaved(this.demo);
     if (this.state.window) this.open(this.state.window);
   }
 
@@ -167,6 +170,21 @@ export class DesktopStore {
     return burst;
   }
 
+  /**
+   * After an undo: what shattered and comes back before its leaving transition ended is the same element (Svelte keeps
+   * it), still marked as shattered and so invisible. It loses the mark once its change is undone or its effect shows.
+   */
+  private revive() {
+    if (typeof document === 'undefined') return;
+    for (const element of document.querySelectorAll<HTMLElement>('.shattered')) {
+      const marked = element.dataset.change;
+      const back = marked
+        ? !isApplied(this.state, { kind: marked.slice(0, marked.indexOf(':')) as ChangeKind, id: marked.slice(marked.indexOf(':') + 1) })
+        : (element.dataset.effect ?? '').split(/\s+/).some((effect) => effect !== '' && this.active(effect as Effect));
+      if (back) element.classList.remove('shattered');
+    }
+  }
+
   /** Applies changes; a running rewind is cut short at its end state first. */
   apply(changes: Change[]) {
     this.stopRewind();
@@ -192,6 +210,7 @@ export class DesktopStore {
     this.stopRewind();
     this.finale = false;
     this.state = undo(this.state, change);
+    this.revive();
     this.save();
     this.show([change], 'undo');
   }
@@ -213,6 +232,7 @@ export class DesktopStore {
     for (const step of steps) {
       if (run !== this.rewindRun) return;
       this.state = undo(this.state, step);
+      this.revive();
       this.show([step], 'undo');
       await wait(rewindStep);
     }
@@ -222,21 +242,26 @@ export class DesktopStore {
     }
   }
 
-  private stopRewind() {
+  /** Ends a running Undo all at once, in the state it was heading for. */
+  stopRewind() {
     if (!this.rewinding) return;
     this.rewindRun++;
     this.rewinding = false;
     this.rewindEnd = null;
     this.state = undoAll(this.state).state;
+    this.revive();
   }
 
   markScanned() {
     this.state = { ...this.state, scanned: true };
+    // During Undo all the saved state is the one it heads for: it must know about the scan too.
+    if (this.rewindEnd) this.rewindEnd = { ...this.rewindEnd, scanned: true };
     this.save();
   }
 
   markBootSeen() {
     this.state = { ...this.state, bootSeen: true };
+    if (this.rewindEnd) this.rewindEnd = { ...this.rewindEnd, bootSeen: true };
     this.save();
   }
 

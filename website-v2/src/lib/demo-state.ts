@@ -80,8 +80,11 @@ export function tally(state: DemoState, demo: Demo) {
 
 export const serialize = (state: DemoState) => JSON.stringify(state);
 
-/** The saved state, or the initial one when there is none or it is not one this code wrote. */
-export function deserialize(text: string | null): DemoState {
+/**
+ * The saved state, or the initial one when there is none or it is not one this code wrote. With `demo`, changes it no
+ * longer has are left out: the session can outlive a deploy that renamed a tweak or a startup program.
+ */
+export function deserialize(text: string | null, demo?: Demo): DemoState {
   try {
     const data = JSON.parse(text ?? '');
     const valid =
@@ -91,7 +94,11 @@ export function deserialize(text: string | null): DemoState {
       typeof data.bootSeen === 'boolean' &&
       (data.window === null || windowIds.includes(data.window));
     if (!valid) return initial();
-    return { applied: data.applied.map((c: Change) => ({ kind: c.kind, id: c.id })), scanned: data.scanned, bootSeen: data.bootSeen, window: data.window };
+    const known = demo ? allChanges(demo) : null;
+    const applied = (data.applied as Change[])
+      .map((c) => ({ kind: c.kind, id: c.id }))
+      .filter((c) => !known || known.some((k) => same(k, c)));
+    return { applied, scanned: data.scanned, bootSeen: data.bootSeen, window: data.window };
   } catch {
     return initial();
   }

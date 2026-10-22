@@ -43,7 +43,6 @@ const desktopEn = {
     syncAd: { title: 'Your files are not backed up', body: 'Turn on cloud backup to protect your Desktop, Documents and Pictures.', action: 'Turn on', hint: 'Opens Tunero on the tweak that turns this ad off' },
   },
   notepad: {
-    file: 'Changelog.txt',
     note: 'The newest versions, from CHANGELOG.md in the repository.',
     full: 'Full changelog on GitHub',
   },
@@ -160,10 +159,10 @@ const desktopEn = {
   window: { minimize: 'Minimize', maximize: 'Maximize', restore: 'Restore', close: 'Close' },
   trayMore: 'Show hidden icons',
   clockLabel: 'Clock',
+  taskbarLabel: 'Taskbar',
   network: 'Network',
   soundOn: 'Turn sound on',
   soundOff: 'Turn sound off',
-  volume: 'Volume',
 };
 
 export type DesktopStrings = typeof desktopEn;

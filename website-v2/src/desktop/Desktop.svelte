@@ -44,11 +44,21 @@
     links: { download: string; faq: string; privacy: string };
   } = $props();
 
+  // svelte-ignore state_referenced_locally
+  // One store for the life of the page, made from the demo it starts with (the demo never changes).
   const store = provideStore(new DesktopStore(demo));
   let ready = $state(false);
-  let theme = $state<'light' | 'dark'>('dark');
+  // Read from <html> at once on the client (Base.astro set it before the first paint), so the shader's first frame is in
+  // the visitor's theme and does not fade over from dark.
+  let theme = $state<'light' | 'dark'>(typeof document !== 'undefined' && document.documentElement.dataset.theme === 'light' ? 'light' : 'dark');
   let phone = $state(false);
   let booting = $state(false);
+
+  // The wallpaper rests while nobody can see it move: under the boot screen, and under a window that covers all but the
+  // taskbar (maximized, or any window in the compact layout).
+  const covered = $derived(
+    booting || (store.focused !== null && (store.windows[store.focused].maximized || phone) && !store.compare),
+  );
 
   function endBoot() {
     booting = false;
@@ -82,7 +92,7 @@
 </script>
 
 <div class="desktop" class:ready class:comparing={store.compare}>
-  <Wallpaper clutter={store.clutter} {theme} />
+  <Wallpaper clutter={store.clutter} {theme} paused={covered} />
   <DesktopIcons {copy} />
   <Widget copy={copy.widget} />
   <Hero {copy} checks={facts.checkCount} tweaks={facts.tweakCount} download={facts.download} ready={ready && !booting && !phone} />

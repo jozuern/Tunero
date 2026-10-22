@@ -9,7 +9,7 @@
   import Toggle from './Toggle.svelte';
   import Writes from './Writes.svelte';
   import Icon from '../Icon.svelte';
-  import { flash } from './flash.ts';
+  import { cascadeStep, flash } from './flash.ts';
   import { fill, type AppStrings } from './appKeys.ts';
 
   let { app, copy, tweakCount }: { app: AppStrings; copy: DesktopStrings['app']; tweakCount: number } = $props();
@@ -39,8 +39,6 @@
   const on = (item: DemoItem) => store.applied({ kind: 'tweak', id: item.id });
   const basisLabel = (basis: string) => fill(copy.basisLabel, copy.basis[basis as keyof typeof copy.basis] ?? basis);
 
-  /** Spacing of the switches a group's "Turn on" flips: one after the other, as the app's list fills in. */
-  const cascadeStep = 110;
   /** The group "Turn on" was just clicked in, for as long as its switches cascade. */
   let cascading = $state<string | null>(null);
   let cascadeTimer: ReturnType<typeof setTimeout> | undefined;

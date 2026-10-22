@@ -150,6 +150,26 @@ a {
   box-shadow: 0 0 18px 6px rgba(247, 181, 0, 0.45);
 }
 
+/* Where a trail lands lights up for a moment (desktop/effects.ts): only its opacity is animated. */
+.trail-glow {
+  position: fixed;
+  z-index: 9490;
+  border-radius: 8px;
+  pointer-events: none;
+  opacity: 0;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  box-shadow:
+    0 0 0 1.5px color-mix(in srgb, var(--accent) 80%, transparent),
+    0 0 18px 4px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.trail-glow.undo {
+  background: rgba(247, 181, 0, 0.12);
+  box-shadow:
+    0 0 0 1.5px rgba(247, 181, 0, 0.8),
+    0 0 18px 4px rgba(247, 181, 0, 0.4);
+}
+
 /* The first visit's boot covers the desktop from the first paint on (DesktopPage.astro, Boot.svelte). */
 html[data-boot='pending'],
 html[data-boot='pending'] body {
@@ -225,6 +245,22 @@ html[data-boot='pending'] .desktop {
   border: 2px solid var(--accent);
   border-radius: 50%;
   background: color-mix(in srgb, var(--accent) 20%, transparent);
+  pointer-events: none;
+}
+
+/* A row that just changed lights up (desktop/app/flash.ts): a tint layer whose opacity is animated, over the row's own
+   background, so the compositor does it without repainting the row. */
+.flash-host {
+  position: relative;
+}
+
+.flash-host::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--flash-tone, var(--accent)) 18%, transparent);
+  opacity: 0;
   pointer-events: none;
 }
 

@@ -122,21 +122,25 @@ sheets.
 - `website-v2/`, Astro 7 (static output, the same i18n routing as v1: `/` English, `/de/` German) with one Svelte 5
   island for the desktop. Svelte transitions and the Web Animations API for motion; no GSAP and no other animation
   library.
-- `src/lib/data.ts`: facts from the repository at build time (version, counts, check titles and ratings, tweak
-  ratings, registry values, changelog), ported from v1 so v2 does not depend on the v1 folder.
+- `src/lib/repo.ts`, `board.ts`, `release.ts`: facts from the repository at build time (counts, check titles and
+  ratings, tweak ratings, registry values, changelog, the app's strings; the latest release, asked once per build),
+  ported from v1 so v2 does not depend on the v1 folder.
 - `src/lib/demo.ts`: the demo scenario, a list of check and tweak ids, each with the desktop effect it drives. Titles,
   ratings, summaries and values are read from the catalog; the build fails when an id no longer exists.
 - `src/i18n/en.ts`, `de.ts`: all site copy.
 - Fonts: Segoe UI Variable and Cascadia Mono where Windows has them, `system-ui` and `ui-monospace` elsewhere. No web
   fonts.
 - Budget: at most 150 KB of JavaScript (gzip) for the desktop island, first paint of the desktop under 1.5 s on a
-  mid range laptop.
-- Deploy: none yet. `pages.yml` builds only `website/`; switching tunero.dev to v2 is a separate step the owner
-  decides on (then v2 moves into `website/`, or the workflow points at `website-v2/`).
+  mid range laptop. Today about 64 KB; `astro.config.mjs` adds `modulepreload` links for the island's scripts, so they
+  load with the page instead of after it.
+- Checks: `npm run build` runs `astro check` (the .astro and .ts files), `svelte-check` with warnings as errors (the
+  .svelte files) and the build; `npm test` the node tests in `src/lib`.
+- Deploy: `pages.yml` tests and builds `website-v2/` and publishes it to tunero.dev; `website-check.yml` runs the same
+  on pull requests. `website/` (v1) is no longer deployed.
 
 ## Testing
 
-- `DocLintTests` already checks the copy rules in `website/src`; it gets `website-v2/src` too.
+- `DocLintTests` checks the copy rules in `website-v2/src` (and in `website/src` of v1).
 - The build fails on a missing demo id, a count that disagrees with the README, or a missing translation key.
 - Checked in Chrome at 1920 x 1080, 1366 x 768 and 390 x 844, light and dark, English and German, with reduced
   motion, keyboard only, and with WebGL turned off. Lighthouse performance and accessibility on both pages.

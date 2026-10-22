@@ -2,6 +2,7 @@
 import '../styles/tokens.css';
 import { t, localPath, type Lang } from '../i18n/index.ts';
 import { phoneQuery } from '../lib/phone.ts';
+import { download, operator } from '../lib/repo.ts';
 
 interface Props {
   lang: Lang;
@@ -17,13 +18,33 @@ interface Props {
   germanPath?: string;
   /** Where phones go instead of this page: the demo PC is not offered on phones. */
   phoneTo?: string;
+  /** On the pages about the app (home and classic): its facts for search engines, as schema.org SoftwareApplication. */
+  software?: { version: string };
 }
 
-const { lang, title, description, path, indexed = true, skipTo, germanPath, phoneTo } = Astro.props;
+const { lang, title, description, path, indexed = true, skipTo, germanPath, phoneTo, software } = Astro.props;
 const copy = t(lang);
 const english = new URL(path, Astro.site);
 const german = new URL(germanPath ?? localPath('de', path), Astro.site);
 const canonical = lang === 'de' ? german : english;
+// Only facts the site states anyway: no ratings or reviews. "<" is escaped so the JSON cannot end the script element.
+const structured = software && JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'Tunero',
+  description,
+  url: canonical.href,
+  inLanguage: lang,
+  operatingSystem: 'Windows 11',
+  applicationCategory: 'UtilitiesApplication',
+  softwareVersion: software.version,
+  downloadUrl: download,
+  image: new URL('/og.png', Astro.site).href,
+  license: 'https://www.gnu.org/licenses/gpl-3.0.html',
+  isAccessibleForFree: true,
+  offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' },
+  author: { '@type': 'Person', name: operator.name },
+}).replace(/</g, '\\u003c');
 ---
 
 <!doctype html>
@@ -71,6 +92,7 @@ const canonical = lang === 'de' ? german : english;
     <meta property="og:image" content={new URL('/og.png', Astro.site)} />
     <meta property="og:locale" content={lang === 'en' ? 'en_US' : 'de_DE'} />
     <meta name="twitter:card" content="summary_large_image" />
+    {structured && <script type="application/ld+json" set:html={structured} />}
   </head>
   <body>
     <a class="skip" href={skipTo ?? localPath(lang, '/classic/')}>{skipTo ? copy.skipContent : copy.skip}</a>

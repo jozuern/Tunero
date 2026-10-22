@@ -13,6 +13,8 @@
 
 <div class="notepad">
   <p class="bar">{copy.note} <a {href} target="_blank" rel="noopener">{copy.full}</a></p>
+  <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+  <!-- A scrolling text: it takes the focus so it can be scrolled with the keyboard (WCAG 2.1.1). -->
   <div class="page" lang="en" tabindex="0">
     {#each parsed as block, i (i)}
       {#if block.kind === 'h2'}<h2>{@render line(block.spans)}</h2>

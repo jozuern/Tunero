@@ -158,15 +158,6 @@ export function checkImpacts(id: string): number[] {
   return [...new Set(values)].sort();
 }
 
-/** The checks whose problem rates 5 for games, the top of the scale, by the title of their page. */
-export function topChecks(lang: Lang): string[] {
-  const titles = [...checkSources.keys()]
-    .filter((id) => checkImpacts(id).includes(5))
-    .map((id) => docTitle(lang, id)?.replace(/\s*\{\{\w+\}\}/g, ''));
-  if (titles.length === 0 || titles.some((t) => !t)) throw new Error('Checks rated 5: a page is missing or none found');
-  return (titles as string[]).sort((a, b) => a.localeCompare(b, lang));
-}
-
 export type TweakAction = Action;
 
 /** The findings a catalog tweak fixes (its `fixes` list). */
