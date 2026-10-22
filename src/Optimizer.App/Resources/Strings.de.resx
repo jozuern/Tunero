@@ -1897,7 +1897,8 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Media_ChoicesSaveFailed" xml:space="preserve"><value>Die Auswahl konnte nicht in {0} gespeichert werden.</value></data>
   <data name="Media_ChoicesLoaded" xml:space="preserve"><value>Auswahl aus {0} geladen.</value></data>
   <data name="Media_ChoicesUnreadable" xml:space="preserve"><value>Die Datei {0} konnte nicht gelesen werden.</value></data>
-  <data name="Media_ChoicesRefused" xml:space="preserve"><value>Die Datei wurde nicht geladen, nichts hat sich geändert. {0}</value></data>
+  <data name="Media_ChoicesNotRequest" xml:space="preserve"><value>Die Datei wurde nicht geladen, nichts hat sich geändert. Es ist keine Tunero-Auswahldatei für Installationsmedien.</value></data>
+  <data name="Media_ChoicesRefused" xml:space="preserve"><value>Die Datei wurde nicht geladen, nichts hat sich geändert. Problem bei: {0}.</value></data>
   <data name="Media_ChoicesDropped" xml:space="preserve"><value>Diese gespeicherten Angaben passen nicht mehr und bleiben auf ihrem Standard: {0}.</value></data>
   <data name="Media_ChoicesReset" xml:space="preserve"><value>Die Auswahl ist wieder auf dem Standard, die gemerkte Auswahl ist gelöscht.</value></data>
   <data name="Media_Field_source" xml:space="preserve"><value>Quelle</value></data>

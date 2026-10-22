@@ -1325,7 +1325,8 @@ public sealed class InstallMediaViewModelTests : IDisposable
         _dialogs.OpenFile = Write(json, "bad.json");
         media.LoadChoicesCommand.Execute(null);
         Assert.Equal(InfoBarSeverity.Warning, media.ChoicesNoteSeverity);
-        Assert.Contains("edition", media.ChoicesNote);
+        Assert.Contains(Loc.Instance["Media_Field_edition"], media.ChoicesNote);
+        Assert.DoesNotContain("must be", media.ChoicesNote);
         Assert.Equal("Anna", media.AccountNameText);
         Assert.NotEqual("Core", media.Edition?.Key);
         Assert.False(media.AllowUnsupported);
@@ -1333,6 +1334,23 @@ public sealed class InstallMediaViewModelTests : IDisposable
         _dialogs.OpenFile = Path.Combine(_root, "missing.json");
         media.LoadChoicesCommand.Execute(null);
         Assert.Contains("missing.json", media.ChoicesNote);
+
+        // Not a request file at all: its own sentence. German names the field in German.
+        File.WriteAllText(Path.Combine(_root, "junk.json"), "[1]");
+        _dialogs.OpenFile = Path.Combine(_root, "junk.json");
+        media.LoadChoicesCommand.Execute(null);
+        Assert.Equal(Loc.Instance["Media_ChoicesNotRequest"], media.ChoicesNote);
+        Loc.Instance.SetLanguage("de");
+        _dialogs.OpenFile = Path.Combine(_root, "bad.json");
+        media.LoadChoicesCommand.Execute(null);
+        Assert.Contains("Edition", media.ChoicesNote);
+        Assert.Contains("Problem bei", media.ChoicesNote);
+        json["skipSetup"]!["region"] = 5;
+        json["edition"] = "Core";
+        _dialogs.OpenFile = Write(json, "bad2.json");
+        media.LoadChoicesCommand.Execute(null);
+        Assert.Contains("Konto und Einrichtungsfragen", media.ChoicesNote);
+        Assert.DoesNotContain("must be", media.ChoicesNote);
     }
 
     [Fact]

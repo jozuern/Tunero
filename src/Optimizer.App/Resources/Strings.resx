@@ -1897,7 +1897,8 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Media_ChoicesSaveFailed" xml:space="preserve"><value>The choices could not be saved to {0}.</value></data>
   <data name="Media_ChoicesLoaded" xml:space="preserve"><value>Choices loaded from {0}.</value></data>
   <data name="Media_ChoicesUnreadable" xml:space="preserve"><value>The file {0} could not be read.</value></data>
-  <data name="Media_ChoicesRefused" xml:space="preserve"><value>The file was not loaded and nothing changed. {0}</value></data>
+  <data name="Media_ChoicesNotRequest" xml:space="preserve"><value>The file was not loaded and nothing changed. It is not a Tunero install media choices file.</value></data>
+  <data name="Media_ChoicesRefused" xml:space="preserve"><value>The file was not loaded and nothing changed. Problem with: {0}.</value></data>
   <data name="Media_ChoicesDropped" xml:space="preserve"><value>These saved choices no longer fit and stay at their defaults: {0}.</value></data>
   <data name="Media_ChoicesReset" xml:space="preserve"><value>The choices are back to the defaults, and the remembered ones are deleted.</value></data>
   <data name="Media_Field_source" xml:space="preserve"><value>Source</value></data>

@@ -1824,7 +1824,10 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         }
         catch (MediaRequestFileException ex)
         {
-            ShowChoicesNote(Loc.Instance.Format("Media_ChoicesRefused", ex.Message), InfoBarSeverity.Warning);
+            // The parser's reason is written for the developer switch: it goes to the log, the page names the field.
+            Log.Warn("media", $"the choices file {path} was refused: {ex.Message}");
+            ShowChoicesNote(ex.Field == "request" ? Loc.Instance["Media_ChoicesNotRequest"]
+                : Loc.Instance.Format("Media_ChoicesRefused", FieldLabel(ex.Field.Split('.')[0])), InfoBarSeverity.Warning);
             return;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
