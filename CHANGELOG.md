@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **Undo:** a registry key that Tunero could delete only in part (a subkey Windows protects) comes back in full on Undo. Before, Undo took what was left for a key Windows had made again, reported success and did not restore the deleted values.
+- **Uninstall leftovers:** Move to Recycle Bin asks first, and checks each folder again right before it moves it, with the same evidence as Find unused program folders (autostart entries, services, scheduled tasks, running programs, taskbar pins). A folder something uses by now, such as a program installed again into it, stays and says why.
+
 ## 1.5.0
 
 More control over the Windows ISO, several tweaks at once, and Startup in tabs.

@@ -1561,6 +1561,9 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Leftovers_Dismiss" xml:space="preserve"><value>Alle behalten</value></data>
   <data name="Leftovers_Failed" xml:space="preserve"><value>Nicht verschoben: wird verwendet, hat sich geändert oder Windows hat es abgelehnt.</value></data>
   <data name="Leftovers_Recycled" xml:space="preserve"><value>In den Papierkorb verschoben: {0}</value></data>
+  <data name="Leftovers_ConfirmTitle" xml:space="preserve"><value>In den Papierkorb verschieben?</value></data>
+  <data name="Leftovers_ConfirmText" xml:space="preserve"><value>Verschiebt {0} angehakte Einträge in den Papierkorb, aus dem du sie wiederherstellen kannst. Jeder Ordner wird vorher noch einmal geprüft: einer, den jetzt ein installiertes Programm, ein Dienst, ein Autostart-Eintrag oder ein laufendes Programm nutzt, bleibt.</value></data>
+  <data name="Leftovers_NowInUse" xml:space="preserve"><value>Nicht verschoben: ein installiertes Programm, ein Dienst, ein Autostart-Eintrag oder ein laufendes Programm nutzt ihn jetzt.</value></data>
   <data name="Orphans_Find" xml:space="preserve"><value>Ungenutzte Programmordner suchen</value></data>
   <data name="Orphans_FindHint" xml:space="preserve"><value>Sucht in Programme (Program Files) nach Ordnern von Programmen, die nicht mehr installiert sind: Tunero findet kein installiertes Programm, keinen Dienst, keinen Autostart-Eintrag, kein laufendes Programm, keine Verknüpfung und kein an die Taskleiste angeheftetes Programm, das sie nutzt, und seit 30 Tagen hat sich darin nichts geändert. Etwas, das Tunero nicht sieht, kann einen Ordner trotzdem brauchen (die Einstellungen eines anderen Programms), deshalb erscheinen sie unter Zurückgeblieben ohne Haken: Prüfe jeden einzeln.</value></data>
   <data name="Orphans_None" xml:space="preserve"><value>Keine ungenutzten Programmordner gefunden.</value></data>

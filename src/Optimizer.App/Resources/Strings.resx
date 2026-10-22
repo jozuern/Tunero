@@ -1561,6 +1561,9 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Leftovers_Dismiss" xml:space="preserve"><value>Keep all</value></data>
   <data name="Leftovers_Failed" xml:space="preserve"><value>Not moved: it is in use, has changed or Windows refused.</value></data>
   <data name="Leftovers_Recycled" xml:space="preserve"><value>Moved to the Recycle Bin: {0}</value></data>
+  <data name="Leftovers_ConfirmTitle" xml:space="preserve"><value>Move to the Recycle Bin?</value></data>
+  <data name="Leftovers_ConfirmText" xml:space="preserve"><value>Moves {0} ticked items to the Recycle Bin, where you can restore them. Each folder is checked again first: one that an installed program, service, autostart entry or running program uses now stays.</value></data>
+  <data name="Leftovers_NowInUse" xml:space="preserve"><value>Not moved: an installed program, service, autostart entry or running program uses it now.</value></data>
   <data name="Orphans_Find" xml:space="preserve"><value>Find unused program folders</value></data>
   <data name="Orphans_FindHint" xml:space="preserve"><value>Looks in Program Files for folders of programs that are no longer installed: Tunero finds no installed program, service, autostart entry, running program, shortcut or taskbar pin that uses them, and nothing in them changed for 30 days. Something Tunero cannot see may still need a folder (another program's settings), so they are listed under Left behind without a tick: check each one.</value></data>
   <data name="Orphans_None" xml:space="preserve"><value>No unused program folders found.</value></data>

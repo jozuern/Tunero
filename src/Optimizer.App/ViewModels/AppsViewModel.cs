@@ -559,30 +559,72 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
                 if (now == last) break;
                 last = now;
             }
-            // Everything that still points into program folders, as the unused-folder search reads it: also the files of
-            // Windows Installer products still installed (which often record no install location), App Paths and COM servers.
-            var referenced = ProgramOrphans.ReadEvidence(services.Context.Registry, [], user).Paths;
-            return ProgramLeftovers.FindAll(removed, roots, referenced, user);
+            return ProgramLeftovers.FindAll(removed, roots, InUseEvidence().Paths, user);
         });
         foreach (var (program, l) in found)
             if (!Leftovers.Any(x => string.Equals(x.Path, l.Path, StringComparison.OrdinalIgnoreCase))) Leftovers.Add(new LeftoverRow(l, program.Name));
     }
 
-    /// <summary>Moves the ticked leftovers to the Recycle Bin, where they can be restored.</summary>
+    /// <summary>
+    /// Everything that still points into program folders, as the unused-folder search reads it: the files of Windows
+    /// Installer products still installed (which often record no install location), App Paths, COM servers, every
+    /// autostart location of the Startup page (services, drivers, tasks), running programs and taskbar pins.
+    /// </summary>
+    private OrphanEvidence InUseEvidence()
+    {
+        var inUse = new List<string>();
+        inUse.AddRange(ProgramOrphans.PinnedTargets(services.ProfilePath));
+        foreach (var e in new StartupScanner(services.Context.Registry, services.Context.Tasks, services.ProfilePath).ScanAll(includeServicesAndDrivers: true, includeWmi: false))
+            if (e.ImagePath is { Length: > 0 } image) inUse.Add(image);
+        foreach (var p in System.Diagnostics.Process.GetProcesses())
+        {
+            using (p)
+            {
+                try
+                {
+                    if (p.MainModule?.FileName is { } file) inUse.Add(file);
+                }
+                catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or NotSupportedException)
+                {
+                    // a protected or ended process
+                }
+            }
+        }
+        return ProgramOrphans.ReadEvidence(services.Context.Registry, inUse, services.UserPaths);
+    }
+
+    /// <summary>
+    /// Moves the ticked leftovers to the Recycle Bin, where they can be restored, after a confirmation. Each folder is
+    /// checked again first: the list can be minutes old, and a program installed since (the same one again) may use it.
+    /// </summary>
     [RelayCommand]
     private async Task RecycleLeftoversAsync()
     {
         var picked = Leftovers.Where(r => r.Selected).ToList();
         if (picked.Count == 0 || IsRecycling) return;
+        if (!dialogs.Ask(Loc.Instance["Leftovers_ConfirmTitle"], Loc.Instance.Format("Leftovers_ConfirmText", picked.Count), Loc.Instance["Leftovers_Recycle"])) return;
         IsRecycling = true;
         try
         {
-            // Gone already (the uninstaller finished after the check): nothing left to move.
-            var failed = await Task.Run(() => picked.Where(r => Path.Exists(r.Path) && !StorageAnalyzer.RecycleLeftover(r.Path)).ToList());
-            foreach (var r in picked.Except(failed)) Leftovers.Remove(r);
+            var roots = LeftoverRoots.ForPc(services.ProfilePath);
+            var (inUse, failed) = await Task.Run(() =>
+            {
+                var used = InUseEvidence().Paths;
+                var nowUsed = picked.Where(r => r.Leftover.Kind == LeftoverKind.Folder && Path.Exists(r.Path) && !ProgramLeftovers.MayOffer(r.Path, roots, used)).ToList();
+                // Gone already (the uninstaller finished after the check): nothing left to move.
+                var notMoved = picked.Except(nowUsed).Where(r => Path.Exists(r.Path) && !StorageAnalyzer.RecycleLeftover(r.Path)).ToList();
+                return (nowUsed, notMoved);
+            });
+            foreach (var r in picked.Except(inUse).Except(failed)) Leftovers.Remove(r);
             foreach (var r in failed) r.StateText = Loc.Instance["Leftovers_Failed"];
-            Owner.ShowResult(Loc.Instance.Format("Leftovers_Recycled", picked.Count - failed.Count),
-                failed.Count == 0 ? Wpf.Ui.Controls.InfoBarSeverity.Success : Wpf.Ui.Controls.InfoBarSeverity.Warning);
+            foreach (var r in inUse)
+            {
+                r.Selected = false;
+                r.StateText = Loc.Instance["Leftovers_NowInUse"];
+            }
+            var moved = picked.Count - failed.Count - inUse.Count;
+            Owner.ShowResult(Loc.Instance.Format("Leftovers_Recycled", moved),
+                failed.Count + inUse.Count == 0 ? Wpf.Ui.Controls.InfoBarSeverity.Success : Wpf.Ui.Controls.InfoBarSeverity.Warning);
         }
         finally
         {
@@ -609,26 +651,7 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
             var roots = LeftoverRoots.ForPc(services.ProfilePath);
             var found = await Task.Run(() =>
             {
-                var inUse = new List<string>();
-                inUse.AddRange(ProgramOrphans.PinnedTargets(services.ProfilePath));
-                // Every autostart location of the Startup page (services, drivers, tasks, extensions among them).
-                foreach (var e in new StartupScanner(services.Context.Registry, services.Context.Tasks, services.ProfilePath).ScanAll(includeServicesAndDrivers: true, includeWmi: false))
-                    if (e.ImagePath is { Length: > 0 } image) inUse.Add(image);
-                foreach (var p in System.Diagnostics.Process.GetProcesses())
-                {
-                    using (p)
-                    {
-                        try
-                        {
-                            if (p.MainModule?.FileName is { } file) inUse.Add(file);
-                        }
-                        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or NotSupportedException)
-                        {
-                            // a protected or ended process
-                        }
-                    }
-                }
-                var evidence = ProgramOrphans.ReadEvidence(services.Context.Registry, inUse, services.UserPaths);
+                var evidence = InUseEvidence();
                 return ProgramOrphans.Find([Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86)],
                     roots, evidence, DateTime.UtcNow);
             });
