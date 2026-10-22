@@ -22,6 +22,12 @@ public interface IWritableHive : IDisposable
     /// (an offline SYSTEM hive has no CurrentControlSet). Throws IOException when the hive names none or the key is missing.
     /// </summary>
     string ControlSet { get; }
+
+    /// <summary>
+    /// Unloads the hive now. Throws IOException when it gives up (a handle stays open): the hive is then still loaded, and
+    /// <see cref="IDisposable.Dispose"/> (which never throws) and the leftover unload try again.
+    /// </summary>
+    void Unload();
 }
 
 /// <summary>
@@ -94,7 +100,9 @@ public sealed class OfflineImageRegistry : IWritableHive
     {
         using var restore = Privilege("SeRestorePrivilege");
         using var backup = Privilege("SeBackupPrivilege");
-        var rc = NativeWrite.RegOpenKeyEx(HiveFile.LocalMachine, SubKey(key), NativeWrite.RegOptionBackupRestore, NativeWrite.KeyQueryValue, out var handle);
+        // Options 0: RegOpenKeyEx documents only 0 and REG_OPTION_OPEN_LINK, and Administrators can read these keys.
+        // REG_OPTION_BACKUP_RESTORE stays on RegCreateKeyEx, where it is documented.
+        var rc = NativeWrite.RegOpenKeyEx(HiveFile.LocalMachine, SubKey(key), 0, NativeWrite.KeyQueryValue, out var handle);
         if (rc == 2) return null;   // ERROR_FILE_NOT_FOUND
         if (rc != 0) throw Failure($@"{key} could not be opened", rc);
         try
@@ -102,8 +110,10 @@ public sealed class OfflineImageRegistry : IWritableHive
             var size = (uint)sizeof(int);
             rc = NativeWrite.RegQueryValueEx(handle, name, IntPtr.Zero, out var type, out var data, ref size);
             if (rc == 2) return null;
+            // ERROR_MORE_DATA: the value is longer than a DWORD.
+            if (rc == 234) throw new IOException($@"{key}\{name} is not a DWORD value.");
             if (rc != 0) throw Failure($@"{key}\{name} could not be read", rc);
-            if (type != NativeWrite.RegDword) throw new IOException($@"{key}\{name} is not a DWORD value.");
+            if (type != NativeWrite.RegDword || size != sizeof(int)) throw new IOException($@"{key}\{name} is not a DWORD value.");
             return data;
         }
         finally
@@ -116,9 +126,17 @@ public sealed class OfflineImageRegistry : IWritableHive
     {
         using var restore = Privilege("SeRestorePrivilege");
         using var backup = Privilege("SeBackupPrivilege");
-        var rc = NativeWrite.RegOpenKeyEx(HiveFile.LocalMachine, SubKey(key), NativeWrite.RegOptionBackupRestore, NativeWrite.KeyQueryValue, out var handle);
+        var rc = NativeWrite.RegOpenKeyEx(HiveFile.LocalMachine, SubKey(key), 0, NativeWrite.KeyQueryValue, out var handle);
         if (rc == 0) NativeWrite.RegCloseKey(handle);
         return rc == 0;
+    }
+
+    public void Unload()
+    {
+        if (Volatile.Read(ref _unloaded) == 1) return;
+        if (!OfflineSystemHive.TryUnload(_name)) throw new IOException($"The image hive {_name} could not be unloaded: a handle stays open.");
+        Interlocked.Exchange(ref _unloaded, 1);
+        OfflineSystemHive.Release(_name);
     }
 
     /// <summary>Unloads the hive (tried again for a moment while a handle stays open). Never throws: a hive left loaded is logged and the next <see cref="OfflineSystemHive.UnloadLeftovers"/> tries again.</summary>

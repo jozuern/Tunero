@@ -129,16 +129,25 @@ public sealed class OfflineSystemHive : IOfflineHive
         return leftovers;
     }
 
-    internal static void Unload(string name) => HiveFile.Retry(lastTry =>
+    internal static void Unload(string name) => TryUnload(name);
+
+    /// <summary>Unloads a hive, tried again for a moment while a handle stays open. False when it gave up (logged); the hive then stays loaded.</summary>
+    internal static bool TryUnload(string name)
     {
-        var rc = HiveFile.TryUnload(HiveFile.LocalMachine, name);
-        if (rc is 0 or 2 /* ERROR_FILE_NOT_FOUND: not loaded */)
+        var unloaded = true;
+        HiveFile.Retry(lastTry =>
         {
-            if (rc == 0) AppLog.Info("media", "offline hive unloaded", new { name });
+            var rc = HiveFile.TryUnload(HiveFile.LocalMachine, name);
+            if (rc is 0 or 2 /* ERROR_FILE_NOT_FOUND: not loaded */)
+            {
+                if (rc == 0) AppLog.Info("media", "offline hive unloaded", new { name });
+                return true;
+            }
+            if (!lastTry) return false;
+            AppLog.Warn("media", $"offline hive {name} not unloaded: {new Win32Exception(rc).Message}");
+            unloaded = false;
             return true;
-        }
-        if (!lastTry) return false;
-        AppLog.Warn("media", $"offline hive {name} not unloaded: {new Win32Exception(rc).Message}");
-        return true;
-    });
+        });
+        return unloaded;
+    }
 }

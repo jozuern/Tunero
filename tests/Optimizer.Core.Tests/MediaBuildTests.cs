@@ -1848,6 +1848,20 @@ public sealed class MediaBuildTests : IDisposable
         AssertCleanedUp();
     }
 
+    /// <summary>An unload that gives up on the success path fails the build at Settings, before the cleanup and the commit.</summary>
+    [Fact]
+    public async Task AHiveThatStaysLoadedAfterTheWritesFailsAtSettings()
+    {
+        _steps.HiveUnloadGivesUp = true;
+        await FailsAt(Download() with { Settings = new(true, false, false) }, MediaStage.Settings, "Media_SettingsFailed");
+        Assert.DoesNotContain("Unmount commit", _steps.Calls);
+        Assert.DoesNotContain("ComponentCleanup", _steps.Calls);
+        var calls = _steps.Calls.SkipWhile(c => c != "LoadWritableHive SYSTEM").ToList();
+        var leftover = calls.IndexOf("UnloadLeftoverHives");
+        Assert.True(leftover > 0 && leftover < calls.IndexOf("Unmount discard"));
+        AssertCleanedUp();
+    }
+
     [Fact]
     public async Task NoSettingsMeansNoHiveIsLoaded()
     {
@@ -2396,12 +2410,25 @@ internal sealed class FakeWritableHive(FakeMediaSteps steps, string name) : IWri
         return Get(key, valueName);
     }
 
-    public void Dispose()
+    public void Unload()
     {
         if (_unloaded) return;
         _unloaded = true;
         steps.Calls.Add("UnloadWritableHive " + name);
-        if (!steps.HiveUnloadGivesUp) steps.LoadedWritableHives.Remove(name);
+        if (steps.HiveUnloadGivesUp) throw new IOException($"The image hive {name} could not be unloaded: a handle stays open.");
+        steps.LoadedWritableHives.Remove(name);
+    }
+
+    public void Dispose()
+    {
+        try
+        {
+            Unload();
+        }
+        catch (IOException)
+        {
+            // Dispose never throws: the hive stays loaded for the leftover unload.
+        }
     }
 }
 

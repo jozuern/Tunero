@@ -1178,6 +1178,8 @@ public sealed class MediaBuild(IMediaSteps steps)
                         if (hive.GetDword(key, name) != value) throw new IOException($@"{hiveName}\{key}\{name} does not read back as {value}.");
                         steps.Log($@"Image registry: {hiveName}\{key}\{name} = {value}");
                     }
+                    // A hive that stays loaded would hold its file when DISM cleans up and commits: fail here, not there.
+                    hive.Unload();
                 }
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
