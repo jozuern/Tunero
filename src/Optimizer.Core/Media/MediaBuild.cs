@@ -38,6 +38,15 @@ public sealed record MediaRequest(
     public IReadOnlyList<string> RemoveUnreviewed { get; init; } = [];
 }
 
+/// <summary>
+/// A finished build: the ISO at the output path, its size and its SHA-256 (upper-case hex, of the verified file before it
+/// was moved there) and the build's log file.
+/// </summary>
+public sealed record MediaBuildResult(string Iso, long Bytes, string Sha256)
+{
+    public string? LogPath { get; init; }
+}
+
 /// <summary>A stage started (Percent null) or moved on (0 to 100). Detail names the file or package being worked on, or is null.</summary>
 public sealed record MediaProgress(MediaStage Stage, double? Percent, string? Detail);
 
@@ -221,8 +230,8 @@ public sealed class MediaBuild(IMediaSteps steps)
     /// <summary>Whether install.wim is mounted for changes (today: when apps are removed).</summary>
     private static bool ChangesInstallImage(MediaRequest r) => r.RemoveApps.Count > 0 || r.RemoveUnreviewed.Count > 0;
 
-    /// <summary>Runs the build and returns the verified ISO's path. A wrong request throws <see cref="ArgumentException"/> before any step.</summary>
-    public Task<string> RunAsync(MediaRequest r, IProgress<MediaProgress> p, CancellationToken ct)
+    /// <summary>Runs the build and returns the verified ISO with its size and SHA-256. A wrong request throws <see cref="ArgumentException"/> before any step.</summary>
+    public Task<MediaBuildResult> RunAsync(MediaRequest r, IProgress<MediaProgress> p, CancellationToken ct)
     {
         Validate(r);
         return new Run(steps, r, p, RetryDelay, ct).ExecuteAsync();
@@ -644,7 +653,8 @@ public sealed class MediaBuild(IMediaSteps steps)
     {
         private readonly Stopwatch _clock = new();
         private MediaStage _stage;
-        private string? _work, _media, _mount, _bootMount, _workIso;
+        private string? _work, _media, _mount, _bootMount, _workIso, _sha256;
+        private long _isoBytes;
         private WorkFolder? _workFolder;
 
         /// <summary>The folder an image is mounted in right now (from the start of the mount on), or null. A failure or Stop discards it.</summary>
@@ -658,7 +668,7 @@ public sealed class MediaBuild(IMediaSteps steps)
         private string BootWim => Path.Combine(Sources, "boot.wim");
         private string TuneroFolder => Path.Combine(_media!, TuneroOnMedia);
 
-        public async Task<string> ExecuteAsync()
+        public async Task<MediaBuildResult> ExecuteAsync()
         {
             var download = r.Source.Download;
             Begin(download is not null ? MediaStage.Download : MediaStage.Unpack);
@@ -720,7 +730,7 @@ public sealed class MediaBuild(IMediaSteps steps)
             if (!await DeleteWorkFolderAsync()) Warn(steps, $"work folder {_work} stays until the next start of Tunero removes it");
             steps.Log($"Cleanup done in {_clock.Elapsed:hh\\:mm\\:ss}");
             steps.Log("Build finished: " + r.OutputIso);
-            return r.OutputIso;
+            return new MediaBuildResult(r.OutputIso, _isoBytes, _sha256!) { LogPath = steps.LogPath };
         }
 
         private void Begin(MediaStage stage)
@@ -1335,13 +1345,39 @@ public sealed class MediaBuild(IMediaSteps steps)
                 files.Add(TuneroOnMedia + @"\Tunero.exe");
                 files.Add(TuneroOnMedia + @"\" + FirstSignIn.FileName);
             }
-            var check = await steps.IsoReader.VerifyAsync(_workIso!, _media!, files, Fraction(null), ct);
+            // The read-back is the first half of the stage's bar, the hash of the ISO the second.
+            var stage = _stage;
+            var check = await steps.IsoReader.VerifyAsync(_workIso!, _media!, files, new Relay<double>(v => Report(stage, v * 50, null)), ct);
             if (!check.BootCatalogOk || check.Mismatched.Count > 0)
             {
                 var what = (check.BootCatalogOk ? Array.Empty<string>() : ["boot catalog"]).Concat(check.Mismatched);
                 throw Fail("The written ISO differs from the media: " + string.Join(", ", what) + ".", "Media_VerifyFailed");
             }
             steps.Log($"ISO verified: boot catalog and {files.Count} files");
+            (_isoBytes, _sha256) = await HashIsoAsync();
+            steps.Log($"ISO SHA-256 {_sha256}, {_isoBytes} bytes");
+        }
+
+        /// <summary>The size and SHA-256 (upper-case hex) of the verified ISO, read in 1 MB blocks while it is still in the work folder: the bytes that <see cref="Publish"/> then moves.</summary>
+        private async Task<(long Bytes, string Hash)> HashIsoAsync()
+        {
+            var stage = _stage;
+            await using var stream = new FileStream(_workIso!, FileMode.Open, FileAccess.Read, FileShare.Read, 1 << 20, FileOptions.SequentialScan | FileOptions.Asynchronous);
+            using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+            var buffer = new byte[1 << 20];
+            long done = 0;
+            var lastPercent = -1;
+            int read;
+            while ((read = await stream.ReadAsync(buffer, ct)) > 0)
+            {
+                hash.AppendData(buffer, 0, read);
+                done += read;
+                var percent = (int)(done * 100 / Math.Max(stream.Length, 1));
+                if (percent == lastPercent) continue;
+                lastPercent = percent;
+                Report(stage, 50 + percent / 2.0, null);
+            }
+            return (done, Convert.ToHexString(hash.GetHashAndReset()));
         }
 
         /// <summary>

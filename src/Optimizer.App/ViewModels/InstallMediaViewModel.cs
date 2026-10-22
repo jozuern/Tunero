@@ -17,7 +17,7 @@ using Wpf.Ui.Controls;
 namespace Optimizer.App.ViewModels;
 
 /// <summary>Runs one build (<see cref="MediaBuild.RunAsync"/> in the app; a fake in tests and the demo).</summary>
-public delegate Task<string> MediaBuilder(MediaRequest request, IProgress<MediaProgress> progress, CancellationToken ct);
+public delegate Task<MediaBuildResult> MediaBuilder(MediaRequest request, IProgress<MediaProgress> progress, CancellationToken ct);
 
 /// <summary>
 /// What the page reads about this PC when it opens (off the UI thread, never at app start): its edition, whether it is
@@ -63,12 +63,29 @@ public sealed record InstallMediaSystem
     /// <summary>Shows a file selected in Explorer (as the signed-in user).</summary>
     public Action<string> ShowInExplorer { get; init; } = _ => { };
 
+    /// <summary>Puts text on the clipboard (the hash of the finished ISO); a locked clipboard is ignored.</summary>
+    public Action<string> CopyText { get; init; } = _ => { };
+
+    /// <summary>Copies to the clipboard of the window's user; another program holding it is not an error worth a message.</summary>
+    public static void CopyToClipboard(string text)
+    {
+        try
+        {
+            System.Windows.Clipboard.SetText(text);
+        }
+        catch (System.Runtime.InteropServices.ExternalException)
+        {
+            Log.Info("media", "the clipboard was busy; the hash was not copied");
+        }
+    }
+
     /// <summary>The real system. Reads nothing now: this runs while the window is built.</summary>
     public static InstallMediaSystem ForThisPc(AppServices services, Func<string> profileId, Func<string> theme, Action<string> showInExplorer, bool isPublishedExe) => new()
     {
         Elevated = DataPaths.ProcessIsElevated,
         ExePath = Environment.ProcessPath,
         IsPublishedExe = isPublishedExe,
+        CopyText = CopyToClipboard,
         ProfileId = profileId,
         Theme = theme,
         ReadPc = () =>
@@ -94,7 +111,7 @@ public sealed record InstallMediaSystem
     /// pool: Core's awaits would otherwise come back to the window's thread for every block of a 6 GB download and run its
     /// file copies and deletes there. The page's progress still reports on the window's thread.
     /// </summary>
-    public static Task<string> BuildAsync(MediaRequest request, IProgress<MediaProgress> progress, CancellationToken ct) =>
+    public static Task<MediaBuildResult> BuildAsync(MediaRequest request, IProgress<MediaProgress> progress, CancellationToken ct) =>
         Task.Run(() => new MediaBuild(new MediaSteps()).RunAsync(request, progress, ct), ct);
 
     /// <summary>
@@ -585,7 +602,27 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     [ObservableProperty] private string? _resultLogPath;
     [ObservableProperty] private string? _resultIso;
 
+    /// <summary>The last build made an ISO: the page shows the finished card instead of an info bar.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowResultBar))]
+    private bool _hasFinished;
+
+    /// <summary>The last build failed: its info bar keeps the text, and the card offers Show log and Show stage.</summary>
+    [ObservableProperty] private bool _hasFailed;
+
+    /// <summary>Upper-case hex SHA-256 of the finished ISO.</summary>
+    [ObservableProperty] private string? _resultSha256;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ResultSizeText))]
+    private long _resultBytes;
+
+    public string ResultSizeText => ByteSize.Format(ResultBytes);
+
     public bool HasResult => ResultText is not null;
+
+    /// <summary>The info bar shows a failure or a stop; a success has its own card.</summary>
+    public bool ShowResultBar => HasResult && !HasFinished;
 
     // ---- stages of the running build ----
 
@@ -604,7 +641,11 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     private bool _stagesRunning;
     private readonly Stopwatch _stageClock = new();
 
-    partial void OnResultTextChanged(string? value) => OnPropertyChanged(nameof(HasResult));
+    partial void OnResultTextChanged(string? value)
+    {
+        OnPropertyChanged(nameof(HasResult));
+        OnPropertyChanged(nameof(ShowResultBar));
+    }
 
     private void Changed()
     {
@@ -1134,11 +1175,29 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         if (ResultIso is { } iso) _system.ShowInExplorer(iso);
     }
 
-    [RelayCommand]
-    private void OpenLog()
+    [RelayCommand(CanExecute = nameof(HasLog))]
+    private void ShowLog()
     {
         if (ResultLogPath is { } log) _system.ShowInExplorer(log);
     }
+
+    private bool HasLog => ResultLogPath is not null;
+
+    partial void OnResultLogPathChanged(string? value) => ShowLogCommand.NotifyCanExecuteChanged();
+
+    [RelayCommand(CanExecute = nameof(HasHash))]
+    private void CopyHash()
+    {
+        if (ResultSha256 is { } hash) _system.CopyText(hash);
+    }
+
+    private bool HasHash => ResultSha256 is not null;
+
+    partial void OnResultSha256Changed(string? value) => CopyHashCommand.NotifyCanExecuteChanged();
+
+    /// <summary>The failure card's link to the stage that stopped: the list scrolls into view.</summary>
+    [RelayCommand]
+    private void ShowStage() => StagesShown?.Invoke(this, EventArgs.Empty);
 
     /// <summary>
     /// The request from the page's choices (the mapping --build-media shares, <see cref="MediaChoices.ToRequest"/>); null
@@ -1185,8 +1244,11 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         ResultText = null;
         ResultLogPath = null;
         ResultIso = null;
+        ResultSha256 = null;
+        HasFinished = false;
+        HasFailed = false;
         StartStages(MediaBuild.PlannedStages(request));
-        string? iso = null;
+        MediaBuildResult? result = null;
         Exception? failure = null;
         var stopped = false;
         try
@@ -1222,7 +1284,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
                         last = (null, Loc.Instance["Media_Building"]);
                         clock.Restart();
                     }
-                    iso = await _build(request, progress, stop.Token);
+                    result = await _build(request, progress, stop.Token);
                 }
                 catch (OperationCanceledException) when (stop.IsCancellationRequested)
                 {
@@ -1245,8 +1307,8 @@ public sealed partial class InstallMediaViewModel : PageViewModel
             IsBuilding = false;
         }
 
-        FinishStages(iso is not null, stopped, failure);
-        if (iso is not null) ShowSuccess(iso);
+        FinishStages(result is not null, stopped, failure);
+        if (result is not null) ShowSuccess(result);
         else if (failure is not null) ShowFailure(failure);
         else if (stopped) Show(Loc.Instance["Media_Stopped"], InfoBarSeverity.Informational);
     }
@@ -1382,25 +1444,22 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         return p.Detail is { Length: > 0 } detail ? $"{stage}: {detail}" : stage;
     }
 
-    private void ShowSuccess(string iso, bool window = true)
+    private void ShowSuccess(MediaBuildResult result, bool window = true)
     {
-        long? size = null;
-        try
-        {
-            if (File.Exists(iso)) size = new FileInfo(iso).Length;
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-        }
-        ResultIso = iso;
-        Show(size is { } bytes ? Loc.Instance.Format("Media_Done", iso, ByteSize.Format(bytes)) : Loc.Instance.Format("Media_DoneNoSize", iso),
-            InfoBarSeverity.Success, window);
+        ResultIso = result.Iso;
+        ResultLogPath = result.LogPath;
+        ResultBytes = result.Bytes;
+        ResultSha256 = result.Sha256;
+        HasFinished = true;
+        // The page shows the finished card; the text is for the window's result bar when the build ends on another page.
+        Show(Loc.Instance.Format("Media_Done", result.Iso, ByteSize.Format(result.Bytes)), InfoBarSeverity.Success, window);
     }
 
     /// <summary>The stage, the reason in words, DISM's or Windows' error code, and where the log is.</summary>
     private void ShowFailure(Exception ex, bool window = true)
     {
         Log.Warn("media", $"build failed: {ex.Message}");
+        HasFailed = true;
         if (ex is not MediaBuildException m)
         {
             Show(Loc.Instance.Format("Media_FailedRequest", ex.Message), InfoBarSeverity.Error, window);
@@ -1541,8 +1600,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         else if (shows.Contains("done"))
         {
             DemoStages(null);
-            ResultIso = Path.Combine(Path.GetTempPath(), "Windows11_Tunero.iso");
-            Show(Loc.Instance.Format("Media_Done", ResultIso, ByteSize.Format(5_712_000_000)), InfoBarSeverity.Success, window: false);
+            ShowSuccess(InstallMediaDemo.Result(Path.Combine(Path.GetTempPath(), "Windows11_Tunero.iso")), window: false);
         }
     }
 }

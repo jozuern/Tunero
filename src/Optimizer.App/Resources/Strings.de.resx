@@ -1822,6 +1822,16 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Media_Failed" xml:space="preserve"><value>Das Erstellen brach bei „{0}“ ab: {1}</value></data>
   <data name="Media_ErrorCode" xml:space="preserve"><value>Fehlercode: {0}.</value></data>
   <data name="Media_LogAt" xml:space="preserve"><value>Protokoll: {0}</value></data>
+  <data name="Media_FinishedTitle" xml:space="preserve"><value>Die ISO ist fertig</value></data>
+  <data name="Media_Sha256Hint" xml:space="preserve"><value>Vergleiche ihn mit der Datei, nachdem du sie irgendwohin kopiert hast, um sicherzugehen, dass sie unverändert angekommen ist.</value></data>
+  <data name="Media_CopyHash" xml:space="preserve"><value>Kopieren</value></data>
+  <data name="Media_NextStepTitle" xml:space="preserve"><value>Nächster Schritt</value></data>
+  <data name="Media_NextStepVm" xml:space="preserve"><value>Starte eine virtuelle Maschine von der ISO, um sie zuerst auszuprobieren.</value></data>
+  <data name="Media_NextStepVmLink" xml:space="preserve"><value>Virtuelle Maschine in Hyper-V erstellen</value></data>
+  <data name="Media_NextStepUsb" xml:space="preserve"><value>Oder schreibe sie mit einem Programm wie Rufus auf einen USB-Stick mit mindestens 8 GB. Der Stick wird gelöscht.</value></data>
+  <data name="Media_NextStepUsbRufus" xml:space="preserve"><value>Rufus</value></data>
+  <data name="Media_NextStepUsbMicrosoft" xml:space="preserve"><value>Microsoft: Windows von einem USB-Laufwerk installieren</value></data>
+  <data name="Media_ShowStage" xml:space="preserve"><value>Schritt anzeigen</value></data>
   <data name="Media_FailedUnknown" xml:space="preserve"><value>Ein unerwarteter Fehler ist aufgetreten.</value></data>
   <data name="Media_FailedRequest" xml:space="preserve"><value>Die Auswahl ließ sich nicht verwenden: {0}</value></data>
   <data name="Media_Stopped" xml:space="preserve"><value>Das Erstellen wurde angehalten. Die ISO-Datei blieb unverändert.</value></data>

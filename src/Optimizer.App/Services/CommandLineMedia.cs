@@ -155,8 +155,9 @@ public static class CommandLineMedia
             lines.Write($"Building {(request.Source.Download is { } esd ? esd.FileName : request.Source.IsoPath)}, edition {request.Edition}, {request.RemoveApps.Count} apps removed, " +
                         $"setup {(request.Answers.SkipSetup ? "skipped for " + request.Answers.AccountName : "asked")}, profile {request.FirstSignIn?.Profile ?? "none"}, to {request.OutputIso}");
             var progress = new ProgressLines(lines);
-            var iso = await system.Build(request, new Sync<MediaProgress>(progress.Report), CancellationToken.None);
-            lines.Write("Done: " + iso);
+            var result = await system.Build(request, new Sync<MediaProgress>(progress.Report), CancellationToken.None);
+            lines.Write("Done: " + result.Iso);
+            lines.Write("SHA-256 " + result.Sha256);
             return CommandLineApply.Done;
         }
         catch (MediaRequestFileException ex)

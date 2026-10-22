@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Security.AccessControl;
 using System.Security.Principal;
 using System.Text;
@@ -49,7 +50,7 @@ public sealed class MediaBuildTests : IDisposable
     private MediaBuild Build(TimeSpan? dismWait = null) =>
         new(_steps) { RetryDelay = TimeSpan.Zero, DismPollDelay = TimeSpan.Zero, DismWaitLimit = dismWait ?? TimeSpan.FromMinutes(15) };
 
-    private Task<string> Run(MediaRequest r, CancellationToken ct = default, IProgress<MediaProgress>? progress = null) =>
+    private Task<MediaBuildResult> Run(MediaRequest r, CancellationToken ct = default, IProgress<MediaProgress>? progress = null) =>
         Build().RunAsync(r, progress ?? new Collect(_steps.Progress), ct);
 
     private async Task<MediaBuildException> Fails(MediaRequest r) => await Assert.ThrowsAsync<MediaBuildException>(() => Run(r));
@@ -78,7 +79,7 @@ public sealed class MediaBuildTests : IDisposable
     [Fact]
     public async Task DownloadSourceRunsTheStagesInOrder()
     {
-        Assert.Equal(OutputIso, await Run(Download()));
+        Assert.Equal(OutputIso, (await Run(Download())).Iso);
         Assert.Equal(
         [
             "NewWorkFolder", "Download",
@@ -99,6 +100,26 @@ public sealed class MediaBuildTests : IDisposable
         Assert.DoesNotContain(_steps.IsoContents.Keys, k => k.EndsWith(".esd", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(@"sources\install.wim", _steps.IsoContents.Keys);
         Assert.Contains(@"sources\boot.wim", _steps.IsoContents.Keys);
+    }
+
+    [Fact]
+    public async Task ResultCarriesSizeAndHashOfThePublishedIso()
+    {
+        var result = await Run(Download());
+        var bytes = File.ReadAllBytes(OutputIso);
+        Assert.Equal(OutputIso, result.Iso);
+        Assert.Equal(bytes.Length, result.Bytes);
+        Assert.Equal(Convert.ToHexString(SHA256.HashData(bytes)), result.Sha256);
+        Assert.Equal(_steps.LogPath, result.LogPath);
+    }
+
+    [Fact]
+    public async Task HashingTheIsoReportsProgressInTheVerifyStage()
+    {
+        await Run(Download());
+        var verify = _steps.Progress.Where(p => p.Stage == MediaStage.Verify && p.Percent is not null).Select(p => p.Percent!.Value).ToList();
+        Assert.Contains(verify, v => v >= 100);
+        Assert.True(verify.All(v => v is >= 0 and <= 100));
     }
 
     /// <summary>The page lists these stages before the build; the engine must begin exactly them, in this order (not Catalog, not Cleanup).</summary>
@@ -145,7 +166,7 @@ public sealed class MediaBuildTests : IDisposable
     public async Task PendingOperationsSkipTheCleanupAndTheBuildGoesOn()
     {
         _steps.Dism.ComponentCleanupFails = MediaBuild.PendingOperations;
-        Assert.Equal(OutputIso, await Run(Download(apps: ["Microsoft.BingNews"])));
+        Assert.Equal(OutputIso, (await Run(Download(apps: ["Microsoft.BingNews"]))).Iso);
         Assert.Contains(_steps.LogLines, l => l.Contains("0x800F0806", StringComparison.Ordinal));
     }
 
@@ -178,7 +199,7 @@ public sealed class MediaBuildTests : IDisposable
     {
         _steps.EsdImages[0] = _steps.EsdImages[0] with { Name = "Windows-Setupmedien" };
         _steps.EsdImages[5] = _steps.EsdImages[5] with { Name = "Windows 11 Pro (deutsch)" };
-        Assert.Equal(OutputIso, await Run(Download()));
+        Assert.Equal(OutputIso, (await Run(Download())).Iso);
     }
 
     [Fact]
@@ -293,7 +314,7 @@ public sealed class MediaBuildTests : IDisposable
         await FailsAt(Download() with { OutputIso = Path.Combine(_root, "Win11.img") }, MediaStage.Download, "Media_OutputInvalid");
         Assert.Empty(_steps.Calls);
         var upper = Path.Combine(_root, "Win11.ISO");
-        Assert.Equal(upper, await Run(Download() with { OutputIso = upper }));
+        Assert.Equal(upper, (await Run(Download() with { OutputIso = upper })).Iso);
     }
 
     [Fact]
@@ -791,7 +812,7 @@ public sealed class MediaBuildTests : IDisposable
     public async Task OwnIsoCopiesAndExportsTheIndex()
     {
         _steps.OwnImageFile = "install.esd";
-        Assert.Equal(OutputIso, await Run(OwnIso()));
+        Assert.Equal(OutputIso, (await Run(OwnIso())).Iso);
         Assert.Equal(
         [
             "NewWorkFolder", "CopyMedia",
@@ -1105,7 +1126,7 @@ public sealed class MediaBuildTests : IDisposable
         // Open with delete sharing (as a reader that lets others replace the file) is fine.
         using (new FileStream(OutputIso, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
         {
-            Assert.Equal(OutputIso, await Run(Download()));
+            Assert.Equal(OutputIso, (await Run(Download())).Iso);
         }
     }
 
@@ -1113,13 +1134,13 @@ public sealed class MediaBuildTests : IDisposable
     public async Task WorkFolderThatCannotBeDeletedKeepsTheVerifiedIso()
     {
         _steps.DeleteFailures = int.MaxValue;
-        Assert.Equal(OutputIso, await Run(Download()));
+        Assert.Equal(OutputIso, (await Run(Download())).Iso);
         Assert.True(File.Exists(OutputIso));
         Assert.Equal(3, Count("DeleteWorkFolder"));
 
         _steps.Reset();
         _steps.DeleteThrowsArgument = true;
-        Assert.Equal(OutputIso, await Run(Download()));
+        Assert.Equal(OutputIso, (await Run(Download())).Iso);
         Assert.True(File.Exists(OutputIso));
     }
 

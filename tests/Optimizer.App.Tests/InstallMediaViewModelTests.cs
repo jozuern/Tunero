@@ -4,6 +4,7 @@ using Optimizer.App.Services;
 using Optimizer.App.ViewModels;
 using Optimizer.Core.Catalog;
 using Optimizer.Core.Media;
+using Optimizer.Core.Platform;
 using Wpf.Ui.Controls;
 
 namespace Optimizer.App.Tests;
@@ -24,6 +25,12 @@ public sealed class InstallMediaViewModelTests : IDisposable
 
     /// <summary>What the fake build does with a request; null: records it and returns its output path.</summary>
     private Func<MediaRequest, CancellationToken, Task<string>>? _build;
+
+    /// <summary>The size, hash and log the fake build returns for the ISO it is asked for; null: a sample.</summary>
+    private MediaBuildResult? _result;
+
+    private string? _clipboard;
+    private readonly List<string> _shown = [];
 
     /// <summary>What the fake build reports before it ends; null: one report of Unpack at 50 percent.</summary>
     private Action<IProgress<MediaProgress>>? _reports;
@@ -87,16 +94,19 @@ public sealed class InstallMediaViewModelTests : IDisposable
         Keyboard = () => null,
         Keyboards = () => Keyboards,
         ReadIso = (_, _) => Task.FromResult(_iso),
+        CopyText = text => _clipboard = text,
+        ShowInExplorer = path => _shown.Add(path),
     };
 
     private InstallMediaViewModel Media(string? edition = "Professional", bool published = true, InstallMediaSystem? system = null,
         Func<CancellationToken, Task>? cleanup = null) => new(_host, _dialogs, new FakeCatalog(),
-        (request, progress, ct) =>
+        async (request, progress, ct) =>
         {
             _requests.Add(request);
             if (_reports is { } reports) reports(progress);
             else progress.Report(new MediaProgress(MediaStage.Unpack, 50, null));
-            return _build?.Invoke(request, ct) ?? Task.FromResult(request.OutputIso);
+            var iso = await (_build?.Invoke(request, ct) ?? Task.FromResult(request.OutputIso));
+            return (_result ?? new MediaBuildResult(iso, 1234, new string('A', 64))) with { Iso = iso };
         },
         system ?? System(edition, published), cleanup);
 
@@ -123,6 +133,45 @@ public sealed class InstallMediaViewModelTests : IDisposable
         media.IsoPath = iso;
         await media.IsoLoading;
         return media;
+    }
+
+    [Fact]
+    public async Task FinishedCardShowsHashAndOffersCopyFolderAndLog()
+    {
+        var hash = "5E3A9B1C7D2F4086A1B3C5D7E9F0123456789ABCDEF0123456789ABCDEF01234";
+        _result = new MediaBuildResult("", 5_712_000_000, hash) { LogPath = Path.Combine(_root, "build.log") };
+        var media = await WithCatalog();
+        Assert.False(media.HasFinished);
+        await media.BuildCommand.ExecuteAsync(null);
+
+        Assert.True(media.HasFinished);
+        Assert.Equal(hash, media.ResultSha256);
+        Assert.Equal(ByteSize.Format(5_712_000_000), media.ResultSizeText);
+        Assert.Equal(media.OutputPath, media.ResultIso);
+        Assert.Equal(InfoBarSeverity.Success, media.ResultSeverity);
+        media.CopyHashCommand.Execute(null);
+        Assert.Equal(hash, _clipboard);
+        media.OpenFolderCommand.Execute(null);
+        Assert.Equal([media.OutputPath], _shown);
+        Assert.True(media.ShowLogCommand.CanExecute(null));
+        media.ShowLogCommand.Execute(null);
+        Assert.Equal(_result.LogPath, _shown[^1]);
+    }
+
+    [Fact]
+    public async Task AFailedOrNewBuildClearsTheEarlierHash()
+    {
+        var media = await WithCatalog();
+        await media.BuildCommand.ExecuteAsync(null);
+        Assert.NotNull(media.ResultSha256);
+
+        _build = (_, _) => throw new MediaBuildException(MediaStage.Unpack, "x", 87) { LogPath = Path.Combine(_root, "build.log") };
+        await media.BuildCommand.ExecuteAsync(null);
+        Assert.False(media.HasFinished);
+        Assert.Null(media.ResultSha256);
+        Assert.Null(media.ResultIso);
+        Assert.True(media.HasFailed);
+        Assert.True(media.ShowLogCommand.CanExecute(null));
     }
 
     [Fact]
@@ -1009,7 +1058,7 @@ public sealed class InstallMediaViewModelTests : IDisposable
     [Fact]
     public async Task ACatalogErrorThatIsNoDownloadErrorKeepsItsMessageOutOfTheText()
     {
-        var media = new InstallMediaViewModel(_host, _dialogs, new ThrowingCatalog(), (_, _, _) => Task.FromResult(""), System());
+        var media = new InstallMediaViewModel(_host, _dialogs, new ThrowingCatalog(), (_, _, _) => Task.FromResult(new MediaBuildResult("", 0, "")), System());
         await Loaded(media);
         await media.CheckCatalogCommand.ExecuteAsync(null);
         Assert.Equal(Loc.Instance.Format("Media_CatalogFailed", Loc.Instance["Media_CatalogStepUnknown"]), media.CatalogError);
@@ -1110,7 +1159,7 @@ public sealed class InstallMediaViewModelTests : IDisposable
     [Fact]
     public async Task ACatalogTimeoutShowsTheFailure()
     {
-        var media = new InstallMediaViewModel(_host, _dialogs, new TimingOutCatalog(), (_, _, _) => Task.FromResult(""), System());
+        var media = new InstallMediaViewModel(_host, _dialogs, new TimingOutCatalog(), (_, _, _) => Task.FromResult(new MediaBuildResult("", 0, "")), System());
         await Loaded(media);
         await media.CheckCatalogCommand.ExecuteAsync(null);
         Assert.Equal(Loc.Instance.Format("Media_CatalogFailed", Loc.Instance["Media_CatalogStepUnknown"]), media.CatalogError);

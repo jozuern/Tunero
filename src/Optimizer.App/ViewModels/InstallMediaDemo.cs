@@ -35,7 +35,7 @@ internal static class InstallMediaDemo
 
         public bool Freeze { get; init; }
 
-        public async Task<string> RunAsync(MediaRequest request, IProgress<MediaProgress> progress, CancellationToken ct)
+        public async Task<MediaBuildResult> RunAsync(MediaRequest request, IProgress<MediaProgress> progress, CancellationToken ct)
         {
             var fail = _runs++ == 0 && !Freeze;
             foreach (var stage in new[] { MediaStage.Download, MediaStage.Check, MediaStage.Unpack, MediaStage.Apps, MediaStage.Files, MediaStage.Iso, MediaStage.Verify })
@@ -56,9 +56,16 @@ internal static class InstallMediaDemo
             }
             progress.Report(new MediaProgress(MediaStage.Cleanup, null, null));
             await Task.Delay(300, ct);
-            return request.OutputIso;
+            return Result(request.OutputIso);
         }
     }
+
+    /// <summary>A sample result: a size and a SHA-256 that belong to no file (the demo writes none).</summary>
+    public static MediaBuildResult Result(string iso) =>
+        new(iso, 5_712_000_000, "5E3A9B1C7D2F4086A1B3C5D7E9F0123456789ABCDEF0123456789ABCDEF01234")
+        {
+            LogPath = Path.Combine(Optimizer.Core.Platform.DataPaths.Logs, "media-demo.log"),
+        };
 
     /// <summary>A German 26H2 ISO with Home, Pro and Education (what the page shows for an own ISO).</summary>
     public static IsoInfo Iso()

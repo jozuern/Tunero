@@ -62,6 +62,8 @@ public sealed class CommandLineMediaTests : IDisposable
 
     private string Output => Path.Combine(_root, "out.iso");
 
+    private const string Hash = "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF";
+
     private MediaCommandLineSystem System(bool elevated = true, bool published = true) => new()
     {
         Elevated = elevated,
@@ -72,13 +74,13 @@ public sealed class CommandLineMediaTests : IDisposable
             _catalogLoads++;
             return _catalog?.Invoke() ?? Files;
         }),
-        Build = (request, progress, ct) =>
+        Build = async (request, progress, ct) =>
         {
             _requests.Add(request);
-            if (_build is not null) return _build(request, progress);
+            if (_build is not null) return new MediaBuildResult(await _build(request, progress), 1234, Hash);
             for (var percent = 0; percent <= 100; percent++) progress.Report(new MediaProgress(MediaStage.Download, percent, null));
             progress.Report(new MediaProgress(MediaStage.Iso, null, null));
-            return Task.FromResult(request.OutputIso);
+            return new MediaBuildResult(request.OutputIso, 1234, Hash);
         },
         Keyboards = () => Keyboards,
         CleanLeftovers = _ =>
@@ -125,7 +127,7 @@ public sealed class CommandLineMediaTests : IDisposable
             (request, _, _) =>
             {
                 _requests.Add(request);
-                return Task.FromResult(request.OutputIso);
+                return Task.FromResult(new MediaBuildResult(request.OutputIso, 1, Hash));
             },
             new InstallMediaSystem
             {
@@ -169,6 +171,9 @@ public sealed class CommandLineMediaTests : IDisposable
         Assert.DoesNotContain(lines, l => l.EndsWith("Download 6%"));
         Assert.Contains(lines, l => l.Contains("Iso started"));
         Assert.Contains(lines, l => l.Contains("Done: " + Output));
+        // The hash follows the path, so a VM script can compare it with the file it copies out.
+        var done = Array.FindIndex(lines, l => l.Contains("Done: " + Output));
+        Assert.EndsWith("SHA-256 " + Hash, lines[done + 1]);
         var log = await File.ReadAllTextAsync(LogPath);
         Assert.Contains("Download 100%", log);
         Assert.Contains(Loc.Instance.Format("Cli_ExitCode", 0), log);

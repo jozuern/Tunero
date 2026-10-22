@@ -405,13 +405,51 @@
                     <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Media_UpgradeNote}" Margin="0,4,0,0" />
                     <!-- Measured in PCO-Test (docs/vm-test-plan.md, VM 4): the download alone took 21 minutes, unpacking the image 12 -->
                     <ContentControl Style="{StaticResource DurationHint}" Content="{l:Tr Hint_TakesHalfHour}" Margin="0,8,0,0" />
+                    <!-- A failure or a stop; a success has the finished card below -->
                     <ui:InfoBar Title="" Message="{Binding InstallMedia.ResultText}" Severity="{Binding InstallMedia.ResultSeverity}" IsClosable="False" Margin="0,16,0,0"
-                                IsOpen="{Binding InstallMedia.HasResult}" />
-                    <WrapPanel Margin="0,8,0,0">
-                        <ui:Button Content="{l:Tr Media_OpenFolder}" Icon="{ui:SymbolIcon FolderOpen20}" Command="{Binding InstallMedia.OpenFolderCommand}" Margin="0,0,8,0"
-                                   Visibility="{Binding InstallMedia.ResultIso, Converter={StaticResource NullToVisibility}}" />
-                        <ui:Button Content="{l:Tr Media_OpenLog}" Icon="{ui:SymbolIcon DocumentText20}" Command="{Binding InstallMedia.OpenLogCommand}"
+                                IsOpen="{Binding InstallMedia.ShowResultBar}" />
+                    <!-- One row of buttons: a later Resume joins them -->
+                    <WrapPanel Margin="0,8,0,0" Visibility="{Binding InstallMedia.HasFailed, Converter={StaticResource BoolToVisibility}}">
+                        <ui:Button Content="{l:Tr Media_OpenLog}" Icon="{ui:SymbolIcon DocumentText20}" Command="{Binding InstallMedia.ShowLogCommand}" Margin="0,0,8,0"
                                    Visibility="{Binding InstallMedia.ResultLogPath, Converter={StaticResource NullToVisibility}}" />
+                        <ui:Button Content="{l:Tr Media_ShowStage}" Icon="{ui:SymbolIcon TextBulletListSquare20}" Command="{Binding InstallMedia.ShowStageCommand}" Margin="0,0,8,0" />
+                    </WrapPanel>
+                </StackPanel>
+                </DockPanel>
+            </ui:Card>
+
+            <!-- The finished build: where the ISO is, its SHA-256 and what to do with it -->
+            <ui:Card Padding="16,16" Margin="{StaticResource CardRowMargin}"
+                     Visibility="{Binding InstallMedia.HasFinished, Converter={StaticResource BoolToVisibility}}">
+                <DockPanel>
+                <ui:SymbolIcon DockPanel.Dock="Left" Symbol="CheckmarkCircle48" Filled="True" FontSize="48" VerticalAlignment="Top" Margin="0,0,16,0"
+                               Foreground="{DynamicResource SystemFillColorSuccessBrush}" />
+                <StackPanel>
+                    <ui:TextBlock FontTypography="Subtitle" Text="{l:Tr Media_FinishedTitle}" />
+                    <TextBox Style="{StaticResource OutputBox}" Text="{Binding InstallMedia.ResultIso, Mode=OneWay}" FontFamily="{DynamicResource ContentControlThemeFontFamily}" FontSize="14"
+                             AutomationProperties.Name="{l:Tr Media_Output}" BorderThickness="0" Background="Transparent" Padding="0" Margin="0,8,0,0" />
+                    <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding InstallMedia.ResultSizeText}" Margin="0,2,0,0" />
+                    <ui:TextBlock FontTypography="BodyStrong" Text="SHA-256" Margin="0,16,0,0" />
+                    <DockPanel Margin="0,4,0,0">
+                        <ui:Button DockPanel.Dock="Right" Content="{l:Tr Media_CopyHash}" Icon="{ui:SymbolIcon Copy20}" Command="{Binding InstallMedia.CopyHashCommand}"
+                                   VerticalAlignment="Top" Margin="12,8,0,0" />
+                        <TextBox Style="{StaticResource OutputBox}" Text="{Binding InstallMedia.ResultSha256, Mode=OneWay}" AutomationProperties.Name="SHA-256" />
+                    </DockPanel>
+                    <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Media_Sha256Hint}" Margin="0,4,0,0" />
+                    <WrapPanel Margin="0,16,0,0">
+                        <ui:Button Content="{l:Tr Media_OpenFolder}" Icon="{ui:SymbolIcon FolderOpen20}" Command="{Binding InstallMedia.OpenFolderCommand}" Margin="0,0,8,0" />
+                        <ui:Button Content="{l:Tr Media_OpenLog}" Icon="{ui:SymbolIcon DocumentText20}" Command="{Binding InstallMedia.ShowLogCommand}"
+                                   Visibility="{Binding InstallMedia.ResultLogPath, Converter={StaticResource NullToVisibility}}" />
+                    </WrapPanel>
+                    <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Media_NextStepTitle}" Margin="0,24,0,0" />
+                    <ui:TextBlock FontTypography="Body" TextWrapping="Wrap" Text="{l:Tr Media_NextStepVm}" Margin="0,4,0,0" />
+                    <ui:HyperlinkButton Content="{l:Tr Media_NextStepVmLink}" Padding="0" Command="{Binding OpenLinkCommand}"
+                                        CommandParameter="https://learn.microsoft.com/windows-server/virtualization/hyper-v/get-started/create-a-virtual-machine-in-hyper-v" />
+                    <ui:TextBlock FontTypography="Body" TextWrapping="Wrap" Text="{l:Tr Media_NextStepUsb}" Margin="0,8,0,0" />
+                    <WrapPanel>
+                        <ui:HyperlinkButton Content="{l:Tr Media_NextStepUsbRufus}" Padding="0" Margin="0,0,16,0" Command="{Binding OpenLinkCommand}" CommandParameter="https://rufus.ie/" />
+                        <ui:HyperlinkButton Content="{l:Tr Media_NextStepUsbMicrosoft}" Padding="0" Command="{Binding OpenLinkCommand}"
+                                            CommandParameter="https://learn.microsoft.com/windows-hardware/manufacture/desktop/install-windows-from-a-usb-flash-drive" />
                     </WrapPanel>
                 </StackPanel>
                 </DockPanel>
