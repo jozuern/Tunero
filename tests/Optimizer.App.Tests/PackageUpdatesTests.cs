@@ -286,7 +286,15 @@ public sealed class PackageUpdatesTests
         await page.UpdateAllCommand.ExecuteAsync(null);
         Assert.Single(_runs);
         Assert.True(page.ManagersExpanded);
-        Assert.Contains("Found Git", page.ManagerOutput);
+        // The output lines come through a progress callback, which may run a moment after the run has ended.
+        await WaitFor(() => page.ManagerOutput.Contains("Found Git", StringComparison.Ordinal));
+    }
+
+    /// <summary>The page's output is written from the progress callbacks, which may run a moment after the run.</summary>
+    private static async Task WaitFor(Func<bool> condition)
+    {
+        for (var i = 0; i < 200 && !condition(); i++) await Task.Delay(25);
+        Assert.True(condition());
     }
 
     /// <summary>The card is folded by default with a one-line summary, and shows for developer tools alone too.</summary>
