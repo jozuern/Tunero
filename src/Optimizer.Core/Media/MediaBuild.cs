@@ -54,7 +54,8 @@ public sealed record MediaRequest(
 /// Expert settings written into the registry of the mounted install.wim, so they apply to every PC installed from the ISO.
 /// <paramref name="PreventDeviceEncryption"/> keeps Windows from turning on device encryption by itself;
 /// <paramref name="NoReservedStorage"/> keeps no space for updates;
-/// <paramref name="AllowUnsupportedUpgrades"/> is refused by <see cref="MediaBuild.Validate"/> until it is implemented.
+/// <paramref name="AllowUnsupportedUpgrades"/> lets PCs installed from the ISO accept later upgrades without the hardware checks;
+/// <see cref="MediaBuild.Validate"/> refuses it without <see cref="AnswerChoices.AllowUnsupported"/>.
 /// </summary>
 public sealed record MediaImageSettings(bool PreventDeviceEncryption, bool NoReservedStorage, bool AllowUnsupportedUpgrades)
 {
@@ -75,6 +76,9 @@ public sealed record MediaImageSettings(bool PreventDeviceEncryption, bool NoRes
         if (s.PreventDeviceEncryption) values.Add(("SYSTEM", $@"{controlSet}\Control\BitLocker", "PreventDeviceEncryption", 1));
         // Microsoft does not document 0 for this value: Preview on the page until the test VM shows reserved storage Disabled.
         if (s.NoReservedStorage) values.Add(("SOFTWARE", @"Microsoft\Windows\CurrentVersion\ReserveManager", "ShippedWithReserves", 0));
+        // Not documented by Microsoft any more (the 2021 page is gone) and not tested in the VM yet: Preview on the page.
+        // Read by the running Windows when a newer setup.exe upgrades it; not under a ControlSet.
+        if (s.AllowUnsupportedUpgrades) values.Add(("SYSTEM", @"Setup\MoSetup", "AllowUpgradesWithUnsupportedTPMOrCPU", 1));
         return values;
     }
 }
@@ -323,8 +327,9 @@ public sealed class MediaBuild(IMediaSteps steps)
             if (!DebloatService.IsSafeName(name) || apps.Any(a => a.Matches(name)) || appx.IsProtected(name) || appx.IsUnreviewedExcluded(name))
                 throw new ArgumentException($"{name} cannot be removed as an app nobody reviewed.", nameof(r));
         ArgumentNullException.ThrowIfNull(r.Settings);
-        // No code writes this setting yet: a request must not look as if it did.
-        if (r.Settings.AllowUnsupportedUpgrades) throw new ArgumentException("Allowing unsupported upgrades is not implemented yet.", nameof(r));
+        // Later upgrades without the hardware checks only belong to media that skips them at the installation too.
+        if (r.Settings.AllowUnsupportedUpgrades && !r.Answers.AllowUnsupported)
+            throw new ArgumentException("Allowing unsupported upgrades needs Allow unsupported PCs.", nameof(r));
         // Only keyboards and locales Windows knows reach the answer file (Setup ignores or stops at others).
         if (!MediaLocales.IsInputLocale(r.Answers.InputLocale)) throw new ArgumentException($"{r.Answers.InputLocale} is not an input profile.", nameof(r));
         foreach (var locale in new[] { r.Answers.UiLanguage, r.Answers.SystemLocale, r.Answers.UserLocale })

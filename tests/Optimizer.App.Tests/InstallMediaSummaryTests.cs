@@ -78,6 +78,19 @@ public sealed class InstallMediaSummaryTests
     }
 
     [Fact]
+    public void LaterUpgradesAppearInTheBarTheReviewAndTheWarnings()
+    {
+        var off = Choices(allowUnsupported: true);
+        Assert.DoesNotContain(Loc.Instance["Media_UpgradesTitle"], InstallMediaSummary.Bar(off, "Windows 11 Pro", null, 1));
+        Assert.DoesNotContain(InstallMediaSummary.Review(off, "Windows 11 Pro", null, 1).Changes, l => l.Target == Loc.Instance["Media_UpgradesTitle"]);
+        var on = off with { Settings = new(false, false, true) };
+        Assert.Contains(Loc.Instance["Media_UpgradesTitle"], InstallMediaSummary.Bar(on, "Windows 11 Pro", null, 1));
+        var review = InstallMediaSummary.Review(on, "Windows 11 Pro", null, 1);
+        Assert.Contains(review.Changes, l => l.Target == Loc.Instance["Media_UpgradesTitle"] && l.After == Loc.Instance["Media_Review_On"]);
+        Assert.Contains(review.Warnings, w => w.Contains(Loc.Instance["Media_UpgradesText"], StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void ReviewListsEveryActiveChoiceAndWarnsForExpertOptions()
     {
         var r = InstallMediaSummary.Review(Choices(apps: 18, account: "joshu", allowUnsupported: true, profile: "office", unreviewed: 2, install: 3), "Windows 11 Pro", "26300", 1);

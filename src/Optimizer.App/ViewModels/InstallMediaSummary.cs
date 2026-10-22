@@ -27,6 +27,7 @@ internal static class InstallMediaSummary
         if (c.Compression == MediaCompression.Recovery) parts.Add(T["Media_CompressionSmaller"]);
         if (c.Settings.PreventDeviceEncryption) parts.Add(T["Media_EncryptionTitle"]);
         if (c.Settings.NoReservedStorage) parts.Add(T["Media_ReservedTitle"]);
+        if (c.Settings.AllowUnsupportedUpgrades) parts.Add(T["Media_UpgradesTitle"]);
         if (c.SkipSetup && c.AccountName?.Trim() is { Length: > 0 } account) parts.Add(T.Format("Media_Summary_Account", account));
         if (c.Tunero is { } copy) parts.Add(T.Format("Media_Summary_Profile", ProfileTitle(copy)));
         if (neededBytes > 0) parts.Add(T.Format("Media_Summary_Needed", ByteSize.Format(neededBytes)));
@@ -70,6 +71,11 @@ internal static class InstallMediaSummary
         {
             changes.Add(Line(T["Media_UnsupportedTitle"], T["Media_Review_On"]));
             warnings.Add(T.Format("Media_Review_Warning", T["Media_UnsupportedTitle"], T["Media_UnsupportedText"]));
+        }
+        if (c.Settings.AllowUnsupportedUpgrades)
+        {
+            changes.Add(Line(T["Media_UpgradesTitle"], T["Media_Review_On"]));
+            warnings.Add(T.Format("Media_Review_Warning", T["Media_UpgradesTitle"], T["Media_UpgradesText"]));
         }
         // Duration stays empty until the build times are measured in the test VM (docs/vm-test-plan.md).
         return new ConfirmRequest(T["Media_Review_Title"], T.Format("Media_Review_Summary", source, c.OutputIso), changes, [], warnings, null, false)

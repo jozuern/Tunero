@@ -373,6 +373,25 @@
                 <ui:ToggleSwitch IsChecked="{Binding InstallMedia.NoReservedStorage}" AutomationProperties.Name="{l:Tr Media_ReservedTitle}" />
             </ui:CardControl>
 
+            <ui:CardControl Padding="{StaticResource CardPadding}" Margin="{StaticResource CardRowMargin}" IsEnabled="{Binding InstallMedia.CanEdit}"
+                            Visibility="{Binding InstallMedia.AllowUnsupported, Converter={StaticResource BoolToVisibility}}">
+                <ui:CardControl.Header>
+                    <DockPanel>
+                    <ui:SymbolIcon Style="{StaticResource MediaCardIcon}" Symbol="ArrowUpload24" />
+                    <StackPanel>
+                        <WrapPanel>
+                            <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Media_UpgradesTitle}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <Border Style="{StaticResource TagBorder}" Background="{DynamicResource SystemFillColorCautionBackgroundBrush}">
+                                <TextBlock Text="{l:Tr Media_PreviewTag}" FontSize="12" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                            </Border>
+                        </WrapPanel>
+                        <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Media_UpgradesText}" Margin="0,4,0,0" />
+                    </StackPanel>
+                    </DockPanel>
+                </ui:CardControl.Header>
+                <ui:ToggleSwitch IsChecked="{Binding InstallMedia.AllowUnsupportedUpgrades}" AutomationProperties.Name="{l:Tr Media_UpgradesTitle}" />
+            </ui:CardControl>
+
             <!-- 4. Build -->
             <ui:TextBlock Style="{StaticResource SectionHeader}" Text="{l:Tr Media_BuildTitle}" />
             <!-- Every stage of the build with its state, from the first Build until the page closes (the banner stays for other pages) -->

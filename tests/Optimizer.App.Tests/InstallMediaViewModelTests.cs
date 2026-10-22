@@ -1487,6 +1487,36 @@ public sealed class InstallMediaViewModelTests : IDisposable
     }
 
     [Fact]
+    public async Task LaterUpgradesNeedAllowUnsupportedAndReachTheRequestAndTheSavedFile()
+    {
+        var media = await WithCatalog();
+        Assert.False(media.AllowUnsupportedUpgrades);
+        media.AllowUnsupported = true;
+        media.AllowUnsupportedUpgrades = true;
+        media.AllowUnsupported = false;
+        Assert.False(media.AllowUnsupportedUpgrades);
+
+        media.AllowUnsupported = true;
+        media.AllowUnsupportedUpgrades = true;
+        Assert.Contains(Loc.Instance["Media_UpgradesTitle"], media.SummaryText);
+        Assert.Contains(media.ReviewRequest()!.Changes, l => l.Target == Loc.Instance["Media_UpgradesTitle"]);
+        _dialogs.SaveFile = Path.Combine(_root, "upgrades.json");
+        media.SaveChoicesCommand.Execute(null);
+        Assert.True(MediaRequestFile.Parse(File.ReadAllText(_dialogs.SaveFile), Keyboards).AllowUnsupportedUpgrades);
+        await media.BuildCommand.ExecuteAsync(null);
+        Assert.Equal(new MediaImageSettings(false, false, true), Assert.Single(_requests).Settings);
+
+        media.ResetChoicesCommand.Execute(null);
+        Assert.False(media.AllowUnsupportedUpgrades);
+        var json = Saved();
+        json["allowUnsupported"] = true;
+        json["allowUnsupportedUpgrades"] = true;
+        _dialogs.OpenFile = Write(json, "upgrades-in.json");
+        media.LoadChoicesCommand.Execute(null);
+        Assert.True(media.AllowUnsupportedUpgrades);
+    }
+
+    [Fact]
     public async Task TheStageListIncludesSettingsWhenAnImageSettingIsOn()
     {
         var media = await WithCatalog();

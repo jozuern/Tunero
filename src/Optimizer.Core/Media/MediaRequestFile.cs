@@ -36,7 +36,8 @@ public sealed record MediaDroppedValue(string Field, string? Item = null);
 ///   optional: "appLanguage": "en" or "de", "theme": "System", "Light" or "Dark" (absent or null: the app's),
 ///   "installApps": ["Mozilla.Firefox", ...] (app catalog ids, needs a profile), "removeUnreviewed": ["Contoso.App", ...],
 ///   "compression": "wim" (default, faster build) or "recovery" (install.esd, smaller ISO, longer build),
-///   "preventDeviceEncryption": false, "noReservedStorage": false (true writes the setting into install.wim) }
+///   "preventDeviceEncryption": false, "noReservedStorage": false, "allowUnsupportedUpgrades": false (true writes the setting
+///   into install.wim; the last one needs "allowUnsupported": true) }
 /// </code>
 /// </summary>
 public sealed record MediaRequestFile(
@@ -66,6 +67,9 @@ public sealed record MediaRequestFile(
     /// <summary>Expert: keep no space reserved for updates in the image (<see cref="MediaImageSettings.NoReservedStorage"/>).</summary>
     public bool NoReservedStorage { get; init; }
 
+    /// <summary>Expert: PCs installed from the ISO accept later upgrades without the hardware checks (<see cref="MediaImageSettings.AllowUnsupportedUpgrades"/>); needs <see cref="AllowUnsupported"/>.</summary>
+    public bool AllowUnsupportedUpgrades { get; init; }
+
     /// <summary>What <see cref="ParseKeepingWhatFits"/> could not use. Named to the user; the page keeps its own value for each.</summary>
     public IReadOnlyList<MediaDroppedValue> Dropped { get; init; } = [];
 
@@ -80,7 +84,7 @@ public sealed record MediaRequestFile(
     /// <summary>The top-level fields of a request file (the page names one that is refused by its Media_Field_ label).</summary>
     public static IReadOnlyList<string> FieldNames => Fields;
 
-    private static readonly string[] Fields = ["source", "language", "edition", "removeApps", "skipSetup", "profile", "allowUnsupported", "output", "appLanguage", "theme", "installApps", "removeUnreviewed", "compression", "preventDeviceEncryption", "noReservedStorage"];
+    private static readonly string[] Fields = ["source", "language", "edition", "removeApps", "skipSetup", "profile", "allowUnsupported", "output", "appLanguage", "theme", "installApps", "removeUnreviewed", "compression", "preventDeviceEncryption", "noReservedStorage", "allowUnsupportedUpgrades"];
     private static readonly string[] AppLanguages = ["en", "de"];
     private static readonly string[] Themes = ["System", "Light", "Dark"];
     private static readonly string[] SetupFields = ["accountName", "region", "keyboard"];
@@ -162,6 +166,10 @@ public sealed record MediaRequestFile(
             name => Debloat.DebloatService.IsSafeName(name) && !appx.Apps.Any(a => a.Matches(name)) && !appx.IsProtected(name) && !appx.IsUnreviewedExcluded(name) ? name : null,
             "is in the reviewed list, protected, a part of Windows or not a package name");
 
+        var upgrades = OptionalBool(root, "allowUnsupportedUpgrades");
+        if (upgrades && !unsupported.GetBoolean())
+            throw new MediaRequestFileException("allowUnsupportedUpgrades", "needs allowUnsupported to be true");
+
         return new MediaRequestFile(source, language, edition, apps, setup, profile, unsupported.GetBoolean(), output,
             Optional(root, "appLanguage", AppLanguages), Optional(root, "theme", Themes))
         {
@@ -170,6 +178,7 @@ public sealed record MediaRequestFile(
             Compression = CompressionOf(root),
             PreventDeviceEncryption = OptionalBool(root, "preventDeviceEncryption"),
             NoReservedStorage = OptionalBool(root, "noReservedStorage"),
+            AllowUnsupportedUpgrades = upgrades,
         };
     }
 
@@ -253,6 +262,7 @@ public sealed record MediaRequestFile(
             Compression = choices.Compression,
             PreventDeviceEncryption = choices.Settings.PreventDeviceEncryption,
             NoReservedStorage = choices.Settings.NoReservedStorage,
+            AllowUnsupportedUpgrades = choices.Settings.AllowUnsupportedUpgrades,
         };
     }
 
@@ -279,6 +289,7 @@ public sealed record MediaRequestFile(
         root["compression"] = Compression == MediaCompression.Recovery ? RecoveryName : WimName;
         root["preventDeviceEncryption"] = PreventDeviceEncryption;
         root["noReservedStorage"] = NoReservedStorage;
+        root["allowUnsupportedUpgrades"] = AllowUnsupportedUpgrades;
         return root.ToJsonString(new JsonSerializerOptions { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
     }
 
@@ -314,7 +325,7 @@ public sealed record MediaRequestFile(
             InstallApps = InstallApps,
             RemoveUnreviewed = RemoveUnreviewed,
             Compression = Compression,
-            Settings = new MediaImageSettings(PreventDeviceEncryption, NoReservedStorage, false),
+            Settings = new MediaImageSettings(PreventDeviceEncryption, NoReservedStorage, AllowUnsupportedUpgrades),
         };
     }
 

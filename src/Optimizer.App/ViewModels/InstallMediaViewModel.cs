@@ -519,7 +519,17 @@ public sealed partial class InstallMediaViewModel : PageViewModel
 
     [ObservableProperty] private bool _allowUnsupported;
 
-    partial void OnAllowUnsupportedChanged(bool value) => Changed();
+    partial void OnAllowUnsupportedChanged(bool value)
+    {
+        // Later upgrades without the checks only belong to media that skips them at the installation too.
+        if (!value) AllowUnsupportedUpgrades = false;
+        Changed();
+    }
+
+    /// <summary>Expert, Preview: PCs installed from the ISO accept later upgrades without the hardware checks (a registry value written into install.wim; needs <see cref="AllowUnsupported"/>).</summary>
+    [ObservableProperty] private bool _allowUnsupportedUpgrades;
+
+    partial void OnAllowUnsupportedUpgradesChanged(bool value) => Changed();
 
     /// <summary>Expert: keep automatic device encryption off in every PC installed from the ISO (a registry value written into install.wim).</summary>
     [ObservableProperty] private bool _preventDeviceEncryption;
@@ -1280,7 +1290,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
             RemoveUnreviewed = RemoveUnreviewed && !UseDownload ? UnreviewedRows.Where(r => r.IsChecked).Select(r => r.Key).ToList() : [],
             InstallApps = InstallApps && tunero is not null ? InstallRows.Where(r => r.IsChecked).Select(r => r.Key).ToList() : [],
             Compression = SmallerIso ? MediaCompression.Recovery : MediaCompression.Wim,
-            Settings = new MediaImageSettings(PreventDeviceEncryption, NoReservedStorage, false),
+            Settings = new MediaImageSettings(PreventDeviceEncryption, NoReservedStorage, AllowUnsupported && AllowUnsupportedUpgrades),
         };
     }
 
@@ -1769,6 +1779,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         }
 
         if (Given("allowUnsupported")) AllowUnsupported = f.AllowUnsupported;
+        if (Given("allowUnsupportedUpgrades")) AllowUnsupportedUpgrades = f.AllowUnsupportedUpgrades;
         if (Given("compression")) SmallerIso = f.Compression == MediaCompression.Recovery;
         if (Given("preventDeviceEncryption")) PreventDeviceEncryption = f.PreventDeviceEncryption;
         if (Given("noReservedStorage")) NoReservedStorage = f.NoReservedStorage;
@@ -1900,6 +1911,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         RemoveApps = true;
         SkipSetup = true;
         AllowUnsupported = false;
+        AllowUnsupportedUpgrades = false;
         SmallerIso = false;
         PreventDeviceEncryption = false;
         NoReservedStorage = false;
@@ -1966,7 +1978,8 @@ public sealed partial class InstallMediaViewModel : PageViewModel
             _installTicks.UnionWith(["Valve.Steam", "Mozilla.Firefox"]);
         }
         // "review": the choices a review has something to warn about (the review itself is shown by --confirm-shot).
-        AllowUnsupported = shows.Contains("review");
+        AllowUnsupported = shows.Contains("review") || shows.Contains("upgrades");
+        AllowUnsupportedUpgrades = shows.Contains("review") || shows.Contains("upgrades");
         PreventDeviceEncryption = shows.Contains("review");
         NoReservedStorage = shows.Contains("review");
         SmallerIso = shows.Contains("smaller");

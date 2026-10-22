@@ -1811,8 +1811,11 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Media_EncryptionSource" xml:space="preserve"><value>Microsoft: BitLocker overview, disable device encryption</value></data>
   <data name="Media_ReservedTitle" xml:space="preserve"><value>No reserved storage</value></data>
   <data name="Media_ReservedText" xml:space="preserve"><value>No space is kept for updates: an update can fail on a full drive. This applies to every PC installed from this ISO. Microsoft does not document this value, and it has not been checked in a test installation yet.</value></data>
+  <data name="Media_UpgradesTitle" xml:space="preserve"><value>Allow later upgrades on unsupported PCs</value></data>
+  <data name="Media_UpgradesText" xml:space="preserve"><value>PCs installed from this ISO accept later upgrades with the setup.exe of a newer ISO without the hardware checks. This does not help a PC on which this ISO's setup.exe is started now. Microsoft no longer documents this value; Tunero has not tested it yet.</value></data>
   <data name="Media_Field_preventDeviceEncryption" xml:space="preserve"><value>Keep device encryption off</value></data>
   <data name="Media_Field_noReservedStorage" xml:space="preserve"><value>No reserved storage</value></data>
+  <data name="Media_Field_allowUnsupportedUpgrades" xml:space="preserve"><value>Allow later upgrades on unsupported PCs</value></data>
   <data name="Media_SettingsFailed" xml:space="preserve"><value>Tunero could not write the settings into the Windows image.</value></data>
   <data name="Media_BuildTitle" xml:space="preserve"><value>Build</value></data>
   <data name="Media_Output" xml:space="preserve"><value>ISO file</value></data>

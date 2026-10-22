@@ -1871,7 +1871,16 @@ public sealed class MediaBuildTests : IDisposable
     }
 
     [Fact]
-    public async Task AllowUnsupportedUpgradesIsRefusedUntilItIsImplemented()
+    public async Task AllowUnsupportedUpgradesWritesMoSetup()
+    {
+        await Run(Download(answers: Plain with { AllowUnsupported = true }) with { Settings = new(false, false, true) });
+        Assert.Equal(1, _steps.Hives["SYSTEM"].Get(@"Setup\MoSetup", "AllowUpgradesWithUnsupportedTPMOrCPU"));
+        Assert.Null(_steps.Hives["SYSTEM"].Get(@"ControlSet001\Setup\MoSetup", "AllowUpgradesWithUnsupportedTPMOrCPU"));
+        Assert.False(_steps.Hives.ContainsKey("SOFTWARE"));
+    }
+
+    [Fact]
+    public async Task AllowUnsupportedUpgradesNeedsAllowUnsupported()
     {
         await Assert.ThrowsAsync<ArgumentException>(() => Run(Download() with { Settings = new(false, false, true) }));
         Assert.Empty(_steps.Calls);
@@ -1887,6 +1896,8 @@ public sealed class MediaBuildTests : IDisposable
             MediaImageSettings.Values(new(true, false, false), "ControlSet003"));
         Assert.Equal([("SOFTWARE", @"Microsoft\Windows\CurrentVersion\ReserveManager", "ShippedWithReserves", 0)],
             MediaImageSettings.Values(new(false, true, false), "ControlSet003"));
+        Assert.Equal([("SYSTEM", @"Setup\MoSetup", "AllowUpgradesWithUnsupportedTPMOrCPU", 1)],
+            MediaImageSettings.Values(new(false, false, true), "ControlSet003"));
     }
 
     [Fact]

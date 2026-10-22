@@ -387,11 +387,31 @@ public sealed class MediaRequestFileTests : IDisposable
     }
 
     [Fact]
-    public void AllowUnsupportedUpgradesIsNotAFieldYet()
+    public void AllowUnsupportedUpgradesIsOptionalAndNeedsAllowUnsupported()
     {
         var json = Download();
+        json["allowUnsupported"] = true;
+        Assert.False(Parse(json).AllowUnsupportedUpgrades);
         json["allowUnsupportedUpgrades"] = true;
-        Assert.Equal("allowUnsupportedUpgrades", Refused(json).Field);
+        var request = Parse(json).ToChoices(Files, "en", Path.Combine(_root, "Tunero.exe"), "Dark").ToRequest();
+        Assert.Equal(new MediaImageSettings(false, false, true), request.Settings);
+        json["allowUnsupported"] = false;
+        var refused = Refused(json);
+        Assert.Equal("allowUnsupportedUpgrades", refused.Field);
+        json["allowUnsupported"] = true;
+        json["allowUnsupportedUpgrades"] = "yes";
+        Assert.Contains("true or false", Refused(json).Message);
+    }
+
+    [Fact]
+    public void AllowUnsupportedUpgradesWithoutAllowUnsupportedIsDroppedWhenKeepingWhatFits()
+    {
+        var json = Download();
+        json["allowUnsupported"] = false;
+        json["allowUnsupportedUpgrades"] = true;
+        var file = MediaRequestFile.ParseKeepingWhatFits(json.ToJsonString(), Keyboards);
+        Assert.Equal([new("allowUnsupportedUpgrades")], file.Dropped);
+        Assert.False(file.AllowUnsupportedUpgrades);
     }
 
     [Fact]
@@ -568,6 +588,7 @@ public sealed class MediaRequestFileTests : IDisposable
         },
         "recovery" => Choices(new MediaSource(Files[1], null, null)) with { Compression = MediaCompression.Recovery },
         "settings" => Choices(new MediaSource(Files[1], null, null)) with { Settings = new(true, true, false) },
+        "upgrades" => Choices(new MediaSource(Files[1], null, null)) with { AllowUnsupported = true, Settings = new(false, false, true) },
         "encryptionOnly" => Choices(new MediaSource(Files[1], null, null)) with { Settings = new(true, false, false) },
         _ => Choices(new MediaSource(null, OwnIso(), null)) with
         {
@@ -583,6 +604,7 @@ public sealed class MediaRequestFileTests : IDisposable
     [InlineData("recovery")]
     [InlineData("settings")]
     [InlineData("encryptionOnly")]
+    [InlineData("upgrades")]
     public void ChoicesRoundTripThroughTheRequestFile(string name)
     {
         var c = Set(name);
