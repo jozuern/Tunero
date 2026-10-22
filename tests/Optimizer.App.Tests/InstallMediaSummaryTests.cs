@@ -44,6 +44,21 @@ public sealed class InstallMediaSummaryTests
     }
 
     [Fact]
+    public void PartsAppearInTheBarAndTheReviewOnlyWhenChosen()
+    {
+        Assert.DoesNotContain(Loc.Instance.Format("Media_PartsSummary", 0), InstallMediaSummary.Bar(Choices(), "Windows 11 Pro", null, 1));
+        Assert.DoesNotContain(InstallMediaSummary.Review(Choices(), "Windows 11 Pro", null, 1).Changes, l => l.Target == Loc.Instance["Media_PartsTitle"]);
+
+        var on = Choices() with { RemoveParts = ["wordpad", "recall"] };
+        Assert.Contains(Loc.Instance.Format("Media_PartsSummary", 2), InstallMediaSummary.Bar(on, "Windows 11 Pro", null, 1));
+        var review = InstallMediaSummary.Review(on, "Windows 11 Pro", null, 1);
+        var line = Assert.Single(review.Changes, l => l.Target == Loc.Instance["Media_PartsTitle"]);
+        Assert.Contains("WordPad", line.After);
+        Assert.Contains("Recall", line.After);
+        Assert.Empty(review.Warnings);
+    }
+
+    [Fact]
     public void BarSaysSmallerIsoOnlyWhenChosen()
     {
         Assert.Contains(Loc.Instance["Media_CompressionSmaller"], InstallMediaSummary.Bar(Choices(smaller: true), "Windows 11 Pro", null, 1));

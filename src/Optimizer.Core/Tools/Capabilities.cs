@@ -63,12 +63,8 @@ public sealed partial class OptionalCapabilityAction : TweakAction
         var (code, output) = processes.Run("dism.exe", "/Online /English /Get-Capabilities /Format:Table", TimeSpan.FromMinutes(3));
         var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         if (code != 0) return map;
-        foreach (var line in output.Split('\n'))
-        {
-            var parts = line.Split('|', StringSplitOptions.TrimEntries);
-            if (parts.Length != 2 || parts[0].Length == 0 || parts[0].StartsWith('-')) continue;
-            if (MapState(parts[1]) is { } state) map[parts[0]] = state;
-        }
+        foreach (var (name, state) in Optimizer.Core.Media.DismOutput.ParseTable(output))
+            if (MapState(state) is { } mapped) map[name] = mapped;
         return map;
     }
 

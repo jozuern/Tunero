@@ -170,6 +170,9 @@ public sealed class MediaAppRow(AppxEntry entry, string lang, bool isChecked)
 /// <summary>An app of the own ISO's image that the reviewed list does not cover (Expert): only its package name is known.</summary>
 public sealed class MediaUnreviewedRow(string name, bool isChecked) : MediaPickRow(name, name, Loc.Instance["Media_UnreviewedRow"], null, isChecked);
 
+/// <summary>An optional Windows part (mediaparts.json) with its tick for the media.</summary>
+public sealed class MediaPartRow(MediaPart part, string lang, bool isChecked) : MediaPickRow(part.Id, part.Label(lang), part.Text(lang), null, isChecked);
+
 /// <summary>A machine-wide app of the app catalog that the first sign-in installs.</summary>
 public sealed class MediaInstallRow(Optimizer.Core.Apps.AppEntry app, string lang, bool isChecked) : MediaPickRow(app.Id, app.Name, app.Text(lang), app.Id, isChecked)
 {
@@ -575,6 +578,34 @@ public sealed partial class InstallMediaViewModel : PageViewModel
             };
     }
 
+    /// <summary>Remove optional Windows parts (WordPad, speech data, Recall and others) from the image: off, none ticked.</summary>
+    [ObservableProperty] private bool _removeParts;
+
+    partial void OnRemovePartsChanged(bool value) => Changed();
+
+    [ObservableProperty] private IReadOnlyList<MediaPartRow> _partRows = [];
+
+    private readonly HashSet<string> _partTicks = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>What the folded parts card holds: "Parts to remove: 3", or off.</summary>
+    public string PartsSummary => RemoveParts ? Loc.Instance.Format("Media_PartsSummary", PartRows.Count(r => r.IsChecked)) : Loc.Instance["Media_Off"];
+
+    /// <summary>The parts in the current language, the ticks kept by id.</summary>
+    private void BuildPartRows()
+    {
+        var lang = Lang;
+        PartRows = CatalogData.Current.MediaParts.Select(p => new MediaPartRow(p, lang, _partTicks.Contains(p.Id))).ToList();
+        foreach (var row in PartRows)
+            row.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName != nameof(MediaPickRow.IsChecked)) return;
+                if (row.IsChecked) _partTicks.Add(row.Key);
+                else _partTicks.Remove(row.Key);
+                OnPropertyChanged(nameof(PartsSummary));
+                OnPropertyChanged(nameof(SummaryText));
+            };
+    }
+
     /// <summary>The change cards start folded; the demo can unfold them for screenshots.</summary>
     [ObservableProperty] private bool _expandOptions;
 
@@ -711,6 +742,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         OnPropertyChanged(nameof(InstallSummary));
         OnPropertyChanged(nameof(UnreviewedSourceText));
         OnPropertyChanged(nameof(UnreviewedSummary));
+        OnPropertyChanged(nameof(PartsSummary));
         UpdateCatalogText();
         UpdateIsoText();
         UpdateOutputName();
@@ -895,6 +927,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         ShowEditions();
         UpdateImageApps();
         BuildInstallGroups();
+        BuildPartRows();
     }
 
     /// <summary>
@@ -1288,6 +1321,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
             SkipSetup, AccountNameText, Region?.Key, Keyboard?.Key, AllowUnsupported, tunero, OutputPath!)
         {
             RemoveUnreviewed = RemoveUnreviewed && !UseDownload ? UnreviewedRows.Where(r => r.IsChecked).Select(r => r.Key).ToList() : [],
+            RemoveParts = RemoveParts ? PartRows.Where(r => r.IsChecked).Select(r => r.Key).ToList() : [],
             InstallApps = InstallApps && tunero is not null ? InstallRows.Where(r => r.IsChecked).Select(r => r.Key).ToList() : [],
             Compression = SmallerIso ? MediaCompression.Recovery : MediaCompression.Wim,
             Settings = new MediaImageSettings(PreventDeviceEncryption, NoReservedStorage, AllowUnsupported && AllowUnsupportedUpgrades),
@@ -1792,6 +1826,14 @@ public sealed partial class InstallMediaViewModel : PageViewModel
             BuildInstallGroups();
         }
 
+        if (Given("removeParts"))
+        {
+            _partTicks.Clear();
+            _partTicks.UnionWith(f.RemoveParts);
+            RemoveParts = f.RemoveParts.Count > 0;
+            BuildPartRows();
+        }
+
         if (Given("removeUnreviewed"))
         {
             _unreviewedTicks.Clear();
@@ -1900,6 +1942,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         _ticks.Clear();
         _installTicks.Clear();
         _unreviewedTicks.Clear();
+        _partTicks.Clear();
         _downloadEdition = null;
         _wantedLanguage = null;
         _wantedIsoEdition = null;
@@ -1916,6 +1959,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         PreventDeviceEncryption = false;
         NoReservedStorage = false;
         RemoveUnreviewed = false;
+        RemoveParts = false;
         InstallApps = false;
         AccountNameText = _pc.UserName is { } user && AccountName.Problem(user) is null ? user : "";
         ApplyProfile = CanApplyProfile;
@@ -1964,7 +2008,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     /// Developer aid: the sample catalog instead of Microsoft's, a sample own ISO, and a build that only shows its stages,
     /// then a sample failure and the next time a sample success. Nothing goes to the network, attaches or runs.
     /// <paramref name="show"/>, comma-separated: "fail" or "done" shows that result at once, "expand" unfolds the change
-    /// cards, "progress" starts a build that stays in the middle of Apps (the stage list mid-build), "review" turns on the Expert option that warns in the review, "iso" chooses the sample own ISO, "umlaut" types an account name Setup cannot create, "cleanup" shows the Build card while the start cleanup
+    /// cards, "progress" starts a build that stays in the middle of Apps (the stage list mid-build), "review" turns on the Expert option that warns in the review (and the Windows parts card with four parts), "parts" turns on the Windows parts card with four parts ticked, "iso" chooses the sample own ISO, "umlaut" types an account name Setup cannot create, "cleanup" shows the Build card while the start cleanup
     /// runs, "dropped" shows the note about remembered choices that no longer fit, "smaller" chooses Smaller ISO (for screenshots).
     /// </summary>
     public void UseDemo(string? show)
@@ -1982,6 +2026,9 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         AllowUnsupportedUpgrades = shows.Contains("review") || shows.Contains("upgrades");
         PreventDeviceEncryption = shows.Contains("review");
         NoReservedStorage = shows.Contains("review");
+        // "parts": the optional Windows parts card on, with four ticked as an example (the rows are built when the page loads).
+        RemoveParts = shows.Contains("review") || shows.Contains("parts");
+        if (RemoveParts) _partTicks.UnionWith(["wordpad", "stepsRecorder", "speech", "recall"]);
         SmallerIso = shows.Contains("smaller");
         _demo = true;
         _catalog = new InstallMediaDemo.Catalog();

@@ -144,6 +144,25 @@ public static class DismOutput
     /// <summary>The "PackageName :" values of Get-ProvisionedAppxPackages.</summary>
     public static IReadOnlyList<string> ParseProvisioned(string output) => Values(output, "PackageName");
 
+    /// <summary>
+    /// The rows of a <c>/Get-Capabilities /Format:Table</c> or <c>/Get-Features /Format:Table</c> answer ("Name | State"),
+    /// name to state as DISM prints it ("Installed", "Not Present", "Enabled", "Disabled with Payload Removed"), names
+    /// compared without regard to case. The header, the dashed line and every other line are left out. The one table
+    /// parser of <see cref="Tools.Capabilities.ReadAll"/>, <see cref="Tools.OptionalFeatures.ReadAll"/> and the build.
+    /// </summary>
+    public static IReadOnlyDictionary<string, string> ParseTable(string output)
+    {
+        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var line in output.Split('\n'))
+        {
+            var parts = line.Split('|', StringSplitOptions.TrimEntries);
+            if (parts.Length != 2 || parts[0].Length == 0 || parts[1].Length == 0 || parts[0].StartsWith('-')) continue;
+            if (parts[0].Equals("Capability Identity", StringComparison.OrdinalIgnoreCase) || parts[0].Equals("Feature Name", StringComparison.OrdinalIgnoreCase)) continue;
+            map[parts[0]] = parts[1];
+        }
+        return map;
+    }
+
     /// <summary>The images of Get-MountedImageInfo: each "Mount Dir :" with the "Status :" line that follows it.</summary>
     public static IReadOnlyList<MountedImage> ParseMountedImages(string output)
     {
@@ -235,6 +254,27 @@ public static class DismArgs
         return $"/English /Image:{Q(mountDir)} /Remove-ProvisionedAppxPackage /PackageName:{packageName}";
     }
 
+    public static string Capabilities(string mountDir) =>
+        $"/English /Image:{Q(mountDir)} /Get-Capabilities /Format:Table";
+
+    public static string RemoveCapability(string mountDir, string name) =>
+        $"/English /Image:{Q(mountDir)} /Remove-Capability /CapabilityName:{PartName(name)}";
+
+    public static string Features(string mountDir) =>
+        $"/English /Image:{Q(mountDir)} /Get-Features /Format:Table";
+
+    /// <summary>Turns the feature off and removes what can be removed of it (/Remove): it can be enabled again from a repair source such as Windows Update.</summary>
+    public static string DisableFeature(string mountDir, string name) =>
+        $"/English /Image:{Q(mountDir)} /Disable-Feature /FeatureName:{PartName(name)} /Remove";
+
+    /// <summary>A capability or feature name: letters, digits and - _ . ~ only, so it cannot add a switch.</summary>
+    private static string PartName(string name)
+    {
+        if (name.Length is 0 or >= 128 || !name.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_' or '.' or '~'))
+            throw new ArgumentException("Not a capability or feature name.", nameof(name));
+        return name;
+    }
+
     public static string CheckHealth(string mountDir) =>
         $"/English /Image:{Q(mountDir)} /Cleanup-Image /CheckHealth";
 
@@ -272,6 +312,14 @@ public interface IDism
     Task MountAsync(string image, int index, string mountDir, bool readOnly, IProgress<double>? p, CancellationToken ct);
     Task<IReadOnlyList<string>> ProvisionedAsync(string mountDir, CancellationToken ct);
     Task RemoveProvisionedAsync(string mountDir, string packageName, CancellationToken ct);
+    /// <summary>The capabilities of the mounted image with their state (see <see cref="DismOutput.ParseTable"/>).</summary>
+    Task<IReadOnlyDictionary<string, string>> CapabilitiesAsync(string mountDir, CancellationToken ct);
+    /// <summary>Removes one capability (a full name such as Microsoft.Windows.WordPad~~~~0.0.1.0) from the mounted image.</summary>
+    Task RemoveCapabilityAsync(string mountDir, string name, CancellationToken ct);
+    /// <summary>The features of the mounted image with their state.</summary>
+    Task<IReadOnlyDictionary<string, string>> FeaturesAsync(string mountDir, CancellationToken ct);
+    /// <summary>Turns one feature off in the mounted image and removes it (/Remove).</summary>
+    Task DisableFeatureAsync(string mountDir, string name, CancellationToken ct);
     /// <summary>Runs /CheckHealth on the mounted image and returns the output (see <see cref="DismOutput.Healthy"/>).</summary>
     Task<string> CheckHealthAsync(string mountDir, CancellationToken ct);
     /// <summary>Runs /StartComponentCleanup (without /ResetBase) on the mounted image. Fails with 0x800F0806 while operations are pending.</summary>
@@ -314,6 +362,18 @@ public sealed class DismTool(IProcessRunner? processes = null) : IDism
 
     public async Task RemoveProvisionedAsync(string mountDir, string packageName, CancellationToken ct) =>
         await RunAsync(DismArgs.RemoveProvisioned(mountDir, packageName), null, ct);
+
+    public async Task<IReadOnlyDictionary<string, string>> CapabilitiesAsync(string mountDir, CancellationToken ct) =>
+        DismOutput.ParseTable(await RunAsync(DismArgs.Capabilities(mountDir), null, ct));
+
+    public async Task RemoveCapabilityAsync(string mountDir, string name, CancellationToken ct) =>
+        await RunAsync(DismArgs.RemoveCapability(mountDir, name), null, ct);
+
+    public async Task<IReadOnlyDictionary<string, string>> FeaturesAsync(string mountDir, CancellationToken ct) =>
+        DismOutput.ParseTable(await RunAsync(DismArgs.Features(mountDir), null, ct));
+
+    public async Task DisableFeatureAsync(string mountDir, string name, CancellationToken ct) =>
+        await RunAsync(DismArgs.DisableFeature(mountDir, name), null, ct);
 
     public Task<string> CheckHealthAsync(string mountDir, CancellationToken ct) =>
         RunAsync(DismArgs.CheckHealth(mountDir), null, ct);

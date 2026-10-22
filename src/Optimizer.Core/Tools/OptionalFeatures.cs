@@ -101,13 +101,10 @@ public sealed partial class OptionalFeatureAction : TweakAction
         var (code, output) = processes.Run("dism.exe", "/Online /English /Get-Features /Format:Table", TimeSpan.FromMinutes(3));
         var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         if (code != 0) return map;
-        foreach (var line in output.Split('\n'))
+        foreach (var (name, state) in Optimizer.Core.Media.DismOutput.ParseTable(output))
         {
-            var parts = line.Split('|', StringSplitOptions.TrimEntries);
-            if (parts.Length != 2 || parts[0].Length == 0 || parts[0].StartsWith("Feature Name", StringComparison.OrdinalIgnoreCase) || parts[0].StartsWith('-')) continue;
-            var state = parts[1];
             if (!state.StartsWith("Enable", StringComparison.OrdinalIgnoreCase) && !state.StartsWith("Disable", StringComparison.OrdinalIgnoreCase)) continue;
-            map[parts[0]] = state.StartsWith("Enable", StringComparison.OrdinalIgnoreCase) ? "Enabled" : "Disabled";
+            map[name] = state.StartsWith("Enable", StringComparison.OrdinalIgnoreCase) ? "Enabled" : "Disabled";
         }
         return map;
     }

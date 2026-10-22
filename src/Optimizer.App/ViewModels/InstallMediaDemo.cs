@@ -38,9 +38,10 @@ internal static class InstallMediaDemo
         public async Task<MediaBuildResult> RunAsync(MediaRequest request, IProgress<MediaProgress> progress, CancellationToken ct)
         {
             var fail = _runs++ == 0 && !Freeze;
-            foreach (var stage in new[] { MediaStage.Download, MediaStage.Check, MediaStage.Unpack, MediaStage.Apps, MediaStage.Files, MediaStage.Iso, MediaStage.Verify })
+            foreach (var stage in new[] { MediaStage.Download, MediaStage.Check, MediaStage.Unpack, MediaStage.Apps, MediaStage.Parts, MediaStage.Files, MediaStage.Iso, MediaStage.Verify })
             {
                 if (stage == MediaStage.Apps && request.RemoveApps.Count == 0 && request.RemoveUnreviewed.Count == 0) continue;
+                if (stage == MediaStage.Parts && request.RemoveParts.Count == 0) continue;
                 progress.Report(new MediaProgress(stage, null, null));
                 if (Freeze && stage == MediaStage.Apps)
                 {

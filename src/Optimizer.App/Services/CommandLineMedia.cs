@@ -152,7 +152,7 @@ public static class CommandLineMedia
             {
                 return Invalid(lines, "request: " + ex.Message);
             }
-            lines.Write($"Building {(request.Source.Download is { } esd ? esd.FileName : request.Source.IsoPath)}, edition {request.Edition}, {request.RemoveApps.Count} apps removed, " +
+            lines.Write($"Building {(request.Source.Download is { } esd ? esd.FileName : request.Source.IsoPath)}, edition {request.Edition}, {request.RemoveApps.Count} apps and {request.RemoveParts.Count} Windows parts removed, " +
                         $"setup {(request.Answers.SkipSetup ? "skipped for " + request.Answers.AccountName : "asked")}, profile {request.FirstSignIn?.Profile ?? "none"}, to {request.OutputIso}");
             var progress = new ProgressLines(lines);
             var result = await system.Build(request, new Sync<MediaProgress>(progress.Report), CancellationToken.None);

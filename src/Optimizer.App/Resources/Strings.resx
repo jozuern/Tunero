@@ -1774,6 +1774,9 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Media_RemoveAppsText" xml:space="preserve"><value>The apps you tick are removed from the image, so no account on the new PC gets them. Once the new PC is online, Windows or the Microsoft Store can install some of them again; Remove apps in Tunero removes them again.</value></data>
   <data name="Media_AppsChosen" xml:space="preserve"><value>{0} of {1} chosen</value></data>
   <data name="Media_AppsGroupAll" xml:space="preserve"><value>Select all: {0}</value></data>
+  <data name="Media_PartsTitle" xml:space="preserve"><value>Remove optional Windows parts</value></data>
+  <data name="Media_PartsText" xml:space="preserve"><value>The parts you tick are removed from the image. After the installation they can be added back: most with DISM /Add-Capability, which downloads them from Windows Update, Recall with Enable-WindowsOptionalFeature.</value></data>
+  <data name="Media_PartsSummary" xml:space="preserve"><value>Windows parts to remove: {0}</value></data>
   <data name="Media_AppsFromDownload" xml:space="preserve"><value>Every app a Microsoft image can hold: Tunero does not know yet which of them this download holds. It reads the image while it builds and skips the apps it does not have, so an app you leave unticked here may still not be on the new PC. Apps that are parts of Windows (such as the Store) are never listed and always stay.</value></data>
   <data name="Media_AppsReading" xml:space="preserve"><value>Reading which apps this edition of your ISO holds</value></data>
   <data name="Media_AppsFromIso" xml:space="preserve"><value>Apps this edition of your ISO holds: {0}. Apps it does not have are not listed. Apps that are parts of Windows (such as the Store) are never listed and always stay.</value></data>
@@ -1923,6 +1926,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Media_Field_language" xml:space="preserve"><value>Language</value></data>
   <data name="Media_Field_edition" xml:space="preserve"><value>Edition</value></data>
   <data name="Media_Field_removeApps" xml:space="preserve"><value>Apps to remove</value></data>
+  <data name="Media_Field_removeParts" xml:space="preserve"><value>Windows parts to remove</value></data>
   <data name="Media_Field_skipSetup" xml:space="preserve"><value>Account and setup questions</value></data>
   <data name="Media_Field_profile" xml:space="preserve"><value>Tunero profile</value></data>
   <data name="Media_Field_allowUnsupported" xml:space="preserve"><value>Allow unsupported PCs</value></data>

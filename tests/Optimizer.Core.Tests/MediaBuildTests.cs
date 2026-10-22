@@ -136,6 +136,9 @@ public sealed class MediaBuildTests : IDisposable
     [InlineData("download settings")]
     [InlineData("iso apps settings")]
     [InlineData("download settings smaller")]
+    [InlineData("download parts")]
+    [InlineData("iso apps parts")]
+    [InlineData("iso parts settings smaller")]
     public async Task PlannedStagesAreExactlyTheStagesARunBegins(string kind)
     {
         var apps = kind.Contains("apps", StringComparison.Ordinal) ? new[] { "Microsoft.BingNews" } : [];
@@ -144,11 +147,83 @@ public sealed class MediaBuildTests : IDisposable
         if (kind.Contains("tunero", StringComparison.Ordinal)) r = WithTunero(r);
         if (kind.Contains("smaller", StringComparison.Ordinal)) r = Smaller(r);
         if (kind.Contains("settings", StringComparison.Ordinal)) r = r with { Settings = new(true, true, false) };
+        if (kind.Contains("parts", StringComparison.Ordinal)) r = r with { RemoveParts = ["wordpad"] };
         await Run(r);
         var begun = _steps.Progress.Where(p => p.Percent is null && p.Stage != MediaStage.Cleanup).Select(p => p.Stage).Distinct();
         Assert.Equal(MediaBuild.PlannedStages(r), begun);
         Assert.DoesNotContain(MediaStage.Catalog, MediaBuild.PlannedStages(r));
     }
+
+    // ---- optional Windows parts ----
+
+    [Fact]
+    public async Task ChosenPartsAreRemovedAndMissingOnesAreLogged()
+    {
+        _steps.Dism.Capabilities = new() { ["Microsoft.Windows.WordPad~~~~0.0.1.0"] = "Installed", ["Language.Speech~~~en-US~0.0.1.0"] = "Installed" };
+        _steps.Dism.Features = new() { ["Recall"] = "Enabled" };
+        await Run(Download() with { RemoveParts = ["wordpad", "speech", "recall", "xps"] });
+        Assert.Contains("RemoveCapability Microsoft.Windows.WordPad~~~~0.0.1.0", _steps.Calls);
+        Assert.Contains("RemoveCapability Language.Speech~~~en-US~0.0.1.0", _steps.Calls);
+        Assert.Contains("DisableFeature Recall", _steps.Calls);
+        Assert.Contains(_steps.LogLines, l => l.Contains("XPS Viewer") && l.Contains("not present"));
+        Assert.Equal(1, Count("Mount install.wim 1"));
+        Assert.Equal(1, Count("Unmount commit"));
+    }
+
+    [Fact]
+    public async Task APartThatIsNotInstalledOrEnabledIsLeftAlone()
+    {
+        _steps.Dism.Capabilities = new() { ["Microsoft.Windows.WordPad~~~~0.0.1.0"] = "Not Present", ["App.StepsRecorder~~~~0.0.1.0"] = "Installed" };
+        _steps.Dism.Features = new() { ["Recall"] = "Disabled" };
+        await Run(Download() with { RemoveParts = ["wordpad", "stepsRecorder", "recall"] });
+        Assert.DoesNotContain(_steps.Calls, c => c.StartsWith("RemoveCapability Microsoft.Windows.WordPad", StringComparison.Ordinal));
+        Assert.Contains("RemoveCapability App.StepsRecorder~~~~0.0.1.0", _steps.Calls);
+        Assert.DoesNotContain("DisableFeature Recall", _steps.Calls);
+    }
+
+    [Fact]
+    public async Task APrefixMatchesEveryLanguageAndTextToSpeechTakesSpeechRecognitionFirst()
+    {
+        _steps.Dism.Capabilities = new()
+        {
+            ["Language.TextToSpeech~~~en-US~0.0.1.0"] = "Installed", ["Language.Speech~~~en-US~0.0.1.0"] = "Installed",
+            ["Language.TextToSpeech~~~de-DE~0.0.1.0"] = "Installed", ["Language.Speech~~~de-DE~0.0.1.0"] = "Installed",
+            ["Language.Basic~~~en-US~0.0.1.0"] = "Installed",
+        };
+        await Run(Download() with { RemoveParts = ["textToSpeech", "speech"] });
+        var removed = _steps.Calls.Where(c => c.StartsWith("RemoveCapability ", StringComparison.Ordinal)).ToList();
+        Assert.Equal(4, removed.Count);
+        // Speech recognition depends on text to speech: every Speech goes before any TextToSpeech, none twice.
+        Assert.True(removed.FindLastIndex(c => c.Contains("Language.Speech~~~")) < removed.FindIndex(c => c.Contains("Language.TextToSpeech~~~")));
+        Assert.DoesNotContain(removed, c => c.Contains("Language.Basic"));
+        Assert.Equal(removed.Count, removed.Distinct().Count());
+    }
+
+    [Fact]
+    public async Task OnlyPartsInTheRequestReadTheImage()
+    {
+        await Run(Download() with { RemoveParts = ["recall"] });
+        Assert.DoesNotContain("Capabilities", _steps.Calls);
+        Assert.Contains("Features", _steps.Calls);
+    }
+
+    [Fact]
+    public async Task APartFailureStopsTheBuildAtTheParts()
+    {
+        _steps.Dism.Capabilities = new() { ["App.StepsRecorder~~~~0.0.1.0"] = "Installed" };
+        _steps.Dism.RemoveCapabilityFails = true;
+        var ex = await Fails(Download() with { RemoveParts = ["stepsRecorder"] });
+        Assert.Equal(MediaStage.Parts, ex.Stage);
+        AssertCleanedUp();
+    }
+
+    [Fact]
+    public void UnknownPartIsRefused() =>
+        Assert.Throws<ArgumentException>(() => MediaBuild.Validate(Download() with { RemoveParts = ["defender"] }));
+
+    [Fact]
+    public void ACatalogPartIsAccepted() =>
+        MediaBuild.Validate(Download() with { RemoveParts = ["wordpad"] });
 
     [Fact]
     public async Task EditionIsFoundByEditionId()
@@ -2446,6 +2521,11 @@ internal sealed class FakeWritableHive(FakeMediaSteps steps, string name) : IWri
 internal sealed class FakeDism(FakeMediaSteps steps) : IDism
 {
     public List<string> Provisioned { get; set; } = [];
+
+    /// <summary>The capabilities and features the image holds (name to state), as /Get-Capabilities and /Get-Features list them.</summary>
+    public Dictionary<string, string> Capabilities { get; set; } = [];
+    public Dictionary<string, string> Features { get; set; } = [];
+    public bool RemoveCapabilityFails { get; set; }
     public bool ProvisionedThrows { get; set; }
     public bool MountThrows { get; set; }
     public bool MountedImagesThrows { get; set; }
@@ -2591,6 +2671,35 @@ internal sealed class FakeDism(FakeMediaSteps steps) : IDism
             stop.Cancel();
             ct.ThrowIfCancellationRequested();
         }
+        return Task.CompletedTask;
+    }
+
+    public Task<IReadOnlyDictionary<string, string>> CapabilitiesAsync(string mountDir, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        steps.Calls.Add("Capabilities");
+        return Task.FromResult<IReadOnlyDictionary<string, string>>(new Dictionary<string, string>(Capabilities, StringComparer.OrdinalIgnoreCase));
+    }
+
+    public Task RemoveCapabilityAsync(string mountDir, string name, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        steps.Calls.Add($"RemoveCapability {name}");
+        if (RemoveCapabilityFails) throw new DismException(87, "Error: 87\n\nThe parameter is incorrect.");
+        return Task.CompletedTask;
+    }
+
+    public Task<IReadOnlyDictionary<string, string>> FeaturesAsync(string mountDir, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        steps.Calls.Add("Features");
+        return Task.FromResult<IReadOnlyDictionary<string, string>>(new Dictionary<string, string>(Features, StringComparer.OrdinalIgnoreCase));
+    }
+
+    public Task DisableFeatureAsync(string mountDir, string name, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        steps.Calls.Add($"DisableFeature {name}");
         return Task.CompletedTask;
     }
 

@@ -296,6 +296,49 @@ public class DismParsingTests
     public void PackageNamesWithSpacesAreRefused(string name) => Assert.Throws<ArgumentException>(() => DismArgs.RemoveProvisioned(@"C:\m", name));
 
     [Fact]
+    public void PartArgs()
+    {
+        Assert.Equal("/English /Image:\"C:\\m\" /Get-Capabilities /Format:Table", DismArgs.Capabilities(@"C:\m"));
+        Assert.Equal("/English /Image:\"C:\\m\" /Remove-Capability /CapabilityName:Microsoft.Windows.WordPad~~~~0.0.1.0", DismArgs.RemoveCapability(@"C:\m", "Microsoft.Windows.WordPad~~~~0.0.1.0"));
+        Assert.Equal("/English /Image:\"C:\\m\" /Get-Features /Format:Table", DismArgs.Features(@"C:\m"));
+        Assert.Equal("/English /Image:\"C:\\m\" /Disable-Feature /FeatureName:Recall /Remove", DismArgs.DisableFeature(@"C:\m", "Recall"));
+    }
+
+    [Theory]
+    [InlineData("a b")]
+    [InlineData("x /Remove-Image")]
+    [InlineData("x\"")]
+    [InlineData("")]
+    public void PartNamesWithSwitchesAreRefused(string name)
+    {
+        Assert.Throws<ArgumentException>(() => DismArgs.RemoveCapability(@"C:\m", name));
+        Assert.Throws<ArgumentException>(() => DismArgs.DisableFeature(@"C:\m", name));
+    }
+
+    [Fact]
+    public void ACapabilityTableGivesNameAndState()
+    {
+        var output = string.Join('\n', "Deployment Image Servicing and Management tool", "Version: 10.0.26300.1", "", "Image Version: 10.0.26300.1", "",
+            "Capability Identity | State", "----------------------------------------- | -----------",
+            "Language.Speech~~~en-US~0.0.1.0 | Installed", "Microsoft.Windows.WordPad~~~~0.0.1.0 | Not Present", "XPS.Viewer~~~~0.0.1.0 | Installed",
+            "", "The operation completed successfully.");
+        var map = DismOutput.ParseTable(output);
+        Assert.Equal(3, map.Count);
+        Assert.Equal("Installed", map["Language.Speech~~~en-US~0.0.1.0"]);
+        Assert.Equal("Not Present", map["microsoft.windows.wordpad~~~~0.0.1.0"]);
+    }
+
+    [Fact]
+    public void AFeatureTableGivesNameAndStateWithoutItsHeader()
+    {
+        var output = string.Join('\n', "Feature Name | State", "------------ | ----", "Recall | Enabled", "WorkFolders-Client | Disabled with Payload Removed");
+        var map = DismOutput.ParseTable(output);
+        Assert.Equal(["Recall", "WorkFolders-Client"], map.Keys.Order());
+        Assert.Equal("Enabled", map["Recall"]);
+        Assert.Equal("Disabled with Payload Removed", map["WorkFolders-Client"]);
+    }
+
+    [Fact]
     public void ExceptionMessageHasTheErrorCode()
     {
         var ex = new DismException(2, Fixture("dism-err.txt"));

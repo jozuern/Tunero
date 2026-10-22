@@ -24,6 +24,7 @@ internal static class InstallMediaSummary
         var parts = new List<string> { EditionText(editionTitle, build) };
         if (LanguageName(c) is { } language) parts.Add(T.Format("Media_Summary_Language", language));
         if (c.RemoveApps.Count > 0) parts.Add(T.Format("Media_Summary_Apps", c.RemoveApps.Count));
+        if (c.RemoveParts.Count > 0) parts.Add(T.Format("Media_PartsSummary", c.RemoveParts.Count));
         if (c.Compression == MediaCompression.Recovery) parts.Add(T["Media_CompressionSmaller"]);
         if (c.Settings.PreventDeviceEncryption) parts.Add(T["Media_EncryptionTitle"]);
         if (c.Settings.NoReservedStorage) parts.Add(T["Media_ReservedTitle"]);
@@ -44,6 +45,7 @@ internal static class InstallMediaSummary
         var changes = new List<ChangeLine> { Line(T["Media_Edition"], EditionText(editionTitle, build)) };
         if (LanguageName(c) is { } language) changes.Add(Line(T["Media_Language"], language));
         foreach (var (group, count) in AppGroups(c)) changes.Add(Line(T.Format("Media_Review_AppsGroup", group), count.ToString(CultureInfo.CurrentCulture)));
+        if (c.RemoveParts.Count > 0) changes.Add(Line(T["Media_PartsTitle"], PartsText(c)));
         if (c.SkipSetup) changes.Add(Line(T["Media_SkipSetupTitle"], SetupText(c)));
         if (c.Tunero is { } copy)
         {
@@ -114,6 +116,10 @@ internal static class InstallMediaSummary
         var region = CultureText(c.Region) ?? "";
         return c.AccountName?.Trim() is { Length: > 0 } name ? T.Format("Media_SetupSummary", name, region) : T.Format("Media_SetupSummaryNoName", region);
     }
+
+    /// <summary>The names of the chosen parts in the app's language, in the catalog's order: "WordPad, Recall".</summary>
+    private static string PartsText(MediaChoices c) =>
+        string.Join(", ", CatalogData.Current.MediaParts.Where(p => c.RemoveParts.Contains(p.Id, StringComparer.OrdinalIgnoreCase)).Select(p => p.Label(c.AppLanguage)));
 
     /// <summary>The ticked apps by group of the reviewed list, in the page's order; names the list does not know go last.</summary>
     private static IEnumerable<(string Group, int Count)> AppGroups(MediaChoices c)

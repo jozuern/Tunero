@@ -37,6 +37,9 @@ public sealed record MediaChoices(
     /// </summary>
     public IReadOnlyList<string> RemoveUnreviewed { get; init; } = [];
 
+    /// <summary>Optional Windows parts (mediaparts.json ids) removed from install.wim; none by default.</summary>
+    public IReadOnlyList<string> RemoveParts { get; init; } = [];
+
     /// <summary>Apps of the app catalog (ids) the copied Tunero installs with winget at the first sign-in; needs <see cref="Tunero"/>.</summary>
     public IReadOnlyList<string> InstallApps { get; init; } = [];
 
@@ -136,7 +139,7 @@ public sealed record MediaChoices(
         var answers = new AnswerChoices(Architecture, uiLanguage, Keyboard ?? FallbackKeyboard, MediaLocales.SystemLocale(region), region,
             SkipSetup ? AccountName?.Trim() : null, SkipSetup, AllowUnsupported, Tunero is not null);
         var first = Tunero is { } copy ? new FirstSignInFile(copy.Profile, AppLanguage, copy.Theme) { Apps = InstallApps.Count > 0 ? InstallApps : null } : null;
-        return new MediaRequest(Source, Edition, IsoIndex, RemoveApps, answers, Tunero?.Exe, first, OutputIso) { RemoveUnreviewed = RemoveUnreviewed, Compression = Compression, Settings = Settings };
+        return new MediaRequest(Source, Edition, IsoIndex, RemoveApps, answers, Tunero?.Exe, first, OutputIso) { RemoveUnreviewed = RemoveUnreviewed, RemoveParts = RemoveParts, Compression = Compression, Settings = Settings };
     }
 
     /// <summary>A language tag as Windows writes it ("de-DE"), or <paramref name="fallback"/> for one .NET does not know.</summary>

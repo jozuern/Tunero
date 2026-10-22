@@ -143,6 +143,33 @@
                 </StackPanel>
             </ui:CardExpander>
 
+            <!-- Optional Windows parts (WordPad, speech data, Recall ...): off, none ticked -->
+            <ui:CardExpander Margin="{StaticResource CardRowMargin}" HorizontalContentAlignment="Stretch" IsExpanded="{Binding InstallMedia.ExpandOptions, Mode=OneWay}" IsEnabled="{Binding InstallMedia.CanEdit}">
+                <ui:CardExpander.Header>
+                    <DockPanel Margin="0,4">
+                        <ui:ToggleSwitch DockPanel.Dock="Right" IsChecked="{Binding InstallMedia.RemoveParts}" AutomationProperties.Name="{l:Tr Media_PartsTitle}" Margin="16,0,12,0" />
+                        <ui:TextBlock DockPanel.Dock="Right" Style="{StaticResource Caption}" Text="{Binding InstallMedia.PartsSummary}" VerticalAlignment="Center" Margin="16,0,0,0" />
+                        <ui:SymbolIcon Style="{StaticResource MediaCardIcon}" Symbol="PuzzlePiece24" />
+                        <StackPanel>
+                            <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Media_PartsTitle}" />
+                            <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Media_PartsText}" Margin="0,4,0,0" />
+                        </StackPanel>
+                    </DockPanel>
+                </ui:CardExpander.Header>
+                <v:ItemList ItemsSource="{Binding InstallMedia.PartRows}" IsEnabled="{Binding InstallMedia.RemoveParts}">
+                    <v:ItemList.ItemTemplate>
+                        <DataTemplate>
+                            <CheckBox IsChecked="{Binding IsChecked}" Margin="0,4" AutomationProperties.Name="{Binding Title}">
+                                <StackPanel>
+                                    <ui:TextBlock FontTypography="Body" Text="{Binding Title}" />
+                                    <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding Text}" />
+                                </StackPanel>
+                            </CheckBox>
+                        </DataTemplate>
+                    </v:ItemList.ItemTemplate>
+                </v:ItemList>
+            </ui:CardExpander>
+
             <ui:CardExpander Margin="{StaticResource CardRowMargin}" HorizontalContentAlignment="Stretch" IsExpanded="{Binding InstallMedia.ExpandOptions, Mode=OneWay}" IsEnabled="{Binding InstallMedia.CanEdit}">
                 <ui:CardExpander.Header>
                     <DockPanel Margin="0,4">

@@ -35,6 +35,7 @@ public sealed record MediaDroppedValue(string Field, string? Item = null);
 ///   "keyboard": "0407:00000407" } or null, "profile": "gaming" or null, "allowUnsupported": false, "output": "C:\\out\\Win11.iso",
 ///   optional: "appLanguage": "en" or "de", "theme": "System", "Light" or "Dark" (absent or null: the app's),
 ///   "installApps": ["Mozilla.Firefox", ...] (app catalog ids, needs a profile), "removeUnreviewed": ["Contoso.App", ...],
+///   "removeParts": ["wordpad", "recall", ...] (mediaparts.json ids; none by default),
 ///   "compression": "wim" (default, faster build) or "recovery" (install.esd, smaller ISO, longer build),
 ///   "preventDeviceEncryption": false, "noReservedStorage": false, "allowUnsupportedUpgrades": false (true writes the setting
 ///   into install.wim; the last one needs "allowUnsupported": true) }
@@ -57,6 +58,9 @@ public sealed record MediaRequestFile(
 
     /// <summary>Package names outside the reviewed list (<see cref="MediaChoices.RemoveUnreviewed"/>).</summary>
     public IReadOnlyList<string> RemoveUnreviewed { get; init; } = [];
+
+    /// <summary>Optional Windows parts to remove (<see cref="MediaChoices.RemoveParts"/>), by mediaparts.json id.</summary>
+    public IReadOnlyList<string> RemoveParts { get; init; } = [];
 
     /// <summary>How the install image is stored (<see cref="MediaChoices.Compression"/>); the file's "compression" is "wim" or "recovery".</summary>
     public MediaCompression Compression { get; init; } = MediaCompression.Wim;
@@ -84,7 +88,7 @@ public sealed record MediaRequestFile(
     /// <summary>The top-level fields of a request file (the page names one that is refused by its Media_Field_ label).</summary>
     public static IReadOnlyList<string> FieldNames => Fields;
 
-    private static readonly string[] Fields = ["source", "language", "edition", "removeApps", "skipSetup", "profile", "allowUnsupported", "output", "appLanguage", "theme", "installApps", "removeUnreviewed", "compression", "preventDeviceEncryption", "noReservedStorage", "allowUnsupportedUpgrades"];
+    private static readonly string[] Fields = ["source", "language", "edition", "removeApps", "skipSetup", "profile", "allowUnsupported", "output", "appLanguage", "theme", "installApps", "removeUnreviewed", "removeParts", "compression", "preventDeviceEncryption", "noReservedStorage", "allowUnsupportedUpgrades"];
     private static readonly string[] AppLanguages = ["en", "de"];
     private static readonly string[] Themes = ["System", "Light", "Dark"];
     private static readonly string[] SetupFields = ["accountName", "region", "keyboard"];
@@ -166,6 +170,9 @@ public sealed record MediaRequestFile(
             name => Debloat.DebloatService.IsSafeName(name) && !appx.Apps.Any(a => a.Matches(name)) && !appx.IsProtected(name) && !appx.IsUnreviewedExcluded(name) ? name : null,
             "is in the reviewed list, protected, a part of Windows or not a package name");
 
+        var parts = Names(root, "removeParts", id => MediaParts.Find(CatalogData.Current.MediaParts, id)?.Id,
+            "is not an optional Windows part the page offers (mediaparts.json)");
+
         var upgrades = OptionalBool(root, "allowUnsupportedUpgrades");
         if (upgrades && !unsupported.GetBoolean())
             throw new MediaRequestFileException("allowUnsupportedUpgrades", "needs allowUnsupported to be true");
@@ -175,6 +182,7 @@ public sealed record MediaRequestFile(
         {
             InstallApps = install,
             RemoveUnreviewed = unreviewed,
+            RemoveParts = parts,
             Compression = CompressionOf(root),
             PreventDeviceEncryption = OptionalBool(root, "preventDeviceEncryption"),
             NoReservedStorage = OptionalBool(root, "noReservedStorage"),
@@ -259,6 +267,7 @@ public sealed record MediaRequestFile(
         {
             InstallApps = choices.InstallApps.ToList(),
             RemoveUnreviewed = choices.RemoveUnreviewed.ToList(),
+            RemoveParts = choices.RemoveParts.ToList(),
             Compression = choices.Compression,
             PreventDeviceEncryption = choices.Settings.PreventDeviceEncryption,
             NoReservedStorage = choices.Settings.NoReservedStorage,
@@ -286,6 +295,7 @@ public sealed record MediaRequestFile(
         if (Theme is not null) root["theme"] = Theme;
         root["installApps"] = new JsonArray(InstallApps.Select(a => (JsonNode?)a).ToArray());
         root["removeUnreviewed"] = new JsonArray(RemoveUnreviewed.Select(a => (JsonNode?)a).ToArray());
+        root["removeParts"] = new JsonArray(RemoveParts.Select(a => (JsonNode?)a).ToArray());
         root["compression"] = Compression == MediaCompression.Recovery ? RecoveryName : WimName;
         root["preventDeviceEncryption"] = PreventDeviceEncryption;
         root["noReservedStorage"] = NoReservedStorage;
@@ -324,6 +334,7 @@ public sealed record MediaRequestFile(
         {
             InstallApps = InstallApps,
             RemoveUnreviewed = RemoveUnreviewed,
+            RemoveParts = RemoveParts,
             Compression = Compression,
             Settings = new MediaImageSettings(PreventDeviceEncryption, NoReservedStorage, AllowUnsupportedUpgrades),
         };

@@ -584,6 +584,7 @@ public sealed class MediaRequestFileTests : IDisposable
         "allOn" => Choices(new MediaSource(Files[1], null, null)) with
         {
             AllowUnsupported = true, InstallApps = ["Valve.Steam", "Mozilla.Firefox"], RemoveUnreviewed = ["Contoso.Notes"],
+            RemoveParts = ["wordpad", "speech", "recall"],
             RemoveApps = MediaChoices.PageApps(CatalogData.Current.Appx, MediaChoices.MeasuredApps(CatalogData.Current.MediaImages, Files[1])).Select(a => a.Name).Take(5).ToList(),
         },
         "recovery" => Choices(new MediaSource(Files[1], null, null)) with { Compression = MediaCompression.Recovery },
@@ -682,5 +683,48 @@ public sealed class MediaRequestFileTests : IDisposable
         var json = Download();
         json["compression"] = "max";
         Assert.Equal([new("compression")], MediaRequestFile.ParseKeepingWhatFits(json.ToJsonString(), Keyboards).Dropped);
+    }
+
+    [Fact]
+    public void PartsAreOptionalAndNamedByCatalogId()
+    {
+        var json = Download();
+        Assert.Empty(Parse(json).RemoveParts);
+        json["removeParts"] = new JsonArray("wordpad", "RECALL", "wordpad");
+        Assert.Equal(["wordpad", "recall"], Parse(json).RemoveParts);
+        json["removeParts"] = null;
+        Assert.Empty(Parse(json).RemoveParts);
+        Assert.Contains("removeParts", MediaRequestFile.FieldNames);
+    }
+
+    [Theory]
+    [InlineData("[\"defender\"]", "defender")]
+    [InlineData("[1]", "string")]
+    [InlineData("\"wordpad\"", "list")]
+    public void APartThatIsNotInTheCatalogIsRefused(string value, string mentions)
+    {
+        var json = Download();
+        json["removeParts"] = JsonNode.Parse(value);
+        var refused = Refused(json);
+        Assert.Equal("removeParts", refused.Field);
+        Assert.Contains(mentions, refused.Message);
+    }
+
+    [Fact]
+    public void AnUnknownPartIsDroppedByNameTheRestIsKept()
+    {
+        var json = Download();
+        json["removeParts"] = new JsonArray("wordpad", "defender");
+        var file = MediaRequestFile.ParseKeepingWhatFits(json.ToJsonString(), Keyboards);
+        Assert.Equal([new MediaDroppedValue("removeParts", "defender")], file.Dropped);
+        Assert.Equal(["wordpad"], file.RemoveParts);
+    }
+
+    [Fact]
+    public void PartsReachTheRequest()
+    {
+        var c = Set("download") with { RemoveParts = ["wordpad"] };
+        Assert.Equal(["wordpad"], c.ToRequest().RemoveParts);
+        Assert.Empty(Set("download").ToRequest().RemoveParts);
     }
 }

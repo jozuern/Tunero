@@ -1470,6 +1470,78 @@ public sealed class InstallMediaViewModelTests : IDisposable
     }
 
     [Fact]
+    public async Task TheWindowsPartsCardIsOffWithNoPartTickedAndSendsNothingWhileOff()
+    {
+        var media = await WithCatalog();
+        Assert.False(media.RemoveParts);
+        Assert.Equal(CatalogData.Current.MediaParts.Select(p => p.Id), media.PartRows.Select(r => r.Key));
+        Assert.DoesNotContain(media.PartRows, r => r.IsChecked);
+        Assert.Equal(Loc.Instance["Media_Off"], media.PartsSummary);
+
+        // A ticked part is not sent while the card is off.
+        media.PartRows.First(r => r.Key == "wordpad").IsChecked = true;
+        await media.BuildCommand.ExecuteAsync(null);
+        Assert.Empty(Assert.Single(_requests).RemoveParts);
+
+        _requests.Clear();
+        media.RemoveParts = true;
+        Assert.Equal(Loc.Instance.Format("Media_PartsSummary", 1), media.PartsSummary);
+        await media.BuildCommand.ExecuteAsync(null);
+        Assert.Equal(["wordpad"], Assert.Single(_requests).RemoveParts);
+    }
+
+    [Fact]
+    public async Task ChosenPartsAppearInTheBarTheReviewAndTheSavedFileAndComeBack()
+    {
+        var media = await WithCatalog();
+        media.RemoveParts = true;
+        media.PartRows.First(r => r.Key == "recall").IsChecked = true;
+        media.PartRows.First(r => r.Key == "speech").IsChecked = true;
+        Assert.Contains(Loc.Instance.Format("Media_PartsSummary", 2), media.SummaryText);
+        Assert.Contains(media.ReviewRequest()!.Changes, l => l.Target == Loc.Instance["Media_PartsTitle"] && l.After.Contains("Recall"));
+
+        _dialogs.SaveFile = Path.Combine(_root, "parts.json");
+        media.SaveChoicesCommand.Execute(null);
+        Assert.Equal(["speech", "recall"], MediaRequestFile.Parse(File.ReadAllText(_dialogs.SaveFile), Keyboards).RemoveParts.Order(StringComparer.Ordinal).Reverse());
+
+        media.ResetChoicesCommand.Execute(null);
+        Assert.False(media.RemoveParts);
+        Assert.DoesNotContain(media.PartRows, r => r.IsChecked);
+
+        _dialogs.OpenFile = _dialogs.SaveFile;
+        media.LoadChoicesCommand.Execute(null);
+        Assert.True(media.RemoveParts);
+        Assert.Equal(["recall", "speech"], media.PartRows.Where(r => r.IsChecked).Select(r => r.Key).Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public async Task ARememberedPartThatIsNoLongerInTheCatalogIsDroppedAndNamed()
+    {
+        var json = Saved();
+        json["removeParts"] = new System.Text.Json.Nodes.JsonArray("wordpad", "defender");
+        Write(json);
+        var media = await WithCatalog();
+        Assert.True(media.RemoveParts);
+        Assert.Equal(["wordpad"], media.PartRows.Where(r => r.IsChecked).Select(r => r.Key));
+        Assert.Equal(InfoBarSeverity.Warning, media.ChoicesNoteSeverity);
+        Assert.Contains("defender", media.ChoicesNote);
+        Assert.Contains(Loc.Instance["Media_Field_removeParts"], media.ChoicesNote);
+        await media.BuildCommand.ExecuteAsync(null);
+        Assert.Equal(["wordpad"], Assert.Single(_requests).RemoveParts);
+    }
+
+    [Fact]
+    public async Task TheStageListIncludesPartsWhenPartsAreChosen()
+    {
+        var media = await WithCatalog();
+        media.RemoveApps = false;
+        media.RemoveParts = true;
+        media.PartRows.First().IsChecked = true;
+        await media.BuildCommand.ExecuteAsync(null);
+        Assert.Contains(MediaStage.Parts, media.Stages.Select(s => s.Stage));
+    }
+
+    [Fact]
     public async Task ALoadedFileSetsTheImageSettingsAndResetTurnsThemOff()
     {
         var media = await WithCatalog();

@@ -68,7 +68,7 @@ public partial class CatalogIntegrityTests(ITestOutputHelper output)
             ["features.json"] = typeof(Tools.FeatureCatalog), ["profiles.json"] = typeof(Profiles.ProfileCatalog), ["gpu.json"] = typeof(Catalog.GpuCatalog),
             ["cpu.json"] = typeof(Catalog.CpuCatalog), ["ram.json"] = typeof(Catalog.RamCatalog), ["anticheat.json"] = typeof(Catalog.AntiCheatCatalog),
             ["bios.json"] = typeof(Catalog.BiosCatalog), ["storage.json"] = typeof(Catalog.StorageCatalog), ["extras.json"] = typeof(Catalog.ExtrasCatalog),
-            ["notincluded.json"] = typeof(Catalog.NotIncludedCatalog), ["mediaimages.json"] = typeof(Media.MediaImageCatalog),
+            ["notincluded.json"] = typeof(Catalog.NotIncludedCatalog), ["mediaimages.json"] = typeof(Media.MediaImageCatalog), ["mediaparts.json"] = typeof(Media.MediaPartCatalog),
         };
         var files = Catalog.CatalogData.ResourceNames("Catalog.Data.").Select(n => n["Catalog.Data.".Length..]).Where(n => n != "labels.json").ToList();
         Assert.Equal(files.Order(), types.Keys.Order());

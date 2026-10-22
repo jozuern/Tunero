@@ -43,6 +43,9 @@ public sealed record MediaRequest(
     /// <summary>Package names outside the allowlist, removed only when the image holds exactly that name (<see cref="MediaChoices.UnreviewedApps"/>).</summary>
     public IReadOnlyList<string> RemoveUnreviewed { get; init; } = [];
 
+    /// <summary>Optional Windows parts to remove from install.wim, by mediaparts.json id (<see cref="MediaPart"/>); none by default.</summary>
+    public IReadOnlyList<string> RemoveParts { get; init; } = [];
+
     /// <summary>How the install image is stored on the media (<see cref="MediaCompression"/>).</summary>
     public MediaCompression Compression { get; init; } = MediaCompression.Wim;
 
@@ -278,6 +281,7 @@ public sealed class MediaBuild(IMediaSteps steps)
         if (ChangesInstallImage(r))
         {
             if (ChangesApps(r)) stages.Add(MediaStage.Apps);
+            if (ChangesParts(r)) stages.Add(MediaStage.Parts);
             if (r.Settings.Any) stages.Add(MediaStage.Settings);
             stages.Add(MediaStage.Shrink);
         }
@@ -286,8 +290,10 @@ public sealed class MediaBuild(IMediaSteps steps)
         return stages;
     }
 
-    /// <summary>Whether install.wim is mounted for changes: when apps are removed or settings are written.</summary>
-    private static bool ChangesInstallImage(MediaRequest r) => ChangesApps(r) || r.Settings.Any;
+    /// <summary>Whether install.wim is mounted for changes: when apps or parts are removed or settings are written.</summary>
+    private static bool ChangesInstallImage(MediaRequest r) => ChangesApps(r) || ChangesParts(r) || r.Settings.Any;
+
+    private static bool ChangesParts(MediaRequest r) => r.RemoveParts.Count > 0;
 
     private static bool ChangesApps(MediaRequest r) => r.RemoveApps.Count > 0 || r.RemoveUnreviewed.Count > 0;
 
@@ -326,6 +332,9 @@ public sealed class MediaBuild(IMediaSteps steps)
         foreach (var name in r.RemoveUnreviewed)
             if (!DebloatService.IsSafeName(name) || apps.Any(a => a.Matches(name)) || appx.IsProtected(name) || appx.IsUnreviewedExcluded(name))
                 throw new ArgumentException($"{name} cannot be removed as an app nobody reviewed.", nameof(r));
+        ArgumentNullException.ThrowIfNull(r.RemoveParts);
+        foreach (var id in r.RemoveParts)
+            if (MediaParts.Find(CatalogData.Current.MediaParts, id) is null) throw new ArgumentException($"{id} is not an optional Windows part the page offers.", nameof(r));
         ArgumentNullException.ThrowIfNull(r.Settings);
         // Later upgrades without the hardware checks only belong to media that skips them at the installation too.
         if (r.Settings.AllowUnsupportedUpgrades && !r.Answers.AllowUnsupported)
@@ -1140,14 +1149,20 @@ public sealed class MediaBuild(IMediaSteps steps)
         private async Task ChangeInstallImageAsync()
         {
             var apps = ChangesApps(r);
+            var parts = ChangesParts(r);
             var settings = r.Settings.Any;
             // The mount belongs to the first stage that changes the image.
-            Begin(apps ? MediaStage.Apps : MediaStage.Settings);
+            Begin(apps ? MediaStage.Apps : parts ? MediaStage.Parts : MediaStage.Settings);
             await MountAsync(InstallWim, 1, _mount!, readOnly: false, "install.wim");
             var removed = apps ? await RemoveAppsInMountAsync() : 0;
+            if (parts)
+            {
+                if (apps) Begin(MediaStage.Parts);
+                removed += await RemovePartsInMountAsync();
+            }
             if (settings)
             {
-                if (apps) Begin(MediaStage.Settings);
+                if (apps || parts) Begin(MediaStage.Settings);
                 WriteSettings();
             }
             Begin(MediaStage.Shrink);
@@ -1230,6 +1245,47 @@ public sealed class MediaBuild(IMediaSteps steps)
                 await Dism(DismArgs.RemoveProvisioned(_mount!, package), () => steps.Dism.RemoveProvisionedAsync(_mount!, package, ct));
             }
             return remove.Count;
+        }
+
+        /// <summary>
+        /// Removes the chosen optional parts (mediaparts.json, in catalog order) from the mounted image and returns how many
+        /// capabilities and features it removed. The image is read once for the kinds the parts need; a part the image does
+        /// not hold (not installed, not enabled, or not in this edition) is logged and skipped, a name two parts share is
+        /// removed once. A failing removal fails the build: the image is not committed.
+        /// </summary>
+        private async Task<int> RemovePartsInMountAsync()
+        {
+            var chosen = CatalogData.Current.MediaParts.Where(p => r.RemoveParts.Contains(p.Id, StringComparer.OrdinalIgnoreCase)).ToList();
+            IReadOnlyDictionary<string, string> capabilities = new Dictionary<string, string>();
+            IReadOnlyDictionary<string, string> features = new Dictionary<string, string>();
+            if (chosen.Any(p => p.Kind == MediaPart.Capability))
+                capabilities = await Dism(DismArgs.Capabilities(_mount!), () => steps.Dism.CapabilitiesAsync(_mount!, ct));
+            if (chosen.Any(p => p.Kind == MediaPart.Feature))
+                features = await Dism(DismArgs.Features(_mount!), () => steps.Dism.FeaturesAsync(_mount!, ct));
+            var done = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var removed = 0;
+            for (var i = 0; i < chosen.Count; i++)
+            {
+                var part = chosen[i];
+                Report(_stage, i * 100.0 / chosen.Count, part.Title);
+                var isCapability = part.Kind == MediaPart.Capability;
+                var present = MediaParts.Present(part, isCapability ? capabilities : features).Where(n => !done.Contains(n)).ToList();
+                if (present.Count == 0 && !part.Names.Any(n => done.Any(d => d.StartsWith(n, StringComparison.OrdinalIgnoreCase))))
+                {
+                    steps.Log($"{part.Title} is not present in the image");
+                    continue;
+                }
+                foreach (var name in present)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    if (isCapability) await Dism(DismArgs.RemoveCapability(_mount!, name), () => steps.Dism.RemoveCapabilityAsync(_mount!, name, ct));
+                    else await Dism(DismArgs.DisableFeature(_mount!, name), () => steps.Dism.DisableFeatureAsync(_mount!, name, ct));
+                    done.Add(name);
+                    removed++;
+                }
+                steps.Log($"{part.Title}: {present.Count} removed");
+            }
+            return removed;
         }
 
         /// <summary>

@@ -1,0 +1,95 @@
+{
+  "_comment": "Optional Windows parts the install media page can remove from install.wim, in the order the page lists them and the build removes them. kind capability: names are prefixes up to the ~~~ (Language.Speech~~~ matches every language) and are removed with /Remove-Capability; kind feature: exact names, turned off with /Disable-Feature /Remove. A name that depends on another is listed after it (speech recognition depends on text to speech, so text to speech removes speech recognition first). Every text rests on the source page; sizes are left out until the test VM measured them. Add back: capabilities with DISM /Add-Capability (features-on-demand-v2--capabilities), Recall with Enable-WindowsOptionalFeature (manage-recall).",
+  "parts": [
+    {
+      "id": "wordpad",
+      "kind": "capability",
+      "names": [ "Microsoft.Windows.WordPad~~~" ],
+      "title": "WordPad",
+      "titleDe": "WordPad",
+      "en": "The simple word processor that creates, opens and edits .rtf, .docx and .txt files.",
+      "de": "Das einfache Textverarbeitungsprogramm, mit dem .rtf-, .docx- und .txt-Dateien erstellt, geöffnet und bearbeitet werden.",
+      "source": "https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/features-on-demand-non-language-fod"
+    },
+    {
+      "id": "stepsRecorder",
+      "kind": "capability",
+      "names": [ "App.StepsRecorder~~~" ],
+      "title": "Steps Recorder",
+      "titleDe": "Steps Recorder",
+      "en": "Captures individual steps with screenshots, to save or share.",
+      "de": "Hält einzelne Schritte mit Bildschirmfotos fest, zum Speichern oder Weitergeben.",
+      "source": "https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/features-on-demand-non-language-fod"
+    },
+    {
+      "id": "mathRecognizer",
+      "kind": "capability",
+      "names": [ "MathRecognizer~~~" ],
+      "title": "Math Recognizer",
+      "titleDe": "Mathe-Erkennung",
+      "en": "The Math Input Control and Recognizer.",
+      "de": "Das Math Input Control und die Erkennung für mathematische Eingaben.",
+      "source": "https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/features-on-demand-non-language-fod"
+    },
+    {
+      "id": "xps",
+      "kind": "capability",
+      "names": [ "XPS.Viewer~~~" ],
+      "title": "XPS Viewer",
+      "titleDe": "XPS-Viewer",
+      "en": "Reads, copies, prints, signs and sets permissions for XPS documents.",
+      "de": "Liest, kopiert, druckt und signiert XPS-Dokumente und setzt Berechtigungen dafür.",
+      "source": "https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/features-on-demand-non-language-fod"
+    },
+    {
+      "id": "handwriting",
+      "kind": "capability",
+      "names": [ "Language.Handwriting~~~" ],
+      "title": "Handwriting recognition",
+      "titleDe": "Handschrifterkennung",
+      "en": "Handwriting recognition for pen input, for every language the image has.",
+      "de": "Handschrifterkennung für Stifteingabe, für jede Sprache des Abbilds.",
+      "source": "https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/features-on-demand-language-fod"
+    },
+    {
+      "id": "ocr",
+      "kind": "capability",
+      "names": [ "Language.OCR~~~" ],
+      "title": "Text recognition in images",
+      "titleDe": "Texterkennung in Bildern",
+      "en": "Optical character recognition (OCR): recognizes and outputs text in an image, for every language the image has.",
+      "de": "Optische Zeichenerkennung (OCR): erkennt Text in einem Bild und gibt ihn aus, für jede Sprache des Abbilds.",
+      "source": "https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/features-on-demand-language-fod"
+    },
+    {
+      "id": "speech",
+      "kind": "capability",
+      "names": [ "Language.Speech~~~" ],
+      "title": "Speech recognition",
+      "titleDe": "Spracherkennung",
+      "en": "Recognizes voice input, used by Windows Speech Recognition, for every language the image has.",
+      "de": "Erkennt Spracheingaben, wird von der Windows-Spracherkennung genutzt, für jede Sprache des Abbilds.",
+      "source": "https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/features-on-demand-language-fod"
+    },
+    {
+      "id": "textToSpeech",
+      "kind": "capability",
+      "names": [ "Language.Speech~~~", "Language.TextToSpeech~~~" ],
+      "title": "Text to speech",
+      "titleDe": "Sprachsynthese",
+      "en": "The voices that read text aloud, used by Narrator. Speech recognition goes too, because it depends on them.",
+      "de": "Die Stimmen, die Text vorlesen und vom Narrator genutzt werden. Die Spracherkennung entfällt mit, weil sie darauf aufbaut.",
+      "source": "https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/features-on-demand-language-fod"
+    },
+    {
+      "id": "recall",
+      "kind": "feature",
+      "names": [ "Recall" ],
+      "title": "Recall",
+      "titleDe": "Recall",
+      "en": "Recall (preview) searches saved snapshots of your screen. It needs a Copilot+ PC; this removes the component.",
+      "de": "Recall (Vorschau) durchsucht gespeicherte Momentaufnahmen des Bildschirms. Es braucht einen Copilot+-PC; das entfernt die Komponente.",
+      "source": "https://learn.microsoft.com/en-us/windows/client-management/manage-recall"
+    }
+  ]
+}

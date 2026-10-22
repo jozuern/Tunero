@@ -1774,6 +1774,9 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Media_RemoveAppsText" xml:space="preserve"><value>Die angehakten Apps werden aus dem Abbild entfernt, damit kein Konto auf dem neuen PC sie bekommt. Sobald der neue PC online ist, können Windows oder der Microsoft Store einige davon wieder installieren; Apps entfernen in Tunero entfernt sie dann erneut.</value></data>
   <data name="Media_AppsChosen" xml:space="preserve"><value>{0} von {1} ausgewählt</value></data>
   <data name="Media_AppsGroupAll" xml:space="preserve"><value>Alle auswählen: {0}</value></data>
+  <data name="Media_PartsTitle" xml:space="preserve"><value>Optionale Windows-Bestandteile entfernen</value></data>
+  <data name="Media_PartsText" xml:space="preserve"><value>Die angehakten Bestandteile werden aus dem Abbild entfernt. Nach der Installation lassen sie sich wieder hinzufügen: die meisten mit DISM /Add-Capability, das sie von Windows Update lädt, Recall mit Enable-WindowsOptionalFeature.</value></data>
+  <data name="Media_PartsSummary" xml:space="preserve"><value>Windows-Bestandteile zu entfernen: {0}</value></data>
   <data name="Media_AppsFromDownload" xml:space="preserve"><value>Alle Apps, die ein Abbild von Microsoft enthalten kann: Tunero weiß noch nicht, welche davon dieser Download enthält. Es liest das Abbild beim Erstellen und überspringt Apps, die fehlen; eine App, die du hier nicht anhakst, ist also vielleicht trotzdem nicht auf dem neuen PC. Apps, die Teil von Windows sind (etwa der Store), stehen nie in der Liste und bleiben immer.</value></data>
   <data name="Media_AppsReading" xml:space="preserve"><value>Es wird gelesen, welche Apps diese Edition deiner ISO enthält</value></data>
   <data name="Media_AppsFromIso" xml:space="preserve"><value>Apps, die diese Edition deiner ISO enthält: {0}. Apps, die fehlen, stehen nicht in der Liste. Apps, die Teil von Windows sind (etwa der Store), stehen nie in der Liste und bleiben immer.</value></data>
@@ -1923,6 +1926,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Media_Field_language" xml:space="preserve"><value>Sprache</value></data>
   <data name="Media_Field_edition" xml:space="preserve"><value>Edition</value></data>
   <data name="Media_Field_removeApps" xml:space="preserve"><value>Zu entfernende Apps</value></data>
+  <data name="Media_Field_removeParts" xml:space="preserve"><value>Zu entfernende Windows-Bestandteile</value></data>
   <data name="Media_Field_skipSetup" xml:space="preserve"><value>Konto und Einrichtungsfragen</value></data>
   <data name="Media_Field_profile" xml:space="preserve"><value>Tunero-Profil</value></data>
   <data name="Media_Field_allowUnsupported" xml:space="preserve"><value>Nicht unterstützte PCs zulassen</value></data>
