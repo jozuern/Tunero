@@ -271,7 +271,16 @@ internal sealed class FakeDialogs : IDialogs
         return Answer;
     }
 
-    public string? PickSaveFile(string defaultName, string filterName, string extension, string? folder = null) => null;
+    /// <summary>What the save dialog returns (null: cancelled), and how it was asked: name, file type, extension, caption.</summary>
+    public string? SaveFile { get; set; }
+    public List<(string Name, string Filter, string Extension, string? Title)> SaveRequests { get; } = [];
+
+    public string? PickSaveFile(string defaultName, string filterName, string extension, string? folder = null, string? title = null)
+    {
+        SaveRequests.Add((defaultName, filterName, extension, title));
+        return SaveFile;
+    }
+
     /// <summary>What the open dialog returns (null: cancelled).</summary>
     public string? OpenFile { get; set; }
 

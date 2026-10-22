@@ -57,6 +57,9 @@ public sealed record InstallMediaSystem
     /// <summary>The apps one image of an own ISO holds, as full package names (attaches it read-only and lists the image with DISM).</summary>
     public Func<string, int, CancellationToken, Task<IReadOnlyList<string>>> ReadIsoApps { get; init; } = (_, _, _) => throw new NotSupportedException();
 
+    /// <summary>Where the choices of the last successful build are remembered (media-choices.json in the data folder).</summary>
+    public Func<string> ChoicesFile { get; init; } = () => Path.Combine(DataPaths.Root, "media-choices.json");
+
     /// <summary>Free bytes on the drive of a path, or null when that cannot be read.</summary>
     public Func<string, long?> FreeBytes { get; init; } = _ => null;
 
@@ -250,6 +253,16 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     private readonly Dictionary<string, bool> _ticks = new(StringComparer.OrdinalIgnoreCase);
     private bool _outputPicked;
     private string? _defaultOutput;
+
+    /// <summary>The folder of the last build's ISO, where the next default name goes (null: Downloads).</summary>
+    private string? _outputFolder;
+
+    /// <summary>A remembered or loaded download language the catalog has not shown yet, and an own ISO's edition its read has not shown yet.</summary>
+    private string? _wantedLanguage, _wantedIsoEdition;
+
+    private List<string> _droppedNames = [];
+    private bool _rememberedApplied;
+    private const long MaxChoicesBytes = 64 * 1024;
     private bool _demo, _demoProgress;
     private CancellationTokenSource? _stop;
     private Task? _running;
@@ -667,6 +680,9 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         UpdateIsoText();
         UpdateOutputName();
         BuildCommand.NotifyCanExecuteChanged();
+        SaveChoicesCommand.NotifyCanExecuteChanged();
+        LoadChoicesCommand.NotifyCanExecuteChanged();
+        ResetChoicesCommand.NotifyCanExecuteChanged();
     }
 
     protected override void WorkingChanged() => Changed();
@@ -773,9 +789,20 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     {
         _pcKeyboard = _system.Keyboard();
         var system = _system;
-        (_pc, _regionCultures, _keyboardProfiles) = await Task.Run(() => (system.ReadPc(), MediaLocales.Regions(), system.Keyboards()));
+        var demo = _demo;
+        MediaRequestFile? remembered;
+        (_pc, _regionCultures, _keyboardProfiles, remembered) = await Task.Run(() =>
+        {
+            var keyboards = system.Keyboards();
+            return (system.ReadPc(), MediaLocales.Regions(), keyboards, demo ? null : ReadRemembered(system.ChoicesFile(), keyboards));
+        });
         if (AccountNameText.Length == 0 && _pc.UserName is { } user && AccountName.Problem(user) is null) AccountNameText = user;
         BuildLists();
+        if (remembered is not null && !_rememberedApplied)
+        {
+            _rememberedApplied = true;
+            ShowDropped(ApplyChoices(remembered, outputFolderOnly: true));
+        }
         if (_files is not null) ShowCatalog();
         OnPropertyChanged(nameof(ArchitectureNote));
         OnPropertyChanged(nameof(ProfileNote));
@@ -979,13 +1006,16 @@ public sealed partial class InstallMediaViewModel : PageViewModel
 
     private void ShowCatalog()
     {
-        var key = Language?.Key ?? DefaultLanguage;
+        var key = _wantedLanguage ?? Language?.Key ?? DefaultLanguage;
         Languages = _files!.Where(f => f.IsConsumer && f.Architecture.Equals(CatalogArchitecture, StringComparison.OrdinalIgnoreCase))
             .GroupBy(f => f.LanguageCode, StringComparer.OrdinalIgnoreCase)
             .Select(g => new FilterOption(g.Key, LanguageName(g.Key, g.First().Language)))
             .OrderBy(o => o.Text, StringComparer.CurrentCulture)
             .ToList();
+        var wanted = _wantedLanguage;
+        _wantedLanguage = null;
         Language = Pick(Languages, key) ?? Pick(Languages, "en-us") ?? Languages.FirstOrDefault();
+        if (wanted is not null && Pick(Languages, wanted) is null) AddDropped(FieldLabel("language"));
         OnPropertyChanged(nameof(HasCatalog));
         ShowEditions();
         // Now the download is known: the list follows what its image holds where that was measured.
@@ -1029,14 +1059,15 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     /// </summary>
     private void UpdateOutputName()
     {
-        if (_outputPicked || _pc.DownloadsFolder.Length == 0) return;
+        var folder = _outputFolder ?? _pc.DownloadsFolder;
+        if (_outputPicked || folder.Length == 0) return;
         // An own ISO's edition comes from its image list, which anyone can write: only letters and digits go into the name.
         var edition = UseDownload ? Edition?.Key ?? "Professional" : SelectedImage()?.Edition ?? "Windows";
         edition = string.Concat(edition.Where(char.IsAsciiLetterOrDigit)) is { Length: > 0 } clean ? clean : "Windows";
         var stem = UseDownload && Download() is { } esd
             ? $"Windows11_{esd.Build}_{esd.LanguageCode}_{edition}_Tunero"
             : $"Windows11_{edition}_Tunero";
-        var path = FreeName(_pc.DownloadsFolder, stem);
+        var path = FreeName(folder, stem);
         if (path == OutputPath) return;
         _defaultOutput = path;
         OutputPath = path;
@@ -1103,6 +1134,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         _isoInfo = info;
         _isoProblem = problem;
         ShowEditions();
+        ApplyWantedIsoEdition();
         Changed();
     }
 
@@ -1147,6 +1179,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     private void PickIso()
     {
         if (_dialogs.PickOpenFile(Loc.Instance["Media_IsoFiles"], ".iso") is not { } path) return;
+        _wantedIsoEdition = null;
         UseDownload = false;
         if (string.Equals(path, IsoPath, StringComparison.OrdinalIgnoreCase))
         {
@@ -1233,13 +1266,15 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         if (Request() is not { } request || ReviewRequest() is not { } review) return Task.CompletedTask;
         // The review shows every choice once more; cancelling it builds nothing.
         if (_dialogs.ConfirmApply(review) is null) return Task.CompletedTask;
-        return _running = RunBuildAsync(request);
+        return _running = RunBuildAsync(request, Choices());
     }
 
-    private async Task RunBuildAsync(MediaRequest request)
+    /// <summary>Runs the build; <paramref name="remember"/> are the choices it started with, kept for the next visit when it succeeds.</summary>
+    private async Task RunBuildAsync(MediaRequest request, MediaChoices? remember = null)
     {
         using var stop = new CancellationTokenSource();
         _stop = stop;
+        ChoicesNote = null;
         IsBuilding = true;
         ResultText = null;
         ResultLogPath = null;
@@ -1308,7 +1343,11 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         }
 
         FinishStages(result is not null, stopped, failure);
-        if (result is not null) ShowSuccess(result);
+        if (result is not null)
+        {
+            ShowSuccess(result);
+            if (remember is not null && !_demo) Remember(remember);
+        }
         else if (failure is not null) ShowFailure(failure);
         else if (stopped) Show(Loc.Instance["Media_Stopped"], InfoBarSeverity.Informational);
     }
@@ -1524,6 +1563,325 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         }
     }
 
+    // ---- remembered, saved and loaded choices ----
+
+    /// <summary>What the last Choices action did, or which remembered values no longer fit; shown above the bar.</summary>
+    [ObservableProperty] private string? _choicesNote;
+
+    [ObservableProperty] private InfoBarSeverity _choicesNoteSeverity;
+
+    private void ShowChoicesNote(string text, InfoBarSeverity severity)
+    {
+        ChoicesNote = text;
+        ChoicesNoteSeverity = severity;
+    }
+
+    /// <summary>Names the values that could not be used (nothing to say when there are none).</summary>
+    private void ShowDropped(IEnumerable<string> names)
+    {
+        _droppedNames = names.ToList();
+        if (_droppedNames.Count > 0)
+            ShowChoicesNote(Loc.Instance.Format("Media_ChoicesDropped", string.Join(", ", _droppedNames)), InfoBarSeverity.Warning);
+    }
+
+    /// <summary>A value found unusable after the choices were applied (the catalog or the ISO's images were not there yet).</summary>
+    private void AddDropped(string name)
+    {
+        _droppedNames.Add(name);
+        ShowDropped(_droppedNames);
+    }
+
+    private static string FieldLabel(string field)
+    {
+        var key = $"Media_Field_{field}";
+        var label = Loc.Instance[key];
+        return label == key ? field : label;
+    }
+
+    private static string DroppedText(MediaDroppedValue value) =>
+        value.Item is { } item ? $"{FieldLabel(value.Field)}: {item}" : FieldLabel(value.Field);
+
+    /// <summary>The text of a choices file, or null for a link, a file over the cap or one that cannot be read through the checked handle.</summary>
+    private static string? ReadChoicesFile(string path)
+    {
+        if (SafeDelete.ReadFile(path, MaxChoicesBytes) is not { } bytes) return null;
+        using var reader = new StreamReader(new MemoryStream(bytes), System.Text.Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
+        return reader.ReadToEnd();
+    }
+
+    /// <summary>The remembered choices, every value that still fits kept; null without a file or when it is no request at all.</summary>
+    private static MediaRequestFile? ReadRemembered(string path, IReadOnlyList<InputProfile> keyboards)
+    {
+        try
+        {
+            if (!File.Exists(path)) return null;
+            return ReadChoicesFile(path) is { } text ? MediaRequestFile.ParseKeepingWhatFits(text, keyboards) : null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or MediaRequestFileException or ArgumentException)
+        {
+            Log.Warn("media", $"the remembered choices were not used: {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>Keeps the choices of a build that succeeded for the next visit. A failure to write is logged and costs nothing else.</summary>
+    private void Remember(MediaChoices choices)
+    {
+        try
+        {
+            var path = _system.ChoicesFile();
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            var temp = path + ".tmp";
+            File.WriteAllText(temp, MediaRequestFile.FromChoices(choices, choices.Tunero?.Profile, choices.Tunero?.Theme).ToJson());
+            File.Move(temp, path, overwrite: true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            Log.Warn("media", $"the choices could not be remembered: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Sets the page from a request file and returns the names of the values it could not use (the page keeps its own for
+    /// them). The output file is the file's exact path.
+    /// </summary>
+    public IReadOnlyList<string> ApplyChoices(MediaRequestFile file) => ApplyChoices(file, outputFolderOnly: false);
+
+    /// <summary>With <paramref name="outputFolderOnly"/> (the remembered choices) only the output's folder is taken: a new build gets a new name.</summary>
+    private List<string> ApplyChoices(MediaRequestFile f, bool outputFolderOnly)
+    {
+        var dropped = f.Dropped.Select(DroppedText).ToList();
+        bool Given(string field) => !f.StandIns.Contains(field);
+        _wantedIsoEdition = null;
+        _wantedLanguage = null;
+
+        if (Given("source"))
+        {
+            if (f.IsDownload)
+            {
+                UseDownload = true;
+            }
+            else
+            {
+                var same = string.Equals(f.Source, IsoPath, StringComparison.OrdinalIgnoreCase);
+                _wantedIsoEdition = f.Edition;
+                UseDownload = false;
+                IsoPath = f.Source;
+                // The same file is not read again: its images are known already.
+                if (same) ApplyWantedIsoEdition();
+            }
+        }
+        if (UseDownload && f.IsDownload)
+        {
+            if (Given("language") && f.Language is { } language)
+            {
+                _wantedLanguage = language;
+                if (_files is not null)
+                {
+                    if (Pick(Languages, language) is { } found) Language = found;
+                    else dropped.Add(FieldLabel("language"));
+                    _wantedLanguage = null;
+                }
+            }
+            if (Given("edition"))
+            {
+                _downloadEdition = f.Edition;
+                if (Pick(Editions, f.Edition) is { } edition) Edition = edition;
+                else dropped.Add(FieldLabel("edition"));
+            }
+        }
+
+        if (Given("removeApps"))
+        {
+            foreach (var app in MediaChoices.OfferedApps(CatalogData.Current.Appx))
+                _ticks[app.Name] = f.RemoveApps.Contains(app.Name, StringComparer.OrdinalIgnoreCase);
+            RemoveApps = f.RemoveApps.Count > 0;
+            BuildAppGroups();
+        }
+
+        if (Given("skipSetup"))
+        {
+            if (f.SkipSetup is { } setup)
+            {
+                SkipSetup = true;
+                AccountNameText = setup.AccountName;
+                if (Pick(Regions, setup.Region) is { } region) Region = region;
+                else dropped.Add(FieldLabel("skipSetup"));
+                // The keyboard of the file stays whatever the region brings.
+                if (Pick(Keyboards, setup.Keyboard) is { } keyboard)
+                {
+                    SetKeyboard(keyboard);
+                    _keyboardPicked = true;
+                }
+            }
+            else
+            {
+                SkipSetup = false;
+            }
+        }
+
+        if (Given("profile"))
+        {
+            if (f.Profile is { } id)
+            {
+                if (CanApplyProfile && Pick(Profiles, id) is { } profile)
+                {
+                    ApplyProfile = true;
+                    Profile = profile;
+                }
+                else
+                {
+                    dropped.Add(FieldLabel("profile"));
+                }
+            }
+            else
+            {
+                ApplyProfile = false;
+            }
+        }
+
+        if (Given("allowUnsupported")) AllowUnsupported = f.AllowUnsupported;
+
+        if (Given("installApps"))
+        {
+            _installTicks.Clear();
+            _installTicks.UnionWith(f.InstallApps);
+            InstallApps = f.InstallApps.Count > 0;
+            BuildInstallGroups();
+        }
+
+        if (Given("removeUnreviewed"))
+        {
+            _unreviewedTicks.Clear();
+            _unreviewedTicks.UnionWith(f.RemoveUnreviewed);
+            RemoveUnreviewed = f.RemoveUnreviewed.Count > 0;
+            BuildUnreviewedRows();
+        }
+
+        if (Given("output"))
+        {
+            if (outputFolderOnly)
+            {
+                _outputFolder = Path.GetDirectoryName(f.Output);
+                _outputPicked = false;
+                UpdateOutputName();
+            }
+            else
+            {
+                _outputPicked = true;
+                OutputPath = f.Output;
+            }
+        }
+        Changed();
+        return dropped;
+    }
+
+    /// <summary>An own ISO's image by the edition a file named, once the ISO was read; if it holds none, the page keeps its default and says so.</summary>
+    private void ApplyWantedIsoEdition()
+    {
+        if (_wantedIsoEdition is not { } wanted) return;
+        _wantedIsoEdition = null;
+        var image = _isoInfo?.Editions.FirstOrDefault(i => string.Equals(i.Edition, wanted, StringComparison.OrdinalIgnoreCase)
+                                                           || string.Equals(i.Name, wanted, StringComparison.OrdinalIgnoreCase));
+        if (image is not null && Pick(Editions, image.Index.ToString(CultureInfo.InvariantCulture)) is { } edition) Edition = edition;
+        else if (_isoInfo is not null) AddDropped(FieldLabel("edition"));
+    }
+
+    private bool CanSaveChoices => !IsBuilding && Source() is not null && Edition is not null;
+
+    /// <summary>Saves the page's choices as a request file. The file holds the account name and the paths (the dialog's caption says so); no password exists.</summary>
+    [RelayCommand(CanExecute = nameof(CanSaveChoices))]
+    private void SaveChoices()
+    {
+        if (Choices() is not { } choices) return;
+        if (_dialogs.PickSaveFile("Windows11_choices.json", Loc.Instance["Media_ChoicesFiles"], ".json", null, Loc.Instance["Media_SaveChoicesTitle"]) is not { } path) return;
+        try
+        {
+            File.WriteAllText(path, MediaRequestFile.FromChoices(choices, choices.Tunero?.Profile, choices.Tunero?.Theme).ToJson());
+            ShowChoicesNote(Loc.Instance.Format("Media_ChoicesSaved", path), InfoBarSeverity.Success);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Log.Warn("media", $"the choices could not be saved: {ex.Message}");
+            ShowChoicesNote(Loc.Instance.Format("Media_ChoicesSaveFailed", path), InfoBarSeverity.Warning);
+        }
+    }
+
+    /// <summary>Loads a request file as the page checks it: a file with a value the page would refuse changes nothing.</summary>
+    [RelayCommand(CanExecute = nameof(CanEdit))]
+    private void LoadChoices()
+    {
+        if (_dialogs.PickOpenFile(Loc.Instance["Media_ChoicesFiles"], ".json") is not { } path) return;
+        MediaRequestFile file;
+        try
+        {
+            if (ReadChoicesFile(path) is not { } text)
+            {
+                ShowChoicesNote(Loc.Instance.Format("Media_ChoicesUnreadable", path), InfoBarSeverity.Warning);
+                return;
+            }
+            file = MediaRequestFile.Parse(text, _keyboardProfiles);
+        }
+        catch (MediaRequestFileException ex)
+        {
+            ShowChoicesNote(Loc.Instance.Format("Media_ChoicesRefused", ex.Message), InfoBarSeverity.Warning);
+            return;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            Log.Warn("media", $"the choices file could not be read: {ex.Message}");
+            ShowChoicesNote(Loc.Instance.Format("Media_ChoicesUnreadable", path), InfoBarSeverity.Warning);
+            return;
+        }
+        _droppedNames = [];
+        var dropped = ApplyChoices(file);
+        if (dropped.Count > 0) ShowDropped(dropped);
+        else ShowChoicesNote(Loc.Instance.Format("Media_ChoicesLoaded", path), InfoBarSeverity.Success);
+    }
+
+    /// <summary>Back to what the page has when it opens without a remembered file, and forgets the remembered one.</summary>
+    [RelayCommand(CanExecute = nameof(CanEdit))]
+    private void ResetChoices()
+    {
+        try
+        {
+            if (!_demo) File.Delete(_system.ChoicesFile());
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Log.Warn("media", $"the remembered choices could not be deleted: {ex.Message}");
+        }
+        if (_regionCultures is null) return;
+        _ticks.Clear();
+        _installTicks.Clear();
+        _unreviewedTicks.Clear();
+        _downloadEdition = null;
+        _wantedLanguage = null;
+        _wantedIsoEdition = null;
+        _outputFolder = null;
+        _outputPicked = false;
+        _droppedNames = [];
+        UseDownload = true;
+        IsoPath = null;
+        RemoveApps = true;
+        SkipSetup = true;
+        AllowUnsupported = false;
+        RemoveUnreviewed = false;
+        InstallApps = false;
+        AccountNameText = _pc.UserName is { } user && AccountName.Problem(user) is null ? user : "";
+        ApplyProfile = CanApplyProfile;
+        // The lists pick this PC's region, keyboard, profile, edition and the app language's language again.
+        Region = null;
+        SetKeyboard(null);
+        _keyboardPicked = false;
+        Profile = null;
+        Edition = null;
+        Language = null;
+        BuildLists();
+        if (_files is not null) ShowCatalog();
+        ShowChoicesNote(Loc.Instance["Media_ChoicesReset"], InfoBarSeverity.Success);
+    }
+
     // ---- demo (--media-demo) ----
 
     /// <summary>The stage list of a finished sample build: all done, or stopped by <paramref name="failure"/> (the stages after it did not run).</summary>
@@ -1558,7 +1916,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     /// then a sample failure and the next time a sample success. Nothing goes to the network, attaches or runs.
     /// <paramref name="show"/>, comma-separated: "fail" or "done" shows that result at once, "expand" unfolds the change
     /// cards, "progress" starts a build that stays in the middle of Apps (the stage list mid-build), "review" turns on the Expert option that warns in the review, "iso" chooses the sample own ISO, "umlaut" types an account name Setup cannot create, "cleanup" shows the Build card while the start cleanup
-    /// runs (for screenshots).
+    /// runs, "dropped" shows the note about remembered choices that no longer fit (for screenshots).
     /// </summary>
     public void UseDemo(string? show)
     {
@@ -1591,6 +1949,9 @@ public sealed partial class InstallMediaViewModel : PageViewModel
             UseDownload = false;
             IsoPath = Path.Combine(Path.GetTempPath(), "Win11_26H2_German_x64.iso");
         }
+        // "dropped": the note that names remembered values that no longer fit (for screenshots).
+        if (shows.Contains("dropped"))
+            ShowDropped(new MediaDroppedValue[] { new("source"), new("profile"), new("installApps", "Contoso.NotAnApp") }.Select(DroppedText));
         if (shows.Contains("cleanup")) _cleanup = new TaskCompletionSource().Task;   // never ends: the card shows the running cleanup
         if (shows.Contains("fail"))
         {

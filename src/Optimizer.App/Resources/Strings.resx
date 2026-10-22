@@ -1887,6 +1887,29 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Media_AppsSummary" xml:space="preserve"><value>Apps to remove: {0}</value></data>
   <data name="Media_SetupSummary" xml:space="preserve"><value>Account {0}, {1}</value></data>
   <data name="Media_Off" xml:space="preserve"><value>Off</value></data>
+  <data name="Media_ChoicesButton" xml:space="preserve"><value>Choices</value></data>
+  <data name="Media_SaveChoices" xml:space="preserve"><value>Save choices</value></data>
+  <data name="Media_LoadChoices" xml:space="preserve"><value>Load choices</value></data>
+  <data name="Media_ResetChoices" xml:space="preserve"><value>Reset to defaults</value></data>
+  <data name="Media_ChoicesFiles" xml:space="preserve"><value>Tunero install media choices</value></data>
+  <data name="Media_SaveChoicesTitle" xml:space="preserve"><value>Save choices: the file holds the account name and the paths of the ISO files</value></data>
+  <data name="Media_ChoicesSaved" xml:space="preserve"><value>Choices saved to {0}.</value></data>
+  <data name="Media_ChoicesSaveFailed" xml:space="preserve"><value>The choices could not be saved to {0}.</value></data>
+  <data name="Media_ChoicesLoaded" xml:space="preserve"><value>Choices loaded from {0}.</value></data>
+  <data name="Media_ChoicesUnreadable" xml:space="preserve"><value>The file {0} could not be read.</value></data>
+  <data name="Media_ChoicesRefused" xml:space="preserve"><value>The file was not loaded and nothing changed. {0}</value></data>
+  <data name="Media_ChoicesDropped" xml:space="preserve"><value>These saved choices no longer fit and stay at their defaults: {0}.</value></data>
+  <data name="Media_ChoicesReset" xml:space="preserve"><value>The choices are back to the defaults, and the remembered ones are deleted.</value></data>
+  <data name="Media_Field_source" xml:space="preserve"><value>Source</value></data>
+  <data name="Media_Field_language" xml:space="preserve"><value>Language</value></data>
+  <data name="Media_Field_edition" xml:space="preserve"><value>Edition</value></data>
+  <data name="Media_Field_removeApps" xml:space="preserve"><value>Apps to remove</value></data>
+  <data name="Media_Field_skipSetup" xml:space="preserve"><value>Account and setup questions</value></data>
+  <data name="Media_Field_profile" xml:space="preserve"><value>Tunero profile</value></data>
+  <data name="Media_Field_allowUnsupported" xml:space="preserve"><value>Allow unsupported PCs</value></data>
+  <data name="Media_Field_output" xml:space="preserve"><value>ISO file</value></data>
+  <data name="Media_Field_installApps" xml:space="preserve"><value>Apps to install</value></data>
+  <data name="Media_Field_removeUnreviewed" xml:space="preserve"><value>Other apps to remove</value></data>
   <data name="Media_IsoFacts" xml:space="preserve"><value>Windows, build {0}, {1}, {2}</value></data>
   <data name="Media_SetupSummaryNoName" xml:space="preserve"><value>No account name yet, {0}</value></data>
   <data name="Media_FirstSignInTitle" xml:space="preserve"><value>Setting up this PC with the {0} profile</value></data>

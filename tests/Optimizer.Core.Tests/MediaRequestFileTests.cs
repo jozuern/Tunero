@@ -464,4 +464,103 @@ public sealed class MediaRequestFileTests : IDisposable
     [InlineData("de", "de-de")]
     [InlineData("en", "en-us")]
     public void TheAppLanguageHasAWindowsLanguage(string app, string windows) => Assert.Equal(windows, MediaChoices.WindowsLanguage(app));
+
+    // ---- remembered and saved choices ----
+
+    private MediaChoices Set(string name) => name switch
+    {
+        "download" => Choices(new MediaSource(Files[1], null, null)) with { Tunero = null, InstallApps = [] },
+        "ownIso" => Choices(new MediaSource(null, OwnIso(), null)) with { Edition = "ProfessionalWorkstation", RemoveApps = [] },
+        "allOn" => Choices(new MediaSource(Files[1], null, null)) with
+        {
+            AllowUnsupported = true, InstallApps = ["Valve.Steam", "Mozilla.Firefox"], RemoveUnreviewed = ["Contoso.Notes"],
+            RemoveApps = MediaChoices.PageApps(CatalogData.Current.Appx, MediaChoices.MeasuredApps(CatalogData.Current.MediaImages, Files[1])).Select(a => a.Name).Take(5).ToList(),
+        },
+        _ => Choices(new MediaSource(null, OwnIso(), null)) with
+        {
+            SkipSetup = false, AccountName = null, Region = null, Keyboard = null, AllowUnsupported = false, Tunero = null, RemoveApps = [],
+        },
+    };
+
+    [Theory]
+    [InlineData("download")]
+    [InlineData("ownIso")]
+    [InlineData("allOn")]
+    [InlineData("allOff")]
+    public void ChoicesRoundTripThroughTheRequestFile(string name)
+    {
+        var c = Set(name);
+        var json = MediaRequestFile.FromChoices(c, c.Tunero?.Profile, c.Tunero?.Theme).ToJson();
+        var back = MediaRequestFile.Parse(json, Keyboards).ToChoices(Files, c.AppLanguage, c.Tunero?.Exe, c.Tunero?.Theme ?? "Dark");
+        Assert.Equal(System.Text.Json.JsonSerializer.Serialize(c.ToRequest()), System.Text.Json.JsonSerializer.Serialize(back.ToRequest()));
+        // The file written again is the same file.
+        Assert.Equal(json, MediaRequestFile.FromChoices(back, c.Tunero?.Profile, c.Tunero?.Theme).ToJson());
+    }
+
+    [Fact]
+    public void TheFileIsCamelCaseIndentedAndNamesTheSource()
+    {
+        var json = MediaRequestFile.FromChoices(Set("download"), null, null).ToJson();
+        Assert.Contains("\"source\": \"download\"", json);
+        Assert.Contains("\"language\": \"de-de\"", json);
+        Assert.Contains("\"allowUnsupported\"", json);
+        Assert.Contains(Environment.NewLine + "  \"edition\"", json);
+        Assert.DoesNotContain("appLanguage", json);
+        var own = MediaRequestFile.FromChoices(Set("ownIso"), "gaming", "Dark").ToJson();
+        Assert.Contains("\"source\": " + System.Text.Json.JsonSerializer.Serialize(Path.Combine(_root, "Win11.iso")), own);
+        Assert.Contains("\"profile\": \"gaming\"", own);
+        Assert.Contains("\"theme\": \"Dark\"", own);
+    }
+
+    [Fact]
+    public void WhatNoLongerFitsIsDroppedAndNamedTheRestIsKept()
+    {
+        var json = Download();
+        json["source"] = Path.Combine(_root, "gone.iso");
+        json["installApps"] = new JsonArray("Valve.Steam", "Contoso.NotAnApp");
+        var file = MediaRequestFile.ParseKeepingWhatFits(json.ToJsonString(), Keyboards);
+        Assert.Equal([new("source"), new("installApps", "Contoso.NotAnApp")], file.Dropped);
+        Assert.Equal("office", file.Profile);
+        Assert.Equal(["Valve.Steam"], file.InstallApps);
+        Assert.Equal(new MediaSetupChoice("Anna", "de-AT", "0C07:00000407"), file.SkipSetup);
+        Assert.True(file.AllowUnsupported);
+        Assert.Contains("source", file.StandIns);
+        Assert.Contains("language", file.StandIns);
+        Assert.DoesNotContain("edition", file.StandIns);
+    }
+
+    [Fact]
+    public void ARenamedProfileTakesTheAppsToInstallAlong()
+    {
+        var json = Download();
+        json["profile"] = "old";
+        json["installApps"] = new JsonArray("Valve.Steam");
+        var file = MediaRequestFile.ParseKeepingWhatFits(json.ToJsonString(), Keyboards);
+        Assert.Equal([new("profile"), new("installApps")], file.Dropped);
+        Assert.Null(file.Profile);
+        Assert.Empty(file.InstallApps);
+    }
+
+    [Fact]
+    public void AFileThatFitsDropsNothing()
+    {
+        var file = MediaRequestFile.ParseKeepingWhatFits(Download().ToJsonString(), Keyboards);
+        Assert.Empty(file.Dropped);
+        Assert.Empty(file.StandIns);
+    }
+
+    [Fact]
+    public void TextThatIsNoRequestIsStillRefused()
+    {
+        Assert.Equal("request", Assert.Throws<MediaRequestFileException>(() => MediaRequestFile.ParseKeepingWhatFits("[1]", Keyboards)).Field);
+        Assert.Equal("request", Assert.Throws<MediaRequestFileException>(() => MediaRequestFile.ParseKeepingWhatFits("{", Keyboards)).Field);
+    }
+
+    [Fact]
+    public void AFieldOfAnotherVersionIsDroppedByName()
+    {
+        var json = Download();
+        json["compression"] = "max";
+        Assert.Equal([new("compression")], MediaRequestFile.ParseKeepingWhatFits(json.ToJsonString(), Keyboards).Dropped);
+    }
 }

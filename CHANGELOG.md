@@ -13,6 +13,7 @@
 - **Ignore a recommendation:** a recommended tweak, or one flagged as working against your profile, can be ignored in its details or with the eye on its Overview line. It is then neither recommended nor applied in any profile, also not by `--apply-recommended`, and waits under "Ignored recommendations" on the Tweaks page with Stop ignoring.
 
 - **Windows install media:** Install apps: tick apps from the Install & update list, and the copied Tunero installs them with winget at the first sign-in, after the profile: apps for the whole PC elevated, apps that install for one account (Discord, Spotify) as the account that signed in (the new PC needs the internet then; the result names any that were not installed).
+- **Windows install media:** the page remembers the choices of your last successful build and opens with them. A Choices menu in the bar saves them to a file, loads such a file or resets the page to its defaults. What no longer fits (a moved ISO, an app that left the catalog, a renamed profile) is left out and named above the bar.
 - **Windows install media:** an Expert options section with Allow unsupported PCs and, for your own ISO, the apps of its edition beyond the reviewed list, to remove with a warning as on Remove apps.
 
 ### Changed

@@ -459,10 +459,14 @@
 
     <!-- The summary bar: the chosen image in one line, the space it needs, and Build (Stop while it runs) -->
     <StackPanel Grid.Row="1" Style="{StaticResource EdgeContent}" Margin="24,8,0,16">
+        <!-- What Save, Load or Reset did, or which remembered choices no longer fit -->
+        <ui:InfoBar Title="" Message="{Binding InstallMedia.ChoicesNote}" Severity="{Binding InstallMedia.ChoicesNoteSeverity}" IsClosable="False" Margin="0,0,0,8"
+                    IsOpen="{Binding InstallMedia.ChoicesNote, Converter={StaticResource NullToBool}}" />
         <ui:Card Padding="16,12">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
@@ -474,9 +478,20 @@
                 </StackPanel>
                 <ui:TextBlock Grid.Column="1" Style="{StaticResource Caption}" Text="{Binding InstallMedia.BuildNote}" TextWrapping="Wrap" MaxWidth="240"
                               VerticalAlignment="Center" Margin="16,0,0,0" Visibility="{Binding InstallMedia.BuildNote, Converter={StaticResource NullToVisibility}}" />
-                <ui:Button Grid.Column="2" Appearance="Primary" Content="{l:Tr Media_BuildButton}" Icon="{ui:SymbolIcon Play20}" Command="{Binding InstallMedia.BuildCommand}"
+                <ui:DropDownButton Grid.Column="2" Content="{l:Tr Media_ChoicesButton}" Icon="{ui:SymbolIcon Options20}" VerticalAlignment="Center" Margin="16,0,0,0"
+                                   IsEnabled="{Binding InstallMedia.CanEdit}">
+                    <ui:DropDownButton.Flyout>
+                        <ContextMenu>
+                            <MenuItem Header="{l:Tr Media_SaveChoices}" Command="{Binding InstallMedia.SaveChoicesCommand}" />
+                            <MenuItem Header="{l:Tr Media_LoadChoices}" Command="{Binding InstallMedia.LoadChoicesCommand}" />
+                            <Separator />
+                            <MenuItem Header="{l:Tr Media_ResetChoices}" Command="{Binding InstallMedia.ResetChoicesCommand}" />
+                        </ContextMenu>
+                    </ui:DropDownButton.Flyout>
+                </ui:DropDownButton>
+                <ui:Button Grid.Column="3" Appearance="Primary" Content="{l:Tr Media_BuildButton}" Icon="{ui:SymbolIcon Play20}" Command="{Binding InstallMedia.BuildCommand}"
                            VerticalAlignment="Center" Margin="16,0,0,0" Visibility="{Binding InstallMedia.IsBuilding, Converter={StaticResource InverseBoolToVisibility}}" />
-                <ui:Button Grid.Column="2" Content="{l:Tr Common_Stop}" Icon="{ui:SymbolIcon Stop20}" Command="{Binding Runner.Work.StopCommand}"
+                <ui:Button Grid.Column="3" Content="{l:Tr Common_Stop}" Icon="{ui:SymbolIcon Stop20}" Command="{Binding Runner.Work.StopCommand}"
                            VerticalAlignment="Center" Margin="16,0,0,0" Visibility="{Binding InstallMedia.IsBuilding, Converter={StaticResource BoolToVisibility}}" />
             </Grid>
         </ui:Card>

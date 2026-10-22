@@ -71,6 +71,8 @@ public sealed class InstallMediaViewModelTests : IDisposable
         public Task<IReadOnlyList<EsdFile>> LoadAsync(string arch, IProgress<string>? p, CancellationToken ct) => Task.FromResult(Files);
     }
 
+    private string RememberedFile => Path.Combine(_root, "media-choices.json");
+
     private string Exe()
     {
         var exe = Path.Combine(_root, "Tunero.exe");
@@ -93,6 +95,7 @@ public sealed class InstallMediaViewModelTests : IDisposable
         ReadPc = () => new ThisPcFacts(edition, false, "Anna", "de-AT", _root),
         Keyboard = () => null,
         Keyboards = () => Keyboards,
+        ChoicesFile = () => RememberedFile,
         ReadIso = (_, _) => Task.FromResult(_iso),
         CopyText = text => _clipboard = text,
         ShowInExplorer = path => _shown.Add(path),
@@ -1176,5 +1179,248 @@ public sealed class InstallMediaViewModelTests : IDisposable
     {
         public Task<IReadOnlyList<EsdFile>> LoadAsync(string arch, IProgress<string>? p, CancellationToken ct) =>
             throw new InvalidOperationException("secret detail");
+    }
+
+    // ---- remembered, saved, loaded and reset choices ----
+
+    /// <summary>A complete request file for a download; tests change a field or add one.</summary>
+    private System.Text.Json.Nodes.JsonObject Saved() => new()
+    {
+        ["source"] = "download",
+        ["language"] = "de-de",
+        ["edition"] = "Core",
+        ["removeApps"] = new System.Text.Json.Nodes.JsonArray("Microsoft.BingNews"),
+        ["skipSetup"] = new System.Text.Json.Nodes.JsonObject { ["accountName"] = "Berta", ["region"] = "de-DE", ["keyboard"] = "0407:00000407" },
+        ["profile"] = "gaming",
+        ["allowUnsupported"] = true,
+        ["output"] = Path.Combine(_root, "Old-name.iso"),
+        ["installApps"] = new System.Text.Json.Nodes.JsonArray("Valve.Steam"),
+        ["removeUnreviewed"] = new System.Text.Json.Nodes.JsonArray(),
+    };
+
+    private string Write(System.Text.Json.Nodes.JsonObject json, string name = "media-choices.json")
+    {
+        var path = Path.Combine(_root, name);
+        File.WriteAllText(path, json.ToJsonString());
+        return path;
+    }
+
+    [Fact]
+    public async Task PageOpensWithTheLastBuildsChoices()
+    {
+        Write(Saved());
+        var media = await WithCatalog();
+        Assert.Null(media.ChoicesNote);
+        Assert.True(media.UseDownload);
+        Assert.Equal("Core", media.Edition?.Key);
+        Assert.Equal("de-de", media.Language?.Key);
+        Assert.Equal("Berta", media.AccountNameText);
+        Assert.Equal("de-DE", media.Region?.Key);
+        Assert.Equal("0407:00000407", media.Keyboard?.Key);
+        Assert.Equal("gaming", media.Profile?.Key);
+        Assert.True(media.ApplyProfile);
+        Assert.True(media.AllowUnsupported);
+        Assert.True(media.InstallApps);
+        Assert.Equal(["Valve.Steam"], media.InstallRows.Where(r => r.IsChecked).Select(r => r.Key));
+        // The folder is remembered, not the file name: a new build gets a new name there.
+        Assert.Equal(_root, Path.GetDirectoryName(media.OutputPath));
+        Assert.NotEqual("Old-name.iso", Path.GetFileName(media.OutputPath));
+
+        await media.BuildCommand.ExecuteAsync(null);
+        Assert.Equal(["Microsoft.BingNews"], Assert.Single(_requests).RemoveApps);
+    }
+
+    [Fact]
+    public async Task UnusableRememberedValuesAreDroppedAndNamed()
+    {
+        var json = Saved();
+        json["source"] = Path.Combine(_root, "moved.iso");
+        json["profile"] = "old";
+        json["removeApps"] = new System.Text.Json.Nodes.JsonArray("Microsoft.BingNews", "Contoso.NotAnApp");
+        Write(json);
+        var media = await WithCatalog();
+
+        Assert.True(media.UseDownload);
+        Assert.Null(media.IsoPath);
+        Assert.NotEqual("old", media.Profile?.Key);
+        Assert.Equal("Berta", media.AccountNameText);
+        Assert.Equal(InfoBarSeverity.Warning, media.ChoicesNoteSeverity);
+        Assert.Contains(Loc.Instance["Media_Field_source"], media.ChoicesNote);
+        Assert.Contains(Loc.Instance["Media_Field_profile"], media.ChoicesNote);
+        Assert.Contains("Contoso.NotAnApp", media.ChoicesNote);
+        Assert.DoesNotContain("BingNews", media.ChoicesNote);
+        // Nothing unchecked reaches a build.
+        await media.BuildCommand.ExecuteAsync(null);
+        Assert.Equal(["Microsoft.BingNews"], Assert.Single(_requests).RemoveApps);
+    }
+
+    [Theory]
+    [InlineData("not json")]
+    [InlineData("[1]")]
+    public async Task ARememberedFileThatIsNoRequestIsIgnored(string text)
+    {
+        File.WriteAllText(RememberedFile, text);
+        var media = await WithCatalog();
+        Assert.Null(media.ChoicesNote);
+        Assert.Equal("Anna", media.AccountNameText);
+        Assert.True(media.CanBuild);
+    }
+
+    [Fact]
+    public async Task ARememberedOwnIsoComesBackWithItsEdition()
+    {
+        var iso = Path.Combine(_root, "Win11.iso");
+        File.WriteAllText(iso, "iso");
+        var json = Saved();
+        json["source"] = iso;
+        json.Remove("language");
+        json["edition"] = "Core";
+        Write(json);
+        var media = await Loaded(Media());
+        await media.IsoLoading;
+        Assert.False(media.UseDownload);
+        Assert.Equal(iso, media.IsoPath);
+        Assert.Equal("1", media.Edition?.Key);
+        Assert.Null(media.ChoicesNote);
+
+        // The image is gone from the ISO: the page keeps its default edition and says so.
+        json["edition"] = "Education";
+        Write(json);
+        media = await Loaded(Media());
+        await media.IsoLoading;
+        Assert.Equal("2", media.Edition?.Key);
+        Assert.Contains(Loc.Instance["Media_Field_edition"], media.ChoicesNote);
+    }
+
+    [Fact]
+    public async Task OnlyASuccessfulBuildRemembersItsChoices()
+    {
+        var media = await WithCatalog();
+        media.AccountNameText = "Berta";
+        _build = (_, _) => throw new MediaBuildException(MediaStage.Unpack, "x", 87);
+        await media.BuildCommand.ExecuteAsync(null);
+        Assert.False(File.Exists(RememberedFile));
+
+        _build = null;
+        await media.BuildCommand.ExecuteAsync(null);
+        var file = MediaRequestFile.Parse(File.ReadAllText(RememberedFile), Keyboards);
+        Assert.Equal("Berta", file.SkipSetup?.AccountName);
+        Assert.Equal(media.OutputPath, file.Output);
+        Assert.True(file.IsDownload);
+
+        // A page opened without administrator rights builds nothing, so it remembers nothing either.
+        File.Delete(RememberedFile);
+        var guest = await WithCatalog(Media(system: System() with { Elevated = false }));
+        Assert.False(guest.CanBuild);
+        Assert.False(File.Exists(RememberedFile));
+    }
+
+    [Fact]
+    public async Task LoadRefusesAFileThatDoesNotParse()
+    {
+        var media = await WithCatalog();
+        media.AccountNameText = "Anna";
+        var json = Saved();
+        json["edition"] = 5;
+        _dialogs.OpenFile = Write(json, "bad.json");
+        media.LoadChoicesCommand.Execute(null);
+        Assert.Equal(InfoBarSeverity.Warning, media.ChoicesNoteSeverity);
+        Assert.Contains("edition", media.ChoicesNote);
+        Assert.Equal("Anna", media.AccountNameText);
+        Assert.NotEqual("Core", media.Edition?.Key);
+        Assert.False(media.AllowUnsupported);
+
+        _dialogs.OpenFile = Path.Combine(_root, "missing.json");
+        media.LoadChoicesCommand.Execute(null);
+        Assert.Contains("missing.json", media.ChoicesNote);
+    }
+
+    [Fact]
+    public async Task LoadAppliesAGoodFileAndKeepsItsOutputFile()
+    {
+        var media = await WithCatalog();
+        _dialogs.OpenFile = Write(Saved(), "mine.json");
+        media.LoadChoicesCommand.Execute(null);
+        Assert.Equal(InfoBarSeverity.Success, media.ChoicesNoteSeverity);
+        Assert.Contains("mine.json", media.ChoicesNote);
+        Assert.Equal("Berta", media.AccountNameText);
+        Assert.Equal("gaming", media.Profile?.Key);
+        Assert.Equal(Path.Combine(_root, "Old-name.iso"), media.OutputPath);
+        Assert.False(File.Exists(RememberedFile));
+    }
+
+    [Fact]
+    public async Task SaveWritesTheChoicesWithACaptionThatNamesWhatTheFileHolds()
+    {
+        var media = await WithCatalog();
+        media.AccountNameText = "Berta";
+        media.AllowUnsupported = true;
+        _dialogs.SaveFile = Path.Combine(_root, "mine.json");
+        media.SaveChoicesCommand.Execute(null);
+
+        var (name, filter, extension, title) = Assert.Single(_dialogs.SaveRequests);
+        Assert.Equal(("Windows11_choices.json", ".json"), (name, extension));
+        Assert.Equal(Loc.Instance["Media_ChoicesFiles"], filter);
+        Assert.Equal(Loc.Instance["Media_SaveChoicesTitle"], title);
+        var file = MediaRequestFile.Parse(File.ReadAllText(_dialogs.SaveFile), Keyboards);
+        Assert.Equal("Berta", file.SkipSetup?.AccountName);
+        Assert.True(file.AllowUnsupported);
+        Assert.Equal(media.OutputPath, file.Output);
+        Assert.Equal(InfoBarSeverity.Success, media.ChoicesNoteSeverity);
+
+        // Cancelling the dialog writes nothing.
+        _dialogs.SaveFile = null;
+        media.SaveChoicesCommand.Execute(null);
+        Assert.Equal(2, _dialogs.SaveRequests.Count);
+    }
+
+    [Fact]
+    public async Task SaveNeedsAnImageToSave()
+    {
+        var media = await Loaded(Media());
+        Assert.False(media.SaveChoicesCommand.CanExecute(null));
+        await media.CheckCatalogCommand.ExecuteAsync(null);
+        Assert.True(media.SaveChoicesCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task ResetRestoresTheDefaults()
+    {
+        Loc.Instance.SetLanguage("en");
+        Write(Saved());
+        var media = await WithCatalog();
+        media.Language = media.Languages.Single(l => l.Key == "en-us");
+        media.RemoveApps = false;
+        media.AppGroups.First().AllChecked = false;
+        media.SkipSetup = false;
+        media.AccountNameText = "Berta";
+        media.Region = media.Regions.Single(r => r.Key == "hi-IN");
+        media.AllowUnsupported = true;
+        media.InstallApps = true;
+        media.RemoveUnreviewed = true;
+        media.OutputPath = Path.Combine(_root, "mine.iso");
+        Assert.True(File.Exists(RememberedFile));
+
+        media.ResetChoicesCommand.Execute(null);
+        Assert.False(File.Exists(RememberedFile));
+        Assert.True(media.UseDownload);
+        Assert.True(media.RemoveApps);
+        Assert.True(media.SkipSetup);
+        Assert.False(media.AllowUnsupported);
+        Assert.False(media.InstallApps);
+        Assert.False(media.RemoveUnreviewed);
+        Assert.DoesNotContain(media.InstallRows, r => r.IsChecked);
+        Assert.Equal("Anna", media.AccountNameText);
+        Assert.Equal("de-AT", media.Region?.Key);
+        Assert.Equal(MediaLocales.DefaultKeyboard(new CultureInfo("de-AT")), media.Keyboard?.Key);
+        Assert.Equal("Professional", media.Edition?.Key);
+        Assert.Equal("en-us", media.Language?.Key);
+        Assert.Equal("office", media.Profile?.Key);
+        Assert.Equal(_root, Path.GetDirectoryName(media.OutputPath));
+        Assert.StartsWith("Windows11_", Path.GetFileName(media.OutputPath));
+        var consumer = media.AppRows.Where(r => r.Entry.Group == "consumer").ToList();
+        Assert.NotEmpty(consumer);
+        Assert.All(consumer, r => Assert.True(r.IsChecked));
+        Assert.All(media.AppRows.Where(r => r.Entry.Group != "consumer"), r => Assert.False(r.IsChecked));
     }
 }

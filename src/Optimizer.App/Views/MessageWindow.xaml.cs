@@ -131,10 +131,11 @@ public sealed class Dialogs(Func<string?>? documentsFolder = null) : IDialogs
     public bool Ask(string title, string text, string primary) =>
         MessageWindow.Show(Owner, title, text, Loc.Instance["Confirm_Cancel"], primary) == 1;
 
-    public string? PickSaveFile(string defaultName, string filterName, string extension, string? folder = null)
+    public string? PickSaveFile(string defaultName, string filterName, string extension, string? folder = null, string? title = null)
     {
         var dialog = new Microsoft.Win32.SaveFileDialog
         {
+            Title = title ?? "",
             FileName = defaultName,
             Filter = $"{filterName} (*{extension})|*{extension}",
             DefaultExt = extension,

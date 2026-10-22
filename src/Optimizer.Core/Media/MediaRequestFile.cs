@@ -1,4 +1,6 @@
+using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Optimizer.Core.Catalog;
 
 namespace Optimizer.Core.Media;
@@ -13,7 +15,13 @@ public sealed record MediaSetupChoice(string AccountName, string Region, string 
 public sealed class MediaRequestFileException(string field, string reason) : FormatException($"{field}: {reason}")
 {
     public string Field { get; } = field;
+
+    /// <summary>The one entry of a list field that was refused (an app name), or null when the whole field is.</summary>
+    public string? Item { get; init; }
 }
+
+/// <summary>A value <see cref="MediaRequestFile.ParseKeepingWhatFits"/> left out: the whole <paramref name="Field"/>, or one <paramref name="Item"/> of its list.</summary>
+public sealed record MediaDroppedValue(string Field, string? Item = null);
 
 /// <summary>
 /// The request file of the developer switch --build-media (the VM tests): the install media page's choices as JSON, in
@@ -46,6 +54,12 @@ public sealed record MediaRequestFile(
 
     /// <summary>Package names outside the reviewed list (<see cref="MediaChoices.RemoveUnreviewed"/>).</summary>
     public IReadOnlyList<string> RemoveUnreviewed { get; init; } = [];
+
+    /// <summary>What <see cref="ParseKeepingWhatFits"/> could not use. Named to the user; the page keeps its own value for each.</summary>
+    public IReadOnlyList<MediaDroppedValue> Dropped { get; init; } = [];
+
+    /// <summary>Fields that hold a stand-in because their value was dropped (a dropped source takes its language along): apply none of them.</summary>
+    public IReadOnlySet<string> StandIns { get; init; } = new HashSet<string>();
 
     public const string Download = "download";
 
@@ -139,6 +153,109 @@ public sealed record MediaRequestFile(
     }
 
     /// <summary>
+    /// Reads a file the user did not just write (the choices remembered from the last build): every value that no longer
+    /// fits is left out and named in <see cref="Dropped"/> (an own ISO that is gone, a profile that was renamed, one app
+    /// out of a list) and the rest is kept. Throws <see cref="MediaRequestFileException"/> only for text that is no JSON object.
+    /// </summary>
+    public static MediaRequestFile ParseKeepingWhatFits(string json, IReadOnlyList<InputProfile> keyboards)
+    {
+        JsonObject root;
+        try
+        {
+            root = JsonNode.Parse(json) as JsonObject ?? throw new MediaRequestFileException("request", "must be a JSON object");
+        }
+        catch (JsonException ex)
+        {
+            throw new MediaRequestFileException("request", "not valid JSON: " + ex.Message);
+        }
+        var dropped = new List<MediaDroppedValue>();
+        var standIns = new HashSet<string>(StringComparer.Ordinal);
+        for (var round = 0; round < 64; round++)
+        {
+            try
+            {
+                return Parse(root.ToJsonString(), keyboards) with { Dropped = dropped, StandIns = standIns };
+            }
+            catch (MediaRequestFileException ex) when (ex.Field != "request")
+            {
+                var top = ex.Field.Split('.')[0];
+                if (ex.Item is { } item && root[top] is JsonArray list)
+                {
+                    foreach (var entry in list.Where(n => n is JsonValue v && v.TryGetValue<string>(out var text) && Same(text, item)).ToList()) list.Remove(entry);
+                    dropped.Add(new MediaDroppedValue(top, item));
+                    continue;
+                }
+                // The whole value is wrong (or not a field at all): a stand-in that passes takes its place, and the page
+                // applies none of it.
+                var isDownload = root["source"] is JsonValue source && source.TryGetValue<string>(out var text0) && text0 == Download;
+                switch (top)
+                {
+                    case "source": root["source"] = Download; root["language"] = "en-us"; standIns.Add("language"); break;
+                    case "language" when !isDownload: root.Remove("language"); break;
+                    case "language": root["language"] = "en-us"; break;
+                    case "edition": root["edition"] = "Professional"; break;
+                    case "removeApps": root["removeApps"] = new JsonArray(); break;
+                    case "skipSetup" or "profile": root[top] = null; break;
+                    case "allowUnsupported": root[top] = false; break;
+                    case "output": root["output"] = Path.Combine(Path.GetTempPath(), "Tunero-stand-in.iso"); break;
+                    default: root.Remove(top); break;
+                }
+                standIns.Add(top);
+                if (!dropped.Contains(new MediaDroppedValue(top))) dropped.Add(new MediaDroppedValue(top));
+            }
+        }
+        throw new MediaRequestFileException("request", "too many values that cannot be used");
+    }
+
+    /// <summary>
+    /// The request file for the page's <paramref name="choices"/>, the inverse of <see cref="ToChoices"/>. A Tunero copy on
+    /// the media gives the <paramref name="profile"/> and <paramref name="theme"/> (default: the copy's own). The app
+    /// language is left out: a file read later builds in the language the app has then.
+    /// </summary>
+    public static MediaRequestFile FromChoices(MediaChoices choices, string? profile, string? theme)
+    {
+        var download = choices.Source.Download;
+        return new MediaRequestFile(
+            download is not null ? Download : choices.Source.IsoPath ?? throw new ArgumentException("The choices name no source.", nameof(choices)),
+            download?.LanguageCode,
+            choices.Edition,
+            choices.RemoveApps.ToList(),
+            choices.SkipSetup ? new MediaSetupChoice(choices.AccountName?.Trim() ?? "", choices.Region ?? "", choices.Keyboard ?? "") : null,
+            choices.Tunero is { } copy ? profile ?? copy.Profile : null,
+            choices.AllowUnsupported,
+            choices.OutputIso,
+            AppLanguage: null,
+            Theme: choices.Tunero is { } themed ? theme ?? themed.Theme : null)
+        {
+            InstallApps = choices.InstallApps.ToList(),
+            RemoveUnreviewed = choices.RemoveUnreviewed.ToList(),
+        };
+    }
+
+    /// <summary>The file as <see cref="Parse"/> reads it: camelCase, indented, every field it knows (null where allowed), "source" being "download" or the ISO's path.</summary>
+    public string ToJson()
+    {
+        var root = new JsonObject
+        {
+            ["source"] = Source,
+            ["language"] = Language,
+            ["edition"] = Edition,
+            ["removeApps"] = new JsonArray(RemoveApps.Select(a => (JsonNode?)a).ToArray()),
+            ["skipSetup"] = SkipSetup is { } setup
+                ? new JsonObject { ["accountName"] = setup.AccountName, ["region"] = setup.Region, ["keyboard"] = setup.Keyboard }
+                : null,
+            ["profile"] = Profile,
+            ["allowUnsupported"] = AllowUnsupported,
+            ["output"] = Output,
+        };
+        if (AppLanguage is not null) root["appLanguage"] = AppLanguage;
+        if (Theme is not null) root["theme"] = Theme;
+        root["installApps"] = new JsonArray(InstallApps.Select(a => (JsonNode?)a).ToArray());
+        root["removeUnreviewed"] = new JsonArray(RemoveUnreviewed.Select(a => (JsonNode?)a).ToArray());
+        return root.ToJsonString(new JsonSerializerOptions { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
+    }
+
+    /// <summary>
     /// The page's choices for this request. <paramref name="catalog"/> is Microsoft's (a download picks its newest image for
     /// the language and edition, as the page does); <paramref name="tuneroExe"/> is the published exe, or null when this
     /// build is not one (the page then offers no profile either). Throws <see cref="MediaRequestFileException"/>.
@@ -192,7 +309,7 @@ public sealed record MediaRequestFile(
             if (item.ValueKind != JsonValueKind.String) throw new MediaRequestFileException("removeApps", "every entry must be a string");
             var name = item.GetString()!;
             var app = offered.FirstOrDefault(a => Same(a.Name, name))
-                      ?? throw new MediaRequestFileException("removeApps", $"{name} is not in the app list the page offers (appx.json, without protected apps)");
+                      ?? throw new MediaRequestFileException("removeApps", $"{name} is not in the app list the page offers (appx.json, without protected apps)") { Item = name };
             if (!names.Contains(app.Name)) names.Add(app.Name);
         }
         return names;
@@ -208,7 +325,7 @@ public sealed record MediaRequestFile(
         {
             if (item.ValueKind != JsonValueKind.String) throw new MediaRequestFileException(field, "every entry must be a string");
             var name = item.GetString()!;
-            var kept = check(name) ?? throw new MediaRequestFileException(field, $"{name} {refused}");
+            var kept = check(name) ?? throw new MediaRequestFileException(field, $"{name} {refused}") { Item = name };
             if (!names.Contains(kept, StringComparer.OrdinalIgnoreCase)) names.Add(kept);
         }
         return names;

@@ -161,8 +161,11 @@ public interface IDialogs
     /// <summary>Generic question; returns true when the primary button was chosen.</summary>
     bool Ask(string title, string text, string primary);
 
-    /// <summary>Save dialog for a file; returns the chosen path or null. <paramref name="folder"/>: where it opens (null: Documents).</summary>
-    string? PickSaveFile(string defaultName, string filterName, string extension, string? folder = null);
+    /// <summary>
+    /// Save dialog for a file; returns the chosen path or null. <paramref name="folder"/>: where it opens (null: Documents).
+    /// <paramref name="title"/> is the dialog's caption (null: Windows' own).
+    /// </summary>
+    string? PickSaveFile(string defaultName, string filterName, string extension, string? folder = null, string? title = null);
 
     /// <summary>Open dialog for a changes file; returns the chosen path or null.</summary>
     string? PickOpenFile(string filterName, string extension);
