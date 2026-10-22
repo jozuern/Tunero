@@ -545,7 +545,7 @@ public sealed partial class StartupViewModel(IPageHost owner, AppServices servic
         string[] headers = [.. Loc.Instance["Startup_ExportHeaders"].Split('|')];
         try
         {
-            var csv = StartupExport.ToCsv(rows, headers, StartupExport.SeparatorFor(System.Globalization.CultureInfo.CurrentCulture));
+            var csv = StartupExport.ToCsv(rows, headers, StartupExport.SeparatorFor(Loc.Regional));
             await File.WriteAllTextAsync(path, csv, new System.Text.UTF8Encoding(true));
             Owner.ShowResult(Loc.Instance.Format("Startup_Exported", rows.Count, Path.GetFileName(path)), Wpf.Ui.Controls.InfoBarSeverity.Success);
         }

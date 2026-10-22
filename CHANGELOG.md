@@ -10,6 +10,7 @@
 - **Scan:** the check for leftovers of other tools finds the forced platform timer on German Windows too, where bcdedit prints "Ja".
 - **Screen readers:** the result of a change, a cleanup or another task is read out also when the result bar had closed by itself before.
 - **Remove apps:** the warning for an app that is not on the reviewed list says that its data in every account goes with it (for a Linux distribution of WSL: all its files).
+- **Startup:** the CSV export uses the separator Excel expects for your regional settings, also when the app language differs from them (an English app on German regional settings).
 
 ## 1.5.0
 

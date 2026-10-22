@@ -14,6 +14,12 @@ public sealed class Loc : INotifyPropertyChanged
 {
     private static readonly ResourceManager Resources = new("Optimizer.App.Resources.Strings", typeof(Loc).Assembly);
 
+    /// <summary>
+    /// The culture of Windows' regional settings, read before <see cref="SetLanguage"/> replaces the current culture with
+    /// the app language: files other programs open (a CSV for Excel) follow it, not the app language.
+    /// </summary>
+    public static CultureInfo Regional { get; } = CultureInfo.CurrentCulture;
+
     public static Loc Instance { get; } = new();
 
     private CultureInfo _culture = Pick(CultureInfo.CurrentUICulture.TwoLetterISOLanguageName);
