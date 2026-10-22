@@ -278,7 +278,8 @@ public static class StorageAnalyzer
 
     private static bool MoveToRecycleBin(string p, bool folder)
     {
-        using var pin = Platform.SafeDelete.Pin(Path.GetDirectoryName(Path.GetFullPath(p))!);
+        // The folder it is in may be a drive root (D:\Old backups): a root is held too, it cannot be renamed or replaced.
+        using var pin = Platform.SafeDelete.Pin(Path.GetDirectoryName(Path.GetFullPath(p))!, allowRoot: true);
         if (pin is null || !(folder ? Platform.SafeDelete.HasNoLinks(p) : Platform.SafeDelete.ResolvesToItself(p))) return false;
         var (result, aborted) = ShellRecycle(p);
         if (!pin.StillReal())
