@@ -9,6 +9,7 @@
   import { appIcons } from '../startup.ts';
   import { single } from '../clicks.ts';
   import { fill, type AppStrings } from './appKeys.ts';
+  import { handOff } from './focus.ts';
 
   let { app, copy }: { app: AppStrings; copy: DesktopStrings['app'] } = $props();
   const store = useStore();
@@ -59,7 +60,15 @@
       <Icon name="check" size={20} />
       <strong>{item.title}</strong>
       <span>{copy.removed}</span>
-      <button type="button" class="btn" onclick={single(() => store.undo({ kind: 'app', id: item.id }))}>{app.Debloat_Reinstall}</button>
+      <button
+        type="button"
+        class="btn"
+        onclick={single((event) => {
+          // The row leaves this list: the focus follows the app to its Remove button in the list above.
+          void handOff(event.currentTarget, () => removedHeading.parentElement?.querySelector<HTMLElement>(`[data-auto="app:${item.id}"]`));
+          store.undo({ kind: 'app', id: item.id });
+        })}>{app.Debloat_Reinstall}</button
+      >
     </li>
   {/each}
 </ul>

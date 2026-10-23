@@ -9,6 +9,7 @@
   import type { IconName } from '../icons.ts';
   import { startupIcons } from '../startup.ts';
   import { fill, type AppStrings } from './appKeys.ts';
+  import { handOff } from './focus.ts';
 
   let { app }: { app: AppStrings; copy: DesktopStrings['app'] } = $props();
   const store = useStore();
@@ -24,11 +25,27 @@
   const entries = $derived([...store.undoable].reverse());
 
   let undone = $state<number | null>(null);
+  /** The page's title: where the keyboard focus goes when the list it was in is empty. */
+  let title: HTMLElement;
+  let list: HTMLElement | undefined = $state();
 
+  // Not disabled while it plays (a disabled button drops the focus): it only does nothing then.
   async function undoAll() {
+    if (entries.length === 0 || store.rewinding) return;
     const count = store.undoable.length;
     await store.undoAll();
     undone = count;
+    void handOff(null, () => title);
+  }
+
+  /** Undoes one entry; the focus moves to the Undo of the entry that takes its place, or to the title after the last. */
+  function undoOne(change: Change, index: number, event: Event) {
+    const key = `${change.kind}:${change.id}`;
+    void handOff(event.currentTarget, () => {
+      const rest = [...(list?.querySelectorAll<HTMLElement>('[data-undo]') ?? [])].filter((b) => b.dataset.undo !== key);
+      return rest[Math.min(index, rest.length - 1)] ?? title;
+    });
+    store.undo(change);
   }
 
   const motion = (node: Element) => fade(node, { duration: reducedMotion() ? 0 : 160 });
@@ -36,10 +53,10 @@
 
 <header class="head">
   <div>
-    <h1>{app.Changes_Title}</h1>
+    <h1 bind:this={title} tabindex="-1">{app.Changes_Title}</h1>
     <p class="sub">{app.Changes_Backups}</p>
   </div>
-  <button type="button" class="btn primary" disabled={entries.length === 0 || store.rewinding} onclick={undoAll}>
+  <button type="button" class="btn primary" aria-disabled={entries.length === 0 || store.rewinding} onclick={undoAll}>
     <Icon name="undo" size={16} />{app.Changes_UndoAll}
   </button>
 </header>
@@ -51,8 +68,8 @@
 {#if entries.length === 0 && undone === null}
   <p class="empty">{app.Changes_LogEmpty}</p>
 {:else}
-  <ul>
-    {#each entries as change (`${change.kind}:${change.id}`)}
+  <ul bind:this={list}>
+    {#each entries as change, index (`${change.kind}:${change.id}`)}
       {@const item = lookup(change)}
       <li class="card" out:motion>
         <Icon name={icon(change)} size={20} />
@@ -61,7 +78,7 @@
           {#if item.writes.length > 0}<span>{fill(app.Changes_Entries, item.writes.length)}</span>
           {:else if change.kind === 'startup'}<span>{app.Startup_SignInKinds}: {app.Startup_Disabled}</span>{/if}
         </span>
-        <button type="button" class="btn" onclick={single(() => store.undo(change))}>{app.Tweak_Undo}</button>
+        <button type="button" class="btn" data-undo="{change.kind}:{change.id}" aria-label="{app.Tweak_Undo}: {item.title}" onclick={single((event) => undoOne(change, index, event))}>{app.Tweak_Undo}</button>
       </li>
     {/each}
   </ul>

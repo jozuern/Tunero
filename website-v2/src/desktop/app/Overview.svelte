@@ -9,6 +9,7 @@
   import Rating from './Rating.svelte';
   import Writes from './Writes.svelte';
   import { flash } from './flash.ts';
+  import { handOff } from './focus.ts';
   import { single } from '../clicks.ts';
   import { fill, type AppStrings, type Page } from './appKeys.ts';
   import { findingChange, type Change } from '../../lib/demo-state.ts';
@@ -24,7 +25,11 @@
   let probe = $state(0);
   let timer: ReturnType<typeof setInterval> | undefined;
 
-  function scan() {
+  /** The page's title: where the keyboard focus goes when the button it was on goes away (Scan, Undo all). */
+  let title: HTMLElement;
+
+  function scan(event?: Event) {
+    void handOff(event?.currentTarget ?? null, () => title);
     if (reducedMotion()) {
       store.markScanned();
       return;
@@ -38,10 +43,18 @@
         clearInterval(timer);
         scanning = false;
         store.markScanned();
+        void handOff(null, () => title);
       }
     }, 2600 / demo.checksRun);
   }
   onDestroy(() => clearInterval(timer));
+  // Watch Tunero fix it during a scan: the guide counts the PC as scanned and clicks the results, so the scan ends here.
+  $effect(() => {
+    if (!store.guiding || !scanning) return;
+    clearInterval(timer);
+    scanning = false;
+    store.markScanned();
+  });
 
   /** The problems Fix changes: by itself, or by turning on the tweak that fixes it, as the app does (findingChange). */
   const fixable = demo.findings.flatMap((finding) => {
@@ -63,7 +76,7 @@
 
 <header class="head">
   <div>
-    <h1>{app.Nav_Dashboard}</h1>
+    <h1 bind:this={title} tabindex="-1">{app.Nav_Dashboard}</h1>
     <p class="sub">{copy.subtitle}</p>
   </div>
   {#if store.state.scanned && !scanning}
@@ -94,7 +107,10 @@
         <p>{copy.done.body}</p>
         <div class="actions">
           <a class="btn primary" href={download}><Icon name="download" size={16} />{copy.done.install}</a>
-          <button type="button" class="btn" disabled={store.rewinding} onclick={() => store.undoAll()}><Icon name="undo" size={16} />{copy.done.again}</button>
+          <button type="button" class="btn" disabled={store.rewinding} onclick={(event) => {
+              void handOff(event.currentTarget, () => title);
+              void store.undoAll();
+            }}><Icon name="undo" size={16} />{copy.done.again}</button>
         </div>
       </div>
     </section>

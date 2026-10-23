@@ -10,6 +10,7 @@
   import Writes from './Writes.svelte';
   import Icon from '../Icon.svelte';
   import { cascadeStep, flash } from './flash.ts';
+  import { handOff } from './focus.ts';
   import { fill, type AppStrings } from './appKeys.ts';
 
   let { app, copy, tweakCount }: { app: AppStrings; copy: DesktopStrings['app']; tweakCount: number } = $props();
@@ -43,7 +44,10 @@
   let cascading = $state<string | null>(null);
   let cascadeTimer: ReturnType<typeof setTimeout> | undefined;
 
-  function turnOn(group: { category: string; items: DemoItem[] }) {
+  function turnOn(group: { category: string; items: DemoItem[] }, event: Event) {
+    // The button goes once the whole group is on: the focus moves to the group's first switch.
+    const section = (event.currentTarget as HTMLElement).closest('section');
+    void handOff(event.currentTarget, () => section?.querySelector<HTMLElement>('input'));
     clearTimeout(cascadeTimer);
     cascading = group.category;
     cascadeTimer = setTimeout(() => (cascading = null), group.items.length * cascadeStep + 900);
@@ -98,7 +102,7 @@
               class="btn"
               data-auto="group:{group.category}"
               title={app.Tweaks_GroupApplyTip}
-              onclick={() => turnOn(group)}
+              onclick={(event) => turnOn(group, event)}
             >
               {fill(app.Tweaks_GroupApply, off.length)}
             </button>

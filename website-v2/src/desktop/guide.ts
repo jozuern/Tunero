@@ -173,6 +173,7 @@ export async function playGuide(store: DesktopStore, from: Point) {
           await cursor.hover((hovered = nav), 110);
           if (stopped) break;
           await cursor.press(nav);
+          if (stopped) break;
         }
         store.appPage = step.page;
         await wait(pageSettle);
@@ -189,6 +190,8 @@ export async function playGuide(store: DesktopStore, from: Point) {
       await cursor.hover((hovered = target), rhythm[step.page].dwell);
       if (stopped) break;
       await cursor.press(target);
+      // The visitor may have taken over during the press: their click, not the guide's, counts then.
+      if (stopped) break;
       target.click();
       const cascade = step.page === 'tweaks' ? step.changes.length * cascadeStep : 0;
       await wait(rhythm[step.page].after + cascade);
