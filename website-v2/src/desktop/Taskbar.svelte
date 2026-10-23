@@ -45,15 +45,17 @@
     { id: 'settings', icon: 'settings', label: copy.icons.settings },
   ]);
 
-  let now = $state(new Date());
+  // Empty in the page's HTML (it would be the time of the build) until the browser fills it in.
+  let now = $state<Date | null>(null);
   onMount(() => {
+    now = new Date();
     const timer = setInterval(() => (now = new Date()), 15000);
     return () => clearInterval(timer);
   });
   const locale = $derived(lang === 'de' ? 'de-DE' : 'en-US');
   // As Windows shows it: 4:08 PM in English, 16:08 in German.
-  const time = $derived(now.toLocaleTimeString(locale, { hour: lang === 'de' ? '2-digit' : 'numeric', minute: '2-digit' }));
-  const date = $derived(now.toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' }));
+  const time = $derived(now?.toLocaleTimeString(locale, { hour: lang === 'de' ? '2-digit' : 'numeric', minute: '2-digit' }) ?? '');
+  const date = $derived(now?.toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' }) ?? '');
 
   const pop = (node: Element) => scale(node, { start: 0.2, duration: reducedMotion() ? 0 : 280, opacity: 0 });
   const trayItems = $derived(store.demo.startup.filter((item) => !store.applied({ kind: 'startup', id: item.id })));

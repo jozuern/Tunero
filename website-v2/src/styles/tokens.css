@@ -176,6 +176,13 @@ html[data-boot='pending'] body {
   background: #000;
 }
 
+/* A later visit with a saved session (DesktopPage.astro): all but the wallpaper waits until the desktop has restored
+   it (.ready), as long as the boot would at most. */
+html[data-restoring] .desktop:not(.ready) > :not(.wallpaper):not(.fallback) {
+  visibility: hidden;
+  animation: boot-fallback 0s 4s forwards;
+}
+
 html[data-boot='pending'] .desktop {
   visibility: hidden;
   /* If the boot never runs (the script failed to load), the desktop shows after 4 s anyway. */

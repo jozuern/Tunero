@@ -29,14 +29,20 @@ void main() {
 /** Highest device pixel ratio rendered; the picture is soft, so more pixels would only cost. */
 const maxPixelRatio = 1.5;
 /**
- * Least time between two drawn frames: about 60 a second (72 on a 144 Hz monitor, whose refreshes fall that way). On a
- * 120, 144 or 240 Hz monitor every refresh would draw the shader and make the browser blur every glass panel above the
- * canvas again; the motion is slow, so this looks the same at a fraction of the cost. The 4 ms of slack allow for the
- * jitter of a 60 Hz display, which keeps every refresh.
+ * Time between two drawn frames: 60 a second, also on a 90, 120, 144 or 165 Hz monitor, where every refresh would draw
+ * the shader and make the browser blur every glass panel above the canvas again; the motion is slow, so this looks the
+ * same at a fraction of the cost. A refresh draws when the next frame is due, give or take the slack, which allows for
+ * the jitter of a 60 Hz display (it keeps every refresh).
  */
-const minFrameSpacing = 1000 / 60 - 4;
+const frameInterval = 1000 / 60;
+const frameSlack = 4;
 /** Slow frames in a row (beyond the ones a fast frame cancels) before the picture is drawn with fewer pixels. */
 const slowFramesBeforeScaling = 30;
+/**
+ * Fast frames in a row before the picture tries more pixels again (after a busy moment that made it lower them): 5 s at
+ * 60 frames a second, doubled after every try, so a PC that cannot keep up is not made to stutter again and again.
+ */
+const fastFramesBeforeRecovery = 300;
 /** Lowest share of the pixels drawn; the picture is soft and survives it. */
 const minQualityScale = 0.5;
 /** Angular frequency of the critically damped clutter spring: about 95 percent of the way in 1.2 s. */
@@ -108,6 +114,19 @@ export function startWallpaper(
   let cancelled = false;
   let stopRunning = () => {};
   let pollId = 0;
+  const stop = () => {
+    cancelled = true;
+    cancelAnimationFrame(pollId);
+    stopRunning();
+    canvas.removeEventListener('webglcontextlost', onLost);
+  };
+  // Asks the browser for the context back (preventDefault); Wallpaper.svelte starts again once it is restored.
+  const onLost = (event: Event) => {
+    event.preventDefault();
+    stop();
+    fail('WebGL context lost');
+  };
+  canvas.addEventListener('webglcontextlost', onLost);
   const proceed = () => {
     if (cancelled) return;
     const built = finishBuild(gl, parts);
@@ -121,11 +140,7 @@ export function startWallpaper(
   };
   if (parallel) pollId = requestAnimationFrame(poll);
   else proceed();
-  return () => {
-    cancelled = true;
-    cancelAnimationFrame(pollId);
-    stopRunning();
-  };
+  return stop;
 
   function begin(program: WebGLProgram, vertexArray: WebGLVertexArrayObject): () => void {
     const uniform = (name: string) => gl.getUniformLocation(program, name);
@@ -139,7 +154,6 @@ export function startWallpaper(
     const uSplit = uniform('uSplit');
     const rippleData = new Float32Array(16);
 
-    const motionQuery = matchMedia('(prefers-reduced-motion: reduce)');
     let reduced = reducedMotion();
 
     const clamp01 = (value: number) => (Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0);
@@ -157,9 +171,13 @@ export function startWallpaper(
     let cssHeight = canvas.clientHeight;
     let qualityScale = 1;
     let slowFrames = 0;
+    let fastFrames = 0;
+    let framesBeforeRecovery = fastFramesBeforeRecovery;
 
     let frameId = 0;
     let lastNow: number | null = null;
+    /** When the next frame should be drawn. */
+    let due = 0;
     let stopped = false;
     let drewFirst = false;
     let stillClutter = -1;
@@ -236,13 +254,26 @@ export function startWallpaper(
       seed = (seed % 4093) + 1;
     }
 
-    /** If frames keep coming slowly, draw fewer pixels: the picture is soft and survives a lower resolution. */
+    /**
+     * If frames keep coming slowly, draw fewer pixels: the picture is soft and survives a lower resolution. If they then
+     * keep coming fast, try more again.
+     */
     function watchSpeed(seconds: number) {
-      if (qualityScale <= minQualityScale) return;
-      slowFrames = seconds > 0.026 ? slowFrames + 1 : Math.max(0, slowFrames - 2);
-      if (slowFrames > slowFramesBeforeScaling) {
+      if (seconds > 0.026) {
+        slowFrames++;
+        fastFrames = 0;
+      } else {
+        slowFrames = Math.max(0, slowFrames - 2);
+        fastFrames++;
+      }
+      if (slowFrames > slowFramesBeforeScaling && qualityScale > minQualityScale) {
         qualityScale = Math.max(minQualityScale, qualityScale - 0.2);
         slowFrames = 0;
+        fastFrames = 0;
+      } else if (fastFrames >= framesBeforeRecovery && qualityScale < 1) {
+        qualityScale = Math.min(1, qualityScale + 0.2);
+        fastFrames = 0;
+        framesBeforeRecovery *= 2;
       }
     }
 
@@ -257,8 +288,10 @@ export function startWallpaper(
         if (clamp01(getClutter()) !== stillClutter || themeTarget() !== stillTheme || split !== stillSplit) drawStill();
         return;
       }
-      // A refresh that comes sooner than 60 a second is skipped; the next one draws, with the time since this draw.
-      if (lastNow !== null && now - lastNow < minFrameSpacing) return;
+      // A refresh before the next frame is due is skipped; the next one draws, with the time since this draw. A frame
+      // more than one interval late (a busy moment) starts the count again from now.
+      if (lastNow !== null && now < due - frameSlack) return;
+      due = lastNow === null || now - due > frameInterval ? now + frameInterval : due + frameInterval;
       const seconds = lastNow === null ? 0 : Math.min((now - lastNow) / 1000, 0.1);
       lastNow = now;
       if (seconds > 0) watchSpeed(seconds);
@@ -283,10 +316,6 @@ export function startWallpaper(
       if (reduced) drawStill();
       lastNow = null;
     };
-    const onLost = () => {
-      halt();
-      fail('WebGL context lost');
-    };
 
     const resizeObserver =
       typeof ResizeObserver === 'undefined'
@@ -307,9 +336,7 @@ export function startWallpaper(
     if (!resizeObserver) window.addEventListener('resize', onWindowResize);
 
     document.addEventListener('visibilitychange', onVisibility);
-    motionQuery.addEventListener('change', onMotion);
     const stopMotionWatch = onMotionChange(onMotion);
-    canvas.addEventListener('webglcontextlost', onLost);
 
     if (reduced) drawStill();
     else draw();
@@ -322,9 +349,7 @@ export function startWallpaper(
       resizeObserver?.disconnect();
       window.removeEventListener('resize', onWindowResize);
       document.removeEventListener('visibilitychange', onVisibility);
-      motionQuery.removeEventListener('change', onMotion);
       stopMotionWatch();
-      canvas.removeEventListener('webglcontextlost', onLost);
       if (!gl.isContextLost()) {
         gl.deleteVertexArray(vertexArray);
         gl.deleteProgram(program);

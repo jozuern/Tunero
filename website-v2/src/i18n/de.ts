@@ -26,7 +26,7 @@ const de: Strings = {
       maxState: 'Energiesparplan, Netzbetrieb: Maximaler Leistungszustand des Prozessors',
       boostMode: 'Energiesparplan, Netzbetrieb: Leistungssteigerungsmodus für Prozessoren',
       boostOff: 'Deaktiviert',
-      boostOn: 'Hoch',
+      boostOn: 'Aggressiv',
     },
     startup: ['Spiele-Launcher', 'Chat', 'RGB-Steuerung', 'Cloud-Sync', 'Updater', 'Musik', 'Zubehör-Tool', 'Screenshot-Tool', 'Sprachchat'],
   },
