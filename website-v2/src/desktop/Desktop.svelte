@@ -67,10 +67,12 @@
   /** A frame after the start: see Hero. */
   let settled = $state(false);
 
-  // The wallpaper rests while nobody can see it move: under the boot screen, and under a window that covers all but the
-  // taskbar (maximized, or any window in the compact layout).
+  // The wallpaper rests while nobody can see it move: under the boot screen, under the dark blur of a change's detail
+  // view, and under a window that covers all but the taskbar (maximized, or any window in the compact layout).
   const covered = $derived(
-    booting || (store.focused !== null && (store.windows[store.focused].maximized || phone) && !store.compare),
+    booting ||
+      store.dive !== null ||
+      (store.focused !== null && (store.windows[store.focused].maximized || phone) && !store.compare),
   );
 
   function endBoot() {

@@ -35,10 +35,13 @@ const facts: Facts = {
     </noscript>
     <script is:inline define:vars={{ demoKey: storageKeys.demo }}>
       // Before the desktop paints: on the first visit of a session, keep it hidden for the boot (Boot.svelte ends it).
+      // On a later one with changes or a window saved, keep what shows them hidden until the desktop has restored them
+      // (tokens.css), so the visitor does not see the untouched PC of the page's HTML first.
       (() => {
-        let seen = false;
-        try { seen = JSON.parse(sessionStorage.getItem(demoKey) || '{}').bootSeen === true; } catch {}
-        if (!seen && document.documentElement.dataset.motion !== 'reduce') document.documentElement.dataset.boot = 'pending';
+        let saved = {};
+        try { saved = JSON.parse(sessionStorage.getItem(demoKey) || '{}') || {}; } catch {}
+        if (saved.bootSeen !== true && document.documentElement.dataset.motion !== 'reduce') document.documentElement.dataset.boot = 'pending';
+        else if ((Array.isArray(saved.applied) && saved.applied.length > 0) || saved.window) document.documentElement.dataset.restoring = '';
       })();
     </script>
     {lang === 'de' ? <DesktopDe client:load facts={facts} /> : <DesktopEn client:load facts={facts} />}

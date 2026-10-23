@@ -23,17 +23,30 @@
   $effect(() => {
     if (!canvas) return;
     const target = canvas;
-    // Started once per canvas: clutter and theme are read every frame, so they must not restart it.
-    const stop = untrack(() => startWallpaper(target, () => clutter, () => theme, {
-      onFirstFrame: () => {
-        live = true;
-      },
-      onFail: () => {
-        live = false;
-      },
-      isPaused: () => paused,
-    }));
+    let stop = () => {};
+    // Started once per canvas: clutter and theme are read every frame, so they must not restart it. Again after the GPU
+    // gave a lost context back (a driver update, waking from sleep); the CSS picture stands in meanwhile.
+    const start = () => {
+      stop();
+      stop = untrack(() => startWallpaper(target, () => clutter, () => theme, {
+        onFirstFrame: () => {
+          live = true;
+        },
+        onFail: () => {
+          live = false;
+        },
+        isPaused: () => paused,
+      }));
+    };
+    // Not in the task that starts the page: making the WebGL context takes a while on some PCs, and the CSS picture
+    // covers the moment.
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const frame = requestAnimationFrame(() => (timer = setTimeout(start)));
+    target.addEventListener('webglcontextrestored', start);
     return () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(timer);
+      target.removeEventListener('webglcontextrestored', start);
       stop();
       live = false;
     };
