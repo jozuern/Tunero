@@ -205,6 +205,12 @@
     filter: brightness(1.08);
   }
 
+  /* A heading the focus is handed to (app/focus.ts) is a place, not a control: no ring. */
+  .content :global([tabindex='-1']:focus) {
+    outline: none;
+  }
+
+  .content :global(.btn[aria-disabled='true']),
   .content :global(.btn:disabled) {
     opacity: 0.5;
   }

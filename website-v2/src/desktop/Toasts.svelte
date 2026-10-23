@@ -46,9 +46,14 @@
     }
   }
 
+  /**
+   * Hides a toast and keeps it away for `quiet` ms. The auto-hide timer of a toast the visitor already dismissed finds it
+   * gone and does nothing, so it cannot cut the longer quiet of the dismissal short.
+   */
   function hide(key: Key, quiet: number) {
+    if (!shown.includes(key)) return;
     shown = shown.filter((k) => k !== key);
-    quietUntil.set(key, Date.now() + quiet);
+    quietUntil.set(key, Math.max(quietUntil.get(key) ?? 0, Date.now() + quiet));
   }
 
   // A window opened: the pile from the arrival shrinks to the newest one where it would cover the window's buttons.

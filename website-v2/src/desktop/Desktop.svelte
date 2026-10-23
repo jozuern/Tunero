@@ -29,7 +29,6 @@
   import Hero from './Hero.svelte';
   import Widget from './Widget.svelte';
   import Compare from './Compare.svelte';
-  import { reducedMotion } from './motion.ts';
   import Trust from './windows/Trust.svelte';
   import Notepad from './windows/Notepad.svelte';
   import Settings from './windows/Settings.svelte';
@@ -85,8 +84,13 @@
 
   onMount(() => {
     store.restore();
-    booting = !store.state.bootSeen && !reducedMotion();
-    if (!booting) delete document.documentElement.dataset.boot;
+    // The page decided before its first paint (DesktopPage.astro): this follows it, so the boot never runs unseen. A
+    // start without the boot (animation effects off, or seen before) counts as seen for the rest of the visit.
+    booting = document.documentElement.dataset.boot === 'pending';
+    if (!booting) {
+      delete document.documentElement.dataset.boot;
+      if (!store.state.bootSeen) store.markBootSeen();
+    }
     ready = true;
     requestAnimationFrame(() => (settled = true));
     const narrow = matchMedia('(max-width: 899px)');

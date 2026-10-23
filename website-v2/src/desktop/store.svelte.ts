@@ -1,6 +1,6 @@
 // The desktop's live state: the tested demo logic (lib/demo-state.ts) in Svelte runes, plus the window manager.
 // The demo state survives a language switch through sessionStorage; blocked storage just starts fresh.
-import { getContext, setContext } from 'svelte';
+import { getContext, setContext, tick } from 'svelte';
 import { storageKeys } from '../lib/storage-keys.ts';
 import type { Demo, Effect, Write } from '../lib/demo.ts';
 import type { Page } from './app/appKeys.ts';
@@ -268,19 +268,25 @@ export class DesktopStore {
 
   open(id: WindowId) {
     const w = this.windows[id];
+    // A window that opens takes the focus as it mounts (Window.svelte); one already open that comes back from the taskbar
+    // or to the front takes it here, so Esc and the keyboard reach it.
+    const raise = w.open && (w.minimized || this.focused !== id);
     if (!w.open) {
       const width = Math.min(w.width, innerWidth - 32);
       const height = Math.min(w.height, innerHeight - 48 - 32);
       const offset = Object.values(this.windows).filter((x) => x.open).length * 28;
       w.width = width;
       w.height = height;
-      w.x = Math.max(16, Math.round((innerWidth - width) / 2) + offset);
-      w.y = Math.max(16, Math.round((innerHeight - 48 - height) / 2) + offset);
+      // Centred, each further window a step down and right, but never past the screen's edge or under the taskbar: the
+      // caption buttons must stay in reach.
+      w.x = Math.max(16, Math.min(Math.round((innerWidth - width) / 2) + offset, innerWidth - width - 16));
+      w.y = Math.max(16, Math.min(Math.round((innerHeight - 48 - height) / 2) + offset, innerHeight - 48 - height - 16));
     }
     w.open = true;
     w.minimized = false;
     this.focus(id);
     this.startOpen = false;
+    if (raise) void tick().then(() => document.querySelector<HTMLElement>(`[data-window="${id}"]`)?.focus({ preventScroll: true }));
   }
 
   /** Keeps every window on screen and as large as it should be after the browser window changed size. */
@@ -316,13 +322,13 @@ export class DesktopStore {
     this.focus(id);
   }
 
-  /** Taskbar button: open, bring to front, or minimize when already in front. */
   /** Opens Tunero on the tweak that turns `effect` off. */
   openTweakFor(effect: Effect) {
     this.showTweak = this.demo.tweaks.find((t) => t.effect === effect)?.id ?? null;
     this.open('tunero');
   }
 
+  /** Taskbar button: open, bring to front, or minimize when already in front. */
   toggle(id: WindowId) {
     const w = this.windows[id];
     if (w.open && !w.minimized && this.focused === id) this.minimize(id);
