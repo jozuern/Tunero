@@ -2,7 +2,8 @@
   import { fly } from 'svelte/transition';
   import type { WindowId } from '../lib/demo-state.ts';
   import type { DesktopStrings } from '../i18n/desktop-en.ts';
-  import { useStore, reducedMotion } from './store.svelte.ts';
+  import { useStore } from './store.svelte.ts';
+  import { animated } from './motion.ts';
   import Icon from './Icon.svelte';
   import TuneroMark from './TuneroMark.svelte';
   import type { IconName } from './icons.ts';
@@ -57,8 +58,8 @@
     }
   }
 
-  const motion = (node: Element) => fly(node, { y: reducedMotion() ? 0 : 40, duration: reducedMotion() ? 0 : 200, opacity: 0 });
-  const appMotion = (node: Element) => fly(node, { y: reducedMotion() ? 0 : -24, duration: reducedMotion() ? 0 : 260, opacity: 0 });
+  const motion = (node: Element) => fly(node, { y: animated(40), duration: animated(200), opacity: 0 });
+  const appMotion = (node: Element) => fly(node, { y: animated(-24), duration: animated(260), opacity: 0 });
 </script>
 
 <svelte:window onclick={onWindowClick} onkeydown={onKeydown} />

@@ -9,7 +9,9 @@
     "dev": "astro dev",
     "build": "astro check && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings && astro build",
     "preview": "astro preview",
-    "test": "node --test \"src/**/*.test.ts\""
+    "test": "node --test \"src/**/*.test.ts\"",
+    "test:e2e": "playwright test",
+    "render:wallpaper": "node scripts/render-wallpaper.mjs"
   },
   "dependencies": {
     "@astrojs/svelte": "9.0.1",
@@ -19,6 +21,7 @@
   "devDependencies": {
     "@astrojs/check": "0.9.10",
     "@fluentui/svg-icons": "1.1.344",
+    "@playwright/test": "1.64.0",
     "@types/node": "26.6.5",
     "svelte-check": "4.7.6",
     "typescript": "6.0.3"

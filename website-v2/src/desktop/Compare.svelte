@@ -4,7 +4,8 @@
   import { onMount } from 'svelte';
   import { fade } from 'svelte/transition';
   import type { DesktopStrings } from '../i18n/desktop-en.ts';
-  import { useStore, reducedMotion } from './store.svelte.ts';
+  import { useStore } from './store.svelte.ts';
+  import { animated, reducedMotion } from './motion.ts';
   import { setSplit } from './wallpaper/wallpaper.ts';
   import CompareSide from './CompareSide.svelte';
 
@@ -74,7 +75,7 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
   class="compare"
-  transition:fade={{ duration: reducedMotion() ? 0 : 200 }}
+  transition:fade={{ duration: animated(200) }}
   onpointerdown={(event) => {
     if ((event.target as Element).closest('.done')) return;
     dragging = true;

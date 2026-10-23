@@ -1,7 +1,12 @@
-// Shows cause and effect on the desktop: a short trail of light from where a change was made to the place on the
-// desktop it changes, and back again on undo. Web Animations only; nothing runs under reduced motion.
-import type { Effect } from '../lib/demo.ts';
+// Shows cause and effect on the desktop: what a change removes bursts into specks that fly to Tunero, and a short trail
+// of light runs from where a change was made to the place on the desktop it changes, and back again on undo. Web
+// Animations only; nothing runs under reduced motion. The store (store.svelte.ts) calls these after each step.
+import type { Demo, Effect } from '../lib/demo.ts';
+import { allChanges, isActive, isApplied, turnedOff, type Change, type ChangeKind, type DemoState } from '../lib/demo-state.ts';
 import { reducedMotion as reduced } from './motion.ts';
+import { shatter } from './particles.ts';
+import { ripple } from './wallpaper/wallpaper.ts';
+import { pop } from './sound.ts';
 
 /** Where each effect lives on the desktop: the element marked with data-anchor. */
 const anchors: Record<Effect, string> = {
@@ -25,7 +30,6 @@ if (typeof window !== 'undefined') {
     passive: true,
   });
 }
-
 
 function center(element: Element) {
   const rect = element.getBoundingClientRect();
@@ -81,4 +85,53 @@ function glow(target: Element, direction: 'apply' | 'undo', delay: number) {
     light.onfinish = () => ring.remove();
     light.oncancel = () => ring.remove();
   }, delay);
+}
+
+/** Shows each change travelling to its place on the desktop, a little apart when several go at once. */
+export function trails(changes: Change[], direction: 'apply' | 'undo', demo: Demo, skip = new Set<Effect>()) {
+  const effects = allChanges(demo);
+  changes.forEach((change, i) => {
+    const effect = effects.find((c) => c.kind === change.kind && c.id === change.id)?.effect;
+    if (effect && !skip.has(effect)) setTimeout(() => trail(effect, direction), i * 90);
+  });
+}
+
+/**
+ * Bursts what a step removes from the desktop (marked data-effect or data-change) into specks that fly to Tunero,
+ * with a ripple in the wallpaper under it. Returns the effects that burst, which need no trail.
+ */
+export function shatterGone(before: DemoState, after: DemoState, fresh: Change[], demo: Demo): Set<Effect> {
+  const gone = turnedOff(before, after, demo);
+  const selectors = [...gone.map((e) => `[data-effect~="${e}"]`), ...fresh.map((c) => `[data-change="${c.kind}:${c.id}"]`)];
+  const burst = new Set<Effect>();
+  if (selectors.length === 0 || reduced()) return burst;
+  for (const element of document.querySelectorAll(selectors.join(','))) {
+    if (element.getClientRects().length === 0 || element.closest('.minimized')) continue;
+    const rect = element.getBoundingClientRect();
+    shatter(element);
+    element.classList.add('shattered');
+    ripple(rect.left + rect.width / 2, rect.top + rect.height / 2, Math.max(rect.width, rect.height));
+    for (const effect of gone) if (element.matches(`[data-effect~="${effect}"]`)) burst.add(effect);
+    for (const c of fresh) if (element.matches(`[data-change="${c.kind}:${c.id}"]`)) {
+      const effect = allChanges(demo).find((x) => x.kind === c.kind && x.id === c.id)?.effect;
+      if (effect) burst.add(effect);
+    }
+  }
+  if (burst.size > 0) pop();
+  return burst;
+}
+
+/**
+ * After an undo: what shattered and comes back before its leaving transition ended is the same element (Svelte keeps
+ * it), still marked as shattered and so invisible. It loses the mark once its change is undone or its effect shows.
+ */
+export function revive(state: DemoState, demo: Demo) {
+  if (typeof document === 'undefined') return;
+  for (const element of document.querySelectorAll<HTMLElement>('.shattered')) {
+    const marked = element.dataset.change;
+    const back = marked
+      ? !isApplied(state, { kind: marked.slice(0, marked.indexOf(':')) as ChangeKind, id: marked.slice(marked.indexOf(':') + 1) })
+      : (element.dataset.effect ?? '').split(/\s+/).some((effect) => effect !== '' && isActive(state, demo, effect as Effect));
+    if (back) element.classList.remove('shattered');
+  }
 }

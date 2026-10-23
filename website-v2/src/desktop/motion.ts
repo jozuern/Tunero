@@ -39,3 +39,10 @@ export function reducedMotion(): boolean {
   const choice = override ?? motionChoice();
   return choice === 'off';
 }
+
+/**
+ * A transition's duration, delay or distance: the value while the desktop animates, 0 with animation effects off. The
+ * Svelte transitions take their numbers through this; the Web Animations (effects.ts, guide.ts, Dive) return early under
+ * reducedMotion() instead.
+ */
+export const animated = (value: number) => (reducedMotion() ? 0 : value);

@@ -3,7 +3,8 @@
   import type { WindowId } from '../lib/demo-state.ts';
   import type { DesktopStrings } from '../i18n/desktop-en.ts';
   import { scale } from 'svelte/transition';
-  import { useStore, reducedMotion } from './store.svelte.ts';
+  import { useStore } from './store.svelte.ts';
+  import { animated } from './motion.ts';
   import Icon from './Icon.svelte';
   import TuneroMark from './TuneroMark.svelte';
   import { startupIcons } from './startup.ts';
@@ -57,7 +58,7 @@
   const time = $derived(now?.toLocaleTimeString(locale, { hour: lang === 'de' ? '2-digit' : 'numeric', minute: '2-digit' }) ?? '');
   const date = $derived(now?.toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' }) ?? '');
 
-  const pop = (node: Element) => scale(node, { start: 0.2, duration: reducedMotion() ? 0 : 280, opacity: 0 });
+  const pop = (node: Element) => scale(node, { start: 0.2, duration: animated(280), opacity: 0 });
   const trayItems = $derived(store.demo.startup.filter((item) => !store.applied({ kind: 'startup', id: item.id })));
 </script>
 

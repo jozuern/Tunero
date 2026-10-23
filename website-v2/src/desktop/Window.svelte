@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, type Snippet } from 'svelte';
   import type { WindowId } from '../lib/demo-state.ts';
+  import { draggedTo } from '../lib/windows.ts';
   import { useStore } from './store.svelte.ts';
   import Icon from './Icon.svelte';
   import TuneroMark from './TuneroMark.svelte';
@@ -45,9 +46,7 @@
 
   function moveDrag(event: PointerEvent) {
     if (!drag || event.pointerId !== drag.pointer) return;
-    // Keep the title bar reachable: never above the screen, never fully off a side, never under the taskbar.
-    frame.x = Math.min(Math.max(event.clientX - drag.dx, 96 - frame.width), innerWidth - 96);
-    frame.y = Math.min(Math.max(event.clientY - drag.dy, 0), innerHeight - 48 - 40);
+    Object.assign(frame, draggedTo(event.clientX - drag.dx, event.clientY - drag.dy, frame.width, { width: innerWidth, height: innerHeight }));
   }
 
   function endDrag() {

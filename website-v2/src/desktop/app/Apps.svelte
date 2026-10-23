@@ -4,7 +4,8 @@
   import { fade, slide } from 'svelte/transition';
   import { cubicOut } from 'svelte/easing';
   import type { DesktopStrings } from '../../i18n/desktop-en.ts';
-  import { useStore, reducedMotion } from '../store.svelte.ts';
+  import { useStore } from '../store.svelte.ts';
+  import { animated } from '../motion.ts';
   import Icon from '../Icon.svelte';
   import { appIcons } from '../startup.ts';
   import { single } from '../clicks.ts';
@@ -19,9 +20,8 @@
   // A removed app folds out of the list, the rows below glide up as it closes, and it unfolds in Removed apps (and the
   // other way on undo); at once with animation effects off. No animate:flip: it takes a leaving row out of the layout,
   // so the heading between the lists would jump under it.
-  const ms = (value: number) => (reducedMotion() ? 0 : value);
-  const leave = (node: Element) => slide(node, { duration: ms(320), easing: cubicOut });
-  const arrive = (node: Element) => slide(node, { duration: ms(360), delay: ms(120), easing: cubicOut });
+  const leave = (node: Element) => slide(node, { duration: animated(320), easing: cubicOut });
+  const arrive = (node: Element) => slide(node, { duration: animated(360), delay: animated(120), easing: cubicOut });
 
   let removedHeading: HTMLElement;
 
@@ -51,7 +51,7 @@
 
 <h2 bind:this={removedHeading} tabindex="-1">{app.Debloat_RemovedTitle}</h2>
 {#if removed.length === 0}
-  <p class="empty" in:fade={{ duration: ms(200) }}>{app.Debloat_RemovedEmpty}</p>
+  <p class="empty" in:fade={{ duration: animated(200) }}>{app.Debloat_RemovedEmpty}</p>
 {/if}
 <!-- Always there, so the first app removed slides in like the others. -->
 <ul>
