@@ -4,14 +4,15 @@
   import { slide } from 'svelte/transition';
   import type { DesktopStrings } from '../../i18n/desktop-en.ts';
   import type { TrustItem } from '../../i18n/en.ts';
-  import { useStore, reducedMotion } from '../store.svelte.ts';
+  import { useStore } from '../store.svelte.ts';
+  import { animated } from '../motion.ts';
   import Icon from '../Icon.svelte';
 
   let { copy, items, intro }: { copy: DesktopStrings['explorer']; items: TrustItem[]; intro: string } = $props();
   const store = useStore();
   let selected = $state(0);
   const item = $derived(items[selected]);
-  const motion = (node: Element) => slide(node, { duration: reducedMotion() ? 0 : 220 });
+  const motion = (node: Element) => slide(node, { duration: animated(220) });
 </script>
 
 <div class="explorer">

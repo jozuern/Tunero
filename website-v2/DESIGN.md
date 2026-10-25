@@ -54,10 +54,15 @@ watch it rewind. Doing it is the explanation; the rewind is the trust.
   `clutter` value from 1 (demo state) to 0 (everything fixed), eased, so fixing calms it and undo stirs it up again.
   Neglect shows as muddy colour, grain, a wobble and faster motion, never as dropped frames or glitches: on a site
   about a faster PC, anything that looks like lag reads as the site being slow.
-  Paused when the tab is hidden, rendered once and frozen with animation effects off, capped at 1.5 device pixel ratio
-  and at about 60 frames a second (a faster monitor would redraw the shader and every glass panel above it for nothing), and
+  Paused when the tab is hidden, rendered once and frozen with animation effects off, drawn with at most about 720p of
+  pixels (1280 x 720; the browser scales it up, and the soft picture looks the same: at full resolution a 1440p monitor
+  asked four times the work and dropped frames on laptop graphics, which the headline's rise showed too) and capped at 1.5
+  device pixel ratio, drawn on every refresh up to about 110 Hz and on every second, third or fourth one of faster monitors
+  (a whole number of refreshes, so each frame stays on screen equally long: 60 frames a second on 144 Hz stutter), and
   drawn with fewer pixels once frames keep coming slowly.
-  Without WebGL2 a static CSS background stands in.
+  Until the shader draws, a still of its first frame stands in (`public/wallpaper/`, neglected and fixed in both themes,
+  made by `npm run render:wallpaper` after a change to the shader; the browser tests fail while they are out of date), so
+  the hand-over cannot be seen. It also stands in without WebGL2.
 - **The arrival:** on an untouched demo PC three notifications pile up at once, then come one at a time. A headline
   sits on the wallpaper like the clock of a lock screen, with "Watch Tunero fix it", "Fix it yourself" and a link to
   the comparison. A "This PC" widget in the corner shows the values the two big fixes change (the refresh rate counts
@@ -127,16 +132,25 @@ sheets.
   ported from v1 so v2 does not depend on the v1 folder.
 - `src/lib/demo.ts`: the demo scenario, a list of check and tweak ids, each with the desktop effect it drives. Titles,
   ratings, summaries and values are read from the catalog; the build fails when an id no longer exists.
+- `src/lib/demo-state.ts` and `src/lib/windows.ts`: what the demo state does and where the windows go, without the DOM
+  and tested with node; `src/desktop/store.svelte.ts` holds them in Svelte runes, and `src/desktop/effects.ts` shows
+  each change on the desktop (shatter, trail).
 - `src/i18n/en.ts`, `de.ts`: all site copy.
 - Fonts: Segoe UI Variable and Cascadia Mono where Windows has them, `system-ui` and `ui-monospace` elsewhere. No web
   fonts.
 - Budget: at most 150 KB of JavaScript (gzip) for the desktop island, first paint of the desktop under 1.5 s on a
-  mid range laptop. Today about 64 KB; `astro.config.mjs` adds `modulepreload` links for the island's scripts, so they
-  load with the page instead of after it.
+  mid range laptop. Today about 73 KB; the build fails above the budget. `astro.config.mjs` adds `modulepreload` links
+  for the island's scripts, so they load with the page instead of after it, and the page asks for the wallpaper's still
+  with the page.
 - Checks: `npm run build` runs `astro check` (the .astro and .ts files), `svelte-check` with warnings as errors (the
-  .svelte files) and the build; `npm test` the node tests in `src/lib`.
-- Deploy: `pages.yml` tests and builds `website-v2/` and publishes it to tunero.dev; `website-check.yml` runs the same
-  on pull requests. `website/` (v1) is no longer deployed.
+  .svelte files) and the build; `npm test` the node tests in `src/lib`; `npm run test:e2e` the browser tests in `e2e/`
+  against the built site (Playwright with Chromium: `npx playwright install chromium` once, or `CHROMIUM_PATH` for a
+  Chromium already there). The browser tests hold what broke once and was fixed by hand: windows in reach on a small
+  screen, the focus on open, minimize and Esc, the session after a reload and a language switch, the boot once per
+  visit, a session from an older deploy, no flash of the untouched PC, the visitor taking over the guided fix, a
+  notification that comes back visible, a comparison that changes nothing, and the wallpaper's stills and pixel cap.
+- Deploy: `pages.yml` tests and builds `website-v2/`, runs the browser tests and publishes it to tunero.dev;
+  `website-check.yml` runs the same on pull requests. `website/` (v1) is no longer deployed.
 
 ## Testing
 

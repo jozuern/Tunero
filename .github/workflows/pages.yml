@@ -98,6 +98,16 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # reads the latest release for the version on the page
       run: npm run build # astro check, then astro build
 
+    # The demo desktop in a browser (e2e/), against the site just built: windows, focus, the saved session, the guided
+    # fix and the wallpaper's stills.
+    - name: Install Chromium
+      working-directory: website-v2
+      run: npx playwright install --with-deps chromium
+
+    - name: Browser tests
+      working-directory: website-v2
+      run: npm run test:e2e
+
     - name: Configure Pages
       uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
 

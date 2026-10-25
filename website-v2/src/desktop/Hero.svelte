@@ -5,7 +5,8 @@
   import { fly, fade, scale } from 'svelte/transition';
   import type { DesktopStrings } from '../i18n/desktop-en.ts';
   import { tally } from '../lib/demo-state.ts';
-  import { useStore, reducedMotion } from './store.svelte.ts';
+  import { useStore } from './store.svelte.ts';
+  import { animated, reducedMotion } from './motion.ts';
   import { playGuide } from './guide.ts';
   import { fill } from './app/appKeys.ts';
   import Icon from './Icon.svelte';
@@ -42,9 +43,9 @@
   // The headline leaves with a fade, except when the restored session hides it right at the start (a fixed PC, an open
   // window): then it was never seen and goes at once.
   const leave = (node: Element) => fade(node, { duration: settled && !reducedMotion() ? 160 : 0 });
-  const swap = (node: Element) => fly(node, { y: reducedMotion() ? 0 : 6, duration: reducedMotion() ? 0 : 280, opacity: 0 });
-  const quick = (node: Element) => fade(node, { duration: reducedMotion() ? 0 : 160 });
-  const pop = (node: Element) => scale(node, { start: 0.94, duration: reducedMotion() ? 0 : 420, delay: reducedMotion() ? 0 : 500, opacity: 0 });
+  const swap = (node: Element) => fly(node, { y: animated(6), duration: animated(280), opacity: 0 });
+  const quick = (node: Element) => fade(node, { duration: animated(160) });
+  const pop = (node: Element) => scale(node, { start: 0.94, duration: animated(420), delay: animated(500), opacity: 0 });
 
   /**
    * The end card is a dialog: it takes the keyboard focus on its first action (Install), Escape closes it, and when it

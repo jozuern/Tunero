@@ -3,7 +3,8 @@
   import { scale } from 'svelte/transition';
   import { backOut } from 'svelte/easing';
   import type { DesktopStrings } from '../../i18n/desktop-en.ts';
-  import { useStore, reducedMotion } from '../store.svelte.ts';
+  import { useStore } from '../store.svelte.ts';
+  import { animated } from '../motion.ts';
   import Icon from '../Icon.svelte';
   import type { IconName } from '../icons.ts';
   import type { AppStrings, Page } from './appKeys.ts';
@@ -24,7 +25,7 @@
   });
 
   // The Changes count pops when it changes, so each change is seen arriving there.
-  const bump = (node: Element) => scale(node, { start: 0.5, duration: reducedMotion() ? 0 : 360, easing: backOut });
+  const bump = (node: Element) => scale(node, { start: 0.5, duration: animated(360), easing: backOut });
 
   function go(next: Page) {
     store.appPage = next;

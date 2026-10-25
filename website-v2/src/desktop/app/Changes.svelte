@@ -3,7 +3,8 @@
   import { fade } from 'svelte/transition';
   import type { DesktopStrings } from '../../i18n/desktop-en.ts';
   import type { Change } from '../../lib/demo-state.ts';
-  import { useStore, reducedMotion } from '../store.svelte.ts';
+  import { useStore } from '../store.svelte.ts';
+  import { animated } from '../motion.ts';
   import Icon from '../Icon.svelte';
   import { single } from '../clicks.ts';
   import type { IconName } from '../icons.ts';
@@ -48,7 +49,7 @@
     store.undo(change);
   }
 
-  const motion = (node: Element) => fade(node, { duration: reducedMotion() ? 0 : 160 });
+  const motion = (node: Element) => fade(node, { duration: animated(160) });
 </script>
 
 <header class="head">

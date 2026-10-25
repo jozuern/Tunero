@@ -38,6 +38,12 @@ const facts: Facts = {
       // On a later one with changes or a window saved, keep what shows them hidden until the desktop has restored them
       // (tokens.css), so the visitor does not see the untouched PC of the page's HTML first.
       (() => {
+        // The wallpaper's still in the visitor's theme (Wallpaper.svelte), asked for with the page instead of after its
+        // stylesheet: it is the first thing the desktop shows.
+        const still = document.createElement('link');
+        Object.assign(still, { rel: 'preload', as: 'image', type: 'image/webp', fetchPriority: 'high' });
+        still.href = `/wallpaper/${document.documentElement.dataset.theme === 'light' ? 'light' : 'dark'}-neglected.webp`;
+        document.head.append(still);
         let saved = {};
         try { saved = JSON.parse(sessionStorage.getItem(demoKey) || '{}') || {}; } catch {}
         if (saved.bootSeen !== true && document.documentElement.dataset.motion !== 'reduce') document.documentElement.dataset.boot = 'pending';

@@ -7,7 +7,7 @@
   import { flip } from 'svelte/animate';
   import type { DesktopStrings } from '../i18n/desktop-en.ts';
   import { useStore } from './store.svelte.ts';
-  import { reducedMotion } from './store.svelte.ts';
+  import { animated } from './motion.ts';
   import { toastingStartup } from './startup.ts';
   import Icon from './Icon.svelte';
   import type { IconName } from './icons.ts';
@@ -76,7 +76,7 @@
     });
   });
 
-  const motion = (node: Element) => fly(node, { x: reducedMotion() ? 0 : 360, duration: reducedMotion() ? 0 : 260, opacity: 0 });
+  const motion = (node: Element) => fly(node, { x: animated(360), duration: animated(260), opacity: 0 });
 </script>
 
 <!-- Not a live region: the demo's nags would be read out every few seconds. -->
@@ -84,7 +84,7 @@
   {#each visible as key (key)}
     {@const toast = copy.toasts[key]}
     {@const source = sources.find((s) => s.key === key)!}
-    <div class="toast" {...source.mark} in:motion out:motion animate:flip={{ duration: reducedMotion() ? 0 : 220 }}>
+    <div class="toast" {...source.mark} in:motion out:motion animate:flip={{ duration: animated(220) }}>
       <div class="head">
         <Icon name={source.icon} size={16} />
         <span>{toast.app}</span>

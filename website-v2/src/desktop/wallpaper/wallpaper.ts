@@ -29,13 +29,21 @@ void main() {
 /** Highest device pixel ratio rendered; the picture is soft, so more pixels would only cost. */
 const maxPixelRatio = 1.5;
 /**
- * Time between two drawn frames: 60 a second, also on a 90, 120, 144 or 165 Hz monitor, where every refresh would draw
- * the shader and make the browser blur every glass panel above the canvas again; the motion is slow, so this looks the
- * same at a fraction of the cost. A refresh draws when the next frame is due, give or take the slack, which allows for
- * the jitter of a 60 Hz display (it keeps every refresh).
+ * Most pixels drawn per frame, about 720p: the shader's cost grows with the pixels, and a 1440p monitor would ask for
+ * four times as many on every frame, enough to drop frames on a laptop's graphics (the motion and the headline's rise
+ * stuttered). The browser scales the canvas up; the picture is soft, so it looks the same, the grain a little coarser.
  */
-const frameInterval = 1000 / 60;
-const frameSlack = 4;
+const maxPixels = 1280 * 720;
+/**
+ * Frames a second the wallpaper draws at least, as a share of the refreshes: every refresh up to about 110 Hz, every
+ * second one on a 120 or 144 Hz monitor, every third on a 165 Hz one, every fourth at 240 Hz. Drawing every refresh of
+ * a fast monitor would make the browser blur every glass panel above the canvas again each time; the motion is slow, so
+ * this looks the same at a fraction of the cost. It is a whole number of refreshes so that each frame stays on screen
+ * equally long: 60 frames a second on a 144 Hz monitor hold for 2, 3, 2, 3 refreshes, which reads as stutter.
+ */
+const leastFrameRate = 55;
+/** Refresh intervals measured for the monitor's rate (the middle one counts, so a busy moment does not skew it). */
+const refreshSamples = 31;
 /** Slow frames in a row (beyond the ones a fast frame cancels) before the picture is drawn with fewer pixels. */
 const slowFramesBeforeScaling = 30;
 /**
@@ -176,8 +184,11 @@ export function startWallpaper(
 
     let frameId = 0;
     let lastNow: number | null = null;
-    /** When the next frame should be drawn. */
-    let due = 0;
+    /** Draw every this many refreshes (leastFrameRate), and the refreshes since the last drawn frame. */
+    let stride = 1;
+    let sinceDrawn = 0;
+    let lastRefresh: number | null = null;
+    const refreshes: number[] = [];
     let stopped = false;
     let drewFirst = false;
     let stillClutter = -1;
@@ -185,7 +196,8 @@ export function startWallpaper(
     let stillSplit = -2;
 
     function resizeBuffer(context: WebGL2RenderingContext) {
-      const ratio = Math.min(window.devicePixelRatio || 1, maxPixelRatio) * qualityScale;
+      const budget = Math.sqrt(maxPixels / Math.max(1, cssWidth * cssHeight));
+      const ratio = Math.min(window.devicePixelRatio || 1, maxPixelRatio, budget) * qualityScale;
       const width = Math.max(1, Math.round(cssWidth * ratio));
       const height = Math.max(1, Math.round(cssHeight * ratio));
       if (canvas.width !== width || canvas.height !== height) {
@@ -277,8 +289,22 @@ export function startWallpaper(
       }
     }
 
+    /** Learns the monitor's refresh rate from the time between two refreshes, and the stride from it. */
+    function measure(now: number) {
+      const interval = lastRefresh === null ? 0 : now - lastRefresh;
+      lastRefresh = now;
+      // A hidden tab, a pause or a long busy moment says nothing about the monitor.
+      if (interval < 2 || interval > 50) return;
+      refreshes.push(interval);
+      if (refreshes.length > refreshSamples) refreshes.shift();
+      if (refreshes.length < 10) return;
+      const middle = [...refreshes].sort((a, b) => a - b)[refreshes.length >> 1];
+      stride = Math.max(1, Math.floor(1000 / middle / leastFrameRate));
+    }
+
     function frame(now: number) {
       frameId = requestAnimationFrame(frame);
+      measure(now);
       if (events.isPaused?.()) {
         lastNow = null;
         return;
@@ -288,10 +314,9 @@ export function startWallpaper(
         if (clamp01(getClutter()) !== stillClutter || themeTarget() !== stillTheme || split !== stillSplit) drawStill();
         return;
       }
-      // A refresh before the next frame is due is skipped; the next one draws, with the time since this draw. A frame
-      // more than one interval late (a busy moment) starts the count again from now.
-      if (lastNow !== null && now < due - frameSlack) return;
-      due = lastNow === null || now - due > frameInterval ? now + frameInterval : due + frameInterval;
+      // Every stride-th refresh draws, with the time since the last draw.
+      if (lastNow !== null && ++sinceDrawn < stride) return;
+      sinceDrawn = 0;
       const seconds = lastNow === null ? 0 : Math.min((now - lastNow) / 1000, 0.1);
       lastNow = now;
       if (seconds > 0) watchSpeed(seconds);

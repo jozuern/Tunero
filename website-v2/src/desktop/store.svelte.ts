@@ -1,53 +1,33 @@
-// The desktop's live state: the tested demo logic (lib/demo-state.ts) in Svelte runes, plus the window manager.
+// The desktop's live state: the tested demo logic (lib/demo-state.ts) and window placement (lib/windows.ts) in Svelte
+// runes, with the steps of Undo all and what the desktop shows of each change (effects.ts).
 // The demo state survives a language switch through sessionStorage; blocked storage just starts fresh.
 import { getContext, setContext, tick } from 'svelte';
 import { storageKeys } from '../lib/storage-keys.ts';
 import type { Demo, Effect, Write } from '../lib/demo.ts';
 import type { Page } from './app/appKeys.ts';
-import { trail } from './effects.ts';
-import { shatter } from './particles.ts';
-import { ripple, bloom } from './wallpaper/wallpaper.ts';
-import { pop, chord } from './sound.ts';
+import { revive, shatterGone, trails } from './effects.ts';
+import { bloom } from './wallpaper/wallpaper.ts';
+import { chord } from './sound.ts';
 import {
   initial,
   apply,
   undo,
   undoAll,
   undoable,
-  allChanges,
   clutter,
   isActive,
   isApplied,
-  turnedOff,
   serialize,
   deserialize,
   type Change,
-  type ChangeKind,
   type DemoState,
   type WindowId,
 } from '../lib/demo-state.ts';
+import { closedFrame, fittedFrame, frontWindow, openingFrame, taskbarAction, type WindowFrame } from '../lib/windows.ts';
 
 const storageKey = storageKeys.demo;
 /** Pause between two steps of Undo all, so the rewind can be followed. */
 export const rewindStep = 180;
-
-export interface WindowFrame {
-  open: boolean;
-  minimized: boolean;
-  maximized: boolean;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  z: number;
-}
-
-const sizes: Record<WindowId, { width: number; height: number }> = {
-  tunero: { width: 1160, height: 700 },
-  trust: { width: 860, height: 560 },
-  notepad: { width: 720, height: 520 },
-  settings: { width: 820, height: 440 },
-};
 
 function readSaved(demo: Demo): DemoState {
   try {
@@ -60,15 +40,16 @@ function readSaved(demo: Demo): DemoState {
 export { reducedMotion } from './motion.ts';
 import { reducedMotion } from './motion.ts';
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const screen = () => ({ width: innerWidth, height: innerHeight });
 
 export class DesktopStore {
   readonly demo: Demo;
   state = $state<DemoState>(initial());
   windows = $state<Record<WindowId, WindowFrame>>({
-    tunero: this.frame('tunero'),
-    trust: this.frame('trust'),
-    notepad: this.frame('notepad'),
-    settings: this.frame('settings'),
+    tunero: closedFrame('tunero'),
+    trust: closedFrame('trust'),
+    notepad: closedFrame('notepad'),
+    settings: closedFrame('settings'),
   });
   startOpen = $state(false);
   /** The change the dive is showing, or null. */
@@ -93,10 +74,7 @@ export class DesktopStore {
     return this.#clutter;
   }
   /** The window in front, or null when none is open. */
-  focused = $derived.by(() => {
-    const open = (Object.entries(this.windows) as [WindowId, WindowFrame][]).filter(([, w]) => w.open && !w.minimized);
-    return open.length === 0 ? null : open.reduce((a, b) => (b[1].z > a[1].z ? b : a))[0];
-  });
+  focused = $derived(frontWindow(this.windows));
   /** While Undo all plays, the state it ends in: that is what gets saved, so leaving mid-rewind keeps it. */
   private rewindEnd: DemoState | null = null;
   private topZ = 10;
@@ -110,10 +88,6 @@ export class DesktopStore {
   restore() {
     this.state = readSaved(this.demo);
     if (this.state.window) this.open(this.state.window);
-  }
-
-  private frame(id: WindowId): WindowFrame {
-    return { open: false, minimized: false, maximized: false, x: 0, y: 0, ...sizes[id], z: 0 };
   }
 
   private save() {
@@ -137,65 +111,16 @@ export class DesktopStore {
     return undoable(this.state);
   }
 
-  /** Shows each change travelling to its place on the desktop, a little apart when several go at once. */
-  private show(changes: Change[], direction: 'apply' | 'undo', skip = new Set<Effect>()) {
-    const effects = allChanges(this.demo);
-    changes.forEach((change, i) => {
-      const effect = effects.find((c) => c.kind === change.kind && c.id === change.id)?.effect;
-      if (effect && !skip.has(effect)) setTimeout(() => trail(effect, direction), i * 90);
-    });
-  }
-
-  /**
-   * Bursts what a step removes from the desktop (marked data-effect or data-change) into specks that fly to Tunero,
-   * with a ripple in the wallpaper under it. Returns the effects that burst, which need no trail.
-   */
-  private shatterGone(before: DemoState, after: DemoState, fresh: Change[]): Set<Effect> {
-    const gone = turnedOff(before, after, this.demo);
-    const selectors = [...gone.map((e) => `[data-effect~="${e}"]`), ...fresh.map((c) => `[data-change="${c.kind}:${c.id}"]`)];
-    const burst = new Set<Effect>();
-    if (selectors.length === 0 || reducedMotion()) return burst;
-    for (const element of document.querySelectorAll(selectors.join(','))) {
-      if (element.getClientRects().length === 0 || element.closest('.minimized')) continue;
-      const rect = element.getBoundingClientRect();
-      shatter(element);
-      element.classList.add('shattered');
-      ripple(rect.left + rect.width / 2, rect.top + rect.height / 2, Math.max(rect.width, rect.height));
-      for (const effect of gone) if (element.matches(`[data-effect~="${effect}"]`)) burst.add(effect);
-      for (const c of fresh) if (element.matches(`[data-change="${c.kind}:${c.id}"]`)) {
-        const effect = allChanges(this.demo).find((x) => x.kind === c.kind && x.id === c.id)?.effect;
-        if (effect) burst.add(effect);
-      }
-    }
-    if (burst.size > 0) pop();
-    return burst;
-  }
-
-  /**
-   * After an undo: what shattered and comes back before its leaving transition ended is the same element (Svelte keeps
-   * it), still marked as shattered and so invisible. It loses the mark once its change is undone or its effect shows.
-   */
-  private revive() {
-    if (typeof document === 'undefined') return;
-    for (const element of document.querySelectorAll<HTMLElement>('.shattered')) {
-      const marked = element.dataset.change;
-      const back = marked
-        ? !isApplied(this.state, { kind: marked.slice(0, marked.indexOf(':')) as ChangeKind, id: marked.slice(marked.indexOf(':') + 1) })
-        : (element.dataset.effect ?? '').split(/\s+/).some((effect) => effect !== '' && this.active(effect as Effect));
-      if (back) element.classList.remove('shattered');
-    }
-  }
-
   /** Applies changes; a running rewind is cut short at its end state first. */
   apply(changes: Change[]) {
     this.stopRewind();
     const fresh = changes.filter((change) => !isApplied(this.state, change));
     const before = this.state;
     const after = apply(this.state, changes);
-    const burst = this.shatterGone(before, after, fresh);
+    const burst = shatterGone(before, after, fresh, this.demo);
     this.state = after;
     this.save();
-    this.show(fresh, 'apply', burst);
+    trails(fresh, 'apply', this.demo, burst);
     if (fresh.length > 0 && clutter(after, this.demo) === 0) this.finished();
   }
 
@@ -211,9 +136,9 @@ export class DesktopStore {
     this.stopRewind();
     this.finale = false;
     this.state = undo(this.state, change);
-    this.revive();
+    revive(this.state, this.demo);
     this.save();
-    this.show([change], 'undo');
+    trails([change], 'undo', this.demo);
   }
 
   /** Undoes everything one step at a time, newest first; instant under reduced motion. */
@@ -233,8 +158,8 @@ export class DesktopStore {
     for (const step of steps) {
       if (run !== this.rewindRun) return;
       this.state = undo(this.state, step);
-      this.revive();
-      this.show([step], 'undo');
+      revive(this.state, this.demo);
+      trails([step], 'undo', this.demo);
       await wait(rewindStep);
     }
     if (run === this.rewindRun) {
@@ -250,7 +175,7 @@ export class DesktopStore {
     this.rewinding = false;
     this.rewindEnd = null;
     this.state = undoAll(this.state).state;
-    this.revive();
+    revive(this.state, this.demo);
   }
 
   markScanned() {
@@ -271,17 +196,7 @@ export class DesktopStore {
     // A window that opens takes the focus as it mounts (Window.svelte); one already open that comes back from the taskbar
     // or to the front takes it here, so Esc and the keyboard reach it.
     const raise = w.open && (w.minimized || this.focused !== id);
-    if (!w.open) {
-      const width = Math.min(w.width, innerWidth - 32);
-      const height = Math.min(w.height, innerHeight - 48 - 32);
-      const offset = Object.values(this.windows).filter((x) => x.open).length * 28;
-      w.width = width;
-      w.height = height;
-      // Centred, each further window a step down and right, but never past the screen's edge or under the taskbar: the
-      // caption buttons must stay in reach.
-      w.x = Math.max(16, Math.min(Math.round((innerWidth - width) / 2) + offset, innerWidth - width - 16));
-      w.y = Math.max(16, Math.min(Math.round((innerHeight - 48 - height) / 2) + offset, innerHeight - 48 - height - 16));
-    }
+    if (!w.open) Object.assign(w, openingFrame(id, screen(), Object.values(this.windows).filter((x) => x.open).length));
     w.open = true;
     w.minimized = false;
     this.focus(id);
@@ -291,12 +206,7 @@ export class DesktopStore {
 
   /** Keeps every window on screen and as large as it should be after the browser window changed size. */
   fit() {
-    for (const [id, w] of Object.entries(this.windows) as [WindowId, WindowFrame][]) {
-      w.width = Math.min(sizes[id].width, innerWidth - 32);
-      w.height = Math.min(sizes[id].height, innerHeight - 48 - 32);
-      w.x = Math.min(Math.max(w.x, 0), Math.max(0, innerWidth - w.width));
-      w.y = Math.min(Math.max(w.y, 0), Math.max(0, innerHeight - 48 - w.height));
-    }
+    for (const [id, w] of Object.entries(this.windows) as [WindowId, WindowFrame][]) Object.assign(w, fittedFrame(id, w, screen()));
   }
 
   focus(id: WindowId) {
@@ -330,8 +240,7 @@ export class DesktopStore {
 
   /** Taskbar button: open, bring to front, or minimize when already in front. */
   toggle(id: WindowId) {
-    const w = this.windows[id];
-    if (w.open && !w.minimized && this.focused === id) this.minimize(id);
+    if (taskbarAction(this.windows, id) === 'minimize') this.minimize(id);
     else this.open(id);
   }
 }

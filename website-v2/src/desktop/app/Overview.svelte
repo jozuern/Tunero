@@ -4,7 +4,8 @@
   import { fly, scale, slide } from 'svelte/transition';
   import { backOut, cubicOut } from 'svelte/easing';
   import type { DesktopStrings } from '../../i18n/desktop-en.ts';
-  import { useStore, reducedMotion } from '../store.svelte.ts';
+  import { useStore } from '../store.svelte.ts';
+  import { animated, reducedMotion } from '../motion.ts';
   import Icon from '../Icon.svelte';
   import Rating from './Rating.svelte';
   import Writes from './Writes.svelte';
@@ -68,9 +69,9 @@
   const appsLeft = $derived(demo.apps.filter((a) => !store.applied({ kind: 'app', id: a.id })).length);
   const problems = $derived(fixable.filter((f) => !fixed(f.change)).length);
   // A fixed problem's mark pops in and what the fix wrote unfolds below it; nothing moves with animation effects off.
-  const pop = (node: Element) => scale(node, { start: 0.4, duration: reducedMotion() ? 0 : 420, easing: backOut });
-  const unfold = (node: Element) => slide(node, { duration: reducedMotion() ? 0 : 380, easing: cubicOut });
-  const rise = (node: Element) => fly(node, { y: reducedMotion() ? 0 : 8, duration: reducedMotion() ? 0 : 320, easing: cubicOut });
+  const pop = (node: Element) => scale(node, { start: 0.4, duration: animated(420), easing: backOut });
+  const unfold = (node: Element) => slide(node, { duration: animated(380), easing: cubicOut });
+  const rise = (node: Element) => fly(node, { y: animated(8), duration: animated(320), easing: cubicOut });
   const verdict = $derived(problems === 0 ? app.Dash_VerdictNone : problems === 1 ? app.Dash_VerdictOne : fill(app.Dash_VerdictMany, problems));
 </script>
 

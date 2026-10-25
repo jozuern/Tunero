@@ -4,7 +4,8 @@
   import { Tween } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
   import type { DesktopStrings } from '../i18n/desktop-en.ts';
-  import { useStore, reducedMotion } from './store.svelte.ts';
+  import { useStore } from './store.svelte.ts';
+  import { animated } from './motion.ts';
   import Icon from './Icon.svelte';
 
   let { copy }: { copy: DesktopStrings['widget'] } = $props();
@@ -19,7 +20,7 @@
   const rate = new Tween(hz(refresh.writes[0].from), { duration: 1400, easing: cubicOut });
   $effect(() => {
     const target = hz(refreshOn ? refresh.writes[0].to : refresh.writes[0].from);
-    void rate.set(target, { duration: reducedMotion() ? 0 : 1400 });
+    void rate.set(target, { duration: animated(1400) });
   });
 </script>
 
