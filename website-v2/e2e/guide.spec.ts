@@ -42,8 +42,15 @@ test.describe('on a screen with room for the notifications beside a window', () 
   test('a notification switched off and right on again comes back visible', async ({ page }) => {
     // The shatter marks what it bursts as invisible; a notification that comes back before its leaving transition ended
     // is the same element, and it kept the mark once.
+    // The page's timers wait for the test: on their own, the next notification pushes the tips out 4.5 s after the
+    // start, and a slow runner reached the check after that. The leaving transition runs on real time all the same.
+    await page.clock.install({ time: 0 });
+    await page.clock.pauseAt(0);
     await visit(page, { motion: 'on', saved: { ...seen, scanned: true, window: 'tunero' } });
     const tips = page.locator('.toasts [data-effect~="tips-toasts"]');
+    // The arrival: three notifications by 1.6 s, the tips first. A jump, not runFor: that would draw every frame of the
+    // wallpaper in between, about 20 s of SwiftShader.
+    await page.clock.fastForward(2000);
     await expect(tips).toBeVisible();
     await nav(page, 'tweaks').click();
     const toggle = tunero(page).getByRole('switch', { name: 'Tips, suggestions and welcome screens off' });
