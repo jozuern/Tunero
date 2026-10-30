@@ -18,7 +18,7 @@ Components shipped in Tunero.exe. Their full license texts are embedded in the e
 | System.IO.Ports 10.0.3, System.IO.FileSystem.AccessControl 5.0.0 | MIT (.NET) | Dependencies of LibreHardwareMonitorLib |
 | Mono.Posix.NETStandard 1.0.0 | MIT | Dependency of LibreHardwareMonitorLib |
 | Intel PresentMon 2.6.0 (console, x64) | MIT | Frame time capture for the benchmark. Embedded unmodified, Intel-signed, SHA-256 B2A706BC6AD475749E3B7E3409263AA1E6906D45BDCF993F6DBC0F660188F1AF, checked on extraction. Source: https://github.com/GameTechDev/PresentMon |
-| .NET runtime and Windows Desktop runtime 10.0.13 (self-contained, from the SDK pinned in `global.json`) | MIT | Runtime, WPF |
+| .NET runtime and Windows Desktop runtime 10.0.14 (self-contained, from the SDK pinned in `global.json`) | MIT | Runtime, WPF |
 
 Used through Windows or installed only on request, not shipped:
 
