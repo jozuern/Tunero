@@ -196,7 +196,10 @@ public sealed partial class MainViewModel
         Log.Info("scan", "tweak states read", new { ms = watch.ElapsedMilliseconds });
         // The states just read are not read again (runtime tweaks of other pages are).
         var known = catalog.Concat(device).GroupBy(s => s.Tweak.Id, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.First().State, StringComparer.Ordinal);
-        var drift = engine.CheckDrift(facts, known);
+        var kept = new List<string>();
+        var drift = engine.CheckDrift(facts, known, kept);
+        // Changes still in place after a Windows update: a later reset is then not blamed on that update.
+        _services.Session.NoteKept(kept);
         return new TweakRead(facts, catalog, device, drift, _services.Store.All().Count);
     }
 

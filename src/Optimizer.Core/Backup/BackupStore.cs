@@ -57,6 +57,12 @@ public sealed class TweakBackup
     /// <summary>Windows version ("26300.9550") of the last apply, to tell a reset by an update from other causes.</summary>
     public string? AppliedOnVersion { get; set; }
 
+    /// <summary>
+    /// Windows version on which a scan last found this change still in place after an update (null until then, cleared by
+    /// the next apply): a reset on this version is not the update's doing.
+    /// </summary>
+    public string? KeptOnVersion { get; set; }
+
     /// <summary>Set for tweaks that take effect after a restart; cleared once the boot time changes.</summary>
     public DateTimeOffset? PendingRestartSince { get; set; }
 

@@ -90,6 +90,25 @@ public sealed class ChangeSession(TweakEngine engine, IRestorePoints restorePoin
         }
     }
 
+    /// <summary>
+    /// Records that a scan found these changes still in place after a Windows update (<see cref="TweakEngine.CheckDrift"/>
+    /// collects them), so a later reset is not blamed on that update. Writes backups, so only under the lock: inside a hold,
+    /// or when no other Tunero holds it right now; else false and the next scan records them.
+    /// </summary>
+    public bool NoteKept(IReadOnlyCollection<string> tweakIds)
+    {
+        if (tweakIds.Count == 0) return true;
+        if (_holding.Value)
+        {
+            engine.NoteKept(tweakIds);
+            return true;
+        }
+        using var held = changeLock.TryAcquire(TimeSpan.Zero);
+        if (held is null) return false;
+        engine.NoteKept(tweakIds);
+        return true;
+    }
+
     /// <summary>One change of the session under the lock: the caller's hold, or the lock taken for this change alone.</summary>
     private async Task<T> Locked<T>(Func<Task<T>> change)
     {
@@ -152,8 +171,10 @@ public sealed class ChangeSession(TweakEngine engine, IRestorePoints restorePoin
             var shared = engine.Store.All().SelectMany(b => b.Entries.Select(e => (b.TweakId, e.TargetKey)))
                 .GroupBy(x => x.TargetKey, StringComparer.OrdinalIgnoreCase).Where(g => g.Select(x => x.TweakId).Distinct(StringComparer.Ordinal).Skip(1).Any())
                 .Select(g => g.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            return engine.CheckDrift(pc.Facts, known)
-                .Where(d => d.WindowsUpdatedSince && d.Tweak.IsBatchSafe && !d.Backup.Entries.Any(e => shared.Contains(e.TargetKey)))
+            var kept = new List<string>();
+            var drift = engine.CheckDrift(pc.Facts, known, kept);
+            engine.NoteKept(kept);
+            return drift.Where(d => d.WindowsUpdatedSince && d.Tweak.IsBatchSafe && !d.Backup.Entries.Any(e => shared.Contains(e.TargetKey)))
                 .Select(d => d.Tweak).ToList();
         });
         if (reset.Count == 0) return BatchOutcome.Cancelled;

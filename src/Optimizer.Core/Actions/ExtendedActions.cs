@@ -342,9 +342,16 @@ public sealed class DnsAction : TweakAction
 {
     public string InterfaceGuid { get; init; } = "";
 
-    /// <summary>"{nic}" sets the servers of every active network interface.</summary>
+    /// <summary>
+    /// "{nic}" sets the servers of every active network interface. "dhcp" leaves out an interface with a fixed IP address
+    /// (EnableDHCP 0): no DHCP server hands it DNS servers, so an empty list would leave it without any.
+    /// </summary>
     public override IEnumerable<TweakAction> Expand(ExpansionContext x) =>
-        InterfaceGuid != "{nic}" ? [this] : x.NetworkInterfaces.Select(id => new DnsAction { InterfaceGuid = id, Servers = Servers });
+        InterfaceGuid != "{nic}" ? [this]
+        : x.NetworkInterfaces.Where(id => Servers != "dhcp" || !HasFixedAddress(x.Context, id)).Select(id => new DnsAction { InterfaceGuid = id, Servers = Servers });
+
+    private static bool HasFixedAddress(ActionContext c, string interfaceGuid) =>
+        RegistryValue.Read(c.Registry, Hive.Machine, $@"SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces\{interfaceGuid}", "EnableDHCP").Data == "0";
 
     /// <summary>"dhcp" or comma-separated IPv4 addresses.</summary>
     public string Servers { get; init; } = "dhcp";

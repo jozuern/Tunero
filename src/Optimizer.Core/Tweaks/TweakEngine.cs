@@ -80,12 +80,18 @@ public sealed record BatchStep(int Done, int Total, TweakDefinition? Tweak, bool
 public sealed record RevertResult(bool Success, IReadOnlyList<string> AlreadyRevertedByWindows, IReadOnlyList<string> Errors);
 
 /// <summary>
-/// A change this app made that is no longer in place. <see cref="WindowsUpdatedSince"/>: the Windows version (build and
-/// update revision) differs from the one the change was applied on, so an update is the likely cause.
+/// A change this app made that is no longer in place. <see cref="AppliedOn"/>: the Windows version it was last known to be
+/// in place on (its last apply, or a later scan that still found it, <see cref="TweakBackup.KeptOnVersion"/>).
+/// <see cref="WindowsUpdatedSince"/>: the version (build and update revision) differs from that one, so an update is the
+/// likely cause.
 /// </summary>
 public sealed record DriftItem(TweakDefinition Tweak, TweakBackup Backup, string? AppliedOn, string Current)
 {
-    public bool WindowsUpdatedSince => AppliedOn is not null && !string.Equals(AppliedOn, AppliedOn.Contains('.') ? Current : Current.Split('.')[0], StringComparison.Ordinal);
+    public bool WindowsUpdatedSince => IsOtherVersion(AppliedOn, Current);
+
+    /// <summary>True when <paramref name="current"/> is another Windows version than <paramref name="on"/> (a build number alone compares by build).</summary>
+    public static bool IsOtherVersion(string? on, string current) =>
+        on is not null && !string.Equals(on, on.Contains('.') ? current : current.Split('.')[0], StringComparison.Ordinal);
 }
 
 /// <summary>
@@ -522,6 +528,7 @@ public sealed class TweakEngine(ActionContext ctx, BackupStore store, IRestorePo
                         if (backup.Entry(s.TargetKey) is { } e) e.Applied = SafeApplied(s);
                     backup.LastApplied = DateTimeOffset.Now;
                     backup.AppliedOnVersion = WindowsVersion;
+                    backup.KeptOnVersion = null;
                     var kept = SaveAfterChange(() => store.Save(backup), t.Id);
                     return Fail(t, changes, $"{ex.Message} (rollback failed for {string.Join(", ", stuck.Select(s => s.TargetKey))}; " +
                         (kept ? "the backup is kept, use Undo)" : "the backup could not be updated; it still holds the original values, use Undo)")) with { LeftChanged = true };
@@ -547,6 +554,7 @@ public sealed class TweakEngine(ActionContext ctx, BackupStore store, IRestorePo
             if (backup.Entry(a.TargetKey) is { } e) e.Applied = a.MergeApplied(e.Applied, SafeApplied(a));
         backup.LastApplied = DateTimeOffset.Now;
         backup.AppliedOnVersion = WindowsVersion;
+        backup.KeptOnVersion = null;
         if (t.Restart || t.Verify == "afterRestart" || done.Any(a => a.TakesEffectAfterRestart)) backup.PendingRestartSince = DateTimeOffset.Now;
         // The originals were saved before the first write; this save adds what was written and when. When it fails, the
         // change is in place and Undo still has the originals, but the result says so.
@@ -792,7 +800,11 @@ public sealed class TweakEngine(ActionContext ctx, BackupStore store, IRestorePo
     /// a Windows update between apply and now is reported as the likely cause.
     /// </summary>
     /// <param name="known">States the scan just read with the same facts (by tweak id): those tweaks are not read again.</param>
-    public IReadOnlyList<DriftItem> CheckDrift(Facts facts, IReadOnlyDictionary<string, TweakState>? known = null)
+    /// <param name="keptAfterUpdate">
+    /// Collects the changes still in place on another Windows version than the one they were last known on: recorded with
+    /// <see cref="ChangeSession.NoteKept"/>, a later reset on this version is not blamed on the update.
+    /// </param>
+    public IReadOnlyList<DriftItem> CheckDrift(Facts facts, IReadOnlyDictionary<string, TweakState>? known = null, ICollection<string>? keptAfterUpdate = null)
     {
         var list = new List<DriftItem>();
         foreach (var backup in store.All())
@@ -802,12 +814,46 @@ public sealed class TweakEngine(ActionContext ctx, BackupStore store, IRestorePo
             // A deleted startup entry that is back was put back by its program, not reset by Windows (StartupTweaks.IsDelete).
             if (Startup.StartupTweaks.IsDelete(t) || WritesDefaultProfile(t)) continue;
             var state = known is not null && known.TryGetValue(t.Id, out var read) ? read : DetectState(t, facts);
+            if (state is TweakState.Applied or TweakState.PendingRestart)
+            {
+                if (DriftItem.IsOtherVersion(KnownInPlaceOn(backup), WindowsVersion)) keptAfterUpdate?.Add(t.Id);
+                continue;
+            }
             if (state != TweakState.RevertedByWindows) continue;
-            // Older backups only know the build number of their first apply (compared by build only).
-            var appliedOn = backup.AppliedOnVersion ?? (backup.WindowsBuild > 0 ? backup.WindowsBuild.ToString(System.Globalization.CultureInfo.InvariantCulture) : null);
-            list.Add(new DriftItem(t, backup, appliedOn, WindowsVersion));
+            list.Add(new DriftItem(t, backup, KnownInPlaceOn(backup), WindowsVersion));
         }
         return list;
+    }
+
+    /// <summary>
+    /// The Windows version a change was last known to be in place on: where a scan last found it after an update, else its
+    /// last apply. Older backups only know the build number of their first apply (compared by build only).
+    /// </summary>
+    private static string? KnownInPlaceOn(TweakBackup backup) =>
+        backup.KeptOnVersion ?? backup.AppliedOnVersion
+        ?? (backup.WindowsBuild > 0 ? backup.WindowsBuild.ToString(System.Globalization.CultureInfo.InvariantCulture) : null);
+
+    /// <summary>
+    /// Records that these changes were found in place on this Windows version (<see cref="TweakBackup.KeptOnVersion"/>), so
+    /// a later reset on this version reads as the user's or a program's doing, not an update's. Only under the change lock
+    /// (<see cref="ChangeSession.NoteKept"/>): each backup is read again and saved, so no change made meanwhile is lost.
+    /// </summary>
+    internal void NoteKept(IEnumerable<string> tweakIds)
+    {
+        foreach (var id in tweakIds)
+        {
+            try
+            {
+                if (store.Get(id) is not { } backup || !DriftItem.IsOtherVersion(KnownInPlaceOn(backup), WindowsVersion)) continue;
+                backup.KeptOnVersion = WindowsVersion;
+                store.Save(backup);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // Only a hint for the drift notice: the next scan tries again.
+                Log.Warn("drift", $"could not record that {id} is still in place: {ex.Message}");
+            }
+        }
     }
 
     /// <summary>The definition of a tweak id: the catalog entry, or the one stored with the backup of a runtime tweak.</summary>

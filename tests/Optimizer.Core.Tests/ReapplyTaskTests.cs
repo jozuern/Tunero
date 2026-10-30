@@ -142,6 +142,57 @@ public class ReapplyTaskTests
         Assert.Equal(TweakState.Applied, fx.Engine.DetectState(t, Facts()));
     }
 
+    /// <summary>
+    /// A change that outlived an update and was turned back by the user afterwards is the user's choice: the run records
+    /// that it was still in place, so the later reset is neither applied again nor blamed on the update.
+    /// </summary>
+    [Fact]
+    public async Task AChangeTheUserTurnedBackAfterAnUpdateStaysAsItIs()
+    {
+        using var fx = new EngineFixture();
+        fx.RestorePoints.Enabled = false;
+        var session = new ChangeSession(fx.Engine, fx.RestorePoints, fx.ChangeLock);
+        var t = TweakCatalog.Current.Get("privacy.advertisingIdOff")!;
+        await fx.Engine.ApplyAsync(t, Facts(), new ApplyOptions { ContinueWithoutRestorePoint = true });
+        UpdatedSince(fx, t.Id);
+
+        // The first run after the update finds the change in place and records the new version.
+        Assert.Same(BatchOutcome.Cancelled, await session.ReapplyResetAsync(new PcSnapshot(Facts(), [], new HashSet<string>(), [])));
+        Assert.Equal(fx.Engine.WindowsVersion, fx.Store.Get(t.Id)!.KeptOnVersion);
+
+        // Then the user turns it back in Windows: not applied again, and not an update's doing.
+        RegistryValue.Delete(fx.Registry, Hive.Machine, @"SOFTWARE\Policies\Microsoft\Windows\AdvertisingInfo", "DisabledByGroupPolicy");
+        Assert.Same(BatchOutcome.Cancelled, await session.ReapplyResetAsync(new PcSnapshot(Facts(), [], new HashSet<string>(), [])));
+        Assert.False(Assert.Single(fx.Engine.CheckDrift(Facts())).WindowsUpdatedSince);
+
+        // Applying it again starts over from that apply.
+        await fx.Engine.ApplyAsync(t, Facts(), new ApplyOptions { ContinueWithoutRestorePoint = true });
+        Assert.Null(fx.Store.Get(t.Id)!.KeptOnVersion);
+    }
+
+    /// <summary>The window's scan records it too, but only when no other Tunero holds the change lock.</summary>
+    [Fact]
+    public async Task KeptChangesAreRecordedOnlyUnderTheLock()
+    {
+        using var fx = new EngineFixture();
+        fx.RestorePoints.Enabled = false;
+        var session = new ChangeSession(fx.Engine, fx.RestorePoints, fx.ChangeLock);
+        var t = TweakCatalog.Current.Get("privacy.advertisingIdOff")!;
+        await fx.Engine.ApplyAsync(t, Facts(), new ApplyOptions { ContinueWithoutRestorePoint = true });
+        UpdatedSince(fx, t.Id);
+        var kept = new List<string>();
+        Assert.Empty(fx.Engine.CheckDrift(Facts(), keptAfterUpdate: kept));
+        Assert.Equal([t.Id], kept);
+
+        fx.ChangeLock.HeldByOther = true;
+        Assert.False(session.NoteKept(kept));
+        Assert.Null(fx.Store.Get(t.Id)!.KeptOnVersion);
+
+        fx.ChangeLock.HeldByOther = false;
+        Assert.True(session.NoteKept(kept));
+        Assert.Equal(fx.Engine.WindowsVersion, fx.Store.Get(t.Id)!.KeptOnVersion);
+    }
+
     private static TweakDefinition Writes(string id, int value) => new()
     {
         Id = id,

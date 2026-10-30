@@ -11,6 +11,8 @@
 - **Screen readers:** the result of a change, a cleanup or another task is read out also when the result bar had closed by itself before.
 - **Remove apps:** the warning for an app that is not on the reviewed list says that its data in every account goes with it (for a Linux distribution of WSL: all its files).
 - **Startup:** the CSV export uses the separator Excel expects for your regional settings, also when the app language differs from them (an English app on German regional settings).
+- **Apply my changes again:** a change you turned back in Windows yourself, after a Windows update had left it in place, stays turned back. Before, the task applied it again at every sign-in and the Changes page blamed the update.
+- **DNS servers: automatic** leaves network adapters with a fixed IP address alone. Before, it cleared their DNS servers, and no router hands them new ones.
 
 ## 1.5.0
 

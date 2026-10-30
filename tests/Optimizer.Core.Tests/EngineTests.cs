@@ -357,6 +357,33 @@ public class EngineTests
         Assert.Equal("1", Reg(fx, Hive.Machine, @"SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces\{BBBB}", "TcpAckFrequency").Data);
     }
 
+    /// <summary>
+    /// "Automatic" leaves an adapter with a fixed IP address alone: no DHCP server would hand it DNS servers, so an empty
+    /// list would end name resolution. An adapter that uses DHCP goes back to automatic.
+    /// </summary>
+    [Fact]
+    public async Task AutomaticDnsLeavesAnAdapterWithAFixedAddressAlone()
+    {
+        using var fx = new EngineFixture("{AAAA}", "{BBBB}");
+        const string fixedIp = @"SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces\{AAAA}";
+        const string dhcp = @"SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces\{BBBB}";
+        RegistryValue.Write(fx.Registry, Hive.Machine, fixedIp, "EnableDHCP", "dword", "0");
+        RegistryValue.Write(fx.Registry, Hive.Machine, dhcp, "EnableDHCP", "dword", "1");
+        fx.Network.SetDns("{AAAA}", ["192.168.1.1"]);
+        fx.Network.SetDns("{BBBB}", ["8.8.8.8"]);
+        var t = T("network.dns.automatic");
+
+        Assert.Single(fx.Engine.Expand(t));
+        await fx.Engine.ApplyAsync(t, Facts(), new ApplyOptions { ContinueWithoutRestorePoint = true });
+        Assert.Equal("192.168.1.1", Reg(fx, Hive.Machine, fixedIp, "NameServer").Data);
+        Assert.Equal("", Reg(fx, Hive.Machine, dhcp, "NameServer").Data);
+        Assert.Equal(TweakState.Applied, fx.Engine.DetectState(t, Facts()));
+
+        // With only the fixed adapter connected there is nothing to set.
+        var fixedOnly = new TweakEngine(WithInterfaces(fx.Context, "{AAAA}"), fx.Store, fx.RestorePoints, "test", 26300);
+        Assert.Empty(fixedOnly.Expand(t));
+    }
+
     [Fact]
     public async Task UndoRestoresAdaptersThatAreNoLongerConnected()
     {

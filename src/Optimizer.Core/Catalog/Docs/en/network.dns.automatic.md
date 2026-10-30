@@ -4,7 +4,7 @@
 Sets the IPv4 DNS servers of your connected physical network adapters back to automatic, so they come from the router (DHCP) again. Undoes DNS servers set by hand or by another tool.
 
 ## How it works
-Through Windows' network configuration the app clears the DNS server list of each connected physical adapter, which means "obtain DNS server address automatically" [1]. Virtual adapters, for example those of VPNs, are not changed. Undo restores the servers that were set before.
+Through Windows' network configuration the app clears the DNS server list of each connected physical adapter, which means "obtain DNS server address automatically" [1]. Virtual adapters, for example those of VPNs, are not changed, and neither are adapters with a fixed IP address (DHCP off): no router hands them DNS servers, so an empty list would leave them without any. Undo restores the servers that were set before.
 
 ## Why it can help
 After trying other DNS servers, this is the quickest way back to the default setting, also when the servers were set by another program.
