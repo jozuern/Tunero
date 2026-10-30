@@ -12,7 +12,7 @@ public partial class ArchitectureTests
     private static readonly Dictionary<string, string> AllowedToolRuns = new(StringComparer.OrdinalIgnoreCase)
     {
         ["BenchmarkHealthTests.cs"] = "cmd.exe starting ping to 127.0.0.1 (the output pipe, timeout and stop tests; a batch file and its marker in a temp folder)",
-        ["SelfUninstallTests.cs"] = "powershell.exe running the uninstall cleanup on temp folders only",
+        ["SelfUninstallTests.cs"] = "powershell.exe running the uninstall cleanup on temp folders and a Task Scheduler folder that does not exist",
         ["TestFolders.cs"] = "cmd.exe mklink /J creating a junction inside a temp folder",
         ["StorageViewModelTests.cs"] = "cmd.exe mklink /J creating a junction inside the test's temp folder (removed again without touching its target)",
     };

@@ -131,7 +131,7 @@ public class SelfUninstallTests
             File.WriteAllBytes(exe, []);
             File.WriteAllBytes(exe + ".old", []);
 
-            RunCleanup(SelfUninstall.CleanupScript("TuneroTestNoSuchProcess", data, exe));
+            RunCleanup(SelfUninstall.CleanupScript("TuneroTestNoSuchProcess", data, exe, tasksFolder: NoSuchTasks));
 
             Assert.False(Directory.Exists(data));
             Assert.False(File.Exists(exe));
@@ -159,7 +159,7 @@ public class SelfUninstallTests
             var exe = Path.Combine(folder, "Tunero.exe");
             File.WriteAllBytes(exe, []);
 
-            RunCleanup(SelfUninstall.CleanupScript("TuneroTestNoSuchProcess", data, exe, removedByPackageManager: true, packageManagerSeconds: 2));
+            RunCleanup(SelfUninstall.CleanupScript("TuneroTestNoSuchProcess", data, exe, removedByPackageManager: true, packageManagerSeconds: 2, tasksFolder: NoSuchTasks));
 
             Assert.True(Directory.Exists(Path.Combine(data, "backups")));
             Assert.True(File.Exists(exe));
@@ -184,7 +184,7 @@ public class SelfUninstallTests
             // This test's own process stands in for a copy of the app that was started again.
             var running = Process.GetCurrentProcess().ProcessName;
 
-            RunCleanup(SelfUninstall.CleanupScript(running, data, exe).Replace("-Timeout 60", "-Timeout 1", StringComparison.Ordinal));
+            RunCleanup(SelfUninstall.CleanupScript(running, data, exe, tasksFolder: NoSuchTasks).Replace("-Timeout 60", "-Timeout 1", StringComparison.Ordinal));
 
             Assert.True(Directory.Exists(Path.Combine(data, "backups")));
             Assert.True(File.Exists(exe));
@@ -195,8 +195,15 @@ public class SelfUninstallTests
         }
     }
 
+    /// <summary>
+    /// The Task Scheduler folder the scripts these tests run may delete: one that does not exist, never the app's own
+    /// (this PC's re-apply task lives there, and an elevated test run could delete it).
+    /// </summary>
+    private static readonly string NoSuchTasks = $@"\TuneroTest-{Guid.NewGuid():N}";
+
     private static void RunCleanup(string script)
     {
+        Assert.Contains($"GetFolder('{NoSuchTasks}')", script);
         var psi = new ProcessStartInfo(ProcessHardening.ResolveSystemTool("powershell.exe"), SelfUninstall.PowerShellArguments(script))
         {
             UseShellExecute = false,

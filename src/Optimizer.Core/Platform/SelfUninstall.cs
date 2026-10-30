@@ -24,9 +24,14 @@ public static class SelfUninstall
     /// folder and writes its download cache there, so the folder is deleted only after it has ended.
     /// </summary>
     /// <param name="installFolder">An installed copy's folder (<see cref="AppInstall"/>): removed after the exe, only if it is empty then.</param>
+    /// <param name="tasksFolder">
+    /// The Task Scheduler folder whose tasks go with the app: the app's own (<see cref="Actions.OwnTaskAction.Folder"/>), or
+    /// for a test that runs the script a folder that does not exist, so it never reaches this PC's tasks.
+    /// </param>
     public static string CleanupScript(string processName, string dataRoot, string exe, bool removedByPackageManager = false, int? waitForProcessId = null,
-        int packageManagerSeconds = 900, string? installFolder = null)
+        int packageManagerSeconds = 900, string? installFolder = null, string? tasksFolder = null)
     {
+        var ownTasks = (tasksFolder ?? Actions.OwnTaskAction.Folder).TrimEnd('\\');
         var files = removedByPackageManager ? "@()"
             : installFolder is null ? $"@({WingetPackage.Quote(exe)}, {WingetPackage.Quote(exe + ".old")})"
             // The install folder goes only when empty: what an interrupted install left (.new) goes with the exe.
@@ -52,9 +57,9 @@ public static class SelfUninstall
         // The app's own tasks (the re-apply task) go with it: left behind, a task would start a missing exe with
         // administrator rights at every sign-in, and a file put at that path later would run elevated.
         script
-            .AppendLine($"try {{ $ts = New-Object -ComObject Schedule.Service; $ts.Connect(); $folder = $ts.GetFolder({WingetPackage.Quote(OwnTasksFolder)})")
+            .AppendLine($"try {{ $ts = New-Object -ComObject Schedule.Service; $ts.Connect(); $folder = $ts.GetFolder({WingetPackage.Quote(ownTasks)})")
             .AppendLine("    foreach ($t in @($folder.GetTasks(1))) { $folder.DeleteTask($t.Name, 0) }")
-            .AppendLine($"    $ts.GetFolder('\\').DeleteFolder({WingetPackage.Quote(OwnTasksFolder.Trim('\\'))}, 0) }} catch {{ }}")
+            .AppendLine($"    $ts.GetFolder('\\').DeleteFolder({WingetPackage.Quote(ownTasks.Trim('\\'))}, 0) }} catch {{ }}")
             .AppendLine($"$files = {files}")
             .AppendLine("for ($i = 0; $i -lt 30; $i++) {")
             .AppendLine("    if (Get-Process -Name $name) { exit 1 }")
@@ -72,9 +77,6 @@ public static class SelfUninstall
         }
         return script.ToString();
     }
-
-    /// <summary>Task Scheduler's folder of the app's own tasks, without the trailing backslash.</summary>
-    private static string OwnTasksFolder => Actions.OwnTaskAction.Folder.TrimEnd('\\');
 
     /// <summary>Arguments for powershell.exe that run <paramref name="script"/> without quoting problems.</summary>
     public static string PowerShellArguments(string script) => PowerShellScript.Encoded(script);
