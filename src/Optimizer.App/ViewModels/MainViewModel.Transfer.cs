@@ -53,14 +53,16 @@ public sealed partial class MainViewModel
             }
             var name = $"Tunero-{Environment.MachineName}-{DateTime.Now:yyyy-MM-dd}{ChangeTransfer.Extension}";
             if (_dialogs.PickSaveFile(name, Loc.Instance["Transfer_FileType"], ChangeTransfer.Extension) is not { } path) return;
-            await File.WriteAllTextAsync(path, ChangeTransfer.Serialize(file));
+            var text = ChangeTransfer.Serialize(file);
+            await Task.Run(() => SafeDelete.WriteReplacing(path, text));
             Log.Info("transfer", "exported", new { tweaks = file.Tweaks.Count, priorities = file.Priorities.Count, apps = file.Apps?.Count, services = file.Services?.Count, startup = file.Startup?.Count, pcSpecific });
             ShowResult(Loc.Instance.Format("Transfer_Exported", file.Count, Path.GetFileName(path), pcSpecific), InfoBarSeverity.Success);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             Log.Warn("transfer", $"export failed: {ex.Message}");
-            ShowResult(Loc.Instance.Format("Result_Error", ex.Message), InfoBarSeverity.Error);
+            ShowResult(ex is LinkedFolderException linked ? Loc.Instance.Format("Export_LinkedFolder", linked.Folder) : Loc.Instance.Format("Result_Error", ex.Message),
+                InfoBarSeverity.Error);
         }
     }
 
@@ -71,7 +73,7 @@ public sealed partial class MainViewModel
         TransferFile? file;
         try
         {
-            file = new FileInfo(path).Length > ChangeTransfer.MaxFileBytes ? null : ChangeTransfer.Parse(await File.ReadAllTextAsync(path));
+            file = await ChangeTransfer.ReadFileAsync(path);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

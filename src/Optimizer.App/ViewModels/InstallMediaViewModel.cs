@@ -2083,13 +2083,14 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         if (_dialogs.PickSaveFile("Windows11_choices.json", Loc.Instance["Media_ChoicesFiles"], ".json", null, Loc.Instance["Media_SaveChoicesTitle"]) is not { } path) return;
         try
         {
-            File.WriteAllText(path, MediaRequestFile.FromChoices(choices, choices.Tunero?.Profile, choices.Tunero?.Theme).ToJson());
+            SafeDelete.WriteReplacing(path, MediaRequestFile.FromChoices(choices, choices.Tunero?.Profile, choices.Tunero?.Theme).ToJson());
             ShowChoicesNote(Loc.Instance.Format("Media_ChoicesSaved", path), InfoBarSeverity.Success);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             Log.Warn("media", $"the choices could not be saved: {ex.Message}");
-            ShowChoicesNote(Loc.Instance.Format("Media_ChoicesSaveFailed", path), InfoBarSeverity.Warning);
+            ShowChoicesNote(ex is LinkedFolderException linked ? Loc.Instance.Format("Export_LinkedFolder", linked.Folder) : Loc.Instance.Format("Media_ChoicesSaveFailed", path),
+                InfoBarSeverity.Warning);
         }
     }
 

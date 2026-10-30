@@ -46,6 +46,28 @@ public class ChangeTransferTests
     [InlineData("""{"kind":"pcoptimizer-changes","format":1,"tweaks":[],"priorities":[{"exe":"game.exe","cpu":"24","lowIo":false}]}""")]
     public void InvalidFilesAreRejected(string text) => Assert.Null(ChangeTransfer.Parse(text));
 
+    /// <summary>A picked file is read whole only up to the size limit, which is checked on the stream that is read.</summary>
+    [Fact]
+    public async Task ReadingAFileChecksItsSize()
+    {
+        var folder = TestFolders.Create("transfer");
+        try
+        {
+            var file = new TransferFile(ChangeTransfer.FileKind, 1, "0.6.9", "26300.1", DateTimeOffset.Now, ["explorer.fileExtensions"], []);
+            var good = Path.Combine(folder, "good.tunero");
+            await File.WriteAllTextAsync(good, ChangeTransfer.Serialize(file), new System.Text.UTF8Encoding(true));
+            Assert.Equal(["explorer.fileExtensions"], (await ChangeTransfer.ReadFileAsync(good))!.Tweaks);
+
+            var large = Path.Combine(folder, "large.tunero");
+            await File.WriteAllTextAsync(large, new string(' ', (int)ChangeTransfer.MaxFileBytes) + ChangeTransfer.Serialize(file));
+            Assert.Null(await ChangeTransfer.ReadFileAsync(large));
+        }
+        finally
+        {
+            TestFolders.Delete(folder);
+        }
+    }
+
     [Fact]
     public void FileCanOnlySelectCatalogTweaks()
     {

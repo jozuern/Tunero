@@ -97,7 +97,7 @@
                                                 <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding Meta}" Margin="0,4,0,0" />
                                             </StackPanel>
                                         </ui:CardControl.Header>
-                                        <ui:Button Content="{l:Tr Debloat_Remove}" Appearance="Secondary" IsEnabled="{Binding CanRemove}"
+                                        <ui:Button Content="{l:Tr Debloat_Remove}" Appearance="Secondary" IsEnabled="{Binding CanRemove}" AutomationProperties.Name="{Binding RemoveLabel}"
                                                    Command="{Binding DataContext.Debloat.RemoveUnreviewedCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" />
                                     </ui:CardControl>
                                 </DataTemplate>
@@ -154,7 +154,7 @@
                                                 <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding When}" />
                                             </StackPanel>
                                         </ui:CardControl.Header>
-                                        <ui:Button Content="{l:Tr Debloat_Reinstall}" Icon="{ui:SymbolIcon Open20}"
+                                        <ui:Button Content="{l:Tr Debloat_Reinstall}" Icon="{ui:SymbolIcon Open20}" AutomationProperties.Name="{Binding ReinstallLabel}"
                                                    Command="{Binding DataContext.Debloat.OpenStoreCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding StoreLink}"
                                                    Visibility="{Binding StoreLink, Converter={StaticResource NullToVisibility}}" />
                                     </ui:CardControl>

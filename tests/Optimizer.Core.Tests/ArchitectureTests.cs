@@ -67,6 +67,34 @@ public partial class ArchitectureTests
         Assert.Empty(problems);
     }
 
+    /// <summary>App files allowed to write a file with File.WriteAll*, and why the path cannot be one someone else chose.</summary>
+    private static readonly Dictionary<string, string> OwnFileWrites = new(StringComparer.Ordinal)
+    {
+        ["InstallMediaViewModel.cs"] = "the remembered choices, a temp file in the app's admin-only data folder",
+    };
+
+    /// <summary>
+    /// The window's code writes a file someone chose (an export, a developer switch's output) through
+    /// <see cref="Platform.SafeDelete.WriteReplacing"/> or the new-file-only output of a switch, never with File.WriteAll*,
+    /// which follows a link a program put in place of the file or a folder above it after the dialog closed.
+    /// </summary>
+    [Fact]
+    public void TheWindowWritesChosenFilesWithoutFollowingLinks()
+    {
+        var problems = new List<string>();
+        foreach (var file in Directory.EnumerateFiles(Path.Combine(RepoPaths.Root, "src", "Optimizer.App"), "*.cs", SearchOption.AllDirectories))
+        {
+            if (file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)) continue;
+            var name = Path.GetFileName(file);
+            if (FileWriteAll().IsMatch(File.ReadAllText(file)) && !OwnFileWrites.ContainsKey(name))
+                problems.Add($"{name}: writes with File.WriteAll* (use SafeDelete.WriteReplacing)");
+        }
+        Assert.Empty(problems);
+    }
+
+    [GeneratedRegex(@"\bFile\.(WriteAll|AppendAll)\w*\(")]
+    private static partial Regex FileWriteAll();
+
     /// <summary>
     /// Every change goes through <see cref="Tweaks.ChangeSession"/>, which takes the cross-process change lock itself: no
     /// other code takes the lock or calls the engine's apply and undo, so a new entry point cannot skip the lock. And

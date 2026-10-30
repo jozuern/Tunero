@@ -21,13 +21,11 @@ public sealed partial class MainViewModel
 
         BuildProfileOptions();
         BuildFindingLists();
-        OnPropertyChanged(nameof(IsEnglish));
         OnPropertyChanged(nameof(TweakViewOptions));
         OnPropertyChanged(nameof(TweakImpactOptions));
         OnPropertyChanged(nameof(TweakImpactMin));
         OnPropertyChanged(nameof(TweaksProfileLink));
         OnPropertyChanged(nameof(TweakViewMode));
-        OnPropertyChanged(nameof(IsGerman));
 
         FillTweaks();
         BuildRecommendations();
@@ -350,7 +348,8 @@ public sealed partial class MainViewModel
     /// <summary>Developer switch --category: opens that group on the Tweaks page (a section key or a catalog category).</summary>
     public void OpenTweakGroup(string key)
     {
-        if (_tweakGroups.All(g => g.Key != key)) key = TweakSections[SectionIndex(key)].Key;
+        // A catalog category opens its section; a section key or another group that is not shown opens nothing.
+        if (_tweakGroups.All(g => g.Key != key) && Optimizer.Core.Tweaks.TweakSections.Contains(key)) key = TweakSections[SectionIndex(key)].Key;
         if (_tweakGroups.FirstOrDefault(g => g.Key == key) is { IsExpanded: false } group) ToggleTweakGroup(group);
     }
 

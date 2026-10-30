@@ -284,10 +284,6 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
     public bool ChangeLogEmpty => ChangeLog.Count == 0;
     public bool IsElevated => _services.Elevation.IsElevated;
 
-    public bool IsEnglish => Loc.Instance.Language == "en";
-    public bool IsGerman => Loc.Instance.Language == "de";
-    public string ThemeSetting => _settings.Theme;
-
     public string Version => AppInfo.Text;
     public string AboutText => Loc.Instance.Format("About_Text", Version);
     public string LogFile => Log.CurrentFile ?? Log.Directory;
@@ -499,7 +495,6 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
     };
 
     public bool UpdateAvailable => Updates.UpdateAvailable;
-    public bool CanSelfUpdate => Updates.CanSelfUpdate;
     public bool CanUpdateInApp => Updates.CanUpdateInApp;
     public bool Updating => Updates.Updating;
     public PackageInstall? Package => Install.Package;
@@ -512,7 +507,6 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
     {
         OnPropertyChanged(nameof(UpdateStatus));
         OnPropertyChanged(nameof(UpdateAvailable));
-        OnPropertyChanged(nameof(CanSelfUpdate));
         OnPropertyChanged(nameof(CanUpdateInApp));
         OnPropertyChanged(nameof(Updating));
     }

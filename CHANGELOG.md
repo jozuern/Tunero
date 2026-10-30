@@ -19,6 +19,12 @@
 - **DNS servers: automatic** leaves network adapters with a fixed IP address alone. Before, it cleared their DNS servers, and no router hands them new ones.
 - **Uninstall leftovers:** a folder another installed program still uses is not offered when its uninstall entry or service names it with an 8.3 short name (`C:\PROGRA~2\...`).
 - **Update in the app:** works for a Tunero.exe in a drive root, such as a USB stick. A failed update no longer leaves the downloaded copy (`Tunero.exe.new`) beside the exe.
+- **Services & tasks:** a scheduled task you switched keeps its new state when you then search or filter the task list.
+- **Startup:** Check with VirusTotal waits until the signatures are read, so no hashes of files signed by Microsoft are sent.
+- **Graphics & DNS:** the link to the other network settings opens the Network group of the Tweaks page, also with a search or filter set. Before, it could open Security and system.
+- **Install & update:** an Update all or Update that cannot start while another change runs keeps the result of Check for updates. Refresh or a language switch during an install keeps the row's progress and result.
+- **Exports** (changes, Startup list, install media choices) replace the chosen file without following a link put in its place. A folder reached through a link is refused with a message that says so; choose the folder it points to.
+- **Screen readers:** Undo, Apply again, Details, Remove and Reinstall in lists name their item.
 
 ## 1.5.0
 

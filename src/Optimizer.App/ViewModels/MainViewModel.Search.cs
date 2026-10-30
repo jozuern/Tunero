@@ -215,6 +215,10 @@ public sealed partial class MainViewModel
     [RelayCommand]
     private void OpenTweaksNetwork()
     {
+        // Search, impact filter and the narrow views could hide the Network group (as ShowIgnoredTweaks clears them).
+        TweakImpactMin = 0;
+        TweakSearch = "";
+        if (TweakViewMode != TweakView.Everything) TweakViewMode = TweakView.Applicable;
         CurrentPage = Page.Tweaks;
         OpenTweakGroup("network");
     }

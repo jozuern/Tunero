@@ -189,10 +189,10 @@
                                         <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Rec_AgainstOutside}" Foreground="{DynamicResource TextFillColorTertiaryBrush}"
                                                       Visibility="{Binding SetOutside, Converter={StaticResource BoolToVisibility}}" />
                                     </StackPanel>
-                                    <ui:Button Grid.Column="2" Content="{l:Tr Tweak_Undo}" Icon="{ui:SymbolIcon ArrowUndo20}" Margin="16,0,0,0" VerticalAlignment="Center"
+                                    <ui:Button Grid.Column="2" Content="{l:Tr Tweak_Undo}" Icon="{ui:SymbolIcon ArrowUndo20}" Margin="16,0,0,0" VerticalAlignment="Center" AutomationProperties.Name="{Binding UndoLabel}"
                                                Visibility="{Binding CanUndo, Converter={StaticResource BoolToVisibility}}"
                                                Command="{Binding DataContext.UndoRecordCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding TweakId}" />
-                                    <ui:Button Grid.Column="2" Content="{l:Tr Common_Details}" Margin="16,0,0,0" VerticalAlignment="Center"
+                                    <ui:Button Grid.Column="2" Content="{l:Tr Common_Details}" Margin="16,0,0,0" VerticalAlignment="Center" AutomationProperties.Name="{Binding DetailsLabel}"
                                                Visibility="{Binding SetOutside, Converter={StaticResource BoolToVisibility}}"
                                                Command="{Binding DataContext.ShowTweakCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding TweakId}" />
                                     <ui:Button Grid.Column="3" Appearance="Transparent" Icon="{ui:SymbolIcon EyeOff20}" Margin="8,0,0,0" VerticalAlignment="Center"

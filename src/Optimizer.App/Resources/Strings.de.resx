@@ -392,9 +392,6 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Cleanup_DoHint" xml:space="preserve">
     <value>Updatedateien, die Windows zum Teilen mit anderen PCs aufbewahrt. Kann gelöscht werden; Windows lädt Benötigtes neu.</value>
   </data>
-  <data name="Cleanup_Run" xml:space="preserve">
-    <value>Ausführen</value>
-  </data>
   <data name="Tools_Running" xml:space="preserve">
     <value>Läuft.</value>
   </data>
@@ -1840,7 +1837,6 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Media_OpenFolder" xml:space="preserve"><value>Im Ordner zeigen</value></data>
   <data name="Media_OpenLog" xml:space="preserve"><value>Protokoll anzeigen</value></data>
   <data name="Media_Done" xml:space="preserve"><value>Die ISO ist fertig: {0} ({1}).</value></data>
-  <data name="Media_DoneNoSize" xml:space="preserve"><value>Die ISO ist fertig: {0}.</value></data>
   <data name="Media_Failed" xml:space="preserve"><value>Das Erstellen brach bei „{0}“ ab: {1}</value></data>
   <data name="Media_ErrorCode" xml:space="preserve"><value>Fehlercode: {0}.</value></data>
   <data name="Media_LogAt" xml:space="preserve"><value>Protokoll: {0}</value></data>
@@ -2073,4 +2069,10 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Media_Review_AppsOther" xml:space="preserve"><value>Weitere Apps</value></data>
   <data name="Media_Review_On" xml:space="preserve"><value>An</value></data>
   <data name="Media_Review_Footer" xml:space="preserve"><value>Es wird nichts erstellt, bevor du ISO erstellen wählst.</value></data>
+  <data name="Debloat_ReinstallName" xml:space="preserve"><value>{0} neu installieren</value></data>
+  <data name="Prio_RemoveName" xml:space="preserve"><value>Regel für {0} entfernen</value></data>
+  <data name="Changes_UndoName" xml:space="preserve"><value>{0} rückgängig machen</value></data>
+  <data name="Changes_ApplyAgainName" xml:space="preserve"><value>{0} erneut anwenden</value></data>
+  <data name="Common_DetailsName" xml:space="preserve"><value>Details zu {0}</value></data>
+  <data name="Export_LinkedFolder" xml:space="preserve"><value>{0} liegt hinter einem Link (Junction oder symbolischer Link), deshalb speichert Tunero dort nicht: Ein Programm könnte den Link angelegt haben. Wähle den Ordner, auf den er zeigt, oder einen anderen Ordner.</value></data>
 </root>

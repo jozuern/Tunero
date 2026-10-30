@@ -112,7 +112,7 @@ public sealed partial class WorkProgress : ObservableObject
     /// <summary>One run in the banner. Dispose ends it.</summary>
     public sealed class Scope(WorkProgress owner, string title, CancellationTokenSource? stop) : IDisposable
     {
-        public string Title { get; private set; } = title;
+        public string Title { get; } = title;
         internal CancellationTokenSource? Stop { get; } = stop;
         internal int Done { get; private set; }
         internal int Total { get; private set; }
@@ -149,12 +149,6 @@ public sealed partial class WorkProgress : ObservableObject
 
         /// <summary>A step of unknown length (the restore point): a moving bar, the count stays.</summary>
         public void Indeterminate(string? detail) => Report(null, detail);
-
-        public void Rename(string title)
-        {
-            Title = title;
-            owner.Changed(this);
-        }
 
         public void Dispose() => owner.End(this);
     }

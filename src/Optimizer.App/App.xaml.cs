@@ -870,7 +870,8 @@ public partial class App : Application
             if (element is UIElement u) u.MoveFocus(next);
             else if (element is ContentElement c) c.MoveFocus(next);
         }
-        File.WriteAllLines(path, lines);
+        using var writer = new StreamWriter(OutputFile(path));
+        foreach (var line in lines) writer.WriteLine(line);
     }
 
     private static void SaveScreenshot(Window window, string path)

@@ -558,12 +558,18 @@ public sealed record UnreviewedRow(Optimizer.Core.Debloat.InstalledAppx App, boo
     public string Name => App.Name;
     public string Meta => Loc.Instance.Format("Debloat_UnreviewedMeta", App.Version);
 
+    /// <summary>"Remove Xbox": what a screen reader says for the row's button.</summary>
+    public string RemoveLabel => Loc.Instance.Format("Debloat_RemoveName", Name);
+
     // What screen readers announce for this item in a list.
     public override string ToString() => Name;
 }
 
 public sealed record RemovedRow(string Name, string When, string? StoreLink)
 {
+    /// <summary>"Reinstall Xbox": what a screen reader says for the row's button.</summary>
+    public string ReinstallLabel => Loc.Instance.Format("Debloat_ReinstallName", Name);
+
     // What screen readers announce for this item in a list or combo box.
     public override string ToString() => Name;
 }

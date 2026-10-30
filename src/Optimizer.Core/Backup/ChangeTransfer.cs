@@ -152,6 +152,19 @@ public static partial class ChangeTransfer
 
     public static string Serialize(TransferFile file) => JsonSerializer.Serialize(file, Json);
 
+    /// <summary>
+    /// Reads a transfer file the user picked (the window's Import, <c>--apply</c>): null when it is larger than
+    /// <see cref="MaxFileBytes"/> or not a valid one. The size is checked on the same stream that is read, so a link to a
+    /// larger file cannot get past it.
+    /// </summary>
+    public static async Task<TransferFile?> ReadFileAsync(string path)
+    {
+        await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, useAsync: true);
+        if (stream.Length > MaxFileBytes) return null;
+        using var reader = new StreamReader(stream, detectEncodingFromByteOrderMarks: true);
+        return Parse(await reader.ReadToEndAsync());
+    }
+
     /// <summary>Reads a transfer file; null when it is not one, is from a newer format, or holds anything invalid.</summary>
     public static TransferFile? Parse(string text)
     {

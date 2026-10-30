@@ -22,11 +22,14 @@ public sealed partial class StartupRow : SwitchRow
 
     private readonly AppServices _services;
     private readonly ChangeRunner _runner;
+    private readonly Action<bool>? _switched;
 
-    public StartupRow(StartupEntry entry, string lang, AppServices services, ChangeRunner runner) : base(entry.Enabled ?? true)
+    /// <param name="switched">Called with the new state once a switch was written (a page that rebuilds its rows from its own list keeps that list current).</param>
+    public StartupRow(StartupEntry entry, string lang, AppServices services, ChangeRunner runner, Action<bool>? switched = null) : base(entry.Enabled ?? true)
     {
         _services = services;
         _runner = runner;
+        _switched = switched;
         Entry = entry;
         Tab = StartupViewModel.TabOf(entry);
         KindText = Labels.Current.Get(lang, $"startupKind.{entry.Kind}");
@@ -141,7 +144,12 @@ public sealed partial class StartupRow : SwitchRow
         AttentionTags = tags;
     }
 
-    protected override Task<bool> ToggleAsync(bool on) => Switching.SetAsync(_services, _runner, enabled => StartupTweaks.Set(Entry, enabled), on);
+    protected override async Task<bool> ToggleAsync(bool on)
+    {
+        if (!await Switching.SetAsync(_services, _runner, enabled => StartupTweaks.Set(Entry, enabled), on)) return false;
+        _switched?.Invoke(on);
+        return true;
+    }
 }
 
 public sealed record FilterOption(string Key, string Text)
@@ -442,6 +450,12 @@ public sealed partial class StartupViewModel(IPageHost owner, AppServices servic
             VirusTotalStatus = Loc.Instance["Vt_NoKey"];
             return;
         }
+        // Until the signatures are read every entry counts as not Microsoft's: the lookup would send Windows' own files too.
+        if (IsLoading || _checkingSignatures || _all.Count == 0)
+        {
+            VirusTotalStatus = Loc.Instance["Startup_SnapshotWait"];
+            return;
+        }
         _vtCancel = new CancellationTokenSource();
         IsCheckingVirusTotal = true;
         var lang = Lang;
@@ -546,12 +560,13 @@ public sealed partial class StartupViewModel(IPageHost owner, AppServices servic
         try
         {
             var csv = StartupExport.ToCsv(rows, headers, StartupExport.SeparatorFor(Loc.Regional));
-            await File.WriteAllTextAsync(path, csv, new System.Text.UTF8Encoding(true));
+            await Task.Run(() => SafeDelete.WriteReplacing(path, csv, byteOrderMark: true));
             Owner.ShowResult(Loc.Instance.Format("Startup_Exported", rows.Count, Path.GetFileName(path)), Wpf.Ui.Controls.InfoBarSeverity.Success);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            Owner.ShowResult(Loc.Instance.Format("Result_Error", ex.Message), Wpf.Ui.Controls.InfoBarSeverity.Error);
+            Owner.ShowResult(ex is LinkedFolderException linked ? Loc.Instance.Format("Export_LinkedFolder", linked.Folder) : Loc.Instance.Format("Result_Error", ex.Message),
+                Wpf.Ui.Controls.InfoBarSeverity.Error);
         }
     }
 

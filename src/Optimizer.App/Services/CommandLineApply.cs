@@ -159,7 +159,7 @@ public static class CommandLineApply
         TransferFile? file;
         try
         {
-            file = new FileInfo(path).Length > ChangeTransfer.MaxFileBytes ? null : ChangeTransfer.Parse(await File.ReadAllTextAsync(path));
+            file = await ChangeTransfer.ReadFileAsync(path);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {

@@ -117,6 +117,11 @@ public sealed record ChangeRecordItem(string TweakId, string Title, string When,
     public string? ResetText { get; init; }
 
     public bool IsReset => ResetText is not null;
+
+    /// <summary>What a screen reader says for the row's buttons ("Undo Show file extensions").</summary>
+    public string UndoLabel => Loc.Instance.Format("Changes_UndoName", Title);
+
+    public string ReapplyLabel => Loc.Instance.Format("Changes_ApplyAgainName", Title);
 }
 
 public sealed record LogLine(string Time, string Text)
@@ -165,6 +170,11 @@ public sealed record ProfileOption(string Id, string Name, string Description, S
 public sealed record AgainstLine(string TweakId, string Title, string Reason, bool CanUndo)
 {
     public bool SetOutside => !CanUndo;
+
+    /// <summary>What a screen reader says for the row's buttons.</summary>
+    public string UndoLabel => Loc.Instance.Format("Changes_UndoName", Title);
+
+    public string DetailsLabel => Loc.Instance.Format("Common_DetailsName", Title);
 
     // What screen readers announce for this item in a list or combo box.
     public override string ToString() => Title;

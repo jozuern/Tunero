@@ -180,6 +180,10 @@ public sealed partial class ServicesViewModel(IPageHost owner, AppServices servi
         Filter();
     }
 
+    /// <summary>A task switched on this page: the list the rows are built from follows, so a search or filter shows the new state.</summary>
+    private void TaskSwitched(string path, bool enabled) =>
+        _taskList = _taskList.Select(t => string.Equals(t.Path, path, StringComparison.OrdinalIgnoreCase) ? t with { Enabled = enabled } : t).ToList();
+
     private void FillTasks()
     {
         var lang = Lang;
@@ -199,7 +203,8 @@ public sealed partial class ServicesViewModel(IPageHost owner, AppServices servi
             {
                 Target = t.Path,
             };
-            Tasks.Add(new StartupRow(entry, lang, services, runner));
+            var path = t.Path;
+            Tasks.Add(new StartupRow(entry, lang, services, runner, on => TaskSwitched(path, on)));
         }
         OnPropertyChanged(nameof(TasksNoMatch));
     }

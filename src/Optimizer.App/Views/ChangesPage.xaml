@@ -35,10 +35,10 @@
                                 </StackPanel>
                             </ui:CardControl.Header>
                             <StackPanel Orientation="Horizontal">
-                                <ui:Button Content="{l:Tr Drift_ApplyAgain}" Appearance="Primary" Icon="{ui:SymbolIcon ArrowRedo20}" Margin="0,0,8,0"
+                                <ui:Button Content="{l:Tr Drift_ApplyAgain}" Appearance="Primary" Icon="{ui:SymbolIcon ArrowRedo20}" Margin="0,0,8,0" AutomationProperties.Name="{Binding ReapplyLabel}"
                                            Visibility="{Binding IsReset, Converter={StaticResource BoolToVisibility}}"
                                            Command="{Binding DataContext.ReapplyRecordCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding TweakId}" />
-                                <ui:Button Content="{l:Tr Tweak_Undo}" Icon="{ui:SymbolIcon ArrowUndo20}" IsEnabled="{Binding CanUndo}"
+                                <ui:Button Content="{l:Tr Tweak_Undo}" Icon="{ui:SymbolIcon ArrowUndo20}" IsEnabled="{Binding CanUndo}" AutomationProperties.Name="{Binding UndoLabel}"
                                            Command="{Binding DataContext.UndoRecordCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding TweakId}" />
                             </StackPanel>
                         </ui:CardControl>

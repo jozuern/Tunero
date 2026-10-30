@@ -758,10 +758,11 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
             // "(2/5) Found ..." as winget starts each package; without it the bar keeps moving.
             if (ToolProgress.WingetPackage(l) is var (done, total)) banner?.Step(done, total, l[(l.IndexOf(')') + 1)..].Trim());
         });
+        var ran = false;
         try
         {
             // No Stop: ending a package manager in the middle of an installer can leave a program half updated.
-            await RunWorkAsync("update all apps", Loc.Instance["Work_UpdateApps"], async work =>
+            ran = await RunWorkAsync("update all apps", Loc.Instance["Work_UpdateApps"], async work =>
             {
                 banner = work;
                 var results = await PackageRuns.RunAllAsync(plan, progress);
@@ -772,8 +773,9 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
         finally
         {
             IsUpdatingAll = false;
-            // What the last check found is out of date now: the rows show their buttons again until the next check.
-            if (_upgrades is not null)
+            // What the last check found is out of date now: the rows show their buttons again until the next check. A run
+            // that was refused (another change was running) changed nothing, so the check stays.
+            if (ran && _upgrades is not null)
             {
                 _upgrades = null;
                 UpdatesText = null;
@@ -1009,7 +1011,9 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
         for (var i = 0; i < Leftovers.Count; i++)
             Leftovers[i] = new LeftoverRow(Leftovers[i].Leftover, Leftovers[i].ProgramName) { Selected = Leftovers[i].Selected };
         OnPropertyChanged(nameof(UninstallSelectedText));
-        for (var i = 0; i < SearchResults.Count; i++) SearchResults[i] = new WingetResultRow(SearchResults[i].Package);
+        // A result being installed, or showing how its install went, keeps its row: the install writes to it.
+        for (var i = 0; i < SearchResults.Count; i++)
+            if (SearchResults[i] is { IsInstalling: false, StateText.Length: 0 } idle) SearchResults[i] = new WingetResultRow(idle.Package);
         if (!IsSearching && SearchResults.Count > 0) SearchNote = Loc.Instance.Format("Apps_SearchCount", SearchResults.Count);
         return Task.CompletedTask;
     }
@@ -1018,11 +1022,16 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
     {
         var lang = Lang;
         var programs = Owner.Profile?.Extras?.Programs ?? [];
+        // A row whose install or update runs stays the same object: that run writes its progress and result to it.
+        var running = new Dictionary<string, AppRow>(StringComparer.OrdinalIgnoreCase);
+        foreach (var r in Apps)
+            if (r.IsInstalling) running[r.App.Id] = r;
         Apps.Clear();
         string? last = null;
         foreach (var a in CatalogData.Current.Apps.Apps)
         {
-            Apps.Add(new AppRow(a, lang, a.IsInstalled(programs)) { GroupHeader = a.Category == last ? null : Labels.Current.Get(lang, $"appCategory.{a.Category}") });
+            Apps.Add(running.TryGetValue(a.Id, out var busy) ? busy
+                : new AppRow(a, lang, a.IsInstalled(programs)) { GroupHeader = a.Category == last ? null : Labels.Current.Get(lang, $"appCategory.{a.Category}") });
             last = a.Category;
         }
         ShowUpgrades();
@@ -1116,6 +1125,7 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
             return;
         }
         row.IsInstalling = true;
+        var before = row.StateText;
         row.StateText = Loc.Instance["Apps_Updating"];
         var lines = new List<string>();
         var progress = new Progress<string>(l =>
@@ -1142,7 +1152,8 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
                         row.StateText = text;
                     }
                 }))
-                row.StateText = Loc.Instance["Apps_Installed"];
+                // Refused (another change was running) or failed before winget answered: the line shows what it showed.
+                row.StateText = before;
         }
         finally
         {

@@ -193,6 +193,33 @@ public static class SafeDelete
     }
 
     /// <summary>
+    /// Writes a file someone chose in a save dialog (an export), replacing one that is there, without following a link a
+    /// program put at that name or in place of a folder above it after the dialog closed: the folder stays held
+    /// (<see cref="Pin"/>) while the old entry goes (a link itself, never its target) and the file is created new at the
+    /// checked path. On a network drive the server resolves links, not this PC, so the file is written directly there.
+    /// </summary>
+    public static void WriteReplacing(string path, string text, bool byteOrderMark = false)
+    {
+        var encoding = new System.Text.UTF8Encoding(byteOrderMark);
+        var full = Path.GetFullPath(path);
+        if (OnNetwork(full))
+        {
+            File.WriteAllText(full, text, encoding);
+            return;
+        }
+        var folder = Path.GetDirectoryName(full)!;
+        using var pin = Pin(folder, allowRoot: true) ?? throw new LinkedFolderException(folder);
+        if (File.Exists(full) || Directory.Exists(full)) DeleteFile(full);
+        using var stream = CreateNew(full);
+        stream.Write(encoding.GetPreamble());
+        stream.Write(encoding.GetBytes(text));
+    }
+
+    private static bool OnNetwork(string full) =>
+        full.StartsWith(@"\\", StringComparison.Ordinal)
+        || (Path.GetPathRoot(full) is { Length: > 0 } root && new DriveInfo(root).DriveType == DriveType.Network);
+
+    /// <summary>
     /// The path <see cref="CreateNew"/> creates and expects the handle to have: the folder in its long form, then the name.
     /// Join, not Combine: in a drive root the folder is "E:", and Combine would make the drive-relative "E:name".
     /// </summary>
@@ -309,4 +336,14 @@ public static class SafeDelete
     [DllImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool SetFileInformationByHandle(SafeFileHandle handle, int infoClass, ref FileDispositionInfoEx info, int size);
+}
+
+/// <summary>
+/// The folder of a file to write is, or lies below, a link (junction, symbolic link, mount point) or cannot be held:
+/// nothing is written (<see cref="SafeDelete.WriteReplacing"/>). A link someone made on purpose (Documents moved to another
+/// drive with mklink) looks the same as one a program swapped in, so the user picks the folder it points to instead.
+/// </summary>
+public sealed class LinkedFolderException(string folder) : IOException($"{folder} is a link or cannot be held: not written")
+{
+    public string Folder { get; } = folder;
 }

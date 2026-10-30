@@ -186,7 +186,7 @@
                                                 <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding Details}" Margin="0,4,0,0" />
                                             </StackPanel>
                                         </ui:CardControl.Header>
-                                        <ui:Button Content="{l:Tr Prio_Remove}" Icon="{ui:SymbolIcon Delete20}" CommandParameter="{Binding}"
+                                        <ui:Button Content="{l:Tr Prio_Remove}" Icon="{ui:SymbolIcon Delete20}" CommandParameter="{Binding}" AutomationProperties.Name="{Binding RemoveLabel}"
                                                    Command="{Binding DataContext.Tools.RemovePriorityRuleCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" />
                                     </ui:CardControl>
                                 </DataTemplate>

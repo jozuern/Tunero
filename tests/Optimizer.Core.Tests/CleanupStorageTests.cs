@@ -215,6 +215,28 @@ public class CleanupStorageTests : IDisposable
         Assert.Empty(Directory.GetFiles(protectedDir));
     }
 
+    /// <summary>
+    /// An export replaces the file it was saved over, with or without a byte order mark, and is refused when a folder on
+    /// its path was swapped for a link after the dialog: nothing lands where the link points.
+    /// </summary>
+    [Fact]
+    public void AnExportReplacesItsFileButNotThroughALinkedFolder()
+    {
+        var export = Path.Combine(_root, @"exports\changes.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(export)!);
+        System.IO.File.WriteAllText(export, "an older, longer export");
+        Optimizer.Core.Platform.SafeDelete.WriteReplacing(export, "new");
+        Assert.Equal("new"u8.ToArray(), System.IO.File.ReadAllBytes(export));
+        Optimizer.Core.Platform.SafeDelete.WriteReplacing(export, "csv", byteOrderMark: true);
+        Assert.Equal([0xEF, 0xBB, 0xBF, (byte)'c', (byte)'s', (byte)'v'], System.IO.File.ReadAllBytes(export));
+
+        var protectedDir = Path.Combine(_root, "protected");
+        Directory.CreateDirectory(protectedDir);
+        Junction(Path.Combine(_root, "swapped"), protectedDir);
+        Assert.ThrowsAny<IOException>(() => Optimizer.Core.Platform.SafeDelete.WriteReplacing(Path.Combine(_root, @"swapped\changes.json"), "x"));
+        Assert.Empty(Directory.GetFiles(protectedDir));
+    }
+
     [Fact]
     public async Task StorageAnalyzerFindsDuplicatesInTheTree()
     {

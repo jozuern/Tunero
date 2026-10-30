@@ -155,7 +155,7 @@ public sealed class InstallMediaViewModelTests : IDisposable
         media.CopyHashCommand.Execute(null);
         Assert.Equal(hash, _clipboard);
         media.OpenFolderCommand.Execute(null);
-        Assert.Equal([media.OutputPath], _shown);
+        Assert.Equal([media.OutputPath!], _shown);
         Assert.True(media.ShowLogCommand.CanExecute(null));
         media.ShowLogCommand.Execute(null);
         Assert.Equal(_result.LogPath, _shown[^1]);

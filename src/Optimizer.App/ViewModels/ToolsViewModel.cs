@@ -283,6 +283,9 @@ public sealed record PriorityRow(PriorityRule Rule, string CpuText, string? IoTe
 {
     public string Exe => Rule.Exe;
     public string Details => IoText is null ? CpuText : CpuText.Length == 0 ? IoText : $"{CpuText}, {IoText}";
+
+    /// <summary>What a screen reader says for the row's Remove button.</summary>
+    public string RemoveLabel => Loc.Instance.Format("Prio_RemoveName", Exe);
 }
 
 /// <summary>A quick fix card; title and hint come from the string resources in the current language.</summary>
