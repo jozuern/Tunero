@@ -1,11 +1,15 @@
 ---
 import Base from '../layouts/Base.astro';
-import t from '../i18n/en';
+import { t } from '../i18n/index.ts';
+
+const en = t('en');
+const de = t('de');
 ---
 
-<Base t={t} title="Page not found, Tunero" alternate="/de/" indexed={false}>
-  <section class="legal container">
-    <h1>Page not found</h1>
-    <p>This address does not exist on tunero.dev. <a href="/">Go to the start page</a> or <a href="/de/">zur deutschen Startseite</a>.</p>
-  </section>
+<Base lang="en" title={`${en.notFound.title}, Tunero`} description={en.meta.description} path="/404/" indexed={false}>
+  <main id="main">
+    <h1>{en.notFound.title}</h1>
+    <p>{en.notFound.body} <a href="/">{en.notFound.home}</a></p>
+    <p lang="de">{de.notFound.body} <a href="/de/">{de.notFound.home}</a></p>
+  </main>
 </Base>

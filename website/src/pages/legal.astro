@@ -1,30 +1,5 @@
 ---
-import Base from '../layouts/Base.astro';
-import t from '../i18n/en';
-import { operator } from '../lib/data';
+import Legal from '../components/classic/Legal.astro';
 ---
 
-<Base t={t} title="Legal notice, Tunero" description="Legal notice (Impressum) for tunero.dev." alternate="/de/impressum/">
-  <section class="legal container">
-    <h1>Legal notice</h1>
-    <p>Information under § 5 of the German Digital Services Act (DDG). The <a href="/de/impressum/" hreflang="de" lang="de">German version</a> is the binding one.</p>
-
-    <h2>Operator</h2>
-    <address>
-      {operator.name}<br />
-      {operator.street}<br />
-      {operator.city}<br />
-      {operator.country.en}
-    </address>
-
-    <h2>Contact</h2>
-    <p>Email: <a href={`mailto:${operator.email}`}>{operator.email}</a></p>
-
-    <h2>Responsible for the content under § 18 (2) MStV</h2>
-    <address>
-      {operator.name}<br />
-      {operator.street}<br />
-      {operator.city}
-    </address>
-  </section>
-</Base>
+<Legal lang="en" />

@@ -1,29 +1,5 @@
 ---
-import Base from '../../layouts/Base.astro';
-import t from '../../i18n/de';
-import { operator } from '../../lib/data';
+import Legal from '../../components/classic/Legal.astro';
 ---
 
-<Base t={t} title="Impressum, Tunero" description="Anbieterkennzeichnung für tunero.dev." alternate="/legal/">
-  <section class="legal container">
-    <h1>Impressum</h1>
-
-    <h2>Angaben gemäß § 5 DDG</h2>
-    <address>
-      {operator.name}<br />
-      {operator.street}<br />
-      {operator.city}<br />
-      {operator.country.de}
-    </address>
-
-    <h2>Kontakt</h2>
-    <p>E-Mail: <a href={`mailto:${operator.email}`}>{operator.email}</a></p>
-
-    <h2>Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV</h2>
-    <address>
-      {operator.name}<br />
-      {operator.street}<br />
-      {operator.city}
-    </address>
-  </section>
-</Base>
+<Legal lang="de" />

@@ -1,4 +1,4 @@
-# Update pull requests for the .NET SDK in global.json, the pinned workflow actions, the NuGet packages and both websites'
+# Update pull requests for the .NET SDK in global.json, the pinned workflow actions, the NuGet packages and the website's
 # npm packages, one grouped pull request per ecosystem (security updates come at once and on their own). Versions of
 # actions and packages are proposed only once they are a week old: a hijacked release is usually found and pulled
 # within days. The SDK has no wait, since it comes from Microsoft and carries security fixes.
@@ -39,15 +39,6 @@ updates:
       default-days: 7
     groups:
       website:
-        patterns: [ "*" ]
-  - package-ecosystem: npm
-    directory: /website-v2
-    schedule:
-      interval: monthly
-    cooldown:
-      default-days: 7
-    groups:
-      website-v2:
         patterns: [ "*" ]
     ignore:
       # @astrojs/check (astro check in npm run build) accepts TypeScript 5 and 6 only; 7.0.2 broke npm ci.

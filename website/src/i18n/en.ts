@@ -1,187 +1,140 @@
-// English copy. Same voice as the app: plain words, real examples, no dashes; strong claims only where they are true (DESIGN.md).
-import type { Copy } from './types';
+// All English copy of the site. de.ts has the same shape (Strings), so a missing key fails the type check.
 
-const en: Copy = {
-  lang: 'en',
+/** A paragraph with links in it: plain text and links, in reading order. */
+export type Rich = (string | { text: string; href: string; lang?: 'en' | 'de' })[];
+
+/** One fact of "Why trust it", shared by the classic page and the desktop's Explorer window. */
+export interface TrustItem {
+  title: string;
+  body: string;
+  /** A command that checks the fact, shown as code after the body. */
+  code?: string;
+  link?: { label: string; href: string };
+}
+
+const repo = 'https://github.com/jozuern/Tunero';
+
+const en = {
+  lang: 'en' as const,
   meta: {
-    title: 'Tunero: PC optimizer for Windows 11',
+    title: 'Tunero, the PC optimizer for Windows 11',
     description:
-      'PC optimizer for Windows 11, built to be the only one you need. Tunero finds what costs your games frame rate, explains every change with sources and can undo every setting it changes. Free and open source.',
+      'Tunero scans your Windows 11 PC for what slows games down, explains every change with sources and undoes all of it. Free, open source, signed.',
+    classicTitle: 'Tunero, the PC optimizer for Windows 11 (classic page)',
   },
-  nav: { label: 'Main', download: 'Download', source: 'Source code', support: 'Support', questions: 'Questions', other: 'Deutsch', skip: 'Skip to content' },
-  hero: {
-    title: 'Built to be the only PC optimizer you need.',
+  skip: 'Skip to classic page',
+  noscript: 'The demo PC needs JavaScript. Everything about Tunero is also on the classic page:',
+  /** The skip link on a page that is already the classic page or one of its neighbours. */
+  skipContent: 'Skip to content',
+  notFound: {
+    title: 'Page not found',
+    body: 'This address does not exist on tunero.dev.',
+    home: 'Go to the start page',
+  },
+  demo: {
+    notSet: 'not set',
+    display: 'Display 1',
+    refreshWhere: 'Display 1: refresh rate',
+    power: {
+      maxState: 'Power plan, plugged in: Maximum processor state',
+      boostMode: 'Power plan, plugged in: Processor performance boost mode',
+      boostOff: 'Disabled',
+      boostOn: 'Aggressive',
+    },
+    startup: ['Game launcher', 'Chat', 'RGB control', 'Cloud sync', 'Updater', 'Music', 'Peripheral tool', 'Screenshot tool', 'Voice chat'],
+  },
+  classic: {
+    heading: 'Tunero',
+    claim: 'Built to be the only PC optimizer you need.',
     lead: 'Tunero scans your PC for what costs your games frame rate and fixes what it can. It is built to replace the tweak tools, debloat scripts, startup managers and cleaners you would otherwise collect. Every change is explained with sources, and every setting it changes is backed up first and can be undone.',
-    download: 'Download Tunero.exe',
-    winget: 'or with winget',
-    copy: 'Copy',
-    copied: 'Copied',
-    facts: (v) => `Version ${v} for Windows 11 25H2 or newer, x64. In English and German. Free software under the GPL-3.0-only.`,
+    nav: 'Site',
+    demo: 'Open the demo PC',
+    languages: 'Language',
+    /** The language switch: the short name and the full one of each language. */
+    english: { short: 'EN', name: 'English' },
+    german: { short: 'DE', name: 'Deutsch' },
+  },
+  download: {
+    title: 'Download',
+    button: 'Download Tunero.exe',
+    facts: (version: string) => `Version ${version} for Windows 11 25H2 or newer, x64. In English and German. Free software under the GPL‑3.0‑only.`,
     changes: 'What changed',
-    preview: 'Tunero.exe is code signed from version 1.2.3 on. Windows SmartScreen may still warn on the first start.',
-    previewLink: 'Why',
+    signed: 'Tunero.exe is code signed from version 1.2.3 on. Windows SmartScreen may still warn on the first start.',
+    signedLink: 'Why',
+    /** Shown under the button once it was clicked, with a link to the SmartScreen answer. */
     started: 'The download has started. Windows warns when you start it?',
     startedLink: 'Here is what to do',
-    shotCaption: 'The Overview after a scan, on a test PC in a virtual machine.',
-    shotAlt:
-      'The Overview page of Tunero: the verdict of the scan, the readiness score in one line, the findings with their impact rating, and the start of the recommended changes.',
+    firstStart: 'On the first start it offers to install itself in Program Files with a Start menu entry, or to run from where it is.',
+    managers: 'With a package manager',
+    copy: 'Copy',
+    copied: 'Copied',
+    releases: 'All releases',
   },
-  impact: {
+  trust: {
+    title: 'Why you can trust it',
+    intro: 'Tunero asks for administrator rights, because most settings it changes apply to the whole PC. Here is what stands behind it, and how to check it yourself.',
+    items: [
+      {
+        title: 'Signed by its developer',
+        body: 'Tunero.exe is code signed from version 1.2.3 on, with a Certum certificate for open source developers. Windows names the publisher, Open Source Developer Joshua Zürn: right-click the exe, Properties > Digital Signatures, or in PowerShell:',
+        code: 'Get-AuthenticodeSignature Tunero.exe',
+        link: { label: 'How releases are signed', href: `${repo}#code-signing` },
+      },
+      {
+        title: 'Open source',
+        body: 'The app, its tests, its explanation pages and this website are on GitHub. Each release is built by the release workflow on GitHub from a tagged commit, and that can be checked:',
+        code: 'gh attestation verify Tunero.exe --repo jozuern/Tunero',
+        link: { label: 'Source code', href: repo },
+      },
+      {
+        title: 'Free software under the GPL‑3.0‑only',
+        body: 'You can use, study, change and share it. Versions you share, changed or not, must stay under the same license and come with their source code. There is no paid version, and support unlocks nothing.',
+        link: { label: 'License', href: `${repo}/blob/main/LICENSE` },
+      },
+      {
+        title: 'No telemetry',
+        body: 'No telemetry, no account, no ads, no service and no tray icon. The app goes online only for features you start or turn on: the update check, a VirusTotal lookup with your own key, the DNS benchmark, app installs and the Windows download for install media.',
+        link: { label: 'Everything the app sends, and to whom', href: `${repo}/blob/main/docs/PRIVACY.md` },
+      },
+      {
+        title: 'Every setting it changes can be undone',
+        body: 'Each setting is backed up before it changes and checked after applying, and a restore point is created before the first change when System Protection is on. The Changes page lists every change with Undo, also after a restart or an update of the app, and Uninstall offers to undo everything first. Removed apps and deleted files are the exception, and the app says so before.',
+      },
+      {
+        title: 'Check the download',
+        body: 'Compare the SHA-256 of Tunero.exe with the .sha256 file on the release page. PowerShell prints it with:',
+        code: 'Get-FileHash Tunero.exe',
+        link: { label: 'Release page', href: `${repo}/releases/latest` },
+      },
+      {
+        title: 'What it leaves out on purpose',
+        body: 'Some popular tweaks are not offered at all, because they do harm or change nothing, such as realtime priority for games, turning off the Spectre and Meltdown mitigations, or registry cleaning. Search for one in the app, and it tells you why.',
+        link: { label: 'The full list, with sources', href: `${repo}/blob/main/docs/not-included.md` },
+      },
+    ] satisfies TrustItem[] as TrustItem[],
+  },
+  board: {
     title: 'Only problems the scan finds rate 5. No tweak does.',
-    body: (n, matter) => [
+    body: (tweaks: number, matter: number) => [
       'Checks and tweaks share one scale for games, from 0 to 5. The largest gains come from problems the scan finds, such as a monitor below its refresh rate or a processor held at its base clock.',
-      `Of the ${n} tweaks, ${matter} can matter for games, some only on some PCs: Restore processor turbo rates 4 where the power plan holds the processor at its base clock, and 0 everywhere else. The app rates each tweak for the PC it runs on and shows the rating next to every check and tweak, as a number and five bars.`,
+      `Of the ${tweaks} tweaks, ${matter} can matter for games, some only on some PCs: Restore processor turbo rates 4 where the power plan holds the processor at its base clock, and 0 everywhere else. The app rates each tweak for the PC it runs on and shows the rating next to every check and tweak, as a number and five bars.`,
     ],
-    top: 'Problems the scan finds. It fixes them or tells you how.',
-    topRow: (n) => `Rated 5: ${n} problems the scan finds`,
+    all: (checks: number, tweaks: number) => `Here are all ${checks} checks and all ${tweaks} tweaks, each in the row of its highest rating.`,
+    rowLabel: (level: number) => `Rated ${level}`,
+    checks: 'Problems the scan finds',
+    top: 'It fixes them or tells you how.',
+    tweaks: 'Tweaks',
     measured: 'measured',
     disputed: 'disputed',
-    some: (base) => `on some PCs, otherwise ${base}`,
+    /** A tweak that rates higher on some PCs, with its rating elsewhere. */
+    some: (base: number) => `on some PCs, otherwise ${base}`,
+    /** A check that also gives lower ratings, such as 0 for a laptop on battery. */
+    also: (levels: string) => `also ${levels}, depending on what it finds`,
     zeroNamed: 'Popular gaming tweaks with disputed evidence. Offered, rated 0, and their pages explain the dispute.',
-    zeroRest: (n) => `And ${n} more, most of them for privacy, the browser and Windows. They do not promise frame rate.`,
-    row: (level, count) => `Rated ${level}: ${count} ${count === 1 ? 'tweak' : 'tweaks'}`,
-  },
-  scan: {
-    title: 'The scan looks for what really costs frame rate',
-    body: (n) => [
-      `${n} read-only checks look for problems that cost frame rate or smoothness. A check that cannot read a value says unknown and gives no advice.`,
-      'A profile decides what is recommended and which impact counts: Gaming, Laptop gaming, Battery, Office, Quiet and cool, or Older PC. It changes nothing by itself.',
-    ],
-    list: (n) => `The ${n} checks`,
-  },
-  tweak: {
-    title: 'Every change is explained before it happens, and every setting can be undone',
-    intro:
-      'Each check and each tweak has a page in English and German: what it does, what it writes, why it can help, how solid the evidence is, and the sources. The app shows it next to the switch. This is the page for turning off mouse acceleration:',
-    docLabel: 'Explanation page in the app',
-    impact: (n) => `Impact ${n} of 5`,
-    changes: 'What changes',
-    columns: ['Value', 'Now', 'New'],
-    caption: 'Now shows the Windows defaults. The app shows the values of your PC.',
-    show: ['Summary', 'How it works', 'Evidence', 'Trade-offs & risks'],
-    sourcesLabel: 'Sources',
-    disputed: {
-      intro: (title) => `Where the evidence does not hold up, the page says so. The page for ${title}, a popular tweak:`,
-      link: 'Read the whole page',
-    },
-    stepsTitle: 'What happens when you apply',
-    steps: [
-      { name: 'Restore point', text: 'Created before the first change, when System Protection is on.' },
-      { name: 'Backup', text: 'Each value is saved before it changes.' },
-      { name: 'Check', text: 'After applying, each change is checked.' },
-      { name: 'Undo', text: 'The Changes page lists every change with Undo, also after a restart or an update of the app.' },
-    ],
-    body: [
-      'After a Windows update, the app shows which changes Windows reset and offers to apply them again. Removed apps and deleted files are the exception, and the app says so before it removes them.',
-      'Changes that turn off security features or touch the boot configuration stay behind Expert mode, and none of them is ever recommended automatically. A tweak that is not yet proven on real hardware carries the badge "Not yet tested on a real PC" and is never part of Apply recommended.',
-    ],
-    shotAlt:
-      'The Tweaks page of Tunero with Mouse acceleration off selected: groups of tweaks with their impact rating and switches, and its explanation in the details pane.',
-    shotCaption: 'The same tweak on the Tweaks page.',
-  },
-  left: {
-    title: 'What it leaves out, and why',
-    intro: 'Some popular tweaks are not offered at all, because they do harm or change nothing. Search for one in the app, and it tells you why.',
-    rows: [
-      {
-        tweak: 'Realtime priority for games',
-        why: 'Microsoft warns that a realtime process preempts operating system threads and can make the mouse unresponsive.',
-        source: 'https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setpriorityclass',
-      },
-      {
-        tweak: 'Spectre and Meltdown mitigations off',
-        why: 'Microsoft measured single-digit slowdowns that most users do not notice on the processors Windows 11 supports. A real security loss for a gain too small to notice.',
-        source: 'https://www.microsoft.com/en-us/security/blog/2018/01/09/understanding-the-performance-impact-of-spectre-and-meltdown-mitigations-on-windows-systems/',
-      },
-      {
-        tweak: 'Win32PrioritySeparation = 0x26',
-        why: 'It is the value Windows already writes for "Adjust for best performance of: Programs". The tweak changes nothing on Windows 11.',
-        source: 'https://learn.microsoft.com/en-us/previous-versions/cc976120(v=technet.10)',
-      },
-      {
-        tweak: 'Turning off IPv6 completely',
-        why: 'Microsoft advises against it because some Windows components might stop working. The app offers "Prefer IPv4 over IPv6" instead.',
-        source: 'https://learn.microsoft.com/en-us/troubleshoot/windows-server/networking/configure-ipv6-in-windows',
-      },
-      {
-        tweak: 'netsh TCP global tweaks',
-        why: 'They change every connection of the PC, and no measurement shows a gain in games. Ping in online games depends mostly on the route to the server.',
-      },
-      {
-        tweak: 'Registry cleaning',
-        why: 'Keys an uninstaller left behind take no measurable space, and no measurement shows that they slow Windows down. A wrong guess breaks programs that share them.',
-      },
-    ],
-    sourceLink: 'Source',
-    all: 'The full list, with sources',
-  },
-  areas: {
-    title: 'Built to replace a folder full of tools',
-    intro:
-      'Tunero brings together what people otherwise collect from tweak tools, debloat scripts, startup managers, cleaners and system utilities, and leaves out what does nothing. What it leaves to other tools, such as a driver cleaner, is listed in its README under "What it does not replace". These are its main pages, grouped as in the app.',
-    groups: (c) => [
-      {
-        name: '',
-        items: [['Overview', `${c.checks} checks that find what costs frame rate, with a fix or the steps for the BIOS and drivers.`]],
-      },
-      {
-        name: 'Optimize',
-        items: [
-          ['Tweaks', `${c.tweaks} documented settings for games, privacy, the browser, Windows and Windows Update, each with its evidence.`],
-          ['Graphics & DNS', 'NVIDIA driver settings, maximum performance only for the games you pick, and a DNS benchmark.'],
-          ['Startup', 'Everything that starts with Windows, with signature checks and snapshots to compare.'],
-          ['Services & tasks', 'Start types, with what each service does.'],
-        ],
-      },
-      {
-        name: 'Clean up',
-        items: [
-          ['Remove apps', `${c.apps} reviewed inbox and manufacturer apps, and programs with their own uninstaller.`],
-          ['Cleanup', `${c.cleanup} categories of temporary files, caches and leftovers, without following links.`],
-          ['Storage', 'A drive as a folder tree beside a treemap, the space by file type, its largest files and duplicate files, read only when you ask. What you delete goes to the Recycle Bin.'],
-        ],
-      },
-      {
-        name: 'Maintain and check',
-        items: [
-          ['Install & update', 'Install and update apps with winget, update Chocolatey and Scoop packages too, and see how old the drivers are.'],
-          ['Tools', 'Windows features, network fixes, Windows Update repair, SFC and DISM.'],
-          ['Windows install media', 'A Windows 11 ISO for a new installation: without the preinstalled apps you tick, without the account questions, and with your profile applied at the first sign-in, if you like.'],
-          ['Health', 'A frame time benchmark with PresentMon, a throttle check, drive health, and live readings that show which programs use each device.'],
-        ],
-      },
-      {
-        name: '',
-        items: [['Changes', 'Every change with Undo, and an export to move your changes to another PC or a fresh install.']],
-      },
-    ],
-  },
-  privacy: {
-    title: 'It goes online only when you ask it to',
-    body: [
-      'No telemetry, no account, no ads, no service and no tray icon: it runs when you start it, or once after you sign in if you turn on applying your changes again in Settings. Installing it in Program Files is optional.',
-      'The update check is off until you turn it on. A VirusTotal lookup needs your own key and sends file hashes, never files. The DNS benchmark, app installs and the Windows download for install media run when you start them.',
-    ],
-    link: 'Everything the app sends, and to whom',
-  },
-  support: {
-    title: 'Support Tunero',
-    body: [
-      'Tunero is free, with no ads, no account and no paid version. If it helps you and you want to give something back, you can support its development on Ko-fi or GitHub Sponsors. Bug reports and ideas help just as much.',
-    ],
-    kofi: 'Support on Ko-fi',
-    sponsors: 'Sponsor on GitHub',
-    note: 'Support unlocks nothing: every feature is in the free exe.',
-  },
-  install: {
-    title: 'Get Tunero',
-    steps: [
-      { name: 'Download', text: 'The exe of the latest release.' },
-      { name: 'Check', text: 'Right-click it, Properties > Digital Signatures: it names Open Source Developer Joshua Zürn. Or compare its SHA-256 with the .sha256 file on the release page.' },
-      { name: 'Start', text: 'On the first start it offers to install itself in Program Files with a Start menu entry, or to run from where it is.' },
-    ],
-    managers: 'With a package manager',
-    releases: 'All releases',
+    zeroRest: (count: number) => `And ${count} more, most of them for privacy, the browser and Windows. They do not promise frame rate.`,
+    unrated: 'Not on the scale',
+    access: 'What kernel anti-cheats check before a game starts. Not part of the impact rating.',
+    critical: 'Marked Critical instead of rated, because it is about the stability of the processor.',
   },
   faq: {
     title: 'Questions',
@@ -220,11 +173,90 @@ const en: Copy = {
   },
   footer: {
     label: 'Project links',
-    license: (v) => `Tunero ${v}. Free software under the GPL-3.0-only.`,
-    links: { releases: 'Releases', changelog: 'Changelog', source: 'Source code', privacy: 'Privacy', imprint: 'Legal notice', kofi: 'Support on Ko-fi', sponsors: 'GitHub Sponsors' },
-    privacyHref: '/privacy/',
-    imprintHref: '/legal/',
+    license: 'Free software under the GPL‑3.0‑only.',
+    version: (version: string) => `Tunero ${version}.`,
+    links: {
+      releases: 'Releases',
+      changelog: 'Changelog',
+      source: 'Source code',
+      kofi: 'Support on Ko-fi',
+      sponsors: 'GitHub Sponsors',
+      privacy: 'Privacy',
+      legal: 'Legal notice',
+    },
+  },
+  privacy: {
+    title: 'Privacy',
+    metaTitle: 'Privacy, Tunero',
+    description: 'Privacy policy for tunero.dev.',
+    intro: [
+      'This policy covers the website tunero.dev. What the Tunero app itself sends is in the ',
+      { text: 'privacy policy of the app', href: `${repo}/blob/main/docs/PRIVACY.md` },
+      '.',
+    ] satisfies Rich as Rich,
+    controller: 'Controller',
+    email: 'Email',
+    sections: (email: string): { heading: string; paragraphs: Rich[] }[] => [
+      {
+        heading: 'In short',
+        paragraphs: [
+          ['This website sets no cookies, uses no analytics and no ads, and loads no fonts, scripts or images from other servers. It is made of static files.'],
+          ['The demo PC on the start page keeps the theme you pick, whether you turned its animation effects and its sound on or off, whether you have seen its start animation, and what you changed on it in the storage of your browser. That stays in your browser and is never sent anywhere. Storing it needs no consent under § 25 (2) no. 2 TDDDG, because the demo needs it to work the way you set it; you can delete it at any time in the site data of your browser.'],
+        ],
+      },
+      {
+        heading: 'Hosting on GitHub Pages',
+        paragraphs: [
+          [
+            'The website is hosted on GitHub Pages, a service of GitHub, Inc., 88 Colin P. Kelly Jr. St., San Francisco, CA 94107, USA. When you open a page, GitHub processes your IP address to deliver it and, by its own account, stores it for security purposes. The legal basis is Art. 6(1)(f) GDPR: a legitimate interest in providing the website securely and reliably. GitHub participates in the EU-U.S. Data Privacy Framework and also uses the European Commission\'s standard contractual clauses. See the ',
+            { text: 'GitHub Privacy Statement', href: 'https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement' },
+            '.',
+          ],
+        ],
+      },
+      {
+        heading: 'Domain and email at Cloudflare',
+        paragraphs: [
+          [
+            `The domain tunero.dev is managed through Cloudflare, Inc. Cloudflare answers the DNS queries for the domain but does not deliver the pages. When you write to ${email}, Cloudflare Email Routing forwards the message to my mailbox. I use what you send only to answer you (Art. 6(1)(b) and (f) GDPR) and delete the message once it is dealt with and no retention duty applies. See the `,
+            { text: 'Cloudflare Privacy Policy', href: 'https://www.cloudflare.com/privacypolicy/' },
+            '.',
+          ],
+        ],
+      },
+      {
+        heading: 'Links to other sites',
+        paragraphs: [
+          ['The download, the source code and the releases are on GitHub, and support goes through Ko-fi. When you follow one of these links, that provider\'s privacy policy applies.'],
+        ],
+      },
+      {
+        heading: 'Your rights',
+        paragraphs: [
+          [
+            `You have the right of access, rectification, erasure and restriction of processing, the right to data portability, and the right to object to processing based on legitimate interest (Art. 15 to 21 GDPR). Write to ${email}. You can also complain to a data protection authority, for example the `,
+            { text: 'State Commissioner for Data Protection and Freedom of Information Baden-Württemberg', href: 'https://www.baden-wuerttemberg.datenschutz.de/' },
+            '.',
+          ],
+        ],
+      },
+    ],
+  },
+  legal: {
+    title: 'Legal notice',
+    metaTitle: 'Legal notice, Tunero',
+    description: 'Legal notice (Impressum) for tunero.dev.',
+    intro: [
+      'Information under § 5 of the German Digital Services Act (DDG). The ',
+      { text: 'German version', href: '/de/impressum/', lang: 'de' },
+      ' is the binding one.',
+    ] satisfies Rich as Rich,
+    operator: 'Operator',
+    contact: 'Contact',
+    email: 'Email',
+    responsible: 'Responsible for the content under § 18 (2) MStV',
   },
 };
 
+export type Strings = Omit<typeof en, 'lang'> & { lang: 'en' | 'de' };
 export default en;

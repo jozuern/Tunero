@@ -195,13 +195,11 @@ public partial class DocLintTests(ITestOutputHelper output)
         file.EndsWith("Windows_Optimizer_Tools_Feature_Reference.md", StringComparison.Ordinal);
 
     /// <summary>
-    /// The text of tunero.dev: its English and German copy and its pages and components, of the current site
-    /// (website-v2/src) and of the previous one, no longer deployed (website/src).
+    /// The text of tunero.dev: its English and German copy and its pages and components (website/src).
     /// </summary>
     private static IEnumerable<string> WebsiteCopy() =>
         RepositoryFiles("*.ts").Concat(RepositoryFiles("*.astro")).Concat(RepositoryFiles("*.svelte"))
-            .Where(f => Path.GetRelativePath(RepoPaths.Root, f).Replace('\\', '/') is var p
-                        && (p.StartsWith("website/src/", StringComparison.Ordinal) || p.StartsWith("website-v2/src/", StringComparison.Ordinal)));
+            .Where(f => Path.GetRelativePath(RepoPaths.Root, f).Replace('\\', '/').StartsWith("website/src/", StringComparison.Ordinal));
 
     private static readonly char[] Banned = ['\u2013', '\u2014', '\u2022', '\u00B7', '\u2026'];
 

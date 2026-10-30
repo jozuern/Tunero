@@ -1,4 +1,4 @@
-# Builds the website in website-v2/ (Astro and Svelte) and publishes it to GitHub Pages at https://tunero.dev.
+# Builds the website in website/ (Astro and Svelte) and publishes it to GitHub Pages at https://tunero.dev.
 # Runs when the site, the facts it reads (README counts, changelog, catalog, explanation pages, the checks' ratings, the
 # app's strings) or this file change, after each release (so the version on the page follows the latest release), and on
 # demand. It publishes only a commit that passed CI (the ci job below).
@@ -8,7 +8,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'website-v2/**'
+      - 'website/**'
       - 'README.md'
       - 'CHANGELOG.md'
       - 'src/Optimizer.Core/Catalog/**'
@@ -82,18 +82,18 @@ jobs:
       with:
         node-version: 24
         cache: npm
-        cache-dependency-path: website-v2/package-lock.json
+        cache-dependency-path: website/package-lock.json
 
     - name: Install
-      working-directory: website-v2
+      working-directory: website
       run: npm ci --ignore-scripts --no-audit --no-fund
 
     - name: Test
-      working-directory: website-v2
+      working-directory: website
       run: npm test
 
     - name: Build
-      working-directory: website-v2
+      working-directory: website
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # reads the latest release for the version on the page
       run: npm run build # astro check, then astro build
@@ -101,11 +101,11 @@ jobs:
     # The demo desktop in a browser (e2e/), against the site just built: windows, focus, the saved session, the guided
     # fix and the wallpaper's stills.
     - name: Install Chromium
-      working-directory: website-v2
+      working-directory: website
       run: npx playwright install --with-deps chromium
 
     - name: Browser tests
-      working-directory: website-v2
+      working-directory: website
       run: npm run test:e2e
 
     - name: Configure Pages
@@ -114,7 +114,7 @@ jobs:
     - name: Upload site
       uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
       with:
-        path: website-v2/dist
+        path: website/dist
 
   deploy:
     needs: build

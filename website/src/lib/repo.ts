@@ -1,5 +1,5 @@
 // Facts read from the repository at build time, so the site never repeats a number or a text by hand.
-// The build and the tests run in website-v2/, so the repository root is one folder up.
+// The build and the tests run in website/, so the repository root is one folder up.
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Lang } from '../i18n/index.ts';

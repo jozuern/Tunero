@@ -1,187 +1,123 @@
-// Deutsche Texte. Gleiche Stimme wie die App: du, einfache Wörter, echte Beispiele, keine Gedankenstriche; starke Aussagen nur, wo sie stimmen (DESIGN.md).
-import type { Copy } from './types';
+import type { Rich, Strings, TrustItem } from './en.ts';
 
-const de: Copy = {
+const repo = 'https://github.com/jozuern/Tunero';
+
+const de: Strings = {
   lang: 'de',
   meta: {
-    title: 'Tunero: PC-Optimierer für Windows 11',
+    title: 'Tunero, der PC-Optimierer für Windows 11',
     description:
-      'PC-Optimierer für Windows 11, gebaut, damit du nur noch einen brauchst. Tunero findet, was deine Spiele FPS kostet, erklärt jede Änderung mit Quellen und kann jede Einstellung rückgängig machen, die es ändert. Kostenlos und quelloffen.',
+      'Tunero prüft deinen Windows-11-PC auf das, was Spiele bremst, erklärt jede Änderung mit Quellen und macht alles rückgängig. Kostenlos, quelloffen, signiert.',
+    classicTitle: 'Tunero, der PC-Optimierer für Windows 11 (klassische Seite)',
   },
-  nav: { label: 'Hauptnavigation', download: 'Download', source: 'Quellcode', support: 'Unterstützen', questions: 'Fragen', other: 'English', skip: 'Zum Inhalt' },
-  hero: {
-    title: 'Gebaut, damit du nur noch einen PC-Optimierer brauchst.',
+  skip: 'Zur klassischen Seite',
+  noscript: 'Der Demo-PC braucht JavaScript. Alles über Tunero steht auch auf der klassischen Seite:',
+  skipContent: 'Zum Inhalt',
+  notFound: {
+    title: 'Seite nicht gefunden',
+    body: 'Diese Adresse gibt es auf tunero.dev nicht.',
+    home: 'Zur Startseite',
+  },
+  demo: {
+    notSet: 'nicht gesetzt',
+    display: 'Bildschirm 1',
+    refreshWhere: 'Bildschirm 1: Refresh-Rate',
+    power: {
+      maxState: 'Energiesparplan, Netzbetrieb: Maximaler Leistungszustand des Prozessors',
+      boostMode: 'Energiesparplan, Netzbetrieb: Leistungssteigerungsmodus für Prozessoren',
+      boostOff: 'Deaktiviert',
+      boostOn: 'Aggressiv',
+    },
+    startup: ['Spiele-Launcher', 'Chat', 'RGB-Steuerung', 'Cloud-Sync', 'Updater', 'Musik', 'Zubehör-Tool', 'Screenshot-Tool', 'Sprachchat'],
+  },
+  classic: {
+    heading: 'Tunero',
+    claim: 'Gebaut, damit du nur noch einen PC-Optimierer brauchst.',
     lead: 'Tunero sucht auf deinem PC, was deine Spiele FPS kostet, und behebt, was es kann. Es ist gebaut, um die Tweak-Tools, Debloat-Skripte, Autostart-Manager und Aufräumprogramme zu ersetzen, die du sonst zusammensuchst. Jede Änderung wird mit Quellen erklärt, und jede Einstellung, die es ändert, wird vorher gesichert und lässt sich rückgängig machen.',
-    download: 'Tunero.exe herunterladen',
-    winget: 'oder mit winget',
-    copy: 'Kopieren',
-    copied: 'Kopiert',
-    facts: (v) => `Version ${v} für Windows 11 25H2 oder neuer, x64. Auf Deutsch und Englisch. Freie Software unter der GPL-3.0-only.`,
+    nav: 'Website',
+    demo: 'Demo-PC öffnen',
+    languages: 'Sprache',
+    english: { short: 'EN', name: 'English' },
+    german: { short: 'DE', name: 'Deutsch' },
+  },
+  download: {
+    title: 'Download',
+    button: 'Tunero.exe herunterladen',
+    facts: (version) => `Version ${version} für Windows 11 25H2 oder neuer, x64. Auf Deutsch und Englisch. Freie Software unter der GPL‑3.0‑only.`,
     changes: 'Was neu ist',
-    preview: 'Tunero.exe ist ab Version 1.2.3 signiert. Windows SmartScreen kann beim ersten Start trotzdem warnen.',
-    previewLink: 'Warum',
+    signed: 'Tunero.exe ist ab Version 1.2.3 signiert. Windows SmartScreen kann beim ersten Start trotzdem warnen.',
+    signedLink: 'Warum',
     started: 'Der Download hat begonnen. Windows warnt beim Start?',
     startedLink: 'Hier steht, was zu tun ist',
-    shotCaption: 'Die Übersicht nach einem Scan, auf einem Test-PC in einer virtuellen Maschine.',
-    shotAlt:
-      'Die Übersicht von Tunero: das Urteil des Scans, die Eignung in einer Zeile, die Ergebnisse mit ihrer Wirkung und der Anfang der empfohlenen Änderungen.',
+    firstStart: 'Beim ersten Start bietet Tunero an, sich im Ordner Programme mit einem Eintrag im Startmenü zu installieren, oder dort zu bleiben, wo die Datei liegt.',
+    managers: 'Mit einem Paketmanager',
+    copy: 'Kopieren',
+    copied: 'Kopiert',
+    releases: 'Alle Versionen',
   },
-  impact: {
+  trust: {
+    title: 'Warum du Tunero trauen kannst',
+    intro: 'Tunero fragt nach Administratorrechten, weil die meisten Einstellungen, die es ändert, für den ganzen PC gelten. Das steht dahinter, und so prüfst du es selbst.',
+    items: [
+      {
+        title: 'Von seinem Entwickler signiert',
+        body: 'Tunero.exe ist ab Version 1.2.3 signiert, mit einem Certum-Zertifikat für Open-Source-Entwickler. Windows nennt den Herausgeber, Open Source Developer Joshua Zürn: Rechtsklick auf die exe, Eigenschaften > Digitale Signaturen, oder in PowerShell:',
+        code: 'Get-AuthenticodeSignature Tunero.exe',
+        link: { label: 'So werden Releases signiert (Englisch)', href: `${repo}#code-signing` },
+      },
+      {
+        title: 'Quelloffen',
+        body: 'Die App, ihre Tests, ihre Erklärseiten und diese Website liegen auf GitHub. Jedes Release baut der Release-Workflow auf GitHub aus dem Commit seines Versions-Tags, und das lässt sich prüfen:',
+        code: 'gh attestation verify Tunero.exe --repo jozuern/Tunero',
+        link: { label: 'Quellcode', href: repo },
+      },
+      {
+        title: 'Freie Software unter der GPL‑3.0‑only',
+        body: 'Du darfst es nutzen, untersuchen, ändern und weitergeben. Versionen, die du weitergibst, ob geändert oder nicht, müssen unter derselben Lizenz bleiben und ihren Quellcode mitbringen. Es gibt keine Bezahlversion, und eine Unterstützung schaltet nichts frei.',
+        link: { label: 'Lizenz (Englisch)', href: `${repo}/blob/main/LICENSE` },
+      },
+      {
+        title: 'Keine Telemetrie',
+        body: 'Keine Telemetrie, kein Konto, keine Werbung, kein Dienst und kein Symbol im Infobereich. Ins Internet geht die App nur für Funktionen, die du startest oder einschaltest: die Update-Prüfung, eine VirusTotal-Abfrage mit deinem eigenen Schlüssel, den DNS-Benchmark, App-Installationen und den Windows-Download für das Installationsmedium.',
+        link: { label: 'Alles, was die App sendet, und an wen', href: `${repo}/blob/main/docs/PRIVACY.md#datenschutz` },
+      },
+      {
+        title: 'Jede Einstellung, die es ändert, lässt sich rückgängig machen',
+        body: 'Jede Einstellung wird gesichert, bevor sie sich ändert, und nach dem Anwenden geprüft, und vor der ersten Änderung entsteht ein Wiederherstellungspunkt, wenn der Computerschutz eingeschaltet ist. Die Seite Änderungen listet jede Änderung mit „Rückgängig“, auch nach einem Neustart oder einem Update der App, und „Deinstallieren“ bietet an, vorher alles rückgängig zu machen. Entfernte Apps und gelöschte Dateien sind die Ausnahme, und das sagt die App vorher.',
+      },
+      {
+        title: 'Den Download prüfen',
+        body: 'Vergleiche den SHA-256 von Tunero.exe mit der .sha256-Datei auf der Release-Seite. PowerShell zeigt ihn mit:',
+        code: 'Get-FileHash Tunero.exe',
+        link: { label: 'Release-Seite', href: `${repo}/releases/latest` },
+      },
+      {
+        title: 'Was es mit Absicht weglässt',
+        body: 'Manche beliebten Tweaks gibt es gar nicht, weil sie schaden oder nichts ändern, etwa Echtzeitpriorität für Spiele, abgeschalteter Schutz vor Spectre und Meltdown oder Registry-Reinigung. Suchst du in der App danach, sagt sie dir, warum.',
+        link: { label: 'Die ganze Liste, mit Quellen (Englisch)', href: `${repo}/blob/main/docs/not-included.md` },
+      },
+    ] satisfies TrustItem[] as TrustItem[],
+  },
+  board: {
     title: 'Eine 5 gibt es nur für Probleme, die der Scan findet. Für keinen Tweak.',
-    body: (n, matter) => [
+    body: (tweaks, matter) => [
       'Prüfungen und Tweaks teilen sich eine Skala für Spiele, von 0 bis 5. Den größten Unterschied machen Probleme, die der Scan findet, etwa ein Monitor unter seiner Bildwiederholrate oder eine CPU, die beim Basistakt festhängt.',
-      `Von den ${n} Tweaks können ${matter} bei Spielen eine Rolle spielen, manche nur auf manchen PCs: „CPU-Turbo wiederherstellen“ hat eine 4, wo der Energiesparplan die CPU beim Basistakt hält, und überall sonst eine 0. Die App bewertet jeden Tweak für den PC, auf dem sie läuft, und zeigt die Wertung neben jeder Prüfung und jedem Tweak als Zahl und fünf Balken.`,
+      `Von den ${tweaks} Tweaks können ${matter} bei Spielen eine Rolle spielen, manche nur auf manchen PCs: „CPU-Turbo wiederherstellen“ hat eine 4, wo der Energiesparplan die CPU beim Basistakt hält, und überall sonst eine 0. Die App bewertet jeden Tweak für den PC, auf dem sie läuft, und zeigt die Wertung neben jeder Prüfung und jedem Tweak als Zahl und fünf Balken.`,
     ],
-    top: 'Probleme, die der Scan findet. Er behebt sie oder sagt dir, wie.',
-    topRow: (n) => `Wirkung 5: ${n} Probleme, die der Scan findet`,
+    all: (checks, tweaks) => `Hier stehen alle ${checks} Prüfungen und alle ${tweaks} Tweaks, jeweils in der Zeile ihrer höchsten Wertung.`,
+    rowLabel: (level) => `Wirkung ${level}`,
+    checks: 'Probleme, die der Scan findet',
+    top: 'Er behebt sie oder sagt dir, wie.',
+    tweaks: 'Tweaks',
     measured: 'gemessen',
     disputed: 'umstritten',
     some: (base) => `auf manchen PCs, sonst ${base}`,
+    also: (levels) => `je nach Befund auch ${levels}`,
     zeroNamed: 'Beliebte Gaming-Tweaks mit umstrittenen Belegen. Angeboten, mit 0 bewertet, und ihre Seiten erklären den Streit.',
-    zeroRest: (n) => `Dazu ${n} weitere, die meisten für Datenschutz, den Browser und Windows. Sie versprechen keine FPS.`,
-    row: (level, count) => `Wirkung ${level}: ${count} ${count === 1 ? 'Tweak' : 'Tweaks'}`,
-  },
-  scan: {
-    title: 'Der Scan sucht, was dich wirklich FPS kostet',
-    body: (n) => [
-      `${n} Prüfungen, die nur lesen, suchen nach Problemen, die FPS oder flüssiges Spielen kosten. Kann eine Prüfung einen Wert nicht lesen, sagt sie „unbekannt“ und gibt keinen Rat.`,
-      'Ein Profil legt fest, was empfohlen wird und welche Wirkung zählt: Gaming, Laptop-Gaming, Akku, Büro, Leise und kühl oder Älterer PC. Von sich aus ändert es nichts.',
-    ],
-    list: (n) => `Die ${n} Prüfungen`,
-  },
-  tweak: {
-    title: 'Jede Änderung wird vorher erklärt, und jede Einstellung lässt sich rückgängig machen',
-    intro:
-      'Jede Prüfung und jeder Tweak hat eine Seite auf Deutsch und Englisch: was er tut, was er schreibt, warum er helfen kann, wie belastbar die Belege sind, und die Quellen. Die App zeigt sie neben dem Schalter. Das ist die Seite zum Ausschalten der Mausbeschleunigung:',
-    docLabel: 'Erklärseite in der App',
-    impact: (n) => `Wirkung ${n} von 5`,
-    changes: 'Was sich ändert',
-    columns: ['Wert', 'Jetzt', 'Neu'],
-    caption: '„Jetzt“ zeigt die Standardwerte von Windows. Die App zeigt die Werte deines PCs.',
-    show: ['Zusammenfassung', 'So funktioniert es', 'Belege', 'Nachteile & Risiken'],
-    sourcesLabel: 'Quellen',
-    disputed: {
-      intro: (title) => `Wo die Belege nicht tragen, sagt die Seite das. Die Seite zu ${title}, einem beliebten Tweak:`,
-      link: 'Die ganze Seite lesen',
-    },
-    stepsTitle: 'Was beim Anwenden passiert',
-    steps: [
-      { name: 'Wiederherstellungspunkt', text: 'Vor der ersten Änderung, wenn der Computerschutz eingeschaltet ist.' },
-      { name: 'Sicherung', text: 'Jeder Wert wird gesichert, bevor er sich ändert.' },
-      { name: 'Prüfung', text: 'Nach dem Anwenden wird jede Änderung geprüft.' },
-      { name: 'Rückgängig', text: 'Die Seite Änderungen listet jede Änderung mit „Rückgängig“, auch nach einem Neustart oder einem Update der App.' },
-    ],
-    body: [
-      'Nach einem Windows-Update zeigt die App, welche Änderungen Windows zurückgesetzt hat, und bietet an, sie erneut anzuwenden. Entfernte Apps und gelöschte Dateien sind die Ausnahme, und das sagt die App, bevor sie etwas entfernt.',
-      'Änderungen, die Sicherheitsfunktionen ausschalten oder die Startkonfiguration ändern, bleiben im Expertenmodus, und keine davon wird je automatisch empfohlen. Ein Tweak, der auf echter Hardware noch nicht erprobt ist, trägt das Abzeichen „Noch nicht auf einem echten PC getestet“ und ist nie Teil von „Empfohlene anwenden“.',
-    ],
-    shotAlt:
-      'Die Seite Tweaks von Tunero, gewählt ist „Mausbeschleunigung aus“: Gruppen von Tweaks mit ihrer Wirkung und Schaltern und die Erklärung im Detailbereich.',
-    shotCaption: 'Derselbe Tweak auf der Seite Tweaks.',
-  },
-  left: {
-    title: 'Was es weglässt, und warum',
-    intro: 'Manche beliebten Tweaks gibt es gar nicht, weil sie schaden oder nichts ändern. Suchst du in der App danach, sagt sie dir, warum.',
-    rows: [
-      {
-        tweak: 'Echtzeitpriorität für Spiele',
-        why: 'Microsoft warnt, dass ein Prozess mit Echtzeitpriorität Threads des Betriebssystems verdrängt und die Maus nicht mehr reagieren kann.',
-        source: 'https://learn.microsoft.com/de-de/windows/win32/api/processthreadsapi/nf-processthreadsapi-setpriorityclass',
-      },
-      {
-        tweak: 'Schutz vor Spectre und Meltdown aus',
-        why: 'Microsoft hat auf den Prozessoren, die Windows 11 unterstützt, Verluste im einstelligen Prozentbereich gemessen, die die meisten nicht bemerken. Ein echter Sicherheitsverlust für einen Gewinn, den man nicht spürt.',
-        source: 'https://www.microsoft.com/en-us/security/blog/2018/01/09/understanding-the-performance-impact-of-spectre-and-meltdown-mitigations-on-windows-systems/',
-      },
-      {
-        tweak: 'Win32PrioritySeparation = 0x26',
-        why: 'Das ist genau der Wert, den Windows für „Optimale Leistung anpassen für: Programme“ schon schreibt. Der Tweak ändert unter Windows 11 nichts.',
-        source: 'https://learn.microsoft.com/en-us/previous-versions/cc976120(v=technet.10)',
-      },
-      {
-        tweak: 'IPv6 ganz ausschalten',
-        why: 'Microsoft rät davon ab, weil einige Windows-Komponenten dann nicht mehr funktionieren können. Die App bietet stattdessen „IPv4 vor IPv6 bevorzugen“.',
-        source: 'https://learn.microsoft.com/de-de/troubleshoot/windows-server/networking/configure-ipv6-in-windows',
-      },
-      {
-        tweak: 'Globale TCP-Tweaks mit netsh',
-        why: 'Sie ändern jede Verbindung des PCs, und keine Messung zeigt einen Gewinn in Spielen. Der Ping in Onlinespielen hängt vor allem vom Weg zum Server ab.',
-      },
-      {
-        tweak: 'Registry reinigen',
-        why: 'Schlüssel, die ein Deinstallationsprogramm zurücklässt, belegen keinen messbaren Platz, und keine Messung zeigt, dass sie Windows bremsen. Ein falscher Treffer macht Programme kaputt, die sie mitnutzen.',
-      },
-    ],
-    sourceLink: 'Quelle',
-    all: 'Die ganze Liste, mit Quellen (Englisch)',
-  },
-  areas: {
-    title: 'Gebaut, um einen Ordner voller Tools zu ersetzen',
-    intro:
-      'Tunero vereint, was man sonst aus Tweak-Tools, Debloat-Skripten, Autostart-Managern, Aufräumprogrammen und Systemprogrammen zusammensucht, und lässt weg, was nichts bringt. Was es anderen Tools überlässt, etwa einem Treiber-Entferner, steht in seinem README unter „What it does not replace“. Das sind seine wichtigsten Seiten, gruppiert wie in der App.',
-    groups: (c) => [
-      {
-        name: '',
-        items: [['Übersicht', `${c.checks} Prüfungen, die finden, was FPS kostet, mit Behebung oder den Schritten für BIOS und Treiber.`]],
-      },
-      {
-        name: 'Optimieren',
-        items: [
-          ['Tweaks', `${c.tweaks} dokumentierte Einstellungen für Spiele, Datenschutz, den Browser, Windows und Windows Update, jede mit ihren Belegen.`],
-          ['Grafik & DNS', 'NVIDIA-Treibereinstellungen, maximale Leistung nur für die Spiele, die du auswählst, und ein DNS-Benchmark.'],
-          ['Autostart', 'Alles, was mit Windows startet, mit Signaturprüfung und Schnappschüssen zum Vergleichen.'],
-          ['Dienste & Aufgaben', 'Starttypen, mit dem, was jeder Dienst tut.'],
-        ],
-      },
-      {
-        name: 'Aufräumen',
-        items: [
-          ['Apps entfernen', `${c.apps} geprüfte vorinstallierte Apps und Hersteller-Apps, dazu Programme mit eigenem Deinstallationsprogramm.`],
-          ['Bereinigen', `${c.cleanup} Kategorien temporärer Dateien, Caches und Reste, ohne Verknüpfungen zu folgen.`],
-          ['Speicher', 'Ein Laufwerk als Ordnerbaum neben einer Treemap, der Platz nach Dateityp, die größten Dateien und doppelte Dateien, gelesen nur, wenn du es willst. Was du löschst, kommt in den Papierkorb.'],
-        ],
-      },
-      {
-        name: 'Pflegen und prüfen',
-        items: [
-          ['Installieren & aktualisieren', 'Apps mit winget installieren und aktualisieren, dazu Pakete von Chocolatey und Scoop aktualisieren, und sehen, wie alt die Treiber sind.'],
-          ['Tools', 'Windows-Features, Netzwerkreparaturen, Windows-Update-Reparatur, SFC und DISM.'],
-          ['Installationsmedium', 'Eine Windows-11-ISO für eine Neuinstallation: ohne die vorinstallierten Apps, die du abhakst, ohne die Kontofragen und, wenn du willst, mit deinem Profil bei der ersten Anmeldung.'],
-          ['Zustand', 'Ein Frametime-Benchmark mit PresentMon, eine Drosselungsprüfung, der Zustand der Laufwerke und Live-Messwerte, die zeigen, welche Programme jedes Gerät nutzen.'],
-        ],
-      },
-      {
-        name: '',
-        items: [['Änderungen', 'Jede Änderung mit „Rückgängig“, dazu ein Export, um deine Änderungen auf einen anderen PC oder eine Neuinstallation zu übertragen.']],
-      },
-    ],
-  },
-  privacy: {
-    title: 'Ins Internet geht es nur, wenn du es willst',
-    body: [
-      'Keine Telemetrie, kein Konto, keine Werbung, kein Dienst und kein Symbol im Infobereich: Es läuft, wenn du es startest, oder einmal nach der Anmeldung, wenn du in den Einstellungen das erneute Anwenden deiner Änderungen einschaltest. Die Installation im Ordner Programme ist freiwillig.',
-      'Die Update-Prüfung ist aus, bis du sie einschaltest. Eine VirusTotal-Abfrage braucht deinen eigenen Schlüssel und sendet Hashes von Dateien, nie die Dateien. Der DNS-Benchmark, App-Installationen und der Windows-Download für das Installationsmedium laufen, wenn du sie startest.',
-    ],
-    link: 'Alles, was die App sendet, und an wen',
-  },
-  support: {
-    title: 'Tunero unterstützen',
-    body: [
-      'Tunero ist kostenlos, ohne Werbung, ohne Konto und ohne Bezahlversion. Wenn es dir hilft und du etwas zurückgeben möchtest, kannst du die Entwicklung auf Ko-fi oder über GitHub Sponsors unterstützen. Fehlerberichte und Ideen helfen genauso.',
-    ],
-    kofi: 'Auf Ko-fi unterstützen',
-    sponsors: 'Auf GitHub sponsern',
-    note: 'Eine Unterstützung schaltet nichts frei: Jede Funktion steckt in der kostenlosen exe.',
-  },
-  install: {
-    title: 'Hol dir Tunero',
-    steps: [
-      { name: 'Herunterladen', text: 'Die exe der neuesten Version.' },
-      { name: 'Prüfen', text: 'Rechtsklick, Eigenschaften > Digitale Signaturen: Dort steht Open Source Developer Joshua Zürn. Oder vergleiche ihren SHA-256 mit der .sha256-Datei auf der Release-Seite.' },
-      { name: 'Starten', text: 'Beim ersten Start bietet sie an, sich im Ordner Programme mit einem Eintrag im Startmenü zu installieren, oder dort zu bleiben, wo sie liegt (Von hier ausführen).' },
-    ],
-    managers: 'Mit einem Paketmanager',
-    releases: 'Alle Versionen',
+    zeroRest: (count) => `Dazu ${count} weitere, die meisten für Datenschutz, den Browser und Windows. Sie versprechen keine FPS.`,
+    unrated: 'Nicht auf der Skala',
+    access: 'Was Kernel-Anti-Cheats vor dem Spielstart prüfen. Nicht Teil der Wirkungsbewertung.',
+    critical: 'Als „Kritisch“ markiert statt bewertet, weil es um die Stabilität des Prozessors geht.',
   },
   faq: {
     title: 'Fragen',
@@ -220,10 +156,84 @@ const de: Copy = {
   },
   footer: {
     label: 'Projektlinks',
-    license: (v) => `Tunero ${v}. Freie Software unter der GPL-3.0-only.`,
-    links: { releases: 'Versionen', changelog: 'Änderungen', source: 'Quellcode', privacy: 'Datenschutz', imprint: 'Impressum', kofi: 'Auf Ko-fi unterstützen', sponsors: 'GitHub Sponsors' },
-    privacyHref: '/de/datenschutz/',
-    imprintHref: '/de/impressum/',
+    license: 'Freie Software unter der GPL‑3.0‑only.',
+    version: (version) => `Tunero ${version}.`,
+    links: {
+      releases: 'Versionen',
+      changelog: 'Änderungen',
+      source: 'Quellcode',
+      kofi: 'Auf Ko-fi unterstützen',
+      sponsors: 'GitHub Sponsors',
+      privacy: 'Datenschutz',
+      legal: 'Impressum',
+    },
+  },
+  privacy: {
+    title: 'Datenschutz',
+    metaTitle: 'Datenschutz, Tunero',
+    description: 'Datenschutzerklärung für tunero.dev.',
+    intro: [
+      'Diese Erklärung gilt für die Website tunero.dev. Was die App Tunero selbst sendet, steht in der ',
+      { text: 'Datenschutzerklärung der App', href: `${repo}/blob/main/docs/PRIVACY.md#datenschutz` },
+      '.',
+    ] satisfies Rich as Rich,
+    controller: 'Verantwortlicher',
+    email: 'E-Mail',
+    sections: (email) => [
+      {
+        heading: 'Kurz gesagt',
+        paragraphs: [
+          ['Diese Website setzt keine Cookies, nutzt keine Analyse und keine Werbung und lädt keine Schriften, Skripte oder Bilder von anderen Servern. Sie besteht aus statischen Dateien.'],
+          ['Der Demo-PC auf der Startseite merkt sich den Farbmodus, den du wählst, ob du seine Animationseffekte und seinen Ton ein- oder ausgeschaltet hast, ob du seine Startanimation schon gesehen hast, und was du an ihm geändert hast, im Speicher deines Browsers. Das bleibt in deinem Browser und wird nirgendwohin gesendet. Dafür ist nach § 25 Abs. 2 Nr. 2 TDDDG keine Einwilligung nötig, weil die Demo diese Angaben braucht, um so zu funktionieren, wie du sie eingestellt hast; du kannst sie jederzeit in den Websitedaten deines Browsers löschen.'],
+        ],
+      },
+      {
+        heading: 'Hosting bei GitHub Pages',
+        paragraphs: [
+          [
+            'Die Website liegt bei GitHub Pages, einem Dienst der GitHub, Inc., 88 Colin P. Kelly Jr. St., San Francisco, CA 94107, USA. Beim Aufruf einer Seite verarbeitet GitHub deine IP-Adresse, um die Seite auszuliefern, und speichert sie laut eigener Angabe aus Sicherheitsgründen. Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO: ich habe ein berechtigtes Interesse daran, die Website sicher und zuverlässig bereitzustellen. GitHub nimmt am EU-US Data Privacy Framework teil und nutzt außerdem die Standardvertragsklauseln der EU-Kommission. Mehr dazu in der ',
+            { text: 'Datenschutzerklärung von GitHub', href: 'https://docs.github.com/de/site-policy/privacy-policies/github-general-privacy-statement' },
+            '.',
+          ],
+        ],
+      },
+      {
+        heading: 'Domain und E-Mail bei Cloudflare',
+        paragraphs: [
+          [
+            `Die Domain tunero.dev wird über Cloudflare, Inc. verwaltet. Cloudflare beantwortet die DNS-Abfragen für die Domain, liefert aber die Seiten nicht aus. Schreibst du an ${email}, leitet Cloudflare Email Routing die Nachricht an mein Postfach weiter. Ich nutze deine Angaben nur, um dir zu antworten (Art. 6 Abs. 1 lit. b und f DSGVO), und lösche die Nachricht, wenn sie erledigt ist und keine Aufbewahrungspflicht besteht. Mehr dazu in der `,
+            { text: 'Datenschutzerklärung von Cloudflare', href: 'https://www.cloudflare.com/de-de/privacypolicy/' },
+            '.',
+          ],
+        ],
+      },
+      {
+        heading: 'Links zu anderen Seiten',
+        paragraphs: [
+          ['Der Download, der Quellcode und die Versionen liegen auf GitHub, die Unterstützung läuft über Ko-fi. Folgst du einem dieser Links, gilt dort die Datenschutzerklärung des jeweiligen Anbieters.'],
+        ],
+      },
+      {
+        heading: 'Deine Rechte',
+        paragraphs: [
+          [
+            `Du hast das Recht auf Auskunft, Berichtigung, Löschung und Einschränkung der Verarbeitung, auf Datenübertragbarkeit und auf Widerspruch gegen eine Verarbeitung, die auf berechtigtem Interesse beruht (Art. 15 bis 21 DSGVO). Schreib dazu an ${email}. Du kannst dich außerdem bei einer Datenschutz-Aufsichtsbehörde beschweren, zum Beispiel beim `,
+            { text: 'Landesbeauftragten für den Datenschutz und die Informationsfreiheit Baden-Württemberg', href: 'https://www.baden-wuerttemberg.datenschutz.de/' },
+            '.',
+          ],
+        ],
+      },
+    ],
+  },
+  legal: {
+    title: 'Impressum',
+    metaTitle: 'Impressum, Tunero',
+    description: 'Anbieterkennzeichnung für tunero.dev.',
+    intro: [] satisfies Rich as Rich,
+    operator: 'Angaben gemäß § 5 DDG',
+    contact: 'Kontakt',
+    email: 'E-Mail',
+    responsible: 'Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV',
   },
 };
 

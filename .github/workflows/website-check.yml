@@ -1,4 +1,4 @@
-# Installs, tests and builds the website in website-v2/ on pull requests, as pages.yml does before it publishes: a
+# Installs, tests and builds the website in website/ on pull requests, as pages.yml does before it publishes: a
 # dependency update that breaks the site (TypeScript 7 for astro check) fails here, before it reaches main. Publishes
 # nothing.
 name: Website check
@@ -7,7 +7,7 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'website-v2/**'
+      - 'website/**'
       - 'README.md'
       - 'CHANGELOG.md'
       - 'src/Optimizer.Core/Catalog/**'
@@ -38,29 +38,29 @@ jobs:
       with:
         node-version: 24
         cache: npm
-        cache-dependency-path: website-v2/package-lock.json
+        cache-dependency-path: website/package-lock.json
 
     - name: Install
-      working-directory: website-v2
+      working-directory: website
       run: npm ci --ignore-scripts --no-audit --no-fund
 
     - name: Test
-      working-directory: website-v2
+      working-directory: website
       run: npm test
 
     # No token: a pull request from Dependabot or a fork gets none, and the build falls back to the changelog's version.
     - name: Build
-      working-directory: website-v2
+      working-directory: website
       run: npm run build # astro check, then astro build
 
     # The demo desktop in a browser (e2e/), against the site just built: windows, focus, the saved session, the guided
     # fix and the wallpaper's stills.
     - name: Install Chromium
-      working-directory: website-v2
+      working-directory: website
       run: npx playwright install --with-deps chromium
 
     - name: Browser tests
-      working-directory: website-v2
+      working-directory: website
       run: npm run test:e2e
 
     - name: Upload browser test traces
@@ -68,5 +68,5 @@ jobs:
       uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
       with:
         name: browser-test-traces
-        path: website-v2/test-results
+        path: website/test-results
         retention-days: 7
