@@ -135,7 +135,8 @@ public static class Programs
         {
             if (string.IsNullOrWhiteSpace(value)) return;
             var path = command ? CommandLine.ImagePath(value, expander.Expand) : ProgramLeftovers.CleanPath(value, expander);
-            if (path is { Length: > 0 }) paths.Add(path);
+            // An 8.3 short name ("C:\PROGRA~2\Vendor\uninst.exe") as its long form, so it matches the folder it is in.
+            if (path is { Length: > 0 }) paths.Add(path.Contains('~') ? Platform.SafeDelete.LongPath(path) : path);
         }
         // Each entry on its own: one only the system can read leaves out that entry, not the rest of the key.
         foreach (var (hive, path) in new[] { (Hive.Machine, Uninstall), (Hive.Machine, Uninstall32), (Hive.User, Uninstall) })

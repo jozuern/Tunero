@@ -108,7 +108,8 @@ public sealed partial class Updater(HttpMessageHandler? handler = null, string? 
     public static void Install(string newExe, string runningExe)
     {
         var folder = Path.GetDirectoryName(Path.GetFullPath(runningExe))!;
-        using var pin = SafeDelete.Pin(folder) ?? throw new IOException($"{folder} is a link or cannot be held: not updated");
+        // A drive root (the exe on a USB stick) is held too: it cannot be renamed or replaced.
+        using var pin = SafeDelete.Pin(folder, allowRoot: true) ?? throw new IOException($"{folder} is a link or cannot be held: not updated");
         var old = runningExe + ".old";
         var staged = runningExe + ".new";
         DeleteIfThere(old);
@@ -124,7 +125,16 @@ public sealed partial class Updater(HttpMessageHandler? handler = null, string? 
             TryDelete(staged);
             throw;
         }
-        File.Move(runningExe, old);
+        try
+        {
+            File.Move(runningExe, old);
+        }
+        catch
+        {
+            // Another program holds the exe (an antivirus scan, a sync tool): the running exe stays, the copy goes.
+            TryDelete(staged);
+            throw;
+        }
         try
         {
             File.Move(staged, runningExe);
@@ -176,7 +186,7 @@ public sealed partial class Updater(HttpMessageHandler? handler = null, string? 
         try
         {
             if (!File.Exists(old)) return false;
-            using var pin = SafeDelete.Pin(Path.GetDirectoryName(Path.GetFullPath(runningExe))!);
+            using var pin = SafeDelete.Pin(Path.GetDirectoryName(Path.GetFullPath(runningExe))!, allowRoot: true);
             if (pin is null) return false;
             DeleteIfThere(runningExe);
             File.Move(old, runningExe);

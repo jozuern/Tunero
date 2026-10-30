@@ -368,6 +368,36 @@ public class ReleaseTests
         }
     }
 
+    /// <summary>Another program holds the running exe without delete sharing: it stays, and the copy beside it goes.</summary>
+    [Fact]
+    public void InstallThatCannotRenameTheExeLeavesNoCopyBehind()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), "pco-install-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        try
+        {
+            var running = Path.Combine(folder, "Tunero.exe");
+            var downloaded = Path.Combine(folder, "Tunero-1.0.0.exe");
+            File.WriteAllText(running, "old");
+            File.WriteAllText(downloaded, "new");
+            using (new FileStream(running, FileMode.Open, FileAccess.Read, FileShare.Read))
+                Assert.ThrowsAny<IOException>(() => Updater.Install(downloaded, running));
+            Assert.Equal("old", File.ReadAllText(running));
+            Assert.False(File.Exists(running + ".new"));
+            Assert.False(File.Exists(running + ".old"));
+        }
+        finally
+        {
+            TestFolders.Delete(folder);
+        }
+    }
+
+    /// <summary>An exe in a drive root (a USB stick): the copy is created in that root, not relative to the drive's current folder.</summary>
+    [Theory]
+    [InlineData(@"E:\Tunero.exe.new", @"E:\Tunero.exe.new")]
+    [InlineData(@"Z:\Apps\Tunero.exe.new", @"Z:\Apps\Tunero.exe.new")]
+    public void CreatedPathKeepsADriveRoot(string path, string expected) => Assert.Equal(expected, Platform.SafeDelete.CreatedPath(path));
+
     private sealed class RoutingHandler(Dictionary<string, byte[]> files) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct) =>

@@ -170,7 +170,7 @@ public static class SafeDelete
     /// </summary>
     public static FileStream CreateNew(string path)
     {
-        var expected = Path.Combine(LongPath(Path.GetDirectoryName(Path.GetFullPath(path))!).TrimEnd('\\'), Path.GetFileName(path));
+        var expected = CreatedPath(path);
         var handle = CreateFileW(@"\\?\" + expected, GenericWrite | Delete_ | FileReadAttributes, FileShareRead, IntPtr.Zero, CreateNew_,
             FileFlagOpenReparsePoint, IntPtr.Zero);
         if (handle.IsInvalid) throw new IOException($"cannot create {expected}", new Win32Exception(Marshal.GetLastWin32Error()));
@@ -191,6 +191,13 @@ public static class SafeDelete
             throw;
         }
     }
+
+    /// <summary>
+    /// The path <see cref="CreateNew"/> creates and expects the handle to have: the folder in its long form, then the name.
+    /// Join, not Combine: in a drive root the folder is "E:", and Combine would make the drive-relative "E:name".
+    /// </summary>
+    internal static string CreatedPath(string path) =>
+        Path.Join(LongPath(Path.GetDirectoryName(Path.GetFullPath(path))!).TrimEnd('\\'), Path.GetFileName(path));
 
     /// <summary>
     /// The bytes of a real file at this very path, read through the one handle whose path was checked, so a link swapped

@@ -113,10 +113,6 @@ public static class MftRecordParser
         public ulong NameParent;
     }
 
-    // Optimized from the first call: a drive is read once per process, so these loops would otherwise run as tier-0
-    // code for the whole first scan (in the test VM 1.75 s instead of 0.6 s).
-    /// <summary>The checks and the attribute walk <see cref="Parse"/> and <see cref="ParseInto"/> share; false when the record is not usable.</summary>
-    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     /// <summary>
     /// A name NTFS itself would write: not empty, no NUL, \, / or :, and not "." or ".." (only the root's own record, 5,
     /// is named ".").
@@ -135,6 +131,10 @@ public static class MftRecordParser
         return dots != chars || chars > 2 || (chars == 1 && number == 5);
     }
 
+    // Optimized from the first call: a drive is read once per process, so these loops would otherwise run as tier-0
+    // code for the whole first scan (in the test VM 1.75 s instead of 0.6 s).
+    /// <summary>The checks and the attribute walk <see cref="Parse"/> and <see cref="ParseInto"/> share; false when the record is not usable.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     private static bool Walk(Span<byte> record, int bytesPerSector, uint number, ref Fields f)
     {
         // Header fields up to the base reference (0x20) and the next attribute id (0x28).

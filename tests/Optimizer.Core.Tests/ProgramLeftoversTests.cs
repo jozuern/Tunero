@@ -63,6 +63,33 @@ public class ProgramLeftoversTests : IDisposable
         Assert.False(ProgramLeftovers.MayOffer(@"C:\Program Files\Vendor", roots, ProgramOrphans.ReadEvidence(registry, []).Paths));
     }
 
+    /// <summary>
+    /// Installers write uninstall strings with 8.3 short names (C:\PROGRA~2\...): such a reference still keeps its long
+    /// named folder from being offered. Skipped on a volume without short names.
+    /// </summary>
+    [Fact]
+    public void AShortNameReferenceKeepsItsFolder()
+    {
+        var vendor = Path.Combine(_root, "Long Vendor Name");
+        var uninstaller = Path.Combine(vendor, "Product B", "uninstall.exe");
+        Directory.CreateDirectory(Path.GetDirectoryName(uninstaller)!);
+        File.WriteAllBytes(uninstaller, []);
+        var buffer = new char[1024];
+        var length = GetShortPathNameW(uninstaller, buffer, (uint)buffer.Length);
+        var shortName = new string(buffer, 0, (int)length);
+        if (length == 0 || !shortName.Contains('~')) return;
+
+        using var registry = new SandboxRegistry();
+        RegistryValue.Write(registry, Hive.Machine, $@"{Uninstall}\B", "DisplayName", "string", "B");
+        RegistryValue.Write(registry, Hive.Machine, $@"{Uninstall}\B", "UninstallString", "string", $"\"{shortName}\" /S");
+        var roots = new LeftoverRoots([_root], [], []);
+
+        Assert.False(ProgramLeftovers.MayOffer(vendor, roots, Programs.ReferencedPaths(registry)));
+    }
+
+    [System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode, SetLastError = true)]
+    private static extern uint GetShortPathNameW(string longPath, char[] shortPath, uint length);
+
     [Fact]
     public void FootprintCountsTheFilesThatAreStillThere()
     {

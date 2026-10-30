@@ -13,6 +13,8 @@
 - **Startup:** the CSV export uses the separator Excel expects for your regional settings, also when the app language differs from them (an English app on German regional settings).
 - **Apply my changes again:** a change you turned back in Windows yourself, after a Windows update had left it in place, stays turned back. Before, the task applied it again at every sign-in and the Changes page blamed the update.
 - **DNS servers: automatic** leaves network adapters with a fixed IP address alone. Before, it cleared their DNS servers, and no router hands them new ones.
+- **Uninstall leftovers:** a folder another installed program still uses is not offered when its uninstall entry or service names it with an 8.3 short name (`C:\PROGRA~2\...`).
+- **Update in the app:** works for a Tunero.exe in a drive root, such as a USB stick. A failed update no longer leaves the downloaded copy (`Tunero.exe.new`) beside the exe.
 
 ## 1.5.0
 
