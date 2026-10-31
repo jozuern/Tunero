@@ -4,6 +4,7 @@ using System.Security.Principal;
 using System.Text;
 using Optimizer.Core.Catalog;
 using Optimizer.Core.Media;
+using Optimizer.TestSupport;
 
 namespace Optimizer.Core.Tests;
 
@@ -2413,6 +2414,22 @@ public sealed class MediaBuildTests : IDisposable
             MediaImageSettings.Values(new(false, true, false), "ControlSet003"));
         Assert.Equal([("SYSTEM", @"Setup\MoSetup", "AllowUpgradesWithUnsupportedTPMOrCPU", 1)],
             MediaImageSettings.Values(new(false, false, true), "ControlSet003"));
+    }
+
+    /// <summary>
+    /// Every image setting, on alone, counts in Any (which plans the Settings stage) and writes exactly one value: a new
+    /// setting that Any or Values forgets would be skipped by the build without a word.
+    /// </summary>
+    [Fact]
+    public void EveryImageSettingTurnsOnAnyAndWritesOneValue()
+    {
+        var problems = new List<string>();
+        foreach (var (path, on) in RecordLeaves.Of(MediaImageSettings.None))
+        {
+            if (on is null || !on.Any) problems.Add($"MediaImageSettings.{path} on alone does not turn on Any");
+            else if (MediaImageSettings.Values(on, "ControlSet001").Count != 1) problems.Add($"MediaImageSettings.{path} on alone does not write one value in Values");
+        }
+        Assert.True(problems.Count == 0, string.Join(Environment.NewLine, problems));
     }
 
     [Fact]

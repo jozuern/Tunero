@@ -1,5 +1,6 @@
 using Optimizer.Core.Catalog;
 using Optimizer.Core.Media;
+using Optimizer.TestSupport;
 
 namespace Optimizer.Core.Tests;
 
@@ -166,5 +167,121 @@ public sealed class MediaCheckpointTests : IDisposable
         Assert.Equal(MediaRequestFile.FromChoices(choices, null, null).ToJson(), MediaRequestFile.FromRequest(choices.ToRequest()).ToJson());
         var own = choices with { Source = new MediaSource(null, @"C:\iso\Win11.iso", null), Edition = "Windows 11 Pro", IsoIndex = 2, IsoLanguage = "de-DE", Tunero = null, InstallApps = [], RemoveUnreviewed = ["Contoso.Notes"] };
         Assert.Equal(MediaRequestFile.FromChoices(own, null, null).ToJson(), MediaRequestFile.FromRequest(own.ToRequest()).ToJson());
+    }
+
+    // ---- completeness: a field the hash or choices.json forgets makes Resume reuse an image built with other settings ----
+
+    /// <summary>
+    /// The fields of <see cref="MediaRequest"/> (and the records inside it) that <see cref="MediaCheckpoint.HashOf"/> leaves out
+    /// on purpose, each with the reason; its comment says the same. Every other field must change the hash.
+    /// </summary>
+    private static readonly Dictionary<string, string> NotHashed = new()
+    {
+        ["OutputIso"] = "a resume may write elsewhere on the same drive",
+        ["TuneroExe"] = "where the running Tunero lies, not a choice of the page",
+        ["FirstSignIn.Language"] = "the app's language; the first sign-in file is written after both checkpoints",
+        ["FirstSignIn.Theme"] = "the app's theme; the first sign-in file is written after both checkpoints",
+        ["Source.Download.Url"] = "the download address; the file is named by its name, size and SHA-256",
+        ["Source.Download.Language"] = "the catalog's display name of LanguageCode, which is hashed",
+        ["Source.Cab.Url"] = "the catalog the page checked, not the image",
+        ["Source.Cab.Size"] = "the catalog the page checked, not the image",
+        ["Source.Cab.Sha256"] = "the catalog the page checked, not the image",
+    };
+
+    /// <summary>
+    /// Hashed fields that choices.json (<see cref="MediaRequestFile.FromRequest"/>) does not hold, each with how the page
+    /// makes them again when it applies the file before Resume. A value made differently gives another hash, which the
+    /// resume refuses (Media_ResumeInvalid): it never builds on from the saved image.
+    /// </summary>
+    private static readonly Dictionary<string, string> MadeAgainOnResume = new()
+    {
+        ["IsoIndex"] = "the page finds the own ISO's image again by the edition or name the file holds",
+        ["Answers.Architecture"] = "always MediaChoices.Architecture",
+        ["Answers.UiLanguage"] = "the download's language, or the language of the own ISO's image, read again",
+        ["Answers.SystemLocale"] = "follows the region (MediaLocales.SystemLocale)",
+        ["Answers.FirstSignInTunero"] = "on exactly when the file names a profile",
+        ["Source.Download.FileName"] = "the page picks the catalog's newest file for the language and edition again",
+        ["Source.Download.Edition"] = "the request's edition, which the file holds",
+        ["Source.Download.Architecture"] = "always MediaChoices.CatalogArchitecture",
+        ["Source.Download.Size"] = "the catalog's, for the file the page picks again",
+        ["Source.Download.Sha256"] = "the catalog's, for the file the page picks again",
+    };
+
+    /// <summary>A download and an own ISO with every choice on: Skip setup (the region and keyboard count only with it), a profile, apps, parts.</summary>
+    private static MediaRequest[] FullRequests()
+    {
+        var answers = new AnswerChoices("amd64", "de-DE", "0C07:00000407", "de-AT", "de-AT", "Anna", SkipSetup: true, AllowUnsupported: true, FirstSignInTunero: true);
+        var cab = new CabLocation(new Uri("http://example.invalid/products.cab"), 1234, new byte[32]);
+        var download = new MediaRequest(new MediaSource(Esd, null, cab), "Professional", null, ["Microsoft.BingNews"], answers, @"C:\Tunero.exe",
+            new FirstSignInFile("gaming", "en", "System") { Apps = ["Mozilla.Firefox"] }, @"C:\out\Win11.iso")
+        {
+            RemoveUnreviewed = ["Contoso.Notes"],
+            RemoveParts = ["wordpad"],
+        };
+        return [download, download with { Source = new MediaSource(null, @"C:\iso\Win11.iso", null), IsoIndex = 2 }];
+    }
+
+    /// <summary>
+    /// Per field: whether changing it alone changes <paramref name="of"/> in each base request (null: the field is inside a
+    /// record that is null there). A record that is null in one base and set in another counts by its fields.
+    /// </summary>
+    private static Dictionary<string, List<bool?>> Changes(Func<MediaRequest, string> of)
+    {
+        var result = new Dictionary<string, List<bool?>>(StringComparer.Ordinal);
+        foreach (var request in FullRequests())
+        {
+            var before = of(request);
+            foreach (var (path, changed) in RecordLeaves.Of(request))
+            {
+                if (!result.TryGetValue(path, out var list)) result[path] = list = [];
+                list.Add(changed is null ? null : of(changed) != before);
+            }
+        }
+        foreach (var record in result.Keys.Where(p => RecordLeaves.IsInside(p, result.Keys)).ToList()) result.Remove(record);
+        return result;
+    }
+
+    /// <summary>
+    /// Every field of the request changes the hash, unless <see cref="NotHashed"/> names it, and a named one does not. A new
+    /// field that the hash misses fails here with its name.
+    /// </summary>
+    [Fact]
+    public void EveryFieldOfTheRequestChangesTheHashUnlessItIsNamedAsLeftOut()
+    {
+        var problems = new List<string>();
+        var changes = Changes(MediaCheckpoint.HashOf);
+        foreach (var (path, outcomes) in changes)
+        {
+            if (outcomes.All(o => o is null))
+                problems.Add($"MediaRequest.{path} is in a record that is null in every request of FullRequests: set it in one");
+            else if (NotHashed.ContainsKey(path) && outcomes.Contains(true))
+                problems.Add($"MediaRequest.{path} changes MediaCheckpoint.HashOf: take it off NotHashed");
+            else if (!NotHashed.ContainsKey(path) && !outcomes.Contains(true))
+                problems.Add($"MediaRequest.{path} does not change MediaCheckpoint.HashOf: add it there, or to NotHashed with the reason");
+        }
+        problems.AddRange(NotHashed.Keys.Where(k => !changes.ContainsKey(k)).Select(k => $"NotHashed names {k}, which is no field of MediaRequest"));
+        Assert.True(problems.Count == 0, string.Join(Environment.NewLine, problems));
+    }
+
+    /// <summary>
+    /// Resume applies choices.json to the page and builds on only when the page's request has the saved hash: every hashed
+    /// field is in the file, or <see cref="MadeAgainOnResume"/> says how the page makes it again.
+    /// </summary>
+    [Fact]
+    public void EveryHashedFieldIsInTheSavedChoicesUnlessThePageMakesItAgain()
+    {
+        var problems = new List<string>();
+        var hashed = Changes(MediaCheckpoint.HashOf).Where(c => c.Value.Contains(true)).Select(c => c.Key).ToHashSet(StringComparer.Ordinal);
+        var saved = Changes(r => MediaRequestFile.FromRequest(r).ToJson());
+        foreach (var path in hashed)
+        {
+            var inFile = saved[path].Contains(true);
+            if (!inFile && !MadeAgainOnResume.ContainsKey(path))
+                problems.Add($"MediaRequest.{path} is hashed but MediaRequestFile.FromRequest (choices.json) does not hold it: add it to the request file, or to MadeAgainOnResume with how the page makes it again");
+            else if (inFile && MadeAgainOnResume.ContainsKey(path))
+                problems.Add($"MediaRequest.{path} is in choices.json: take it off MadeAgainOnResume");
+        }
+        problems.AddRange(MadeAgainOnResume.Keys.Where(k => !hashed.Contains(k)).Select(k => $"MadeAgainOnResume names {k}, which is no hashed field of MediaRequest"));
+        Assert.True(problems.Count == 0, string.Join(Environment.NewLine, problems));
     }
 }

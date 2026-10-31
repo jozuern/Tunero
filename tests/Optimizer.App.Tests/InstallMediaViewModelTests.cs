@@ -1814,6 +1814,107 @@ public sealed class InstallMediaViewModelTests : IDisposable
         Assert.All(media.AppRows.Where(r => r.Entry.Group != "consumer"), r => Assert.False(r.IsChecked));
     }
 
+    // ---- completeness: every request file field is applied, saved and reset by the page ----
+
+    /// <summary>Request file fields the page does not apply, with the reason. Every other one is applied, saved again and reset.</summary>
+    private static readonly Dictionary<string, string> NotApplied = new()
+    {
+        ["appLanguage"] = "the page builds in the app's language and never writes the field",
+        ["theme"] = "the copy on the media takes the app's theme; the page has no choice for it",
+    };
+
+    /// <summary>
+    /// Files that set every field to something other than the page's default when it opens: a download, and an own ISO
+    /// for what only an own ISO has (its path, the apps beyond the reviewed list).
+    /// </summary>
+    private System.Text.Json.Nodes.JsonObject[] ChangedFiles()
+    {
+        var download = Saved();
+        download["edition"] = "Core";
+        download["removeParts"] = new System.Text.Json.Nodes.JsonArray("wordpad");
+        download["compression"] = "recovery";
+        download["preventDeviceEncryption"] = true;
+        download["noReservedStorage"] = true;
+        download["allowUnsupportedUpgrades"] = true;
+        var own = Saved();
+        own["source"] = IsoFile();
+        own.Remove("language");
+        own["edition"] = "Core";
+        own["removeUnreviewed"] = new System.Text.Json.Nodes.JsonArray("Contoso.Notes");
+        return [download, own];
+    }
+
+    /// <summary>What Save writes for the page as it stands, lists sorted (the page keeps its own order).</summary>
+    private System.Text.Json.Nodes.JsonObject SavedNow(InstallMediaViewModel media, string name)
+    {
+        _dialogs.SaveFile = Path.Combine(_root, name);
+        media.SaveChoicesCommand.Execute(null);
+        return Sorted(global::System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(_dialogs.SaveFile))!.AsObject());
+    }
+
+    private static System.Text.Json.Nodes.JsonObject Sorted(System.Text.Json.Nodes.JsonObject json)
+    {
+        var copy = json.DeepClone().AsObject();
+        foreach (var (key, value) in copy.ToList())
+            if (value is System.Text.Json.Nodes.JsonArray list)
+                copy[key] = new System.Text.Json.Nodes.JsonArray(list.Select(n => n!.GetValue<string>()).Order(StringComparer.OrdinalIgnoreCase).Select(s => (System.Text.Json.Nodes.JsonNode?)s).ToArray());
+        return copy;
+    }
+
+    /// <summary>
+    /// Every request file field is set on the page by Load (and so by the remembered choices and Resume), comes back in what
+    /// Save writes, and goes back to the default with Reset, unless <see cref="NotApplied"/> names it. A new field that one
+    /// of these forgets fails here with its name.
+    /// </summary>
+    [Fact]
+    public async Task EveryRequestFileFieldIsAppliedSavedAndReset()
+    {
+        Loc.Instance.SetLanguage("en");
+        var problems = new List<string>();
+        var applied = new HashSet<string>(StringComparer.Ordinal);
+        var changedAnywhere = new HashSet<string>(StringComparer.Ordinal);
+        var step = 0;
+        foreach (var changed in ChangedFiles())
+        {
+            var system = System() with
+            {
+                ReadIsoApps = (_, _, _) => Task.FromResult<IReadOnlyList<string>>(["Microsoft.BingNews_4.1.0.0_x64__8wekyb3d8bbwe", "Contoso.Notes_1.0.0.0_x64__abcdefghijklm"]),
+            };
+            var media = await WithCatalog(Media(system: system));
+            var defaults = SavedNow(media, $"defaults{step}.json");
+
+            _dialogs.OpenFile = Write(changed, $"changed{step}.json");
+            media.LoadChoicesCommand.Execute(null);
+            await media.IsoLoading;
+            await media.AppsLoading;
+            if (media.ChoicesNoteSeverity != InfoBarSeverity.Success) problems.Add($"The changed file {step} was not loaded whole: {media.ChoicesNote}");
+            var loaded = SavedNow(media, $"loaded{step}.json");
+
+            media.ResetChoicesCommand.Execute(null);
+            var reset = SavedNow(media, $"reset{step}.json");
+
+            var wanted = Sorted(changed);
+            foreach (var field in MediaRequestFile.FieldNames.Where(f => !NotApplied.ContainsKey(f)))
+            {
+                if (global::System.Text.Json.Nodes.JsonNode.DeepEquals(wanted[field], defaults[field])) continue;
+                changedAnywhere.Add(field);
+                if (global::System.Text.Json.Nodes.JsonNode.DeepEquals(loaded[field], wanted[field])) applied.Add(field);
+                if (!global::System.Text.Json.Nodes.JsonNode.DeepEquals(reset[field], defaults[field]))
+                    problems.Add($"{field}: ResetChoices does not restore the default {defaults[field]?.ToJsonString() ?? "null"} (it keeps {reset[field]?.ToJsonString() ?? "null"})");
+            }
+            step++;
+        }
+        foreach (var field in MediaRequestFile.FieldNames.Where(f => !NotApplied.ContainsKey(f)))
+        {
+            if (!changedAnywhere.Contains(field))
+                problems.Add($"{field}: ChangedFiles gives no value other than the page's default; add one");
+            else if (!applied.Contains(field))
+                problems.Add($"{field}: a loaded file's value does not reach the page's choices (ApplyChoices, Choices() and FromChoices)");
+        }
+        problems.AddRange(NotApplied.Keys.Where(k => !MediaRequestFile.FieldNames.Contains(k)).Select(k => $"NotApplied names {k}, which is no request file field"));
+        Assert.True(problems.Count == 0, string.Join(Environment.NewLine, problems));
+    }
+
     // ---- a saved build: Resume and Discard ----
 
     /// <summary>A work folder in the temp folder holding <paramref name="choices"/> as its saved choices, with a checkpoint for them.</summary>

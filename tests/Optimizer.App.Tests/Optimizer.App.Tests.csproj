@@ -19,6 +19,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The record walker of the install media completeness guards, shared with Optimizer.Core.Tests. -->
+    <Compile Include="..\Optimizer.Core.Tests\RecordLeaves.cs" Link="RecordLeaves.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\Optimizer.App\Optimizer.App.csproj" />
   </ItemGroup>
 

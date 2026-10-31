@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
 using Optimizer.Core.Catalog;
 using Optimizer.Core.Media;
+using Optimizer.TestSupport;
 
 namespace Optimizer.Core.Tests;
 
@@ -726,5 +727,162 @@ public sealed class MediaRequestFileTests : IDisposable
         var c = Set("download") with { RemoveParts = ["wordpad"] };
         Assert.Equal(["wordpad"], c.ToRequest().RemoveParts);
         Assert.Empty(Set("download").ToRequest().RemoveParts);
+    }
+
+    // ---- completeness: a choice the request file forgets is lost from the remembered, saved and resumed choices ----
+
+    /// <summary>Properties of <see cref="MediaRequestFile"/> that are no field of the file, with the reason.</summary>
+    private static readonly Dictionary<string, string> NotFields = new()
+    {
+        ["Dropped"] = "what reading the file could not use, never written",
+        ["StandIns"] = "which fields hold a stand-in after reading, never written",
+    };
+
+    /// <summary>
+    /// Choices (paths into <see cref="MediaChoices"/>) the request file does not hold, with the reason. Everything else
+    /// comes back through <see cref="MediaRequestFile.FromChoices"/>, <see cref="MediaRequestFile.ToJson"/>,
+    /// <see cref="MediaRequestFile.Parse"/> and <see cref="MediaRequestFile.ToChoices"/>.
+    /// </summary>
+    private static readonly Dictionary<string, string> NotInTheFile = new()
+    {
+        ["IsoIndex"] = "the page reads the own ISO again and finds the image by the edition or name the file holds",
+        ["IsoLanguage"] = "the page reads it from the own ISO's image again",
+        ["AppLanguage"] = "the app's language when the file is used; FromChoices leaves it out on purpose",
+        ["Tunero.Exe"] = "the running Tunero, given to ToChoices",
+        ["Source.Cab"] = "the catalog the page checks again before a build",
+    };
+
+    /// <summary>A download (or an own ISO) with every choice on and valid, so that each one can be changed alone.</summary>
+    private MediaChoices FullChoices(bool ownIso)
+    {
+        var c = new MediaChoices(new MediaSource(Files[1], null, null), "Professional", null, null, "en", MeasuredPageApps().Take(2).ToList(),
+            SkipSetup: true, AccountName: "Anna", Region: "de-AT", Keyboard: "0C07:00000407", AllowUnsupported: true,
+            Tunero: new TuneroCopy(Path.Combine(_root, "Tunero.exe"), "office", "Light"), OutputIso: Output)
+        {
+            InstallApps = ["Mozilla.Firefox"],
+            RemoveUnreviewed = ["Contoso.Notes"],
+            RemoveParts = ["recall"],
+        };
+        return ownIso ? c with { Source = new MediaSource(null, OwnIso(), null), Edition = "ProfessionalWorkstation" } : c;
+    }
+
+    private static List<string> MeasuredPageApps() =>
+        MediaChoices.PageApps(CatalogData.Current.Appx, MediaChoices.MeasuredApps(CatalogData.Current.MediaImages, Files[1])).Select(a => a.Name).ToList();
+
+    /// <summary>Other values the request file accepts, for the choices whose generic change (RecordLeaves) it would refuse.</summary>
+    private Dictionary<string, Func<object?, object?>> FileValues()
+    {
+        var otherIso = Path.Combine(_root, "Other.iso");
+        File.WriteAllText(otherIso, "iso");
+        return new()
+        {
+            ["Source.Download"] = _ => Files[3],
+            ["Source.IsoPath"] = _ => otherIso,
+            ["Edition"] = _ => "Core",
+            ["RemoveApps"] = _ => MeasuredPageApps().Take(3).ToList(),
+            ["AccountName"] = _ => "Berta",
+            ["Region"] = _ => "de-DE",
+            ["Keyboard"] = _ => "0407:00000407",
+            ["Tunero.Profile"] = _ => "gaming",
+            ["Tunero.Theme"] = _ => "Dark",
+            ["OutputIso"] = _ => Path.Combine(_root, "other.iso"),
+            ["RemoveUnreviewed"] = _ => new List<string> { "Contoso.Notes", "Contoso.Paint" },
+            ["RemoveParts"] = _ => new List<string> { "recall", "wordpad" },
+            ["InstallApps"] = _ => new List<string> { "Mozilla.Firefox", "Valve.Steam" },
+        };
+    }
+
+    [Fact]
+    public void EveryPropertyOfTheRequestFileIsAFieldAndToJsonWritesEachOne()
+    {
+        var properties = typeof(MediaRequestFile).GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+            .Where(p => p.SetMethod is { IsPublic: true } && !NotFields.ContainsKey(p.Name))
+            .Select(p => char.ToLowerInvariant(p.Name[0]) + p.Name[1..]).ToList();
+        var problems = properties.Except(MediaRequestFile.FieldNames).Select(p => $"MediaRequestFile.{p} is not in FieldNames: add the field (Parse, ToJson) or name it in NotFields")
+            .Concat(MediaRequestFile.FieldNames.Except(properties).Select(f => $"FieldNames has {f}, which is no property of MediaRequestFile"))
+            .ToList();
+        var written = JsonNode.Parse((MediaRequestFile.FromChoices(FullChoices(false), null, null) with { AppLanguage = "de" }).ToJson())!.AsObject().Select(p => p.Key).ToList();
+        problems.AddRange(MediaRequestFile.FieldNames.Except(written).Select(f => $"MediaRequestFile.ToJson does not write {f}"));
+        Assert.True(problems.Count == 0, string.Join(Environment.NewLine, problems));
+    }
+
+    /// <summary>
+    /// Every choice of <see cref="MediaChoices"/>, changed alone, comes back from the request file the page remembers, saves
+    /// and resumes from, unless <see cref="NotInTheFile"/> names it. A new choice that the file misses fails here with its name.
+    /// </summary>
+    [Fact]
+    public void EveryChoiceComesBackFromTheRequestFileUnlessItIsNamedAsLeftOut()
+    {
+        var problems = new List<string>();
+        var outcomes = new Dictionary<string, List<string?>>(StringComparer.Ordinal);
+        var values = FileValues();
+        foreach (var full in new[] { FullChoices(false), FullChoices(true) })
+        {
+            foreach (var (path, changed) in RecordLeaves.Of(full, values))
+            {
+                if (!outcomes.TryGetValue(path, out var list)) outcomes[path] = list = [];
+                if (changed is null)
+                {
+                    list.Add(null);
+                    continue;
+                }
+                var value = RecordLeaves.Get(changed, path);
+                if (RecordLeaves.Same(value, RecordLeaves.Get(full, path)))
+                {
+                    problems.Add($"MediaChoices.{path}: FileValues gives the value it already has");
+                    continue;
+                }
+                try
+                {
+                    var back = MediaRequestFile.Parse(MediaRequestFile.FromChoices(changed, null, null).ToJson(), Keyboards)
+                        .ToChoices(Files, full.AppLanguage, full.Tunero?.Exe, "System");
+                    list.Add(RecordLeaves.Same(RecordLeaves.Get(back, path), value) ? "" : "lost");
+                }
+                catch (MediaRequestFileException ex)
+                {
+                    list.Add("refused: " + ex.Message);
+                }
+            }
+        }
+        foreach (var record in outcomes.Keys.Where(p => RecordLeaves.IsInside(p, outcomes.Keys)).ToList()) outcomes.Remove(record);
+        foreach (var (path, results) in outcomes)
+        {
+            var back = results.Contains("");
+            if (NotInTheFile.ContainsKey(path))
+            {
+                if (back) problems.Add($"MediaChoices.{path} comes back from the request file: take it off NotInTheFile");
+            }
+            else if (results.All(r => r is null))
+            {
+                problems.Add($"MediaChoices.{path} is in a record that is null in every FullChoices: set it in one");
+            }
+            else if (!back)
+            {
+                problems.Add(results.FirstOrDefault(r => r?.StartsWith("refused", StringComparison.Ordinal) == true) is { } refused
+                    ? $"MediaChoices.{path}: the request file {refused}; give a value it accepts in FileValues"
+                    : $"MediaChoices.{path} does not come back from the request file: add it to MediaRequestFile (FromChoices, ToJson, Parse, ToChoices) or name it in NotInTheFile with the reason");
+            }
+        }
+        problems.AddRange(NotInTheFile.Keys.Where(k => !outcomes.ContainsKey(k)).Select(k => $"NotInTheFile names {k}, which is no choice of MediaChoices"));
+        Assert.True(problems.Count == 0, string.Join(Environment.NewLine, problems));
+    }
+
+    public static IEnumerable<object[]> FieldNames => MediaRequestFile.FieldNames.Select(f => new object[] { f });
+
+    /// <summary>
+    /// A remembered or saved file with one field that cannot be used keeps the rest: the field is named in the page's note
+    /// and holds a stand-in the page does not apply. A new field without a stand-in would make the whole file unusable.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(FieldNames))]
+    public void AFieldThatCannotBeUsedIsDroppedAndNamedAndTheRestIsKept(string field)
+    {
+        var json = Download();
+        json[field] = 42;
+        var file = MediaRequestFile.ParseKeepingWhatFits(json.ToJsonString(), Keyboards);
+        Assert.Contains(new MediaDroppedValue(field), file.Dropped);
+        Assert.Contains(field, file.StandIns);
+        if (field != "allowUnsupported") Assert.True(file.AllowUnsupported);
+        if (field != "skipSetup") Assert.Equal("Anna", file.SkipSetup?.AccountName);
     }
 }

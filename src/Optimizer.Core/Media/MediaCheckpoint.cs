@@ -59,9 +59,10 @@ public sealed record MediaCheckpoint(CheckpointKind Kind, string RequestHash, st
     /// The SHA-256 of the request's choices as canonical JSON: every choice that shapes the media, lists sorted and names
     /// in lower case. Left out: the output path (a resume may write elsewhere on the same drive), the running Tunero's path,
     /// the app's language and theme in the first sign-in file (they follow the app, not a choice of the page, and the file
-    /// is written after both checkpoints), the catalog's download address and location (the file is named by its name,
-    /// size and SHA-256), and without Skip setup the region and keyboard (the page greys them out, choices.json keeps them
-    /// only with Skip setup, and the answer file they go into is written after both checkpoints).
+    /// is written after both checkpoints), the catalog's download address, location and display name of the language (the
+    /// file is named by its name, size and SHA-256, the language by its code), and without Skip setup the region and keyboard
+    /// (the page greys them out, choices.json keeps them only with Skip setup, and the answer file they go into is written
+    /// after both checkpoints). MediaCheckpointTests checks every field of the request against this list.
     /// </summary>
     public static string HashOf(MediaRequest r)
     {

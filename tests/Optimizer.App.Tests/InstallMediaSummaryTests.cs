@@ -3,6 +3,7 @@ using Optimizer.App.ViewModels;
 using Optimizer.Core.Catalog;
 using Optimizer.Core.Media;
 using Optimizer.Core.Platform;
+using Optimizer.TestSupport;
 
 namespace Optimizer.App.Tests;
 
@@ -163,6 +164,108 @@ public sealed class InstallMediaSummaryTests
         Assert.Contains(r.Warnings, w => w.Contains(Loc.Instance["Media_UnreviewedTitle"]));
         // A review lists choices: no "now" value to compare with.
         Assert.All(r.Changes, l => Assert.Equal("", l.Before));
+    }
+
+    // ---- completeness: a choice the bar or the review forgets goes into the ISO unseen ----
+
+    /// <summary>Choices (paths into <see cref="MediaChoices"/>) the bar does not show, with the reason. Every other one changes it.</summary>
+    private static readonly Dictionary<string, string> NotInTheBar = new()
+    {
+        ["Source.IsoPath"] = "the bar names the image, not its file; the review names the file",
+        ["Source.Cab"] = "the catalog the page checked, not a choice",
+        ["Edition"] = "the page passes the edition's title and build (editionTitle, build)",
+        ["IsoIndex"] = "the page passes the image's title and build (editionTitle, build)",
+        ["AppLanguage"] = "the app's language, not a choice of the page",
+        ["Region"] = "the bar names the account only; the review names the region",
+        ["Keyboard"] = "the page picks it with the region unless one is chosen; the bar keeps to the account",
+        ["Tunero.Exe"] = "the running Tunero, not a choice",
+        ["Tunero.Theme"] = "the app's theme, which the copy starts with; not a choice of the page",
+        ["OutputIso"] = "the output file has its own card, and the review names it",
+    };
+
+    /// <summary>Choices the review before the build does not show, with the reason. Every other one changes it.</summary>
+    private static readonly Dictionary<string, string> NotInTheReview = new()
+    {
+        ["Source.Cab"] = "the catalog the page checked, not a choice",
+        ["Edition"] = "the page passes the edition's title and build (editionTitle, build)",
+        ["IsoIndex"] = "the page passes the image's title and build (editionTitle, build)",
+        ["AppLanguage"] = "the app's language, not a choice of the page",
+        ["Keyboard"] = "the page picks it with the region, which the review names, unless one is chosen",
+        ["Tunero.Exe"] = "the running Tunero, not a choice",
+        ["Tunero.Theme"] = "the app's theme, which the copy starts with; not a choice of the page",
+    };
+
+    /// <summary>A download (or an own ISO) with Skip setup, a profile, apps to remove and install and unreviewed apps; the rest off.</summary>
+    private static MediaChoices Full(bool ownIso)
+    {
+        var c = Choices(apps: 2, account: "Anna", profile: "office", unreviewed: 1, install: 1) with { Keyboard = "0C07:00000407" };
+        return ownIso ? c with { Source = new MediaSource(null, @"C:\iso\Win11.iso", null), IsoIndex = 2, IsoLanguage = "fr-FR" } : c;
+    }
+
+    /// <summary>Real values where a generic change (RecordLeaves) would not read like a choice.</summary>
+    private static readonly Dictionary<string, Func<object?, object?>> SummaryValues = new()
+    {
+        ["Source.Download"] = _ => new EsdFile("y.esd", "en-us", "English (United States)", "Professional", "x64", 6L << 30, new string('b', 64),
+            new Uri("http://dl.delivery.mp.microsoft.com/y.esd")),
+        ["IsoLanguage"] = _ => "de-DE",
+        ["Region"] = _ => "de-DE",
+        ["Keyboard"] = _ => "0407:00000407",
+        ["RemoveApps"] = _ => CatalogData.Current.Appx.Apps.Select(a => a.Name).Take(5).ToList(),
+        ["RemoveParts"] = _ => new List<string> { "wordpad" },
+    };
+
+    private static string BarText(MediaChoices c) => InstallMediaSummary.Bar(c, "Windows 11 Pro", "26300") + "\n" + InstallMediaSummary.BarChanges(c);
+
+    private static string ReviewText(MediaChoices c)
+    {
+        var r = InstallMediaSummary.Review(c, "Windows 11 Pro", "26300", 1);
+        return string.Join("\n", new[] { r.Title, r.Summary }.Concat(r.Changes.Select(l => $"{l.Target}={l.After}")).Concat(r.Warnings));
+    }
+
+    /// <summary>The problems of one place: a choice it does not show that is not named, or a named one it shows.</summary>
+    private static List<string> Unshown(string place, Func<MediaChoices, string> text, Dictionary<string, string> exempt)
+    {
+        var shown = new Dictionary<string, List<bool?>>(StringComparer.Ordinal);
+        foreach (var full in new[] { Full(false), Full(true) })
+        {
+            var before = text(full);
+            foreach (var (path, changed) in RecordLeaves.Of(full, SummaryValues))
+            {
+                if (!shown.TryGetValue(path, out var list)) shown[path] = list = [];
+                list.Add(changed is null ? null : text(changed) != before);
+            }
+        }
+        foreach (var record in shown.Keys.Where(p => RecordLeaves.IsInside(p, shown.Keys)).ToList()) shown.Remove(record);
+        var problems = new List<string>();
+        foreach (var (path, results) in shown)
+        {
+            if (exempt.ContainsKey(path))
+            {
+                if (results.Contains(true)) problems.Add($"MediaChoices.{path} changes {place}: take it off its list of choices it does not show");
+            }
+            else if (results.All(r => r is null))
+            {
+                problems.Add($"MediaChoices.{path} is in a record that is null in every Full choices: set it in one");
+            }
+            else if (!results.Contains(true))
+            {
+                problems.Add($"MediaChoices.{path} does not change {place}: show it there (InstallMediaSummary), or name it in the test's list with the reason");
+            }
+        }
+        problems.AddRange(exempt.Keys.Where(k => !shown.ContainsKey(k)).Select(k => $"The list for {place} names {k}, which is no choice of MediaChoices"));
+        return problems;
+    }
+
+    /// <summary>
+    /// Every choice, changed alone, changes the bar (image line or changes line) and the review, unless the place's list
+    /// names it with the reason. A new choice that a place forgets fails here with its name.
+    /// </summary>
+    [Fact]
+    public void EveryChoiceAppearsInTheBarAndTheReviewUnlessItIsNamedAsLeftOut()
+    {
+        var problems = Unshown("the summary bar (InstallMediaSummary.Bar, BarChanges)", BarText, NotInTheBar)
+            .Concat(Unshown("the review (InstallMediaSummary.Review)", ReviewText, NotInTheReview)).ToList();
+        Assert.True(problems.Count == 0, string.Join(Environment.NewLine, problems));
     }
 
     [Fact]
