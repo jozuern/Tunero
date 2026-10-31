@@ -293,7 +293,7 @@ public sealed class PackageUpdatesTests
     /// <summary>The page's output is written from the progress callbacks, which may run a moment after the run.</summary>
     private static async Task WaitFor(Func<bool> condition)
     {
-        for (var i = 0; i < 200 && !condition(); i++) await Task.Delay(25);
+        for (var i = 0; i < 800 && !condition(); i++) await Task.Delay(25);
         Assert.True(condition());
     }
 

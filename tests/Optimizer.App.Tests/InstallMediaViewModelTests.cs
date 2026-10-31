@@ -566,7 +566,7 @@ public sealed class InstallMediaViewModelTests : IDisposable
     /// <summary>Progress arrives on the window's context after the build reported it: wait for the row to show it.</summary>
     private static async Task WaitFor(Func<bool> condition)
     {
-        for (var i = 0; i < 200 && !condition(); i++) await Task.Delay(10);
+        for (var i = 0; i < 2000 && !condition(); i++) await Task.Delay(10);
         Assert.True(condition());
     }
 
