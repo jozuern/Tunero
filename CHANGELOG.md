@@ -31,7 +31,7 @@
 - **Services & tasks:** task commands show once, on one line and only with Technical details; Windows tasks show "Listed only" instead of a grey switch; notes no longer repeat the service's name.
 - **Ratings follow the evidence:** the power mode check is rated 1 on desktops (3 on laptops), the Balanced plan rates for gaming only when coming from Power saver, and HAGS on RTX 40 and 50 no longer says it is needed to start games.
 - **Inking and typing personalization off** is rated Moderate and says up front that it deletes the personal dictionary, which Undo does not bring back.
-- **Markdig 1.4.2** for the explanation pages.
+- **Markdig 1.5.0** for the explanation pages.
 
 ### Fixed
 
