@@ -29,7 +29,10 @@
             <ui:TextBlock Style="{StaticResource PageTitle}" Text="{l:Tr Net_Title}" />
             <ui:TextBlock Style="{StaticResource PageIntro}" Text="{l:Tr Net_Hint}" />
 
-            <!-- No NVIDIA card: the page's graphics part says why it is empty instead of leaving only DNS under the title -->
+            <!-- No NVIDIA card: the page's graphics part says why it is empty instead of leaving only DNS under the title, under
+                 a header of its own as DNS has one (first on the page: no space above, as the NVIDIA header) -->
+            <ui:TextBlock Style="{StaticResource SectionHeader}" Text="{l:Tr Net_Graphics}" Margin="0,0,0,8"
+                          Visibility="{Binding Network.NoNvidia, Converter={StaticResource BoolToVisibility}}" />
             <ui:CardControl Padding="{StaticResource CardPadding}" Visibility="{Binding Network.NoNvidia, Converter={StaticResource BoolToVisibility}}">
                 <ui:CardControl.Icon>
                     <ui:SymbolIcon Symbol="DeveloperBoard24" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />

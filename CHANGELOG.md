@@ -5,6 +5,9 @@
 ### Changed
 
 - **.NET runtime 10.0.14:** the exe carries the .NET and Windows Desktop runtime of Microsoft's out-of-band security release of October 25, 2026, which fixes a Brotli decoder flaw ([release notes](https://github.com/dotnet/core/blob/main/release-notes/10.0/10.0.14/10.0.14.md)), instead of 10.0.13.
+- **Navigation** group headings show whenever they fit, also after the start-up scan; a running scan takes the "Last scan" line instead of adding one.
+- **Windows install media:** the summary bar breaks only between items, the failure bar holds its Show why button, and the review names the keyboard layout.
+- **Remove apps:** note and info bars first, then the Remove selected card above a divider; **Graphics & DNS** has a Graphics section header; **Storage** treemap labels sit on the tiles in black or white.
 - **Windows install media:** a failed build scrolls to its reason, and the bottom bar says the last build failed. The bar shows the image and the changes on two lines, names Allow unsupported PCs, unreviewed apps and apps to install, and gives the real reason Build is off. Card headers are shorter, with the details in the expanded cards.
 - **Drivers:** each driver's age lines up on the right of its card; the DDU card moved below the list.
 - **Tools:** Restart to Advanced startup says it restarts the PC now; start priority rules show their tags, the warning in an info bar, a labeled form and an empty state; the German tab is Reparaturen.

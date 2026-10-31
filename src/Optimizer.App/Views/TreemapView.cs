@@ -18,8 +18,8 @@ namespace Optimizer.App.Views;
 /// file group, folders laid out inside their own rectangle (squarified, <see cref="SquarifiedLayout"/>). A drive has
 /// millions of files, so it is one element that draws one geometry per group; the layout is cached and built again only
 /// when the size, the tree or the folder changes. The shown folder's own entries carry their name and size where the
-/// tile has room, on a small plate in the page's background color that stays readable on every group color in both
-/// themes. Screen readers get one name; the folder list is the accessible way to the same data.
+/// tile has room, in black or white by the tile's luminance (a translucent plate only where the label lies on tiles of
+/// several colors), readable on every group color in both themes. Screen readers get one name; the folder list is the accessible way to the same data.
 /// </summary>
 public sealed class TreemapView : FrameworkElement
 {
@@ -46,7 +46,10 @@ public sealed class TreemapView : FrameworkElement
     private static readonly DependencyProperty SelectionBrushProperty = DependencyProperty.Register("SelectionBrush", typeof(Brush), typeof(TreemapView),
         new FrameworkPropertyMetadata(null, (d, _) => ((TreemapView)d).DrawSelection()));
 
-    /// <summary>The labels' text and the plate under it (primary text on the page background), so a theme switch redraws them.</summary>
+    /// <summary>
+    /// The labels' text where no single tile color lies under it, and the translucent plate under labels on mixed tiles
+    /// (primary text on the page background), so a theme switch redraws them.
+    /// </summary>
     private static readonly DependencyProperty LabelBrushProperty = DependencyProperty.Register("LabelBrush", typeof(Brush), typeof(TreemapView),
         new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
 
@@ -175,7 +178,11 @@ public sealed class TreemapView : FrameworkElement
         if (stretch is not null) dc.Pop();
     }
 
-    /// <summary>Name, and size where there is room, at the top left of each labeled tile, cut to the tile's width.</summary>
+    /// <summary>
+    /// Name, and size where there is room, at the top left of each labeled tile, cut to the tile's width. On one color the
+    /// text is drawn straight on the tile, black or white by the tile's luminance; on tiles of several colors (a folder's
+    /// small files) on a translucent plate of the page's background, which keeps the tiles visible under it.
+    /// </summary>
     private void DrawLabels(DrawingContext dc)
     {
         if (_labels.Count == 0 || Tree is not { } tree || GetValue(LabelBrushProperty) is not Brush text || GetValue(LabelPlateBrushProperty) is not Brush plate) return;
@@ -194,12 +201,83 @@ public sealed class TreemapView : FrameworkElement
             var width = r.Width - 16;
             var name = Line(tree.Name(entry), width);
             var size = r.Height >= TwoLineHeight ? Line(CleanupViewModel.Size(tree.Size(entry)), width) : null;
-            var plateWidth = Math.Max(name.WidthIncludingTrailingWhitespace, size?.WidthIncludingTrailingWhitespace ?? 0) + 8;
-            var plateHeight = name.Height + (size?.Height ?? 0) + 4;
-            dc.DrawRoundedRectangle(plate, null, new Rect(r.X + 4, r.Y + 4, Math.Min(plateWidth, r.Width - 8), plateHeight), 2, 2);
+            var textWidth = Math.Max(name.WidthIncludingTrailingWhitespace, size?.WidthIncludingTrailingWhitespace ?? 0);
+            var area = new Rect(r.X + 4, r.Y + 4, Math.Min(textWidth + 8, r.Width - 8), name.Height + (size?.Height ?? 0) + 4);
+            Brush ink;
+            switch (Under(tree, area))
+            {
+                case Background.Tile when TileColor(tree, area) is { } color:
+                    ink = InkOn(color);
+                    break;
+                case Background.Empty:
+                    ink = text;
+                    break;
+                default:
+                    dc.PushOpacity(PlateOpacity);
+                    dc.DrawRoundedRectangle(plate, null, area, 2, 2);
+                    dc.Pop();
+                    ink = text;
+                    break;
+            }
+            name.SetForegroundBrush(ink);
+            size?.SetForegroundBrush(ink);
             dc.DrawText(name, new Point(r.X + 8, r.Y + 6));
             if (size is not null) dc.DrawText(size, new Point(r.X + 8, r.Y + 6 + name.Height));
         }
+    }
+
+    /// <summary>The plate under a label on tiles of several colors: translucent, so it reads as part of the map.</summary>
+    private const double PlateOpacity = 0.75;
+
+    private enum Background { Tile, Empty, Mixed }
+
+    /// <summary>
+    /// What lies under a label: tiles of one file group, nothing (the map's own background, where a folder's smallest files
+    /// were left out), or a mix. Read at the corners and the middle of the label's area.
+    /// </summary>
+    private Background Under(DiskTree tree, Rect area)
+    {
+        FileGroup? group = null;
+        var empty = 0;
+        Point[] points =
+        [
+            new(area.Left + 1, area.Top + 1), new(area.Right - 1, area.Top + 1), new(area.Left + 1, area.Bottom - 1),
+            new(area.Right - 1, area.Bottom - 1), new(area.Left + area.Width / 2, area.Top + area.Height / 2),
+        ];
+        foreach (var p in points)
+        {
+            var hit = _cells.Hit(p.X, p.Y);
+            if (hit < 0 || tree.IsFolder(hit))
+            {
+                empty++;
+                continue;
+            }
+            var g = tree.Group(hit);
+            if (group is { } seen && seen != g) return Background.Mixed;
+            group = g;
+        }
+        return empty == points.Length ? Background.Empty : empty > 0 ? Background.Mixed : Background.Tile;
+    }
+
+    /// <summary>The color of the tile at the label's top left corner.</summary>
+    private Color? TileColor(DiskTree tree, Rect area)
+    {
+        var hit = _cells.Hit(area.Left + 1, area.Top + 1);
+        if (hit < 0 || tree.IsFolder(hit)) return null;
+        return (GetValue(GroupBrushProperties[(int)tree.Group(hit)]) as SolidColorBrush)?.Color;
+    }
+
+    /// <summary>Black or white, whichever has the higher contrast on the color (WCAG relative luminance).</summary>
+    private static Brush InkOn(Color color)
+    {
+        static double Channel(byte c)
+        {
+            var s = c / 255.0;
+            return s <= 0.04045 ? s / 12.92 : Math.Pow((s + 0.055) / 1.055, 2.4);
+        }
+        var luminance = 0.2126 * Channel(color.R) + 0.7152 * Channel(color.G) + 0.0722 * Channel(color.B);
+        // Contrast with black (L + 0.05) / 0.05 against white 1.05 / (L + 0.05): equal at L = 0.179.
+        return luminance > 0.179 ? Brushes.Black : Brushes.White;
     }
 
     /// <summary>One device pixel wide, in the card stroke color; made again only when the brush or the DPI changes.</summary>

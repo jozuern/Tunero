@@ -37,19 +37,9 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-                    <!-- Several apps in one go, as on Installed programs: one confirmation names each of them. Above the list and
-                         always there, as on Cleanup, so the action is in view wherever an app is ticked and the list does not move. -->
-                    <ui:Card Padding="16,12" Margin="0,8,0,8">
-                        <DockPanel>
-                            <ui:Button DockPanel.Dock="Right" Appearance="Primary" Content="{l:Tr Debloat_RemoveSelected}" Icon="{ui:SymbolIcon Delete20}" Margin="16,0,0,0"
-                                       Command="{Binding Debloat.RemoveSelectedCommand}" IsEnabled="{Binding Debloat.HasSelection}" VerticalAlignment="Center" />
-                            <ui:TextBlock FontTypography="Body" Text="{Binding Debloat.SelectionText}" TextWrapping="Wrap" VerticalAlignment="Center" />
-                        </DockPanel>
-                    </ui:Card>
-                <ScrollViewer Grid.Row="1" Style="{StaticResource EdgeScroll}">
-                    <StackPanel Style="{StaticResource EdgeContent}">
-                        <!-- What is offered and that removing cannot be undone here: a plain note as on Installed programs, the
-                             info bars below are for states -->
+                    <!-- As on Installed programs: the note, the states, then the action right above the list it acts on -->
+                    <StackPanel Margin="0,8,0,0">
+                        <!-- What is offered and that removing cannot be undone here: a plain note, the info bars below are for states -->
                         <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Debloat_TabNote}" TextWrapping="Wrap" />
                         <ui:InfoBar Title="" Message="{l:Tr Banner_AdminToApply}" Severity="Warning" IsClosable="False"
                                     IsOpen="{Binding IsElevated, Converter={StaticResource InverseBool}}" Margin="0,8,0,0" />
@@ -57,6 +47,20 @@
                                     IsOpen="{Binding Debloat.CameBackText, Converter={StaticResource NullToBool}}" />
                         <ui:Button Content="{l:Tr Debloat_CameBackDismiss}" Command="{Binding Debloat.DismissCameBackCommand}" Margin="0,4,0,0"
                                    Visibility="{Binding Debloat.CameBackText, Converter={StaticResource NullToVisibility}}" />
+                        <!-- Several apps in one go: one confirmation names each of them. Outside the scrolling list and always there,
+                             as on Cleanup, so the action is in view wherever an app is ticked and the list does not move. -->
+                        <ui:Card Padding="16,12" Margin="0,12,0,0">
+                            <DockPanel>
+                                <ui:Button DockPanel.Dock="Right" Appearance="Primary" Content="{l:Tr Debloat_RemoveSelected}" Icon="{ui:SymbolIcon Delete20}" Margin="16,0,0,0"
+                                           Command="{Binding Debloat.RemoveSelectedCommand}" IsEnabled="{Binding Debloat.HasSelection}" VerticalAlignment="Center" />
+                                <ui:TextBlock FontTypography="Body" Text="{Binding Debloat.SelectionText}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                            </DockPanel>
+                        </ui:Card>
+                        <!-- The list scrolls below this line, not flush under the card -->
+                        <Border Height="1" Margin="0,12,0,0" Background="{DynamicResource DividerStrokeColorDefaultBrush}" />
+                    </StackPanel>
+                <ScrollViewer Grid.Row="1" Style="{StaticResource EdgeScroll}">
+                    <StackPanel Style="{StaticResource EdgeContent}">
                         <ui:ProgressRing IsIndeterminate="True" Width="24" Height="24" HorizontalAlignment="Left" Margin="0,16,0,0" Visibility="{Binding Debloat.IsLoading, Converter={StaticResource BoolToVisibility}}" />
                         <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Debloat_Empty}" Margin="0,16,0,0" Visibility="{Binding Debloat.ItemsEmpty, Converter={StaticResource BoolToVisibility}}" />
 

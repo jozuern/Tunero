@@ -12,6 +12,8 @@
                  WindowBackdropType="Mica"
                  WindowCornerPreference="Round">
     <ui:FluentWindow.Resources>
+        <!-- The last scan's line keeps its room while a scan shows in it -->
+        <v:BoolToVisibilityConverter x:Key="IdleToVisible" Invert="True" Off="Hidden" />
         <!-- Group headings in the pane: small, semibold and in the secondary text color, so they read as labels of the
              items below and not as items themselves (as in Windows Settings). -->
         <Style x:Key="NavGroupHeader" TargetType="v:NavHeader" BasedOn="{StaticResource {x:Type ui:NavigationViewItemHeader}}">
@@ -134,13 +136,21 @@
                     </Grid>
                 </ui:NavigationView.Header>
                 <ui:NavigationView.PaneFooter>
-                    <!-- Collapsed rail: the text is hidden (it would be cut off), only the progress rings stay. -->
-                    <StackPanel Margin="16,8,16,12">
-                        <StackPanel Orientation="Horizontal" Visibility="{Binding IsScanning, Converter={StaticResource BoolToVisibility}}" Margin="0,0,0,4">
-                            <ui:ProgressRing IsIndeterminate="True" Width="16" Height="16" Margin="0,0,8,0" />
-                            <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{Binding ScanStatus}" TextWrapping="Wrap" MaxWidth="180" Visibility="{Binding IsPaneOpen, ElementName=Nav, Converter={StaticResource BoolToVisibility}}" />
-                        </StackPanel>
-                        <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Text="{Binding LastScanText}" Visibility="{Binding IsPaneOpen, ElementName=Nav, Converter={StaticResource BoolToVisibility}}" />
+                    <!-- Collapsed rail: the text is hidden (it would be cut off), only the progress rings stay. In the open pane a
+                         running scan takes the line of the last scan, on one line: a footer that grew while the scan ran
+                         moved the footer pages up, and the group headings gave way to lines for good (ShowGroupHeaders). -->
+                    <StackPanel x:Name="PaneFooterPanel" Margin="16,8,16,12">
+                        <Grid>
+                            <StackPanel Orientation="Horizontal" Visibility="{Binding IsScanning, Converter={StaticResource BoolToVisibility}}">
+                                <ui:ProgressRing IsIndeterminate="True" Width="16" Height="16" Margin="0,0,8,0" />
+                                <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{Binding ScanStatus}" ToolTip="{Binding ScanStatus}"
+                                              TextTrimming="CharacterEllipsis" MaxWidth="192" VerticalAlignment="Center" Visibility="{Binding IsPaneOpen, ElementName=Nav, Converter={StaticResource BoolToVisibility}}" />
+                            </StackPanel>
+                            <Border Visibility="{Binding IsScanning, Converter={StaticResource IdleToVisible}}">
+                                <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Text="{Binding LastScanText}" VerticalAlignment="Center"
+                                              Visibility="{Binding IsPaneOpen, ElementName=Nav, Converter={StaticResource BoolToVisibility}}" />
+                            </Border>
+                        </Grid>
                         <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Text="{Binding Version, StringFormat='Tunero {0}'}" Visibility="{Binding IsPaneOpen, ElementName=Nav, Converter={StaticResource BoolToVisibility}}" />
                     </StackPanel>
                 </ui:NavigationView.PaneFooter>

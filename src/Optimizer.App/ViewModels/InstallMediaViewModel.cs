@@ -707,10 +707,20 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     /// <summary>The bar's second line: what goes into the image (<see cref="InstallMediaSummary.BarChanges"/>); null when nothing does.</summary>
     public string? SummaryChangesText => Choices() is { } choices ? InstallMediaSummary.BarChanges(choices) : null;
 
+    /// <summary>
+    /// The same parts one by one, each but the last with its comma: the bar sets them side by side, so a line breaks only
+    /// between two parts and never inside one ("Apps to install: 2").
+    /// </summary>
+    public IReadOnlyList<string> SummaryChangeParts =>
+        Choices() is { } choices && InstallMediaSummary.BarChangeParts(choices) is { } parts
+            ? parts.Select((p, i) => i < parts.Count - 1 ? p + "," : p).ToList()
+            : [];
+
     private void NotifySummary()
     {
         OnPropertyChanged(nameof(SummaryText));
         OnPropertyChanged(nameof(SummaryChangesText));
+        OnPropertyChanged(nameof(SummaryChangeParts));
     }
 
     /// <summary>The build of the chosen image as the page names it: the download's "26300.9711", or the own ISO's.</summary>
@@ -1444,7 +1454,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
 
     /// <summary>The question before the build (what goes into the ISO); null when the choices do not make a request. Also rendered by --media-demo review.</summary>
     internal ConfirmRequest? ReviewRequest() =>
-        Problem() is null && Choices() is { } choices ? InstallMediaSummary.Review(choices, Edition!.Text, BuildLabel(), Needed() ?? 0) : null;
+        Problem() is null && Choices() is { } choices ? InstallMediaSummary.Review(choices, Edition!.Text, BuildLabel(), Needed() ?? 0, Keyboard?.Text) : null;
 
     /// <summary>
     /// Builds from the beginning. A saved build is discarded first, after the review and one more question: a new build

@@ -177,7 +177,7 @@ public sealed class InstallMediaSummaryTests
         ["IsoIndex"] = "the page passes the image's title and build (editionTitle, build)",
         ["AppLanguage"] = "the app's language, not a choice of the page",
         ["Region"] = "the bar names the account only; the review names the region",
-        ["Keyboard"] = "the page picks it with the region unless one is chosen; the bar keeps to the account",
+        ["Keyboard"] = "the bar keeps to the account; the review names the keyboard",
         ["Tunero.Exe"] = "the running Tunero, not a choice",
         ["Tunero.Theme"] = "the app's theme, which the copy starts with; not a choice of the page",
         ["OutputIso"] = "the output file has its own card, and the review names it",
@@ -190,7 +190,6 @@ public sealed class InstallMediaSummaryTests
         ["Edition"] = "the page passes the edition's title and build (editionTitle, build)",
         ["IsoIndex"] = "the page passes the image's title and build (editionTitle, build)",
         ["AppLanguage"] = "the app's language, not a choice of the page",
-        ["Keyboard"] = "the page picks it with the region, which the review names, unless one is chosen",
         ["Tunero.Exe"] = "the running Tunero, not a choice",
         ["Tunero.Theme"] = "the app's theme, which the copy starts with; not a choice of the page",
     };
@@ -266,6 +265,30 @@ public sealed class InstallMediaSummaryTests
         var problems = Unshown("the summary bar (InstallMediaSummary.Bar, BarChanges)", BarText, NotInTheBar)
             .Concat(Unshown("the review (InstallMediaSummary.Review)", ReviewText, NotInTheReview)).ToList();
         Assert.True(problems.Count == 0, string.Join(Environment.NewLine, problems));
+    }
+
+    [Fact]
+    public void ReviewNamesTheKeyboardByTheNameThePagePassesWithSkipSetup()
+    {
+        var skip = Choices(account: "Anna") with { Keyboard = "0C07:00000407" };
+        var named = InstallMediaSummary.Review(skip, "Windows 11 Pro", null, 1, "German (de-AT)");
+        Assert.Contains(named.Changes, l => l.Target == Loc.Instance["Media_Keyboard"] && l.After == "German (de-AT)");
+        // Without a name from the page the review still says which keyboard: its code.
+        Assert.Contains(InstallMediaSummary.Review(skip, "Windows 11 Pro", null, 1).Changes, l => l.Target == Loc.Instance["Media_Keyboard"] && l.After == "0C07:00000407");
+        // Without Skip setup the keyboard is no choice of the page (its box is off): no line.
+        Assert.DoesNotContain(InstallMediaSummary.Review(Choices() with { Keyboard = "0C07:00000407" }, "Windows 11 Pro", null, 1, "German (de-AT)").Changes,
+            l => l.Target == Loc.Instance["Media_Keyboard"]);
+    }
+
+    [Fact]
+    public void BarPartsMakeTheBarText()
+    {
+        var c = Choices(apps: 2, account: "Anna", profile: "office", install: 2);
+        var parts = InstallMediaSummary.BarChangeParts(c);
+        Assert.True(parts.Count >= 4);
+        Assert.Equal(InstallMediaSummary.BarChanges(c), string.Join(", ", parts));
+        Assert.Contains(Loc.Instance.Format("Media_InstallSummary", 2), parts);
+        Assert.Empty(InstallMediaSummary.BarChangeParts(Choices()));
     }
 
     [Fact]

@@ -28,7 +28,13 @@ internal static class InstallMediaSummary
     }
 
     /// <summary>What goes into the image: "Apps to remove: 18, Account Anna, Profile Office"; null when nothing does.</summary>
-    public static string? BarChanges(MediaChoices c)
+    public static string? BarChanges(MediaChoices c) => BarChangeParts(c) is { Count: > 0 } parts ? string.Join(", ", parts) : null;
+
+    /// <summary>
+    /// The parts of <see cref="BarChanges"/> one by one: the page sets each on its own, so a line breaks between two parts
+    /// and never inside one ("Apps to install: 2").
+    /// </summary>
+    public static IReadOnlyList<string> BarChangeParts(MediaChoices c)
     {
         var parts = new List<string>();
         if (c.RemoveApps.Count > 0) parts.Add(T.Format("Media_Summary_Apps", c.RemoveApps.Count));
@@ -46,21 +52,28 @@ internal static class InstallMediaSummary
         if (c.Settings.AllowUnsupportedUpgrades) parts.Add(T["Media_UpgradesTitle"]);
         if (c.Settings.PreventDeviceEncryption) parts.Add(T["Media_EncryptionTitle"]);
         if (c.Settings.NoReservedStorage) parts.Add(T["Media_ReservedTitle"]);
-        return parts.Count == 0 ? null : string.Join(", ", parts);
+        return parts;
     }
 
     /// <summary>
     /// The question before the build: the source and the output file, one line for every choice that is on, and the texts of
     /// the Expert options that are on as warnings. The lines have no "now" value, only what goes into the ISO.
+    /// <paramref name="keyboardTitle"/> is the chosen keyboard's name as the page lists it (the summary reads nothing from
+    /// this PC, and the names come from its registry).
     /// </summary>
-    public static ConfirmRequest Review(MediaChoices c, string editionTitle, string? build, long neededBytes)
+    public static ConfirmRequest Review(MediaChoices c, string editionTitle, string? build, long neededBytes, string? keyboardTitle = null)
     {
         var source = c.Source.IsoPath ?? T["Media_Review_SourceDownload"];
         var changes = new List<ChangeLine> { Line(T["Media_Edition"], EditionText(editionTitle, build)) };
         if (LanguageName(c) is { } language) changes.Add(Line(T["Media_Language"], language));
         foreach (var (group, count) in AppGroups(c)) changes.Add(Line(T.Format("Media_Review_AppsGroup", group), count.ToString(CultureInfo.CurrentCulture)));
         if (c.RemoveParts.Count > 0) changes.Add(Line(T["Media_PartsTitle"], PartsText(c)));
-        if (c.SkipSetup) changes.Add(Line(T["Media_SkipSetupTitle"], SetupText(c)));
+        if (c.SkipSetup)
+        {
+            changes.Add(Line(T["Media_SkipSetupTitle"], SetupText(c)));
+            // The page passes the keyboard's name (from Windows' layout list); its code where it has none.
+            if ((keyboardTitle ?? c.Keyboard) is { Length: > 0 } keyboard) changes.Add(Line(T["Media_Keyboard"], keyboard));
+        }
         if (c.Tunero is { } copy)
         {
             changes.Add(Line(T["Media_ProfileTitle"], ProfileTitle(copy)));

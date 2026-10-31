@@ -585,13 +585,20 @@
                               Visibility="{Binding InstallMedia.ResumeNote, Converter={StaticResource NullToVisibility}}" />
             </WrapPanel>
         </StackPanel>
-        <!-- The last build failed: the reason, the log and Resume are on the Build card at the page's end -->
-        <StackPanel Margin="0,0,0,8" Visibility="{Binding InstallMedia.ShowFailedBar, Converter={StaticResource BoolToVisibility}}">
-            <ui:InfoBar Title="" Message="{l:Tr Media_FailedBar}" Severity="Error" IsClosable="False" IsOpen="True" />
-            <WrapPanel Margin="0,8,0,0">
-                <ui:Button Content="{l:Tr Media_ShowFailure}" Icon="{ui:SymbolIcon ArrowDown20}" Command="{Binding InstallMedia.ShowFailedBuildCommand}" />
-            </WrapPanel>
-        </StackPanel>
+        <!-- The last build failed: the reason, the log and Resume are on the Build card at the page's end, and the button in the
+             bar goes there. The WPF-UI InfoBar has no content slot: it draws the bar and the icon, the message and the button
+             lie over it in two columns (as on the Overview), so the text never runs under the button. -->
+        <Grid Margin="0,0,0,8" Visibility="{Binding InstallMedia.ShowFailedBar, Converter={StaticResource BoolToVisibility}}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <ui:InfoBar Grid.ColumnSpan="2" Title="" Message="" Severity="Error" IsClosable="False" IsOpen="True" VerticalAlignment="Stretch" />
+            <TextBlock Text="{l:Tr Media_FailedBar}" TextWrapping="Wrap" FontSize="14" VerticalAlignment="Center" Margin="46,12,16,12"
+                       Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+            <ui:Button Grid.Column="1" Content="{l:Tr Media_ShowFailure}" Icon="{ui:SymbolIcon ArrowDown20}" Command="{Binding InstallMedia.ShowFailedBuildCommand}"
+                       VerticalAlignment="Center" Margin="0,8,16,8" />
+        </Grid>
         <!-- What Save, Load or Reset did, or which remembered choices no longer fit -->
         <ui:InfoBar Title="" Message="{Binding InstallMedia.ChoicesNote}" Severity="{Binding InstallMedia.ChoicesNoteSeverity}" IsClosable="False" Margin="0,0,0,8"
                     IsOpen="{Binding InstallMedia.ChoicesNote, Converter={StaticResource NullToBool}}" />
@@ -605,9 +612,23 @@
                 </Grid.ColumnDefinitions>
                 <StackPanel VerticalAlignment="Center">
                     <ui:TextBlock FontTypography="BodyStrong" Text="{Binding InstallMedia.SummaryText}" TextWrapping="Wrap" />
-                    <ui:TextBlock FontTypography="Body" Text="{Binding InstallMedia.SummaryChangesText}" TextWrapping="Wrap" Margin="0,2,0,0"
-                                  Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                  Visibility="{Binding InstallMedia.SummaryChangesText, Converter={StaticResource NullToVisibility}}" />
+                    <!-- Each part on its own, side by side: a line breaks between two parts, never inside one ("Zu installierende /
+                         Apps: 2"). Read as one text by screen readers (the name of the list). -->
+                    <ItemsControl ItemsSource="{Binding InstallMedia.SummaryChangeParts}" Margin="0,2,0,0" Focusable="False"
+                                  AutomationProperties.Name="{Binding InstallMedia.SummaryChangesText}"
+                                  Visibility="{Binding InstallMedia.SummaryChangesText, Converter={StaticResource NullToVisibility}}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <ui:TextBlock FontTypography="Body" Text="{Binding}" Margin="0,0,4,0" TextTrimming="CharacterEllipsis"
+                                              Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                     <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding InstallMedia.NeededText}" TextWrapping="Wrap" Margin="0,4,0,0"
                                   Visibility="{Binding InstallMedia.NeededText, Converter={StaticResource NullToVisibility}}" />
                 </StackPanel>

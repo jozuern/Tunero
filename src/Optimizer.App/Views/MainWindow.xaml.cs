@@ -82,6 +82,12 @@ public partial class MainWindow : FluentWindow, IServiceProvider
         };
         Nav.PaneOpened += (_, _) => ShowGroupHeaders();
         Nav.PaneClosed += (_, _) => ShowGroupHeaders();
+        // The room also changes without a new window size: the footer under the pages grows while a scan runs in the rail
+        // (its ring). Decided only on window sizes, the headings stayed lines after the start-up scan had ended.
+        PaneFooterPanel.SizeChanged += (_, e) =>
+        {
+            if (e.HeightChanged) ShowGroupHeaders();
+        };
         PreviewKeyDown += (_, e) =>
         {
             // The setup screen covers the pages: no search and no scan under it (Install would then wait for the scan).
@@ -350,7 +356,8 @@ public partial class MainWindow : FluentWindow, IServiceProvider
     /// The groups stay visible whenever there is room: the headings in the open pane when they fit above the footer,
     /// otherwise a thin line between the groups (also in the rail), and neither when even the lines would push the last
     /// page under the footer. The room is measured, not guessed from the window height: a fixed 940 px limit hid the
-    /// headings in a 1440 x 912 window that had nearly enough room for them.
+    /// headings in a 1440 x 912 window that had nearly enough room for them. The scan status in the pane footer takes the
+    /// line of the last scan, so a scan does not change the room in the open pane.
     /// </summary>
     private void ShowGroupHeaders()
     {

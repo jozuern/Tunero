@@ -228,6 +228,7 @@
   <data name="Net_NvidiaGlobal" xml:space="preserve">
     <value>NVIDIA driver settings</value>
   </data>
+  <data name="Net_Graphics" xml:space="preserve"><value>Graphics</value></data>
   <data name="Net_NoNvidiaTitle" xml:space="preserve"><value>Graphics driver settings</value></data>
   <data name="Net_NoNvidiaText" xml:space="preserve"><value>No NVIDIA graphics card found. Driver settings and per-game profiles are offered for NVIDIA cards only.</value></data>
   <data name="Net_GameProfiles" xml:space="preserve">
@@ -1878,7 +1879,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Media_OpenLog" xml:space="preserve"><value>Show log</value></data>
   <data name="Media_Done" xml:space="preserve"><value>The ISO is ready: {0} ({1}).</value></data>
   <data name="Media_Failed" xml:space="preserve"><value>The build stopped at "{0}": {1}</value></data>
-  <data name="Media_FailedBar" xml:space="preserve"><value>The last build failed. The reason is at the end of the page.</value></data>
+  <data name="Media_FailedBar" xml:space="preserve"><value>The last build failed.</value></data>
   <data name="Media_ShowFailure" xml:space="preserve"><value>Show why</value></data>
   <data name="Media_ErrorCode" xml:space="preserve"><value>Error code: {0}.</value></data>
   <data name="Media_LogAt" xml:space="preserve"><value>Log: {0}</value></data>
