@@ -29,6 +29,19 @@
             <ui:TextBlock Style="{StaticResource PageTitle}" Text="{l:Tr Net_Title}" />
             <ui:TextBlock Style="{StaticResource PageIntro}" Text="{l:Tr Net_Hint}" />
 
+            <!-- No NVIDIA card: the page's graphics part says why it is empty instead of leaving only DNS under the title -->
+            <ui:CardControl Padding="{StaticResource CardPadding}" Visibility="{Binding Network.NoNvidia, Converter={StaticResource BoolToVisibility}}">
+                <ui:CardControl.Icon>
+                    <ui:SymbolIcon Symbol="DeveloperBoard24" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+                </ui:CardControl.Icon>
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Net_NoNvidiaTitle}" />
+                        <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Net_NoNvidiaText}" Margin="0,4,0,0" />
+                    </StackPanel>
+                </ui:CardControl.Header>
+            </ui:CardControl>
+
             <!-- NVIDIA driver settings (global) -->
             <StackPanel Visibility="{Binding Network.HasNvidia, Converter={StaticResource BoolToVisibility}}">
                 <ui:TextBlock Style="{StaticResource SectionHeader}" Text="{l:Tr Net_NvidiaGlobal}" Margin="0,0,0,8" />
@@ -68,10 +81,6 @@
                         <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Net_DnsCustom}" Margin="0,4,0,0"
                                       Visibility="{Binding Network.DnsIsCustom, Converter={StaticResource BoolToVisibility}}" />
                         <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Net_DnsHint}" Margin="0,4,0,0" />
-                        <!-- This page holds DNS only: the other network settings are tweaks, and the repairs (flush DNS, reset
-                             Winsock) are tools. The ways there. -->
-                        <ui:HyperlinkButton Content="{l:Tr Net_TweaksLink}" Command="{Binding OpenTweaksNetworkCommand}" Padding="0" Margin="0,8,0,0" />
-                        <ui:HyperlinkButton Content="{l:Tr Net_FixesLink}" Command="{Binding OpenToolsFixesCommand}" Padding="0" Margin="0,4,0,0" />
                     </StackPanel>
                 </ui:CardControl.Header>
                 <StackPanel Orientation="Horizontal">
@@ -98,21 +107,23 @@
                     <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding Network.BenchmarkStatus}" Margin="0,8,0,0" Visibility="{Binding Network.BenchmarkStatus, Converter={StaticResource NullToVisibility}}" />
                     <ui:Button Content="{Binding Network.FastestText}" Icon="{ui:SymbolIcon Checkmark20}" Margin="0,8,0,0" Command="{Binding Network.UseFastestCommand}"
                                Visibility="{Binding Network.FastestText, Converter={StaticResource NullToVisibility}}" />
-                    <v:ItemList ItemsSource="{Binding Network.DnsResults}" Margin="0,8,0,0">
+                    <!-- Server and numbers as wide as their widest value in the list (shared sizes), the name takes the rest
+                         and is cut with its full text in the tooltip: fixed widths cut the last columns off with the details pane open -->
+                    <v:ItemList ItemsSource="{Binding Network.DnsResults}" Margin="0,8,0,0" Grid.IsSharedSizeScope="True">
                         <v:ItemList.ItemTemplate>
                             <DataTemplate>
                                 <Grid Margin="0,4">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="200" />
-                                        <ColumnDefinition Width="160" />
-                                        <ColumnDefinition Width="120" />
-                                        <ColumnDefinition Width="120" />
-                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" MinWidth="80" />
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="DnsServer" />
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="DnsMedian" />
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="DnsBest" />
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="DnsAnswered" />
                                     </Grid.ColumnDefinitions>
-                                    <ui:TextBlock FontTypography="Body" Text="{Binding Name}" />
-                                    <TextBlock Grid.Column="1" Style="{StaticResource Mono}" Text="{Binding Server}" VerticalAlignment="Center" />
-                                    <ui:TextBlock Grid.Column="2" FontTypography="BodyStrong" Text="{Binding Median}" />
-                                    <ui:TextBlock Grid.Column="3" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{Binding Best}" VerticalAlignment="Center" />
+                                    <ui:TextBlock FontTypography="Body" Text="{Binding Name}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" Margin="0,0,16,0" />
+                                    <TextBlock Grid.Column="1" Style="{StaticResource Mono}" Text="{Binding Server}" VerticalAlignment="Center" Margin="0,0,16,0" />
+                                    <ui:TextBlock Grid.Column="2" FontTypography="BodyStrong" Text="{Binding Median}" Margin="0,0,16,0" />
+                                    <ui:TextBlock Grid.Column="3" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{Binding Best}" VerticalAlignment="Center" Margin="0,0,16,0" />
                                     <ui:TextBlock Grid.Column="4" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{Binding Answered}" VerticalAlignment="Center" />
                                 </Grid>
                             </DataTemplate>
@@ -129,6 +140,15 @@
                 <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding Network.DeviceFacts}" Margin="0,0,0,8"
                               Visibility="{Binding Network.DeviceFacts, Converter={StaticResource NullToVisibility}}" />
                 <v:ItemList ItemsSource="{Binding Network.DeviceTweaks}" ItemTemplate="{StaticResource CompactTweakRow}" />
+            </StackPanel>
+
+            <!-- This page holds DNS and the graphics driver: the other network settings are tweaks, and the repairs (flush DNS,
+                 reset Winsock) are tools. The ways there, at the end as in Windows Settings (a link does not wrap, so in the
+                 DNS card a narrow window cut them off). -->
+            <ui:TextBlock Style="{StaticResource SectionHeader}" Text="{l:Tr Net_Related}" />
+            <StackPanel HorizontalAlignment="Left">
+                <ui:HyperlinkButton Content="{l:Tr Net_TweaksLink}" Command="{Binding OpenTweaksNetworkCommand}" Padding="0" />
+                <ui:HyperlinkButton Content="{l:Tr Net_FixesLink}" Command="{Binding OpenToolsFixesCommand}" Padding="0" Margin="0,8,0,0" />
             </StackPanel>
         </StackPanel>
     </ScrollViewer>

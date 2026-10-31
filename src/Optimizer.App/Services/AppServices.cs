@@ -124,6 +124,23 @@ public sealed class AppServices
     /// <summary>The signed-in user's Downloads folder, where the install media page saves its ISO. Null when it cannot be found.</summary>
     public string? SessionDownloadsFolder() => SessionFolder("{374DE290-123F-4565-9164-39C4925E467B}", "Downloads");
 
+    /// <summary>
+    /// The signed-in user's profile and their Desktop, Documents, Downloads, Pictures, Music, Videos and Saved Games, also
+    /// when moved: the Storage page keeps these, and under a separate admin account this process's own known folders are
+    /// that account's. The ones that cannot be found are left out.
+    /// </summary>
+    public IReadOnlyList<string> SessionKnownFolders()
+    {
+        (string Value, string Fallback)[] folders =
+        [
+            ("Desktop", "Desktop"), ("Personal", "Documents"), ("{374DE290-123F-4565-9164-39C4925E467B}", "Downloads"), ("My Pictures", "Pictures"),
+            ("My Music", "Music"), ("My Video", "Videos"), ("{4C5C32FF-BB9D-43B0-B5B4-2D72E54EAAA4}", "Saved Games"),
+        ];
+        var found = folders.Select(f => SessionFolder(f.Value, f.Fallback)).OfType<string>().ToList();
+        if (ProfilePath is { } profile) found.Add(profile);
+        return found;
+    }
+
     /// <summary>A known folder of the signed-in user from User Shell Folders (<paramref name="value"/>), else its usual place.</summary>
     private string? SessionFolder(string value, string fallback)
     {

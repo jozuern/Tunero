@@ -60,6 +60,10 @@ public class CleanupStorageTests : IDisposable
         var old = File(@"temp\old.tmp", 100, DateTime.UtcNow.AddDays(-3));
         var fresh = File(@"temp\fresh.tmp", 100);
         File(@"temp\sub\old2.tmp", 50, DateTime.UtcNow.AddDays(-3));
+        Directory.SetCreationTimeUtc(Path.Combine(temp, "sub"), DateTime.UtcNow.AddDays(-3));
+        // An installer's work folder made a moment ago and still empty.
+        var justMade = Path.Combine(temp, "setup123");
+        Directory.CreateDirectory(justMade);
         var ini = File(@"temp\desktop.ini", 5, DateTime.UtcNow.AddDays(-3));
         // Junction inside the cleaned folder pointing outside (no admin rights needed for junctions).
         var junction = Path.Combine(temp, "link");
@@ -75,6 +79,7 @@ public class CleanupStorageTests : IDisposable
         Assert.True(System.IO.File.Exists(ini));
         Assert.True(System.IO.File.Exists(keep));        // never reached through the junction
         Assert.False(Directory.Exists(Path.Combine(temp, "sub"))); // emptied subfolder removed
+        Assert.True(Directory.Exists(justMade));         // younger than MinAge: kept like a young file
         Assert.True(Directory.Exists(temp));             // root kept
     }
 

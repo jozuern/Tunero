@@ -139,6 +139,27 @@ public sealed class StorageViewModelTests : IDisposable
     }
 
     [Fact]
+    public async Task PickingAnExtensionAgainBeforeItsFillEndsListsEachFileOnce()
+    {
+        var a = File("a.mp4", 300);
+        var b = File("b.mp4", 100);
+        File("c.zip", 200);
+        var storage = Storage();
+        await storage.EnsureLoadedAsync();
+        await storage.AnalyzeFolderAsync(_root);
+        storage.Tab = StorageViewModel.TabTypes;
+        foreach (var g in storage.TypeGroups) g.IsExpanded = true;
+        var mp4 = storage.TypeGroups.Single(g => g.Group == FileGroup.Video).Extensions[0];
+        var zip = storage.TypeGroups.Single(g => g.Group == FileGroup.Archives).Extensions[0];
+        // Down and Up again in the group's list while the first fill still checks its paths: the same row is picked twice.
+        storage.SelectedType = mp4;
+        storage.SelectedType = zip;
+        storage.SelectedType = mp4;
+        await storage.RowsBuilt;
+        Assert.Equal([a, b], storage.TypeFiles.Select(f => f.Path));
+    }
+
+    [Fact]
     public async Task AGroupShowsAtMost200ExtensionsAndCountsTheRest()
     {
         for (var i = 0; i < 250; i++) File($"f.e{i:D3}", 10 + i);

@@ -37,6 +37,21 @@ public sealed class RecycleRulesTests : IDisposable
         Assert.Null(RecycleRules.Check(Path.Combine(profile, "Downloads", "old"), folder: true, systemFile: false, [], kept, appData: false));
     }
 
+    /// <summary>
+    /// The signed-in user's Documents moved to another drive, which the elevated account's own known folders do not name:
+    /// passed in, it stays as a whole, and so does a folder that holds it. Reads this PC's drives and profile list (read only).
+    /// </summary>
+    [Fact]
+    public void TheSessionUsersMovedFoldersAreKept()
+    {
+        var documents = Path.Combine(_root, "Documents");
+        Directory.CreateDirectory(documents);
+        var kept = RecycleRules.KeptFolders([documents]);
+        Assert.Equal(RecycleBlock.KeptFolder, RecycleRules.Check(documents, folder: true, systemFile: false, [], kept, appData: false));
+        Assert.Equal(RecycleBlock.ContainsProtected, RecycleRules.Check(_root, folder: true, systemFile: false, [], kept, appData: false));
+        Assert.Null(RecycleRules.Check(Path.Combine(documents, "old"), folder: true, systemFile: false, [], kept, appData: false));
+    }
+
     [Fact]
     public void ProtectedPathIsRefusedBeforeContainment()
     {

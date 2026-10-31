@@ -223,11 +223,13 @@
     <value>Graphics &amp; DNS</value>
   </data>
   <data name="Net_Hint" xml:space="preserve">
-    <value>Graphics driver settings, per-game profiles, DNS and, in Expert mode, device interrupts.</value>
+    <value>DNS servers for every PC, and on a PC with an NVIDIA card its driver settings and per-game profiles. Expert mode adds device interrupts.</value>
   </data>
   <data name="Net_NvidiaGlobal" xml:space="preserve">
     <value>NVIDIA driver settings</value>
   </data>
+  <data name="Net_NoNvidiaTitle" xml:space="preserve"><value>Graphics driver settings</value></data>
+  <data name="Net_NoNvidiaText" xml:space="preserve"><value>No NVIDIA graphics card found. Driver settings and per-game profiles are offered for NVIDIA cards only.</value></data>
   <data name="Net_GameProfiles" xml:space="preserve">
     <value>NVIDIA profiles per game</value>
   </data>
@@ -301,7 +303,9 @@ The app is removed for all users and new accounts. No Microsoft Store listing is
   <data name="Debloat_Removed" xml:space="preserve">
     <value>{0} was removed.</value>
   </data>
-  <data name="Debloat_RemoveSelected" xml:space="preserve"><value>Remove selected ({0})</value></data>
+  <data name="Debloat_RemoveSelected" xml:space="preserve"><value>Remove selected</value></data>
+  <data name="Debloat_SelectHint" xml:space="preserve"><value>Tick apps to remove several at once</value></data>
+  <data name="Debloat_SelectedCount" xml:space="preserve"><value>Selected: {0}</value></data>
   <data name="Debloat_ConfirmSelectedTitle" xml:space="preserve"><value>Remove the selected apps?</value></data>
   <data name="Debloat_ConfirmSelected" xml:space="preserve"><value>{0}
 
@@ -314,7 +318,7 @@ These apps are removed for all users and new accounts. Apps the Microsoft Store 
     <value>Removed apps</value>
   </data>
   <data name="Debloat_RemovedEmpty" xml:space="preserve">
-    <value>No apps were removed with this app.</value>
+    <value>Tunero has not removed any apps yet.</value>
   </data>
   <data name="Debloat_Reinstall" xml:space="preserve">
     <value>Microsoft Store</value>
@@ -322,14 +326,13 @@ These apps are removed for all users and new accounts. Apps the Microsoft Store 
   <data name="Debloat_OneDriveTitle" xml:space="preserve">
     <value>Uninstall OneDrive</value>
   </data>
+  <data name="Debloat_OneDriveEdge" xml:space="preserve"><value>OneDrive and Edge</value></data>
+  <data name="Debloat_NotInstalled" xml:space="preserve"><value>Not installed.</value></data>
   <data name="Debloat_OneDriveInstalled" xml:space="preserve">
     <value>Installed. Folder: {0}</value>
   </data>
   <data name="Debloat_OneDriveNotSignedIn" xml:space="preserve">
     <value>not signed in</value>
-  </data>
-  <data name="Debloat_OneDriveMissing" xml:space="preserve">
-    <value>OneDrive is not installed.</value>
   </data>
   <data name="Debloat_OneDriveConfirm" xml:space="preserve">
     <value>OneDrive is uninstalled for your account. Files in your OneDrive folder stay on this PC; sync stops. You can install it again with winget (Microsoft.OneDrive).</value>
@@ -359,8 +362,9 @@ These apps are removed for all users and new accounts. Apps the Microsoft Store 
     <value>Temporary files and caches with their size. Nothing is deleted until you choose it. Files in use and links to other folders are always skipped.</value>
   </data>
   <data name="Cleanup_Size" xml:space="preserve">
-    <value>{0}, files: {1:N0}</value>
+    <value>{0} in {1:N0} files</value>
   </data>
+  <data name="Cleanup_SizeOne" xml:space="preserve"><value>{0} in 1 file</value></data>
   <data name="Cleanup_Total" xml:space="preserve">
     <value>Selected: {0}</value>
   </data>
@@ -588,7 +592,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   </data>
   <data name="Nav_Storage" xml:space="preserve"><value>Storage</value></data>
   <data name="Storage_PageTitle" xml:space="preserve"><value>Storage</value></data>
-  <data name="Storage_PageHint" xml:space="preserve"><value>Shows what takes up space on a drive: folders, file types, the largest files and duplicate files. Nothing on the drive is read until you select Analyze. Windows, program and game folders are never offered for deletion, and deleted files go to the Recycle Bin.</value></data>
+  <data name="Storage_PageHint" xml:space="preserve"><value>Shows what takes up space on a drive: folders, file types, the largest files and duplicate files. Windows, program and game folders are never offered for deletion, and deleted files go to the Recycle Bin.</value></data>
   <data name="Storage_Analyze" xml:space="preserve"><value>Analyze</value></data>
   <data name="Storage_CloseResult" xml:space="preserve"><value>Close result</value></data>
   <data name="Storage_Result" xml:space="preserve"><value>{0} in {1:N0} files, read {2} in {3:0.0} s</value></data>
@@ -603,7 +607,8 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Storage_TabDuplicates" xml:space="preserve"><value>Duplicate files</value></data>
   <data name="Storage_FindDuplicates" xml:space="preserve"><value>Find duplicates</value></data>
   <data name="Storage_DriveSpace" xml:space="preserve"><value>{0} free of {1}</value></data>
-  <data name="Storage_NoResult" xml:space="preserve"><value>Choose a drive and select Analyze.</value></data>
+  <data name="Storage_EmptyTitle" xml:space="preserve"><value>Analyze a drive to see what takes up space</value></data>
+  <data name="Storage_EmptyHint" xml:space="preserve"><value>Select Analyze to read {0}. Nothing on the drive is read before that.</value></data>
   <data name="Storage_NoExtension" xml:space="preserve"><value>No extension</value></data>
   <data name="Storage_TypesHint" xml:space="preserve"><value>Open a group and select a file type to see its largest files.</value></data>
   <data name="Storage_MoreTypes" xml:space="preserve"><value>{0} more types</value></data>
@@ -619,6 +624,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Storage_ColFiles" xml:space="preserve"><value>Files</value></data>
   <data name="Storage_ColChanged" xml:space="preserve"><value>Last change</value></data>
   <data name="Storage_FolderList" xml:space="preserve"><value>Folders and files</value></data>
+  <data name="Storage_ToggleFolder" xml:space="preserve"><value>Open or close folder</value></data>
   <data name="Storage_ShownFolder" xml:space="preserve"><value>Shown folder</value></data>
   <data name="Storage_TreemapName" xml:space="preserve"><value>Treemap of {0}, {1}</value></data>
   <data name="Storage_TreemapHint" xml:space="preserve"><value>Select a tile to find it in the list. Double-click to show the folder it is in.</value></data>
@@ -1278,7 +1284,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Startup_DeleteHint" xml:space="preserve"><value>Removes this entry (the registry value, the file in the Startup folder or the task), as Autoruns does. It is backed up first: Undo on the Changes page puts it back.</value></data>
   <data name="Startup_FileMissing" xml:space="preserve"><value>The file of this entry does not exist.</value></data>
   <data name="Programs_Title" xml:space="preserve"><value>Installed programs</value></data>
-  <data name="Programs_Hint" xml:space="preserve"><value>Desktop programs from the Windows uninstall list. Uninstall runs the program's own uninstaller with its window. Tick several to uninstall them one after the other, quietly where the program offers it, and to see what they left behind. Before the first uninstall in a session the app creates a restore point when System Protection is on.</value></data>
+  <data name="Programs_Hint" xml:space="preserve"><value>Desktop programs from the Windows uninstall list. Uninstall runs the program's own uninstaller. Tick several to uninstall them one after the other and see what they left behind.</value></data>
   <data name="Programs_Search" xml:space="preserve"><value>Search programs</value></data>
   <data name="Programs_Count" xml:space="preserve"><value>Programs: {0}</value></data>
   <data name="Programs_Sort" xml:space="preserve"><value>Sort programs</value></data>
@@ -1291,6 +1297,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Programs_Uninstall" xml:space="preserve"><value>Uninstall</value></data>
   <data name="Programs_ConfirmTitle" xml:space="preserve"><value>Uninstall program?</value></data>
   <data name="Programs_ConfirmText" xml:space="preserve"><value>Starts the uninstaller of {0}. Follow its window; it decides what is removed, including your settings for this program.</value></data>
+  <data name="Programs_ConfirmRestorePoint" xml:space="preserve"><value>Before that, a restore point is created when System Protection is on.</value></data>
   <data name="Programs_AsUser" xml:space="preserve"><value>This uninstaller runs under your account because it is in a folder other users or programs can change. It asks for administrator rights itself if it needs them.</value></data>
   <data name="Programs_Running" xml:space="preserve"><value>Uninstaller is running.</value></data>
   <data name="Programs_StartedAsUser" xml:space="preserve"><value>Uninstaller started. When it is done, select Refresh.</value></data>
@@ -1548,7 +1555,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Tweak_SwitchOff" xml:space="preserve"><value>Not applied</value></data>
   <data name="Tweaks_ProfileLink" xml:space="preserve"><value>Profile: {0} (change on the overview)</value></data>
   <data name="Rec_EmptyButExcluded" xml:space="preserve"><value>Nothing can be applied in one click right now. The changes that would help are listed below, with what they need first.</value></data>
-  <data name="Debloat_TabNote" xml:space="preserve"><value>Only apps from a reviewed list are offered; parts of Windows and apps that games need never are. Removing cannot be undone here; for apps still in the Microsoft Store, the list of removed apps keeps a link to install them again.</value></data>
+  <data name="Debloat_TabNote" xml:space="preserve"><value>Only apps from a reviewed list are offered, never parts of Windows. Apps that installed games need stay locked. Removing cannot be undone here; for apps still in the Microsoft Store, Removed apps below keeps a link to install them again.</value></data>
   <data name="Debloat_RemoveName" xml:space="preserve"><value>Remove {0}</value></data>
   <data name="Programs_UninstallName" xml:space="preserve"><value>Uninstall {0}</value></data>
   <data name="Programs_SelectName" xml:space="preserve"><value>Select {0}</value></data>
@@ -1592,7 +1599,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Startup_KindFilter" xml:space="preserve"><value>Kind of location</value></data>
   <data name="Svc_StartTypeName" xml:space="preserve"><value>Start type of {0}</value></data>
   <data name="Net_DnsRouter" xml:space="preserve"><value>Your router ({0})</value></data>
-  <data name="Net_FixesLink" xml:space="preserve"><value>Network fixes such as Flush DNS cache are under Tools</value></data>
+  <data name="Net_FixesLink" xml:space="preserve"><value>Network fixes in Tools</value></data>
   <data name="Bench_Step1" xml:space="preserve"><value>Start the game, then pick it in the list below.</value></data>
   <data name="Bench_Step2" xml:space="preserve"><value>Capture A (before) three times in the same scene. Done: {0} of 3.</value></data>
   <data name="Bench_Step3" xml:space="preserve"><value>Make the change you want to test, then go back to the same scene.</value></data>
@@ -1658,7 +1665,8 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Tweaks_CountByApp" xml:space="preserve"><value>{0} changed by this app</value></data>
   <data name="Tweaks_CountAlreadySet" xml:space="preserve"><value>{0} already set</value></data>
   <data name="Tweaks_CountRecommended" xml:space="preserve"><value>{0} recommended for this PC</value></data>
-  <data name="Net_TweaksLink" xml:space="preserve"><value>Other network settings are tweaks, in the Network group of the Tweaks page</value></data>
+  <data name="Net_TweaksLink" xml:space="preserve"><value>Network tweaks</value></data>
+  <data name="Net_Related" xml:space="preserve"><value>Related settings</value></data>
   <data name="Net_GameSearch" xml:space="preserve"><value>Search games</value></data>
   <data name="Net_NoGameMatch" xml:space="preserve"><value>No game matches the search.</value></data>
   <data name="Net_ShowAllGames" xml:space="preserve"><value>Show all {0} games</value></data>

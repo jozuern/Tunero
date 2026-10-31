@@ -46,9 +46,19 @@ public abstract partial class PageViewModel : ObservableObject
     public void OnProfileChanged()
     {
         if (!UsesProfile || _load is null || Owner.Profile is null) return;
-        if (_loadedFrom is null) ReloadAsync().Forget($"{GetType().Name} reload with the scan result");
-        else ProfileUpdated();
+        if (_loadedFrom is null)
+        {
+            // A load that waits for this scan reads its result itself: a reload now would only run it a second time.
+            if (!_waitingForScan) ReloadAsync().Forget($"{GetType().Name} reload with the scan result");
+        }
+        else
+        {
+            ProfileUpdated();
+        }
     }
+
+    /// <summary>A load waits for the first scan's result (<see cref="RunOnceAsync"/>).</summary>
+    private bool _waitingForScan;
 
     /// <summary>After a later scan, for pages whose rows come from the scan result alone (cheap to build again).</summary>
     protected virtual void ProfileUpdated()
@@ -158,7 +168,18 @@ public abstract partial class PageViewModel : ObservableObject
         try
         {
             // Opened while the first scan still runs: its result comes first (an empty list would read as "nothing found").
-            if (fullLoad && UsesProfile && Owner.Profile is null) await Owner.ScanInProgress;
+            if (fullLoad && UsesProfile && Owner.Profile is null)
+            {
+                _waitingForScan = true;
+                try
+                {
+                    await Owner.ScanInProgress;
+                }
+                finally
+                {
+                    _waitingForScan = false;
+                }
+            }
             if (fullLoad) _loadedFrom = Owner.Profile;
             await (fullLoad ? LoadAsync() : RelabelAsync());
         }
@@ -256,6 +277,8 @@ public sealed partial class NetworkViewModel(IPageHost owner, AppServices servic
 
     [ObservableProperty] private string _currentDns = "";
     [ObservableProperty] private bool _hasNvidia;
+    /// <summary>The scan found graphics cards and none is NVIDIA (not while the first scan still runs).</summary>
+    [ObservableProperty] private bool _noNvidia;
     [ObservableProperty] private string _benchmarkStatus = "";
 
     public bool ShowDeviceTweaks => Owner.ExpertMode && DeviceTweaks.Count > 0;
@@ -365,7 +388,8 @@ public sealed partial class NetworkViewModel(IPageHost owner, AppServices servic
                 if (!await Owner.Runner.UndoAsync(current.Item.Tweak)) return;
                 // The undo starts a rescan, and no change can run while it does: wait for it (it also brings the facts the
                 // check below needs up to date) instead of having the apply refused as busy.
-                await Owner.ScanCommand.ExecuteAsync(null);
+                // Not ScanCommand: a call during that rescan asks for one more, a full one, and the apply waited for it.
+                await Owner.ScanInProgress;
                 // Undo brings back the servers from before, which may already be the choice (usually automatic).
                 var facts = Owner.Facts;
                 if ((await Task.Run(() => services.Engine.Detect(choice.Item.Tweak, facts))).IsOn) return;
@@ -416,6 +440,7 @@ public sealed partial class NetworkViewModel(IPageHost owner, AppServices servic
         ShowDnsSelection();
         foreach (var t in Owner.CatalogItems(t => t.Id.StartsWith("nvidia.", StringComparison.Ordinal))) GpuTweaks.Add(t);
         HasNvidia = Owner.Profile?.Gpus?.Any(g => g.Vendor == Optimizer.Core.Hardware.Vendor.Nvidia) == true;
+        NoNvidia = Owner.Profile is not null && !HasNvidia;
         ShowCurrentDnsAsync().Forget("current DNS servers");
         GameProfilesFacts = SharedFacts(GameProfiles);
         DeviceFacts = SharedFacts(DeviceTweaks);
@@ -522,19 +547,9 @@ public sealed partial class DebloatItem(Optimizer.Core.Debloat.DebloatItem item,
     public string RemoveLabel => Optimizer.App.Services.Loc.Instance.Format("Debloat_RemoveName", Name);
     public string Text { get; } = item.Entry.Text(lang);
     public string Version => Item.Installed.Version;
-    public string Group { get; } = Labels.Current.Get(lang, $"debloatGroup.{item.Entry.Group}");
 
-    /// <summary>An icon per group of the reviewed list, so the rows do not all carry the same one.</summary>
-    public Wpf.Ui.Controls.SymbolRegular Symbol { get; } = item.Entry.Group switch
-    {
-        "xbox" => Wpf.Ui.Controls.SymbolRegular.Games24,
-        "media" => Wpf.Ui.Controls.SymbolRegular.Video24,
-        "consumer" => Wpf.Ui.Controls.SymbolRegular.ShoppingBag24,
-        "legacy" => Wpf.Ui.Controls.SymbolRegular.History24,
-        "thirdParty" => Wpf.Ui.Controls.SymbolRegular.AppsAddIn24,
-        "oem" => Wpf.Ui.Controls.SymbolRegular.BuildingFactory24,
-        _ => Wpf.Ui.Controls.SymbolRegular.WindowApps24,
-    };
+    /// <summary>The group of the reviewed list ("Xbox components"): the page lists the apps under a header per group.</summary>
+    public string Group { get; } = Labels.Current.Get(lang, $"debloatGroup.{item.Entry.Group}");
 
     // Removing for all users needs administrator rights: the page says that once above the list, so the row only
     // shows reasons that belong to this app.
@@ -617,12 +632,13 @@ public sealed partial class DebloatViewModel(IPageHost owner, AppServices servic
 
     public bool HasSelection => SelectedCount > 0;
 
-    public string RemoveSelectedText => Loc.Instance.Format("Debloat_RemoveSelected", SelectedCount);
+    /// <summary>The bar above the list: how many apps are ticked, or that ticking removes several at once.</summary>
+    public string SelectionText => SelectedCount == 0 ? Loc.Instance["Debloat_SelectHint"] : Loc.Instance.Format("Debloat_SelectedCount", SelectedCount);
 
     partial void OnSelectedCountChanged(int value)
     {
         OnPropertyChanged(nameof(HasSelection));
-        OnPropertyChanged(nameof(RemoveSelectedText));
+        OnPropertyChanged(nameof(SelectionText));
     }
 
     private void UpdateSelection() => SelectedCount = Items.Count(i => i.IsSelected);
@@ -686,6 +702,8 @@ public sealed partial class DebloatViewModel(IPageHost owner, AppServices servic
             Items.Add(item);
         }
         UpdateSelection();
+        // A language switch with the count unchanged: the bar's text in the new language.
+        OnPropertyChanged(nameof(SelectionText));
         _cameBack = cameBack.Select(r => r.Name).ToList();
         CameBackText = cameBack.Count == 0 ? null : Loc.Instance.Format("Debloat_CameBack", string.Join(", ", cameBack.Select(r => r.Name)));
         Removed.Clear();
@@ -700,10 +718,10 @@ public sealed partial class DebloatViewModel(IPageHost owner, AppServices servic
         OneDriveInstalled = oneDrive.Installed;
         OneDriveText = oneDrive.Installed
             ? Loc.Instance.Format("Debloat_OneDriveInstalled", oneDrive.UserFolder ?? Loc.Instance["Debloat_OneDriveNotSignedIn"])
-            : Loc.Instance["Debloat_OneDriveMissing"];
+            : Loc.Instance["Debloat_NotInstalled"];
         // As for OneDrive: "not installed" is plain text, only a reason Windows gives is a warning.
         EdgeBlock = edge.Installed && edge.BlockKey is { } eb ? Labels.Current.Get(lang, eb) : null;
-        EdgeMissing = edge.Installed ? null : Labels.Current.Get(lang, "block.edgeNotInstalled");
+        EdgeMissing = edge.Installed ? null : Loc.Instance["Debloat_NotInstalled"];
         CanRemoveEdge = edge.WindowsAllows;
         EdgeInstalled = edge.Installed;
         OnPropertyChanged(nameof(ItemsEmpty));
@@ -890,7 +908,10 @@ public sealed partial class CleanupRow(Optimizer.Core.Cleanup.CleanupCategory ca
     {
         Scan = scan;
         Bytes = scan.Bytes;
-        SizeText = scan.Bytes == 0 && scan.Files == 0 ? Loc.Instance["Cleanup_Nothing"] : Loc.Instance.Format("Cleanup_Size", CleanupViewModel.Size(scan.Bytes), scan.Files);
+        // "157 MB in 1,566 files", as on the Storage page
+        SizeText = scan.Bytes == 0 && scan.Files == 0 ? Loc.Instance["Cleanup_Nothing"]
+            : scan.Files == 1 ? Loc.Instance.Format("Cleanup_SizeOne", CleanupViewModel.Size(scan.Bytes))
+            : Loc.Instance.Format("Cleanup_Size", CleanupViewModel.Size(scan.Bytes), scan.Files);
         IsEmpty = scan.Bytes == 0 && scan.Files == 0;
         FoldersText = FoldersOf(Category, scan.ExistingRoots.Count > 0 ? scan.ExistingRoots : Category.Roots);
     }

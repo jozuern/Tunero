@@ -5,6 +5,10 @@
 ### Changed
 
 - **.NET runtime 10.0.14:** the exe carries the .NET and Windows Desktop runtime of Microsoft's out-of-band security release of October 25, 2026, which fixes a Brotli decoder flaw ([release notes](https://github.com/dotnet/core/blob/main/release-notes/10.0/10.0.14/10.0.14.md)), instead of 10.0.13.
+- **Graphics & DNS:** without an NVIDIA card, a card says why there are no driver settings; the network links moved to Related settings at the end of the page.
+- **Remove apps:** preinstalled apps under a header per group, a bar that always shows Remove selected, and OneDrive and Edge in one section.
+- **Storage:** before an analysis the page explains Analyze; the folder list is wider than the treemap, larger tiles carry names, and the legend lists only the types on the map.
+- **Cleanup** sizes read "157 MB in 1,566 files".
 - **System info:** unnamed displays show as Built-in display or Display 2; the processor card says L3 cache and names its core types; its Technical details switch is the one from Settings.
 - **Settings** switches show On and Off; **Health** duration boxes have labels; **Changes** keeps the extra export options in the Move to another PC card.
 - **Overview:** the verdict names settings that work against the profile instead of saying nothing holds the PC back, and the readiness line counts unknown checks.
@@ -19,6 +23,10 @@
 
 ### Fixed
 
+- **Graphics & DNS:** links and benchmark columns are no longer cut off in narrow windows; switching DNS servers no longer waits for an extra full scan.
+- **Remove apps:** the Left behind card scrolls on short windows, and a page opened during the first scan loads once.
+- **Cleanup:** Temporary files keeps empty folders created in the last day, which a running installer may still need.
+- **Storage:** with a separate administrator account, the signed-in user's own Documents, Desktop and other personal folders stay protected, also when moved to another drive; picking a file type again no longer lists each file twice.
 - **System info:** HDR shows as on only when Windows runs the display in HDR, not for Auto Color Management on an SDR display.
 - **Live readings:** a svchost's name and services follow what it runs now; two Tunero copies in different sessions no longer stop each other's disk trace, and a trace that stops on its own says so.
 - **Setup screen** says why Install is refused while other work runs; the VirusTotal Save button waits for a key.

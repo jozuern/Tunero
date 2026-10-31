@@ -90,7 +90,12 @@ public sealed partial class StorageViewModel(IPageHost owner, AppServices servic
 
     [ObservableProperty] private TreeRow? _selectedRow;
 
-    [ObservableProperty] private DriveRow? _selectedDrive;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(EmptyHint))]
+    private DriveRow? _selectedDrive;
+
+    /// <summary>Before an analysis: "Select Analyze to read C:\." for the drive picked.</summary>
+    public string EmptyHint => Loc.Instance.Format("Storage_EmptyHint", SelectedDrive?.Root ?? "");
 
     /// <summary>The extension whose files <see cref="TypeFiles"/> lists.</summary>
     [ObservableProperty]
@@ -219,6 +224,7 @@ public sealed partial class StorageViewModel(IPageHost owner, AppServices servic
 
     private void Relabel()
     {
+        OnPropertyChanged(nameof(EmptyHint));
         if (Tree is { } tree) ResultText = Summary(tree);
         if (DuplicatesSearched) ShowDuplicates();
         _rowsVersion++;
@@ -282,10 +288,12 @@ public sealed partial class StorageViewModel(IPageHost owner, AppServices servic
         try
         {
             // Read for every analysis: a scan since the page opened may have found a new library, a profile may be new.
+            var session = services;
             var rules = await Task.Run(() =>
             {
                 var protectedRoots = StorageAnalyzer.ProtectedRoots(software.GameLibraryPaths.Concat(software.OtherGameFolders));
-                var kept = RecycleRules.KeptFolders();
+                // The signed-in user's folders too, not only those of the account the app runs as (the tests pass no services).
+                var kept = RecycleRules.KeptFolders(session?.SessionKnownFolders());
                 return new RecycleScope(protectedRoots, kept, RecycleRules.NormalizeAll(protectedRoots), RecycleRules.NormalizeAll(kept),
                     RecycleRules.CheckAbove(root));
             });
@@ -528,6 +536,9 @@ public sealed partial class StorageViewModel(IPageHost owner, AppServices servic
         _openType = null;
     }
 
+    /// <summary>Counts the File types fills; only the newest one adds its rows.</summary>
+    private int _typeFill;
+
     /// <summary>The largest 100 files of the chosen extension, built for this one only.</summary>
     partial void OnSelectedTypeChanged(TypeRow? oldValue, TypeRow? newValue)
     {
@@ -536,8 +547,11 @@ public sealed partial class StorageViewModel(IPageHost owner, AppServices servic
         // Each group's selection list shows only its own pick.
         foreach (var g in TypeGroups) g.Selected = newValue is not null && g.Extensions.Contains(newValue) ? newValue : null;
         TypeFiles.Clear();
+        // Each pick is its own fill: picking an extension again while its earlier fill still runs must not let that one
+        // add its rows too (every file would show twice). A cleared selection drops a pending fill as well.
+        var fill = ++_typeFill;
         if (newValue is not null && Tree is { } tree)
-            Track(FillFilesAsync(TypeFiles, tree, tree.LargestFilesOfType(newValue.Extension, 100), () => ReferenceEquals(SelectedType, newValue)));
+            Track(FillFilesAsync(TypeFiles, tree, tree.LargestFilesOfType(newValue.Extension, 100), () => fill == _typeFill && ReferenceEquals(SelectedType, newValue)));
         UpdateSelection();
     }
 

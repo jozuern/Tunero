@@ -35,7 +35,12 @@ public static class RecycleRules
     ];
 
     /// <summary>Folders that stay, as full paths with a trailing backslash (case-insensitive set).</summary>
-    public static IReadOnlyCollection<string> KeptFolders()
+    /// <param name="sessionFolders">
+    /// The signed-in user's profile and known folders (Desktop, Documents and the others, read from their User Shell
+    /// Folders). The known folders this method reads itself are those of the account the app runs as, which with
+    /// Administrator protection or another admin account is not the user's: a Documents folder moved to D:\ would not stay.
+    /// </param>
+    public static IReadOnlyCollection<string> KeptFolders(IEnumerable<string>? sessionFolders = null)
     {
         var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         void Add(string? path)
@@ -73,6 +78,7 @@ public static class RecycleRules
 
         Add(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
         foreach (var id in KnownFolderIds) Add(KnownFolder(id));
+        foreach (var folder in sessionFolders ?? []) Add(folder);
         return set;
     }
 

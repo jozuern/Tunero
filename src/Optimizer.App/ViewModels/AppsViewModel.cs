@@ -355,7 +355,7 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
             row.StateText = Loc.Instance["Programs_NoUninstaller"];
             return;
         }
-        var text = Loc.Instance.Format("Programs_ConfirmText", row.Name) + (command.Mode == UninstallMode.AsUser ? "\n\n" + Loc.Instance["Programs_AsUser"] : "");
+        var text = Loc.Instance.Format("Programs_ConfirmText", row.Name) + RestorePointNote() + (command.Mode == UninstallMode.AsUser ? "\n\n" + Loc.Instance["Programs_AsUser"] : "");
         if (!dialogs.Ask(Loc.Instance["Programs_ConfirmTitle"], text, Loc.Instance["Programs_Uninstall"])) return;
         row.IsRemoving = true;
         row.StateText = Loc.Instance["Programs_Running"];
@@ -399,6 +399,9 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
         }
     }
 
+    /// <summary>Before the first uninstall of the session, the question says that a restore point comes first.</summary>
+    private string RestorePointNote() => _restorePointReady ? "" : " " + Loc.Instance["Programs_ConfirmRestorePoint"];
+
     /// <summary>
     /// A restore point before the first uninstall of the session. When none can be made (System Protection off, or
     /// Windows' limit of one per day), the user decides whether to go on.
@@ -433,7 +436,7 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
         foreach (var p in plan.Where(p => p.Command is null)) p.Row.StateText = Loc.Instance["Programs_NoUninstaller"];
         var queue = plan.Where(p => p.Command is not null).ToList();
         if (queue.Count == 0) return;
-        var text = Loc.Instance.Format("Programs_BulkConfirmText", queue.Count);
+        var text = Loc.Instance.Format("Programs_BulkConfirmText", queue.Count) + RestorePointNote();
         if (queue.Where(p => p.Quiet).Select(p => p.Row.Name).ToList() is { Count: > 0 } quietNames)
             text += "\n\n" + Loc.Instance.Format("Programs_BulkQuiet", string.Join(", ", quietNames));
         if (queue.Where(p => !p.Quiet).Select(p => p.Row.Name).ToList() is { Count: > 0 } windowNames)

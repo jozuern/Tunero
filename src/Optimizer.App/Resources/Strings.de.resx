@@ -223,11 +223,13 @@
     <value>Grafik &amp; DNS</value>
   </data>
   <data name="Net_Hint" xml:space="preserve">
-    <value>Einstellungen des Grafiktreibers, Profile pro Spiel, DNS und im Expertenmodus Geräte-Interrupts.</value>
+    <value>DNS-Server für jeden PC und auf einem PC mit NVIDIA-Karte deren Treibereinstellungen und Profile pro Spiel. Im Expertenmodus kommen Geräte-Interrupts dazu.</value>
   </data>
   <data name="Net_NvidiaGlobal" xml:space="preserve">
     <value>NVIDIA-Treibereinstellungen</value>
   </data>
+  <data name="Net_NoNvidiaTitle" xml:space="preserve"><value>Grafiktreibereinstellungen</value></data>
+  <data name="Net_NoNvidiaText" xml:space="preserve"><value>Keine NVIDIA-Grafikkarte gefunden. Treibereinstellungen und Profile pro Spiel gibt es nur für NVIDIA-Karten.</value></data>
   <data name="Net_GameProfiles" xml:space="preserve">
     <value>NVIDIA-Profile pro Spiel</value>
   </data>
@@ -301,7 +303,9 @@ Die App wird für alle Benutzer und neue Konten entfernt. Für sie ist kein Eint
   <data name="Debloat_Removed" xml:space="preserve">
     <value>{0} wurde entfernt.</value>
   </data>
-  <data name="Debloat_RemoveSelected" xml:space="preserve"><value>Auswahl entfernen ({0})</value></data>
+  <data name="Debloat_RemoveSelected" xml:space="preserve"><value>Auswahl entfernen</value></data>
+  <data name="Debloat_SelectHint" xml:space="preserve"><value>Hake Apps an, um mehrere auf einmal zu entfernen</value></data>
+  <data name="Debloat_SelectedCount" xml:space="preserve"><value>Ausgewählt: {0}</value></data>
   <data name="Debloat_ConfirmSelectedTitle" xml:space="preserve"><value>Ausgewählte Apps entfernen?</value></data>
   <data name="Debloat_ConfirmSelected" xml:space="preserve"><value>{0}
 
@@ -322,14 +326,13 @@ Diese Apps werden für alle Benutzer und neue Konten entfernt. Was der Microsoft
   <data name="Debloat_OneDriveTitle" xml:space="preserve">
     <value>OneDrive deinstallieren</value>
   </data>
+  <data name="Debloat_OneDriveEdge" xml:space="preserve"><value>OneDrive und Edge</value></data>
+  <data name="Debloat_NotInstalled" xml:space="preserve"><value>Nicht installiert.</value></data>
   <data name="Debloat_OneDriveInstalled" xml:space="preserve">
     <value>Installiert. Ordner: {0}</value>
   </data>
   <data name="Debloat_OneDriveNotSignedIn" xml:space="preserve">
     <value>nicht angemeldet</value>
-  </data>
-  <data name="Debloat_OneDriveMissing" xml:space="preserve">
-    <value>OneDrive ist nicht installiert.</value>
   </data>
   <data name="Debloat_OneDriveConfirm" xml:space="preserve">
     <value>OneDrive wird für dein Konto deinstalliert. Dateien im OneDrive-Ordner bleiben auf diesem PC; die Synchronisierung endet. Du kannst es mit winget (Microsoft.OneDrive) neu installieren.</value>
@@ -359,8 +362,9 @@ Diese Apps werden für alle Benutzer und neue Konten entfernt. Was der Microsoft
     <value>Temporäre Dateien und Caches mit ihrer Größe. Gelöscht wird erst, wenn du es auswählst. Dateien in Benutzung und Verknüpfungen zu anderen Ordnern werden immer übersprungen.</value>
   </data>
   <data name="Cleanup_Size" xml:space="preserve">
-    <value>{0}, Dateien: {1:N0}</value>
+    <value>{0} in {1:N0} Dateien</value>
   </data>
+  <data name="Cleanup_SizeOne" xml:space="preserve"><value>{0} in 1 Datei</value></data>
   <data name="Cleanup_Total" xml:space="preserve">
     <value>Ausgewählt: {0}</value>
   </data>
@@ -588,7 +592,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   </data>
   <data name="Nav_Storage" xml:space="preserve"><value>Speicher</value></data>
   <data name="Storage_PageTitle" xml:space="preserve"><value>Speicher</value></data>
-  <data name="Storage_PageHint" xml:space="preserve"><value>Zeigt, was auf einem Laufwerk Platz belegt: Ordner, Dateitypen, die größten Dateien und doppelte Dateien. Vom Laufwerk wird erst gelesen, wenn du Analysieren wählst. Windows-, Programm- und Spieleordner werden nie zum Löschen angeboten, und gelöschte Dateien kommen in den Papierkorb.</value></data>
+  <data name="Storage_PageHint" xml:space="preserve"><value>Zeigt, was auf einem Laufwerk Platz belegt: Ordner, Dateitypen, die größten Dateien und doppelte Dateien. Windows-, Programm- und Spieleordner werden nie zum Löschen angeboten, und gelöschte Dateien kommen in den Papierkorb.</value></data>
   <data name="Storage_Analyze" xml:space="preserve"><value>Analysieren</value></data>
   <data name="Storage_CloseResult" xml:space="preserve"><value>Ergebnis schließen</value></data>
   <data name="Storage_Result" xml:space="preserve"><value>{0} in {1:N0} Dateien, in {3:0.0} s {2} gelesen</value></data>
@@ -603,7 +607,8 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Storage_TabDuplicates" xml:space="preserve"><value>Doppelte Dateien</value></data>
   <data name="Storage_FindDuplicates" xml:space="preserve"><value>Duplikate suchen</value></data>
   <data name="Storage_DriveSpace" xml:space="preserve"><value>{0} frei von {1}</value></data>
-  <data name="Storage_NoResult" xml:space="preserve"><value>Wähle ein Laufwerk und dann Analysieren.</value></data>
+  <data name="Storage_EmptyTitle" xml:space="preserve"><value>Analysiere ein Laufwerk, um zu sehen, was Platz belegt</value></data>
+  <data name="Storage_EmptyHint" xml:space="preserve"><value>Wähle Analysieren, um {0} zu lesen. Vorher wird nichts vom Laufwerk gelesen.</value></data>
   <data name="Storage_NoExtension" xml:space="preserve"><value>Ohne Endung</value></data>
   <data name="Storage_TypesHint" xml:space="preserve"><value>Öffne eine Gruppe und wähle einen Dateityp, um seine größten Dateien zu sehen.</value></data>
   <data name="Storage_MoreTypes" xml:space="preserve"><value>{0} weitere Typen</value></data>
@@ -619,6 +624,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Storage_ColFiles" xml:space="preserve"><value>Dateien</value></data>
   <data name="Storage_ColChanged" xml:space="preserve"><value>Geändert</value></data>
   <data name="Storage_FolderList" xml:space="preserve"><value>Ordner und Dateien</value></data>
+  <data name="Storage_ToggleFolder" xml:space="preserve"><value>Ordner öffnen oder schließen</value></data>
   <data name="Storage_ShownFolder" xml:space="preserve"><value>Angezeigter Ordner</value></data>
   <data name="Storage_TreemapName" xml:space="preserve"><value>Treemap von {0}, {1}</value></data>
   <data name="Storage_TreemapHint" xml:space="preserve"><value>Wähle eine Kachel, um sie in der Liste zu finden. Ein Doppelklick zeigt den Ordner, in dem sie liegt.</value></data>
@@ -1278,7 +1284,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Startup_DeleteHint" xml:space="preserve"><value>Entfernt diesen Eintrag (den Registry-Wert, die Datei im Autostart-Ordner oder die Aufgabe), wie Autoruns. Er wird vorher gesichert: Rückgängig auf der Seite Änderungen stellt ihn wieder her.</value></data>
   <data name="Startup_FileMissing" xml:space="preserve"><value>Die Datei dieses Eintrags existiert nicht.</value></data>
   <data name="Programs_Title" xml:space="preserve"><value>Installierte Programme</value></data>
-  <data name="Programs_Hint" xml:space="preserve"><value>Desktopprogramme aus der Deinstallationsliste von Windows. Deinstallieren startet das eigene Deinstallationsprogramm mit seinem Fenster. Hake mehrere an, um sie nacheinander zu deinstallieren, ohne Rückfragen, wo das Programm es anbietet, und zu sehen, was sie zurücklassen. Vor der ersten Deinstallation einer Sitzung legt die App einen Wiederherstellungspunkt an, wenn der Computerschutz an ist.</value></data>
+  <data name="Programs_Hint" xml:space="preserve"><value>Desktopprogramme aus der Deinstallationsliste von Windows. Deinstallieren startet das eigene Deinstallationsprogramm. Hake mehrere an, um sie nacheinander zu deinstallieren und zu sehen, was sie zurückgelassen haben.</value></data>
   <data name="Programs_Search" xml:space="preserve"><value>Programme suchen</value></data>
   <data name="Programs_Count" xml:space="preserve"><value>Programme: {0}</value></data>
   <data name="Programs_Sort" xml:space="preserve"><value>Programme sortieren</value></data>
@@ -1291,6 +1297,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Programs_Uninstall" xml:space="preserve"><value>Deinstallieren</value></data>
   <data name="Programs_ConfirmTitle" xml:space="preserve"><value>Programm deinstallieren?</value></data>
   <data name="Programs_ConfirmText" xml:space="preserve"><value>Startet das Deinstallationsprogramm von {0}. Folge seinem Fenster; es entscheidet, was entfernt wird, auch deine Einstellungen für dieses Programm.</value></data>
+  <data name="Programs_ConfirmRestorePoint" xml:space="preserve"><value>Vorher wird ein Wiederherstellungspunkt angelegt, wenn der Computerschutz an ist.</value></data>
   <data name="Programs_AsUser" xml:space="preserve"><value>Dieses Deinstallationsprogramm läuft unter deinem Konto, weil es in einem Ordner liegt, den andere Benutzer oder Programme ändern können. Braucht es Administratorrechte, fragt es selbst danach.</value></data>
   <data name="Programs_Running" xml:space="preserve"><value>Deinstallation läuft.</value></data>
   <data name="Programs_StartedAsUser" xml:space="preserve"><value>Deinstallationsprogramm gestartet. Wähle danach Aktualisieren.</value></data>
@@ -1548,7 +1555,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Tweak_SwitchOff" xml:space="preserve"><value>Nicht angewendet</value></data>
   <data name="Tweaks_ProfileLink" xml:space="preserve"><value>Profil: {0} (auf der Übersicht ändern)</value></data>
   <data name="Rec_EmptyButExcluded" xml:space="preserve"><value>Gerade lässt sich nichts mit einem Klick anwenden. Die Änderungen, die helfen würden, stehen unten, mit dem, was sie vorher brauchen.</value></data>
-  <data name="Debloat_TabNote" xml:space="preserve"><value>Angeboten werden nur Apps aus einer geprüften Liste, Teile von Windows und Apps, die Spiele brauchen, nie. Das Entfernen lässt sich hier nicht rückgängig machen; für Apps, die es noch im Microsoft Store gibt, enthält die Liste der entfernten Apps einen Link zum Neuinstallieren.</value></data>
+  <data name="Debloat_TabNote" xml:space="preserve"><value>Angeboten werden nur Apps aus einer geprüften Liste, nie Teile von Windows. Apps, die installierte Spiele brauchen, bleiben gesperrt. Das Entfernen lässt sich hier nicht rückgängig machen; für Apps, die es noch im Microsoft Store gibt, steht unter Entfernte Apps ein Link zum Neuinstallieren.</value></data>
   <data name="Debloat_RemoveName" xml:space="preserve"><value>{0} entfernen</value></data>
   <data name="Programs_UninstallName" xml:space="preserve"><value>{0} deinstallieren</value></data>
   <data name="Programs_SelectName" xml:space="preserve"><value>{0} auswählen</value></data>
@@ -1592,7 +1599,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Startup_KindFilter" xml:space="preserve"><value>Art des Orts</value></data>
   <data name="Svc_StartTypeName" xml:space="preserve"><value>Starttyp von {0}</value></data>
   <data name="Net_DnsRouter" xml:space="preserve"><value>Dein Router ({0})</value></data>
-  <data name="Net_FixesLink" xml:space="preserve"><value>Netzwerkhilfen wie DNS-Cache leeren stehen unter Tools</value></data>
+  <data name="Net_FixesLink" xml:space="preserve"><value>Netzwerkhilfen unter Tools</value></data>
   <data name="Bench_Step1" xml:space="preserve"><value>Starte das Spiel und wähle es unten in der Liste aus.</value></data>
   <data name="Bench_Step2" xml:space="preserve"><value>Nimm A (vorher) dreimal in derselben Szene auf. Fertig: {0} von 3.</value></data>
   <data name="Bench_Step3" xml:space="preserve"><value>Nimm die Änderung vor, die du testen willst, und geh zurück in dieselbe Szene.</value></data>
@@ -1658,7 +1665,8 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Tweaks_CountByApp" xml:space="preserve"><value>{0} von dieser App geändert</value></data>
   <data name="Tweaks_CountAlreadySet" xml:space="preserve"><value>{0} schon gesetzt</value></data>
   <data name="Tweaks_CountRecommended" xml:space="preserve"><value>{0} für diesen PC empfohlen</value></data>
-  <data name="Net_TweaksLink" xml:space="preserve"><value>Weitere Netzwerkeinstellungen sind Tweaks, in der Gruppe Netzwerk auf der Seite Tweaks</value></data>
+  <data name="Net_TweaksLink" xml:space="preserve"><value>Netzwerk-Tweaks</value></data>
+  <data name="Net_Related" xml:space="preserve"><value>Verwandte Einstellungen</value></data>
   <data name="Net_GameSearch" xml:space="preserve"><value>Spiele suchen</value></data>
   <data name="Net_NoGameMatch" xml:space="preserve"><value>Kein Spiel passt zur Suche.</value></data>
   <data name="Net_ShowAllGames" xml:space="preserve"><value>Alle {0} Spiele zeigen</value></data>
@@ -1731,8 +1739,8 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Work_DismScan" xml:space="preserve"><value>Windows-Abbild wird geprüft (DISM)</value></data>
   <data name="Work_DismRestore" xml:space="preserve"><value>Windows-Abbild wird repariert (DISM)</value></data>
   <data name="Hint_TakesMinutes" xml:space="preserve"><value>Kann mehrere Minuten dauern</value></data>
-  <data name="Hint_TakesMinutesServicing" xml:space="preserve"><value>Kann mehrere Minuten dauern, länger, während Windows Updates installiert</value></data>
-  <data name="Hint_TakesMinutesServicingSentence" xml:space="preserve"><value>Das kann mehrere Minuten dauern, länger, während Windows Updates installiert.</value></data>
+  <data name="Hint_TakesMinutesServicing" xml:space="preserve"><value>Kann mehrere Minuten dauern, bei laufenden Windows-Updates auch länger</value></data>
+  <data name="Hint_TakesMinutesServicingSentence" xml:space="preserve"><value>Das kann mehrere Minuten dauern, bei laufenden Windows-Updates auch länger.</value></data>
   <data name="Hint_TakesMinutesSentence" xml:space="preserve"><value>Das kann mehrere Minuten dauern.</value></data>
   <data name="Hint_TakesHalfHour" xml:space="preserve"><value>Kann eine halbe Stunde oder länger dauern</value></data>
   <data name="Badge_TipMinutes" xml:space="preserve"><value>Das Ein- oder Ausschalten kann mehrere Minuten dauern, länger, während Windows Updates installiert. Das Banner oben zeigt, dass es noch läuft.</value></data>

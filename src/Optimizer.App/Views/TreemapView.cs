@@ -3,6 +3,7 @@ using System.Windows.Automation;
 using System.Windows.Automation.Peers;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -16,13 +17,17 @@ namespace Optimizer.App.Views;
 /// The treemap of one folder of a <see cref="DiskTree"/>: every file a rectangle in proportion to its size, colored by its
 /// file group, folders laid out inside their own rectangle (squarified, <see cref="SquarifiedLayout"/>). A drive has
 /// millions of files, so it is one element that draws one geometry per group; the layout is cached and built again only
-/// when the size, the tree or the folder changes. Screen readers get one name; the folder list is the accessible way to
-/// the same data.
+/// when the size, the tree or the folder changes. The shown folder's own entries carry their name and size where the
+/// tile has room, on a small plate in the page's background color that stays readable on every group color in both
+/// themes. Screen readers get one name; the folder list is the accessible way to the same data.
 /// </summary>
 public sealed class TreemapView : FrameworkElement
 {
     /// <summary>Smallest side a rectangle is drawn (and a folder laid out) with, in device independent pixels.</summary>
     private const double MinSide = 2;
+
+    /// <summary>A tile of the shown folder gets its name from this size on, its size too from <see cref="TwoLineHeight"/>.</summary>
+    private const double LabelMinWidth = 80, LabelMinHeight = 32, TwoLineHeight = 52;
 
     public static readonly DependencyProperty TreeProperty = DependencyProperty.Register(nameof(Tree), typeof(DiskTree), typeof(TreemapView),
         new FrameworkPropertyMetadata(null, (d, _) => ((TreemapView)d).Rebuild()));
@@ -41,6 +46,13 @@ public sealed class TreemapView : FrameworkElement
     private static readonly DependencyProperty SelectionBrushProperty = DependencyProperty.Register("SelectionBrush", typeof(Brush), typeof(TreemapView),
         new FrameworkPropertyMetadata(null, (d, _) => ((TreemapView)d).DrawSelection()));
 
+    /// <summary>The labels' text and the plate under it (primary text on the page background), so a theme switch redraws them.</summary>
+    private static readonly DependencyProperty LabelBrushProperty = DependencyProperty.Register("LabelBrush", typeof(Brush), typeof(TreemapView),
+        new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
+
+    private static readonly DependencyProperty LabelPlateBrushProperty = DependencyProperty.Register("LabelPlateBrush", typeof(Brush), typeof(TreemapView),
+        new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
+
     /// <summary>One brush per <see cref="FileGroup"/>, by resource reference (Treemap*Brush), so a theme switch redraws.</summary>
     private static readonly DependencyProperty[] GroupBrushProperties = Enum.GetNames<FileGroup>()
         .Select(g => DependencyProperty.Register(g + "Brush", typeof(Brush), typeof(TreemapView),
@@ -52,6 +64,9 @@ public sealed class TreemapView : FrameworkElement
     /// <summary>Every rectangle laid out (folders and files), each folder before what is in it.</summary>
     private readonly TreemapCells _cells = new();
     private readonly StreamGeometry?[] _groups = new StreamGeometry?[GroupCount];
+
+    /// <summary>The shown folder's entries with room for a label, with their rectangle.</summary>
+    private readonly List<(LayoutRect Rect, int Entry)> _labels = [];
     private readonly DrawingVisual _selection = new();
     private readonly ToolTip _tip = new() { Placement = PlacementMode.Mouse };
     private readonly DispatcherTimer _tipDelay = new() { Interval = TimeSpan.FromMilliseconds(400) };
@@ -66,6 +81,8 @@ public sealed class TreemapView : FrameworkElement
         for (var g = 0; g < GroupCount; g++) SetResourceReference(GroupBrushProperties[g], $"Treemap{(FileGroup)g}Brush");
         SetResourceReference(OutlineBrushProperty, "CardStrokeColorDefaultBrush");
         SetResourceReference(SelectionBrushProperty, "TextFillColorPrimaryBrush");
+        SetResourceReference(LabelBrushProperty, "TextFillColorPrimaryBrush");
+        SetResourceReference(LabelPlateBrushProperty, "SolidBackgroundFillColorBaseBrush");
         AddVisualChild(_selection);
         _tip.PlacementTarget = this;
         _resizeDelay.Tick += (_, _) =>
@@ -110,6 +127,12 @@ public sealed class TreemapView : FrameworkElement
     /// <summary>A double-click: the folder that holds the rectangle under the pointer (never the folder shown).</summary>
     public event EventHandler<int>? EntryActivated;
 
+    /// <summary>The map was laid out again: <see cref="Shows"/> may name other groups (the page's legend follows it).</summary>
+    public event EventHandler? GroupsShown;
+
+    /// <summary>The map draws files of this group.</summary>
+    public bool Shows(FileGroup group) => _groups[(int)group] is not null;
+
     /// <summary>Lays the map out again: the tree changed in place (entries removed) or the language changed.</summary>
     public void Rebuild()
     {
@@ -148,7 +171,35 @@ public sealed class TreemapView : FrameworkElement
         var outline = OutlinePen();
         for (var g = 0; g < GroupCount; g++)
             if (_groups[g] is { } geometry) dc.DrawGeometry((Brush?)GetValue(GroupBrushProperties[g]), outline, geometry);
+        DrawLabels(dc);
         if (stretch is not null) dc.Pop();
+    }
+
+    /// <summary>Name, and size where there is room, at the top left of each labeled tile, cut to the tile's width.</summary>
+    private void DrawLabels(DrawingContext dc)
+    {
+        if (_labels.Count == 0 || Tree is not { } tree || GetValue(LabelBrushProperty) is not Brush text || GetValue(LabelPlateBrushProperty) is not Brush plate) return;
+        var typeface = new Typeface(TextElement.GetFontFamily(this), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
+        var pixelsPerDip = VisualTreeHelper.GetDpi(this).PixelsPerDip;
+        var culture = System.Globalization.CultureInfo.CurrentUICulture;
+        FormattedText Line(string s, double width) => new(s, culture, FlowDirection.LeftToRight, typeface, 12, text, pixelsPerDip)
+        {
+            MaxTextWidth = width,
+            MaxLineCount = 1,
+            Trimming = TextTrimming.CharacterEllipsis,
+        };
+        foreach (var (r, entry) in _labels)
+        {
+            if (entry >= tree.Count || tree.IsRemoved(entry)) continue;
+            var width = r.Width - 16;
+            var name = Line(tree.Name(entry), width);
+            var size = r.Height >= TwoLineHeight ? Line(CleanupViewModel.Size(tree.Size(entry)), width) : null;
+            var plateWidth = Math.Max(name.WidthIncludingTrailingWhitespace, size?.WidthIncludingTrailingWhitespace ?? 0) + 8;
+            var plateHeight = name.Height + (size?.Height ?? 0) + 4;
+            dc.DrawRoundedRectangle(plate, null, new Rect(r.X + 4, r.Y + 4, Math.Min(plateWidth, r.Width - 8), plateHeight), 2, 2);
+            dc.DrawText(name, new Point(r.X + 8, r.Y + 6));
+            if (size is not null) dc.DrawText(size, new Point(r.X + 8, r.Y + 6 + name.Height));
+        }
     }
 
     /// <summary>One device pixel wide, in the card stroke color; made again only when the brush or the DPI changes.</summary>
@@ -168,7 +219,10 @@ public sealed class TreemapView : FrameworkElement
         _layoutValid = true;
         _layoutSize = RenderSize;
         _cells.Clear();
+        _labels.Clear();
         Array.Clear(_groups);
+        // After the render pass that lays out: the legend's change of layout does not belong in it.
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () => GroupsShown?.Invoke(this, EventArgs.Empty));
         var tree = Tree;
         var folder = Folder;
         if (tree is null || folder < 0 || folder >= tree.Count || tree.IsRemoved(folder))
@@ -225,6 +279,7 @@ public sealed class TreemapView : FrameworkElement
                 var r = rects[k];
                 if (r.Width < MinSide || r.Height < MinSide) continue;
                 var c = tree.Child(parent, k);
+                if (parent == folder && r.Width >= LabelMinWidth && r.Height >= LabelMinHeight) _labels.Add((r, c));
                 if (tree.IsFolder(c))
                 {
                     var cell = _cells.BeginFolder(r, c);

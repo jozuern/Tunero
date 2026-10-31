@@ -155,9 +155,10 @@ public static class CleanupEngine
     {
         long freed = 0;
         int deleted = 0, skipped = 0;
+        var utcNow = now ?? DateTime.UtcNow;
         foreach (var root in SafeRoots(c))
         {
-            foreach (var f in Files(root, c, now ?? DateTime.UtcNow).ToList())
+            foreach (var f in Files(root, c, utcNow).ToList())
             {
                 try
                 {
@@ -173,7 +174,7 @@ public static class CleanupEngine
                     skipped++; // in use or protected: leave it
                 }
             }
-            if (c.Recursive) RemoveEmptyDirectories(root);
+            if (c.Recursive) RemoveEmptyDirectories(root, c.MinAge, utcNow);
             if (c.RemoveRoots)
                 try
                 {
@@ -224,8 +225,12 @@ public static class CleanupEngine
 
     private static DateTime Newest(FileInfo f) => new[] { f.LastWriteTimeUtc, f.CreationTimeUtc }.Max();
 
-    /// <summary>Removes the folders a cleanup left empty below the root; the root itself stays.</summary>
-    private static void RemoveEmptyDirectories(string root)
+    /// <summary>
+    /// Removes the folders a cleanup left empty below the root; the root itself stays. With <paramref name="minAge"/> a
+    /// folder created more recently stays as its files do: a running installer or program may have just made it and not
+    /// written to it yet. Its creation time counts, since the deletes above have just changed its last write time.
+    /// </summary>
+    private static void RemoveEmptyDirectories(string root, TimeSpan? minAge, DateTime utcNow)
     {
         var dirs = new List<DirectoryInfo>();
         var stack = new Stack<DirectoryInfo>([new DirectoryInfo(root)]);
@@ -247,6 +252,7 @@ public static class CleanupEngine
             if (string.Equals(d.FullName.TrimEnd('\\'), root.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase)) continue;
             try
             {
+                if (minAge is { } age && utcNow - d.CreationTimeUtc < age) continue;
                 if (!d.EnumerateFileSystemInfos().Any()) SafeDelete.DeleteEmptyDirectory(d.FullName);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)

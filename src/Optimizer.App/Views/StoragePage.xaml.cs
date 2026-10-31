@@ -10,8 +10,8 @@ public partial class StoragePage : UserControl
 {
     /// <summary>
     /// Content width from which the treemap stands beside the folder list instead of under it: the list needs about
-    /// 520 px (fixed columns 304, chevron, icon and margins about 90, the name at least 120). Below it is only the
-    /// smallest window.
+    /// 520 px (fixed columns 304, chevron, icon and margins about 90, the name at least 120) and gets three fifths of
+    /// the width, the names being what the list is read by. Below it is only the smallest window.
     /// </summary>
     private const double SideBySideWidth = 1000;
 
@@ -48,7 +48,8 @@ public partial class StoragePage : UserControl
         FoldersContent.Width = width;
         FoldersScroll.VerticalScrollBarVisibility = wide ? ScrollBarVisibility.Disabled : ScrollBarVisibility.Auto;
         GapColumn.Width = new GridLength(wide ? 16 : 0);
-        MapColumn.Width = wide ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+        ListColumn.Width = new GridLength(wide ? 3 : 1, GridUnitType.Star);
+        MapColumn.Width = wide ? new GridLength(2, GridUnitType.Star) : new GridLength(0);
         ListRow.Height = wide ? new GridLength(1, GridUnitType.Star) : GridLength.Auto;
         GapRow.Height = new GridLength(wide ? 0 : 16);
         MapRow.Height = wide ? new GridLength(0) : GridLength.Auto;
@@ -103,6 +104,14 @@ public partial class StoragePage : UserControl
     }
 
     private void Map_EntryActivated(object? sender, int folder) => _storage?.OpenFolder(folder);
+
+    /// <summary>The legend lists the groups the map draws (each entry's Tag is its group).</summary>
+    private void Map_GroupsShown(object? sender, EventArgs e)
+    {
+        foreach (var entry in Legend.Children.OfType<FrameworkElement>())
+            if (entry.Tag is string name && Enum.TryParse<Optimizer.Core.Storage.FileGroup>(name, out var group))
+                entry.Visibility = Map.Shows(group) ? Visibility.Visible : Visibility.Collapsed;
+    }
 
     private void Crumbs_ItemClicked(BreadcrumbBar sender, BreadcrumbBarItemClickedEventArgs args)
     {

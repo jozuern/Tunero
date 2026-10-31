@@ -106,6 +106,19 @@ public sealed class WidthBelowConverter : IValueConverter
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => Binding.DoNothing;
 }
 
+/// <summary>
+/// A length times the parameter (0.6: 60 percent), for a MaxHeight that is a share of a panel. No limit while the
+/// length is not known yet, so nothing is hidden before the first layout.
+/// </summary>
+public sealed class FractionConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is double length && length > 0 && double.TryParse(parameter as string, NumberStyles.Float, CultureInfo.InvariantCulture, out var share)
+            ? length * share
+            : double.PositiveInfinity;
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => Binding.DoNothing;
+}
+
 /// <summary>True when every bound value is true (a row's own "can toggle" and the app-wide "a change may start now").</summary>
 public sealed class AllTrueConverter : IMultiValueConverter
 {
