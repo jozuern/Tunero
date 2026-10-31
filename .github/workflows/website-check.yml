@@ -24,7 +24,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  # Not "build": that name is the required check of Build and test in the "Protect main" ruleset.
+  site:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
