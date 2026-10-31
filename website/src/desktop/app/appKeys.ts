@@ -35,7 +35,7 @@ export const appKeys = [
   'Changes_Title',
   'Changes_Backups',
   'Changes_UndoAll',
-  'Changes_LogEmpty',
+  'Changes_Empty',
   'Changes_Entries',
   'Result_UndoAll',
   'Tweak_Undo',

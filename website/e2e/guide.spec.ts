@@ -78,6 +78,8 @@ test('the before and after comparison only shows: it changes nothing', async ({ 
   await page.mouse.up();
   await page.keyboard.press('Escape');
   await expect(divider).toBeHidden();
+  // The link that opened it is back, and the focus with it, not on the page where the next Tab starts all over.
+  await expect(page.locator('.hero .link')).toBeFocused();
   await expect(widget(page)).toContainText('60 Hz');
   expect((await saved(page))?.applied ?? []).toEqual([]);
 });

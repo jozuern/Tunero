@@ -91,6 +91,8 @@
       type="button"
       class="search"
       data-anchor="search"
+      aria-label={copy.searchShort}
+      title={copy.searchShort}
       onclick={(event) => {
         event.stopPropagation();
         store.startOpen = true;
@@ -99,7 +101,7 @@
       <Icon name="search" size={16} />
       <span class="search-text">{copy.searchShort}</span>
       {#if store.active('search-highlights')}
-        <span class="highlight" data-effect="search-highlights" title={copy.searchHighlight}><Icon name="star" size={16} /></span>
+        <span class="highlight" data-effect="search-highlights" title={copy.searchHighlight} aria-hidden="true"><Icon name="star" size={16} /></span>
       {/if}
     </button>
     {#each pinned as app (app.id)}
@@ -183,6 +185,13 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  /* On narrow screens it shrinks within its column instead of running under Start and Search. */
+  .left :global(.watermark) {
     min-width: 0;
   }
 

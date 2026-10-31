@@ -1,6 +1,7 @@
 ---
 // One list of the rating board: names, and under each the note that qualifies its rating (basis measured or disputed,
-// higher on some PCs, lower for other findings).
+// higher on some PCs, lower for other findings). The app's reason for a higher rating is a visible line of its own: a
+// tooltip would never show on the phones this page is for.
 import { t, type Lang } from '../../i18n/index.ts';
 import type { BoardEntry } from '../../lib/board.ts';
 
@@ -30,9 +31,10 @@ const rows = entries.map((entry) => ({
 
 <ul class:list={['names', { quiet }]}>
   {rows.map((row) => (
-    <li title={row.reason}>
+    <li>
       <span class="name">{row.title}</span>
-      {row.note && <span class="note">{row.note}{row.reason && <span class="visually-hidden">. {row.reason}</span>}</span>}
+      {row.note && <span class="note">{row.note}</span>}
+      {row.reason && <span class="note reason">{row.reason}</span>}
     </li>
   ))}
 </ul>
@@ -65,8 +67,8 @@ const rows = entries.map((entry) => ({
     color: var(--ink-2);
   }
 
-  li[title] {
-    cursor: help;
+  .reason {
+    margin-top: 2px;
   }
 
   @media (min-width: 720px) {

@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=22.18"
+    "node": ">=22.23.4"
   },
   "scripts": {
     "dev": "astro dev",
@@ -14,16 +14,16 @@
     "render:wallpaper": "node scripts/render-wallpaper.mjs"
   },
   "dependencies": {
-    "@astrojs/svelte": "9.0.1",
-    "astro": "7.3.8",
+    "@astrojs/svelte": "9.1.1",
+    "astro": "7.4.2",
     "svelte": "5.57.2"
   },
   "devDependencies": {
-    "@astrojs/check": "0.9.10",
+    "@astrojs/check": "0.9.12",
     "@fluentui/svg-icons": "1.1.344",
-    "@playwright/test": "1.64.0",
+    "@playwright/test": "1.64.1",
     "@types/node": "26.6.5",
-    "svelte-check": "4.7.6",
+    "svelte-check": "4.7.7",
     "typescript": "6.0.3"
   }
 }

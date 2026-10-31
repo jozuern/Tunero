@@ -144,7 +144,7 @@
     position: absolute;
     bottom: 24px;
     margin: 0;
-    color: #6b6b6b;
+    color: #8a8a8a;
     font-size: 12px;
   }
 

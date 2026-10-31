@@ -53,7 +53,7 @@ test('a session saved by an older deploy, with a change this one no longer has, 
   await visit(page, { saved: { applied: [{ kind: 'tweak', id: 'no.such.tweak' }], scanned: true, bootSeen: true, window: 'tunero' } });
   await expect(tunero(page)).toBeVisible();
   await nav(page, 'changes').click();
-  await expect(tunero(page).getByText('No changes in this session.')).toBeVisible();
+  await expect(tunero(page).getByText(/^No changes yet\./)).toBeVisible();
   expect((await saved(page))?.applied).toEqual([]);
 });
 

@@ -7,6 +7,7 @@
   import { useStore } from './store.svelte.ts';
   import { animated, reducedMotion } from './motion.ts';
   import { setSplit } from './wallpaper/wallpaper.ts';
+  import { handOff } from './app/focus.ts';
   import CompareSide from './CompareSide.svelte';
 
   let {
@@ -30,6 +31,7 @@
   let split = $state(960);
   let dragging = false;
   let handle: HTMLElement;
+  let root: HTMLElement;
 
   const clamp = (x: number) => Math.min(Math.max(x, 24), width - 24);
   $effect(() => setSplit(split));
@@ -54,8 +56,14 @@
     return () => setSplit(null);
   });
 
+  // What opened it (the hero's link, the end card) leaves while it covers the desktop, so the focus goes to the hero's
+  // link if it is back, else the front window, else Start. Never to the page, where the next Tab starts all over.
   function close() {
     store.compare = false;
+    void handOff(root, () => {
+      const outside = (selector: string) => [...document.querySelectorAll<HTMLElement>(selector)].find((el) => !el.closest('.compare'));
+      return outside('.hero .link') ?? (store.focused ? outside(`[data-window="${store.focused}"]`) : undefined) ?? outside('[data-anchor="start"]');
+    });
   }
 
   function onKeydown(event: KeyboardEvent) {
@@ -75,6 +83,7 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
   class="compare"
+  bind:this={root}
   transition:fade={{ duration: animated(200) }}
   onpointerdown={(event) => {
     if ((event.target as Element).closest('.done')) return;

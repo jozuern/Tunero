@@ -67,7 +67,7 @@
 {/if}
 
 {#if entries.length === 0 && undone === null}
-  <p class="empty">{app.Changes_LogEmpty}</p>
+  <p class="empty">{app.Changes_Empty}</p>
 {:else}
   <ul bind:this={list}>
     {#each entries as change, index (`${change.kind}:${change.id}`)}

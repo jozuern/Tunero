@@ -167,7 +167,7 @@ const en = {
       {
         id: 'remove',
         q: 'Can I remove it completely?',
-        a: 'Settings > Uninstall offers to undo every change first. Then it removes the exe, its data folder and its Start menu entry, and for an installed copy also its Program Files folder and its entry under Installed apps. Uninstall under Windows Settings > Apps does the same. A copy from Chocolatey or Scoop is removed with choco uninstall tunero or scoop uninstall tunero.',
+        a: 'Settings > Uninstall offers to undo every change first. Then it removes the exe, its data folder and its Start menu entry, and for an installed copy also its Program Files folder and its entry under Installed apps. Uninstall under Windows Settings > Apps does the same. For a copy from Chocolatey or Scoop, Settings > Uninstall offers the same undo and then runs choco uninstall or scoop uninstall for you. The package manager on its own leaves your changes in place and keeps the data folder with their backups: when Tunero cannot start it and shows the command instead, or when you uninstall with it directly, undo your changes on the Changes page first.',
       },
     ],
   },

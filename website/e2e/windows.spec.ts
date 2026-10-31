@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, visit, seen } from './demo.ts';
+import { test, expect, visit, seen, tunero } from './demo.ts';
 
 const taskbarHeight = 48;
 const order = ['trust', 'notepad', 'settings', 'tunero'] as const;
@@ -74,4 +74,14 @@ test('open windows move back in reach when the browser window gets smaller', asy
   for (const id of order) await page.locator(`[data-taskbar="${id}"]`).click();
   await page.setViewportSize({ width: 1024, height: 700 });
   await expect(async () => captionsInReach(page)).toPass();
+});
+
+test('narrower than 1180 px the taskbar search, and narrower than 900 px the rail in Tunero, keep their names', async ({ page }) => {
+  // Their labels go out of sight there, and the icons alone name nothing.
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await visit(page, { saved: seen });
+  await expect(page.locator('.taskbar').getByRole('button', { name: 'Search', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Fix it yourself' }).click();
+  await page.setViewportSize({ width: 860, height: 768 });
+  for (const name of ['Tweaks', 'Changes']) await expect(tunero(page).getByRole('button', { name, exact: true })).toBeVisible();
 });

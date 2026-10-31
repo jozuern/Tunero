@@ -196,7 +196,8 @@
     padding: 2px 8px;
     border-radius: var(--radius-sm);
     background: linear-gradient(135deg, #f7b500, #e8590c);
-    color: #fff;
+    /* Dark text: white reaches only 1.8:1 on the yellow end. */
+    color: #1a1a1a;
     font-size: 12px;
     white-space: nowrap;
   }

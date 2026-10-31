@@ -150,7 +150,7 @@ const de: Strings = {
       {
         id: 'entfernen',
         q: 'Kann ich es vollständig entfernen?',
-        a: '„Deinstallieren“ in den Einstellungen bietet an, vorher jede Änderung rückgängig zu machen. Dann entfernt es die exe, seinen Datenordner und seinen Eintrag im Startmenü, bei einer installierten Kopie auch ihren Ordner unter Programme und ihren Eintrag unter Installierte Apps. „Deinstallieren“ in den Windows-Einstellungen unter Apps macht dasselbe. Eine Kopie aus Chocolatey oder Scoop entfernst du mit choco uninstall tunero oder scoop uninstall tunero.',
+        a: '„Deinstallieren“ in den Einstellungen bietet an, vorher jede Änderung rückgängig zu machen. Dann entfernt es die exe, seinen Datenordner und seinen Eintrag im Startmenü, bei einer installierten Kopie auch ihren Ordner unter Programme und ihren Eintrag unter Installierte Apps. „Deinstallieren“ in den Windows-Einstellungen unter Apps macht dasselbe. Bei einer Kopie aus Chocolatey oder Scoop bietet „Deinstallieren“ in den Einstellungen das Rückgängigmachen genauso an und führt dann choco uninstall oder scoop uninstall für dich aus. Der Paketmanager allein lässt deine Änderungen bestehen und behält den Datenordner mit ihren Sicherungen: Wenn Tunero ihn nicht starten kann und dir stattdessen den Befehl zeigt, oder wenn du direkt mit ihm deinstallierst, mach deine Änderungen vorher auf der Seite Änderungen rückgängig.',
       },
     ],
   },

@@ -1,15 +1,17 @@
 ---
-import Base from '../layouts/Base.astro';
+// GitHub Pages serves this for every address that does not exist, in either language, so it says it in both. It has
+// the frame of the classic page; its language switch leads to the German start page, as there is no German 404 page.
+import Page from '../components/classic/Page.astro';
 import { t } from '../i18n/index.ts';
 
 const en = t('en');
 const de = t('de');
 ---
 
-<Base lang="en" title={`${en.notFound.title}, Tunero`} description={en.meta.description} path="/404/" indexed={false}>
-  <main id="main">
+<Page lang="en" title={`${en.notFound.title}, Tunero`} description={en.meta.description} path="/404/" germanPath="/de/" indexed={false}>
+  <article class="legal">
     <h1>{en.notFound.title}</h1>
     <p>{en.notFound.body} <a href="/">{en.notFound.home}</a></p>
     <p lang="de">{de.notFound.body} <a href="/de/">{de.notFound.home}</a></p>
-  </main>
-</Base>
+  </article>
+</Page>

@@ -46,15 +46,15 @@
       {#if item.group}
         <span class="group">{app[item.group === 'optimize' ? 'Nav_GroupOptimize' : 'Nav_GroupCleanUp']}</span>
       {/if}
-      <button type="button" data-nav={item.page} class:current={page === item.page} aria-current={page === item.page ? 'page' : undefined} onclick={() => go(item.page)}>
+      <button type="button" data-nav={item.page} class:current={page === item.page} aria-current={page === item.page ? 'page' : undefined} title={app[item.label]} onclick={() => go(item.page)}>
         <Icon name={item.icon} size={16} />
-        <span>{app[item.label]}</span>
+        <span class="label">{app[item.label]}</span>
       </button>
     {/each}
     <span class="spacer"></span>
-    <button type="button" data-changes data-nav="changes" class:current={page === 'changes'} aria-current={page === 'changes' ? 'page' : undefined} onclick={() => go('changes')}>
+    <button type="button" data-changes data-nav="changes" class:current={page === 'changes'} aria-current={page === 'changes' ? 'page' : undefined} title={app.Nav_Changes} onclick={() => go('changes')}>
       <Icon name="history" size={16} />
-      <span>{app.Nav_Changes}</span>
+      <span class="label">{app.Nav_Changes}</span>
       {#if store.undoable.length > 0}{#key store.undoable.length}<span class="count" in:bump>{store.undoable.length}</span>{/key}{/if}
     </button>
   </nav>
@@ -221,9 +221,18 @@
       width: 52px;
     }
 
-    .rail span:not(.spacer):not(.count),
     .group {
       display: none;
+    }
+
+    /* Out of sight but still the buttons' names: the icons alone carry none. The title shows it on hover. */
+    .label {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
     }
 
     .rail .count {
