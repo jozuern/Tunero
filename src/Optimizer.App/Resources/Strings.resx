@@ -135,8 +135,8 @@
   <data name="Confirm_UndoKeeps" xml:space="preserve"><value>Values that cannot be restored stay on the Changes page.</value></data>
   <data name="Rp_AskTitle" xml:space="preserve"><value>System Protection is off</value></data>
   <data name="Rp_AskText" xml:space="preserve"><value>Windows cannot create a restore point because System Protection is off for the system drive. The app's own backup still restores every value it changes. Turn System Protection on now?</value></data>
-  <data name="Rp_Enable" xml:space="preserve"><value>Turn on and continue</value></data>
-  <data name="Rp_Continue" xml:space="preserve"><value>Continue without a restore point</value></data>
+  <data name="Rp_Enable" xml:space="preserve"><value>Turn on</value></data>
+  <data name="Rp_Continue" xml:space="preserve"><value>Continue without it</value></data>
   <data name="UndoAll_Title" xml:space="preserve"><value>Undo all changes?</value></data>
   <data name="UndoAll_Text" xml:space="preserve"><value>Changes to undo: {0}. Values Windows has changed since are left as they are.</value></data>
   <data name="Busy" xml:space="preserve"><value>Working</value></data>
@@ -1440,7 +1440,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Drv_GroupOther" xml:space="preserve"><value>No known update source</value></data>
   <data name="Drv_GroupBoard" xml:space="preserve"><value>Updates from the mainboard maker</value></data>
   <data name="Tweak_AlreadyOnShort" xml:space="preserve"><value>Already on</value></data>
-  <data name="Tweak_AlreadyOnTip" xml:space="preserve"><value>This was already set before Tunero changed anything, by Windows, a policy or another tool. The app has no original value to restore, so it does not turn it off.</value></data>
+  <data name="Tweak_AlreadyOnTip" xml:space="preserve"><value>Windows, a policy or another tool set this before Tunero changed anything. With no original value to restore, the app does not turn it off.</value></data>
   <data name="Confirm_Blocked" xml:space="preserve"><value>Not possible yet: see the red note above. Nothing was changed.</value></data>
   <data name="Confirm_NothingToChange" xml:space="preserve"><value>Every value is already set as this change would set it. There is nothing to apply.</value></data>
   <data name="Svc_LockTipReadOnly" xml:space="preserve"><value>This app has no explanation for this Windows service, so it does not change it.</value></data>
@@ -1707,6 +1707,8 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Startup_SummaryCount" xml:space="preserve"><value>{0}.</value></data>
   <data name="Startup_SummaryCountOff" xml:space="preserve"><value>{0} (turned off).</value></data>
   <data name="Startup_SummaryCountSomeOff" xml:space="preserve"><value>{0}, {1} of them turned off.</value></data>
+  <data name="Startup_OffOne" xml:space="preserve"><value>1 is turned off.</value></data>
+  <data name="Startup_Off" xml:space="preserve"><value>{0} are turned off.</value></data>
   <data name="Startup_AttentionOne" xml:space="preserve"><value>1 needs attention.</value></data>
   <data name="Startup_Attention" xml:space="preserve"><value>{0} need attention.</value></data>
   <data name="Startup_Showing" xml:space="preserve"><value>Showing {0} of {1}.</value></data>

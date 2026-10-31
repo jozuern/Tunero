@@ -217,6 +217,25 @@ public sealed partial class StartupScanner(IRegistryRoots registry, ITaskSchedul
     public static bool IsWindowsTask(string? path) => path?.StartsWith(@"\Microsoft\Windows\", StringComparison.OrdinalIgnoreCase) == true;
 
     /// <summary>
+    /// Shell service objects Windows itself lists under the machine's ShellServiceObjectDelayLoad, by CLSID: WebCheck
+    /// (the old Internet Explorer offline pages component) stays there on Windows 11 with no COM server registered.
+    /// </summary>
+    private static readonly HashSet<string> WindowsShellServiceObjects = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "{E6FB5E20-DE35-11CF-9C87-00AA005127ED}",
+    };
+
+    /// <summary>
+    /// One of Windows' own shell service objects (<see cref="WindowsShellServiceObjects"/>) in the machine's
+    /// ShellServiceObjectDelayLoad with no COM server behind it: nothing loads from it. Matched by place and CLSID, not by
+    /// the value's name, which any program could choose.
+    /// </summary>
+    public static bool IsWindowsShellServiceObjectWithoutServer(StartupEntry e) =>
+        e.Kind == StartupKind.ExplorerAddOn && e.Hive == Hive.Machine && e.ImagePath is null
+        && e.Location.EndsWith(@"\ShellServiceObjectDelayLoad", StringComparison.OrdinalIgnoreCase)
+        && e.Command is { } clsid && WindowsShellServiceObjects.Contains(clsid);
+
+    /// <summary>
     /// One entry per program a task runs: a second action is checked and shown on its own, so it cannot hide behind a
     /// signed first one. A task that runs a COM handler shows the DLL registered for it, so Windows' own handler tasks
     /// are recognized as Microsoft's instead of "no publisher".

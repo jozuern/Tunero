@@ -216,8 +216,8 @@
                     IsEnabled="{Binding SetupShown, Converter={StaticResource InverseBool}}"
                     BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}" BorderThickness="1,0,0,0"
                     Visibility="{Binding SelectedItem, Converter={StaticResource NullToVisibility}}">
-                <DockPanel Margin="24,16,8,0">
-                    <DockPanel DockPanel.Dock="Top" Margin="0,0,16,8" DataContext="{Binding SelectedItem}">
+                <DockPanel Margin="24,16,0,0">
+                    <DockPanel DockPanel.Dock="Top" Margin="0,0,24,8" DataContext="{Binding SelectedItem}">
                         <ui:Button DockPanel.Dock="Right" VerticalAlignment="Top" Appearance="Transparent" Icon="{ui:SymbolIcon Dismiss20}" ToolTip="Esc" AutomationProperties.Name="{l:Tr Common_Close}"
                                    Command="{Binding DataContext.CloseInspectorCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
                         <!-- Title first, then the state, the action and the explanation (the document leaves out its own title) -->
@@ -235,8 +235,9 @@
                                 <ui:SymbolIcon Symbol="{Binding StatusSymbol}" Filled="True" FontSize="20" Margin="0,0,8,0"
                                                v:ThemeBrush.Key="{Binding StatusBrushKey}" />
                                 <ui:TextBlock FontTypography="BodyStrong" Text="{Binding StatusText}" VerticalAlignment="Center" />
-                                <!-- The rows show the rating mark alone; here it stands next to its words, so the pane explains it -->
-                                <v:RatingMark Value="{Binding Rating}" Disputed="{Binding IsDisputed}" KeepsPlace="False" Margin="16,0,0,0" ToolTip="{Binding ImpactTooltip}"
+                                <!-- The rows show the rating mark alone; here it stands next to its words, so the pane explains it.
+                                     The words name the number, so the bars go without the numeral ("Impact 1 of 5", not "1 Impact 1 of 5"). -->
+                                <v:RatingMark Value="{Binding Rating}" Disputed="{Binding IsDisputed}" KeepsPlace="False" ShowsNumeral="False" Margin="16,0,0,0" ToolTip="{Binding ImpactTooltip}"
                                               AutomationProperties.Name="{Binding ImpactText}" />
                                 <ui:TextBlock FontTypography="Body" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{Binding ImpactText}" Margin="12,0,0,0" VerticalAlignment="Center"
                                               ToolTip="{Binding ImpactTooltip}" />
@@ -247,7 +248,7 @@
                     </DockPanel>
                     <!-- A scan result kept on purpose (a game library on a hard disk) or a recommendation that does not fit this
                          PC (clipboard history next to another clipboard manager): ignored, or back again -->
-                    <WrapPanel DockPanel.Dock="Top" Margin="0,0,16,8" DataContext="{Binding SelectedItem}">
+                    <WrapPanel DockPanel.Dock="Top" Margin="0,0,24,8" DataContext="{Binding SelectedItem}">
                         <ui:Button Content="{Binding IgnoreText, FallbackValue={x:Null}}" Icon="{ui:SymbolIcon EyeOff20}" Appearance="Secondary"
                                    Visibility="{Binding OffersIgnore, Converter={StaticResource BoolToVisibility}, FallbackValue=Collapsed}"
                                    Command="{Binding DataContext.IgnoreCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" />
@@ -255,7 +256,7 @@
                                    Visibility="{Binding IsIgnored, Converter={StaticResource BoolToVisibility}, FallbackValue=Collapsed}"
                                    Command="{Binding DataContext.StopIgnoringCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" />
                     </WrapPanel>
-                    <StackPanel DockPanel.Dock="Top" Margin="0,4,16,16" DataContext="{Binding SelectedItem}"
+                    <StackPanel DockPanel.Dock="Top" Margin="0,4,24,16" DataContext="{Binding SelectedItem}"
                                 Visibility="{Binding HasAction, Converter={StaticResource BoolToVisibility}}">
                         <ui:Button Appearance="Primary" Content="{Binding ActionText}" HorizontalAlignment="Left" MinWidth="120"
                                    IsEnabled="{Binding ActionEnabled}"

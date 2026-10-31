@@ -45,8 +45,10 @@
                         </StackPanel>
                     </Grid>
                     <Border Style="{StaticResource Divider}" />
-                    <DockPanel>
-                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
+                    <!-- The buttons go under the counts when beside them the counts would wrap to more than two lines (code-behind) -->
+                    <DockPanel x:Name="ListRow" SizeChanged="ListRow_SizeChanged">
+                        <StackPanel x:Name="ListActions" DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0"
+                                    SizeChanged="ListRow_SizeChanged">
                             <ui:Button Appearance="Primary" Content="{Binding RecommendedButtonText}" Command="{Binding ApplyRecommendedCommand}" Margin="0,0,8,0"
                                        Visibility="{Binding HasRecommendations, Converter={StaticResource BoolToVisibility}}" />
                             <!-- Select mode: a check box on every row, the actions for the picked rows below -->
@@ -59,7 +61,8 @@
                             <ui:Button Appearance="Transparent" Content="{l:Tr Tweaks_OpenAll}" Icon="{ui:SymbolIcon ChevronDown20}" Command="{Binding OpenAllTweakGroupsCommand}" Margin="0,0,4,0" />
                             <ui:Button Appearance="Transparent" Content="{l:Tr Tweaks_CloseAll}" Icon="{ui:SymbolIcon ChevronUp20}" Command="{Binding CloseAllTweakGroupsCommand}" />
                         </StackPanel>
-                        <ui:TextBlock FontTypography="Body" Text="{Binding TweaksSummary}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                        <ui:TextBlock x:Name="ListSummary" FontTypography="Body" Text="{Binding TweaksSummary}" TextWrapping="Wrap" VerticalAlignment="Center"
+                                      SizeChanged="ListRow_SizeChanged" />
                     </DockPanel>
                     <!-- The links below, across the whole card: a link does not wrap, so next to the buttons a narrow window cut it off -->
                     <WrapPanel Margin="0,4,0,0">

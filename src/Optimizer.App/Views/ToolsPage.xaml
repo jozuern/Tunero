@@ -178,7 +178,8 @@
                                 <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Prio_Priority}" Margin="0,12,0,4" />
                                 <ComboBox ItemsSource="{Binding Tools.PriorityChoices}" SelectedItem="{Binding Tools.NewPriority}" DisplayMemberPath="Text" MinWidth="200" HorizontalAlignment="Left"
                                           AutomationProperties.Name="{l:Tr Prio_Priority}" />
-                                <WrapPanel Margin="0,12,0,0">
+                                <!-- The check box template insets its box: the negative margin lines the boxes up with the fields above -->
+                                <WrapPanel Margin="-10,12,0,0">
                                     <CheckBox Content="{l:Tr Prio_LowIoOption}" IsChecked="{Binding Tools.NewPriorityLowIo}" Margin="0,0,24,0" />
                                     <CheckBox Content="{l:Tr Prio_LowMemoryOption}" IsChecked="{Binding Tools.NewPriorityLowMemory}" ToolTip="{l:Tr Prio_LowMemoryHint}" />
                                 </WrapPanel>

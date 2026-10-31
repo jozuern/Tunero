@@ -83,17 +83,34 @@
             </ui:CardControl>
 
             <ui:TextBlock Style="{StaticResource SectionHeader}" Text="{l:Tr Changes_OtherPcs}" />
-            <ui:CardControl Padding="{StaticResource CardPadding}">
-                <ui:CardControl.Icon>
-                    <ui:SymbolIcon Symbol="ArrowSwap24" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
-                </ui:CardControl.Icon>
-                <ui:CardControl.Header>
-                    <StackPanel>
+            <!-- A card with a second row: icon top left, the text beside it, the buttons top right, and the opt-in parts of
+                 the export underneath, across the text and button columns. The 24 px icon and its 14 px gap match the
+                 CardControls around it, so the titles line up. -->
+            <ui:Card Padding="{StaticResource CardPadding}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <ui:SymbolIcon Grid.RowSpan="2" Symbol="ArrowSwap24" FontSize="24" VerticalAlignment="Top" Margin="0,0,14,0"
+                                   Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+                    <StackPanel Grid.Column="1">
                         <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Changes_Transfer}" />
                         <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Changes_TransferText}" TextWrapping="Wrap" Margin="0,4,0,0" />
-                        <!-- Opt-in parts of the export, in the card of the Export button they change: they belong to this PC's
-                             apps and programs, so they are left out unless chosen -->
-                        <ui:TextBlock FontTypography="Body" Text="{l:Tr Changes_ExportAlso}" Margin="0,12,0,0" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top" Margin="16,0,0,0">
+                        <ui:Button Content="{l:Tr Changes_Export}" Icon="{ui:SymbolIcon ArrowExportUp20}" Command="{Binding ExportChangesCommand}" Margin="0,0,8,0" />
+                        <ui:Button Content="{l:Tr Changes_Import}" Icon="{ui:SymbolIcon ArrowImport20}" Command="{Binding ImportChangesCommand}" />
+                    </StackPanel>
+                    <!-- Opt-in parts of the export, in the card of the Export button they change: they belong to this PC's
+                         apps and programs, so they are left out unless chosen -->
+                    <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,12,0,0">
+                        <ui:TextBlock FontTypography="Body" Text="{l:Tr Changes_ExportAlso}" />
                         <!-- The check box template insets its box: the negative margin lines the boxes up with the text above -->
                         <WrapPanel Margin="-10,4,0,0">
                             <CheckBox Content="{l:Tr Changes_ExportApps}" IsChecked="{Binding ExportApps}" Margin="0,0,24,0" />
@@ -102,12 +119,8 @@
                         </WrapPanel>
                         <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Changes_ExportAlsoHint}" TextWrapping="Wrap" Margin="0,4,0,0" />
                     </StackPanel>
-                </ui:CardControl.Header>
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Top">
-                    <ui:Button Content="{l:Tr Changes_Export}" Icon="{ui:SymbolIcon ArrowExportUp20}" Command="{Binding ExportChangesCommand}" Margin="0,0,8,0" />
-                    <ui:Button Content="{l:Tr Changes_Import}" Icon="{ui:SymbolIcon ArrowImport20}" Command="{Binding ImportChangesCommand}" />
-                </StackPanel>
-            </ui:CardControl>
+                </Grid>
+            </ui:Card>
             <!-- The per-user tweaks that are on, for accounts created later (NewUserDefaults) -->
             <ui:CardControl Padding="{StaticResource CardPadding}" Margin="0,4,0,0">
                 <ui:CardControl.Icon>

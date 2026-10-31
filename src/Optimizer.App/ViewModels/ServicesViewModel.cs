@@ -63,14 +63,24 @@ public sealed partial class ServiceRowVm : ObservableObject
     /// <summary>
     /// The catalog's note without the service's name in front: the notes start with the English or German name
     /// ("Bluetooth-Unterstützungsdienst: für Bluetooth-Controller"), which the row's title already shows when Windows has
-    /// the app's language. The rest starts with a capital letter, as the note's own sentences do.
+    /// the app's language. The names are compared without case, spaces and hyphens, since the catalog and Windows do not
+    /// always write them alike ("Xbox Live-Authentifizierungs-Manager", "Xbox Live Authentifizierungs-Manager"). The rest
+    /// starts with a capital letter, as the note's own sentences do.
     /// </summary>
     internal static string? WithoutName(string? note, string displayName)
     {
-        var prefix = displayName.Trim() + ":";
-        if (note is null || displayName.Trim().Length == 0 || !note.StartsWith(prefix, StringComparison.CurrentCultureIgnoreCase)) return note;
-        var rest = note[prefix.Length..].TrimStart();
-        return rest.Length == 0 ? note : char.ToUpper(rest[0], System.Globalization.CultureInfo.CurrentCulture) + rest[1..];
+        var name = Plain(displayName);
+        if (note is null || name.Length == 0) return note;
+        for (var colon = note.IndexOf(':'); colon > 0; colon = note.IndexOf(':', colon + 1))
+        {
+            if (Plain(note[..colon]) != name) continue;
+            var rest = note[(colon + 1)..].TrimStart();
+            return rest.Length == 0 ? note : char.ToUpper(rest[0], System.Globalization.CultureInfo.CurrentCulture) + rest[1..];
+        }
+        return note;
+
+        static string Plain(string s) =>
+            new(s.Where(c => !char.IsWhiteSpace(c) && c != '-' && c != '‐' && c != '‑').Select(char.ToLowerInvariant).ToArray());
     }
 
     public ServiceRow Row { get; }

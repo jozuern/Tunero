@@ -135,8 +135,8 @@
   <data name="Confirm_UndoKeeps" xml:space="preserve"><value>Werte, die sich nicht wiederherstellen lassen, bleiben auf der Seite Änderungen.</value></data>
   <data name="Rp_AskTitle" xml:space="preserve"><value>Computerschutz ist aus</value></data>
   <data name="Rp_AskText" xml:space="preserve"><value>Windows kann keinen Wiederherstellungspunkt erstellen, weil der Computerschutz für das Systemlaufwerk aus ist. Die eigene Sicherung der App stellt trotzdem jeden geänderten Wert wieder her. Computerschutz jetzt einschalten?</value></data>
-  <data name="Rp_Enable" xml:space="preserve"><value>Einschalten und fortfahren</value></data>
-  <data name="Rp_Continue" xml:space="preserve"><value>Ohne Wiederherstellungspunkt weiter</value></data>
+  <data name="Rp_Enable" xml:space="preserve"><value>Einschalten</value></data>
+  <data name="Rp_Continue" xml:space="preserve"><value>Ohne ihn fortfahren</value></data>
   <data name="UndoAll_Title" xml:space="preserve"><value>Alle Änderungen rückgängig machen?</value></data>
   <data name="UndoAll_Text" xml:space="preserve"><value>Änderungen, die rückgängig gemacht werden: {0}. Werte, die Windows seitdem geändert hat, bleiben wie sie sind.</value></data>
   <data name="Busy" xml:space="preserve"><value>Wird ausgeführt</value></data>
@@ -166,7 +166,7 @@
     <value>Zustand</value>
   </data>
   <data name="Common_Refresh" xml:space="preserve">
-    <value>Aktualisieren</value>
+    <value>Neu laden</value>
   </data>
   <data name="Common_Stop" xml:space="preserve">
     <value>Anhalten</value>
@@ -1302,7 +1302,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Programs_ConfirmRestorePoint" xml:space="preserve"><value>Vorher wird ein Wiederherstellungspunkt angelegt, wenn der Computerschutz an ist.</value></data>
   <data name="Programs_AsUser" xml:space="preserve"><value>Dieses Deinstallationsprogramm läuft unter deinem Konto, weil es in einem Ordner liegt, den andere Benutzer oder Programme ändern können. Braucht es Administratorrechte, fragt es selbst danach.</value></data>
   <data name="Programs_Running" xml:space="preserve"><value>Deinstallation läuft.</value></data>
-  <data name="Programs_StartedAsUser" xml:space="preserve"><value>Deinstallationsprogramm gestartet. Wähle danach Aktualisieren.</value></data>
+  <data name="Programs_StartedAsUser" xml:space="preserve"><value>Deinstallationsprogramm gestartet. Wähle danach Neu laden.</value></data>
   <data name="Programs_RemovedName" xml:space="preserve"><value>{0} wurde deinstalliert.</value></data>
   <data name="Programs_StillThere" xml:space="preserve"><value>Das Programm steht noch in der Liste (Rückgabewert {0}). Die Deinstallation wurde eventuell abgebrochen oder braucht einen Neustart.</value></data>
   <data name="Programs_NoUninstaller" xml:space="preserve"><value>Für dieses Programm gibt es keinen Deinstallationsbefehl, den Windows ausführen kann.</value></data>
@@ -1339,7 +1339,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Programs_RestorePointName" xml:space="preserve"><value>Tunero: vor dem Deinstallieren von Programmen</value></data>
   <data name="Programs_NoRestorePointTitle" xml:space="preserve"><value>Kein Wiederherstellungspunkt</value></data>
   <data name="Programs_NoRestorePointText" xml:space="preserve"><value>Windows hat keinen Wiederherstellungspunkt angelegt: Der Computerschutz ist aus, oder in den letzten 24 Stunden wurde schon einer angelegt. Ohne neuen Wiederherstellungspunkt deinstallieren?</value></data>
-  <data name="Programs_MaybeStillRunning" xml:space="preserve"><value>Steht noch in der Liste. Viele Deinstallationsprogramme laufen nach dem Start in einem eigenen Fenster weiter: Wähle danach Aktualisieren.</value></data>
+  <data name="Programs_MaybeStillRunning" xml:space="preserve"><value>Steht noch in der Liste. Viele Deinstallationsprogramme laufen nach dem Start in einem eigenen Fenster weiter: Wähle danach Neu laden.</value></data>
   <data name="Startup_SnapshotWait" xml:space="preserve"><value>Die Liste wird noch geladen. Versuche es erneut, wenn sie vollständig ist.</value></data>
   <data name="Prio_Other" xml:space="preserve"><value>Prioritätsklasse {0}, von einem anderen Programm gesetzt</value></data>
   <data name="Debloat_CameBackDismiss" xml:space="preserve"><value>Ich habe sie selbst wieder installiert</value></data>
@@ -1440,7 +1440,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Drv_GroupOther" xml:space="preserve"><value>Keine bekannte Update-Quelle</value></data>
   <data name="Drv_GroupBoard" xml:space="preserve"><value>Updates vom Mainboard-Hersteller</value></data>
   <data name="Tweak_AlreadyOnShort" xml:space="preserve"><value>Schon an</value></data>
-  <data name="Tweak_AlreadyOnTip" xml:space="preserve"><value>Das war schon gesetzt, bevor Tunero etwas geändert hat, durch Windows, eine Richtlinie oder ein anderes Tool. Die App hat keinen Originalwert zum Wiederherstellen und schaltet es deshalb nicht aus.</value></data>
+  <data name="Tweak_AlreadyOnTip" xml:space="preserve"><value>Windows, eine Richtlinie oder ein anderes Tool hat das gesetzt, bevor Tunero etwas geändert hat. Ohne Originalwert zum Wiederherstellen schaltet die App es nicht aus.</value></data>
   <data name="Confirm_Blocked" xml:space="preserve"><value>Noch nicht möglich: siehe den roten Hinweis oben. Es wurde nichts geändert.</value></data>
   <data name="Confirm_NothingToChange" xml:space="preserve"><value>Jeder Wert ist schon so gesetzt, wie diese Änderung ihn setzen würde. Es gibt nichts anzuwenden.</value></data>
   <data name="Svc_LockTipReadOnly" xml:space="preserve"><value>Für diesen Windows-Dienst hat die App keine Erklärung, deshalb ändert sie ihn nicht.</value></data>
@@ -1681,7 +1681,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Startup_TasksHint" xml:space="preserve"><value>Alle geplanten Aufgaben, nicht nur diese, findest du auf der Seite Dienste &amp; Aufgaben.</value></data>
   <data name="Startup_ServicesLink" xml:space="preserve"><value>Dienste &amp; Aufgaben öffnen</value></data>
   <data name="Startup_Groups" xml:space="preserve"><value>Autostart-Gruppen</value></data>
-  <data name="Startup_TabTasks" xml:space="preserve"><value>Weitere Aufgaben</value></data>
+  <data name="Startup_TabTasks" xml:space="preserve"><value>Weitere geplante Aufgaben</value></data>
   <data name="Startup_TabServices" xml:space="preserve"><value>Dienste</value></data>
   <data name="Startup_TabDrivers" xml:space="preserve"><value>Treiber</value></data>
   <data name="Startup_TabAdvanced" xml:space="preserve"><value>Erweitert</value></data>
@@ -1707,6 +1707,8 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Startup_SummaryCount" xml:space="preserve"><value>{0}.</value></data>
   <data name="Startup_SummaryCountOff" xml:space="preserve"><value>{0} (abgeschaltet).</value></data>
   <data name="Startup_SummaryCountSomeOff" xml:space="preserve"><value>{0}, davon {1} abgeschaltet.</value></data>
+  <data name="Startup_OffOne" xml:space="preserve"><value>1 ist abgeschaltet.</value></data>
+  <data name="Startup_Off" xml:space="preserve"><value>{0} sind abgeschaltet.</value></data>
   <data name="Startup_AttentionOne" xml:space="preserve"><value>1 braucht Aufmerksamkeit.</value></data>
   <data name="Startup_Attention" xml:space="preserve"><value>{0} brauchen Aufmerksamkeit.</value></data>
   <data name="Startup_Showing" xml:space="preserve"><value>{0} von {1} werden gezeigt.</value></data>

@@ -151,10 +151,10 @@ public sealed class StartupViewModelTests
         var vm = Page();
         // Apps at sign-in: four, Steam turned off and not signed, OneDrive hidden as a Windows entry.
         Assert.Equal(StartupViewModel.Summary(StartupTab.SignIn, 4, 1, 1, 1, checking: false), vm.SummaryText);
-        // It leads with what the list shows, the number in the tab's header.
+        // It leads with what the list shows, the number in the tab's header, and names the total only there.
         Assert.Equal(string.Join(" ",
             Loc.Instance.Format("Startup_Showing", 3, 4),
-            Loc.Instance.Format("Startup_SummaryCountSomeOff", Loc.Instance.Format("Startup_CountSignIn", 4), 1),
+            Loc.Instance.Format("Startup_OffOne", 1),
             Loc.Instance.Format("Startup_AttentionOne", 1)), vm.SummaryText);
         Assert.Equal(3, Counts(vm)[(int)StartupTab.SignIn]);
 
@@ -175,6 +175,10 @@ public sealed class StartupViewModelTests
             StartupViewModel.Summary(StartupTab.Tasks, 12, 4, 2, 0, checking: false));
         Assert.Equal(Loc.Instance.Format("Startup_SummaryCount", Count("Startup_CountAdvanced", 0)),
             StartupViewModel.Summary(StartupTab.Advanced, 0, 0, 0, 0, checking: false));
+        // With some hidden, the total is said once ("Showing 4 of 51."), followed by how many are off.
+        Assert.Equal(string.Join(" ", Loc.Instance.Format("Startup_Showing", 4, 51), Count("Startup_Off", 16), Count("Startup_AttentionOne", 1)),
+            StartupViewModel.Summary(StartupTab.SignIn, 51, 16, 1, 47, checking: false));
+        Assert.Equal(Loc.Instance.Format("Startup_Showing", 4, 51), StartupViewModel.Summary(StartupTab.SignIn, 51, 0, 0, 47, checking: false));
         // While the signatures are checked, what needs attention and what is hidden are not counted yet.
         Assert.Equal(string.Join(" ", Loc.Instance.Format("Startup_SummaryCount", Count("Startup_CountSignIn", 5)), Loc.Instance["Startup_SummaryChecking"]),
             StartupViewModel.Summary(StartupTab.SignIn, 5, 0, 2, 3, checking: true));
@@ -239,6 +243,21 @@ public sealed class StartupViewModelTests
         Assert.False(Missing(StartupKind.ActiveSetup, "{1}", command: @"C:\Program Files\Vendor\setup.exe /user").IsPlainMicrosoft);
         Assert.False(Missing(StartupKind.ActiveSetup, "{1}", Hive.User, command: "U").IsPlainMicrosoft);
         Assert.False(Missing(StartupKind.RunKey, "x").IsPlainMicrosoft);
+        // Windows' own shell service object WebCheck without a COM server, recognized by place and CLSID: under another
+        // CLSID, in another place or with a server file the name alone does not make it Windows'.
+        const string ssodl = @"HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\ShellServiceObjectDelayLoad";
+        const string webCheck = "{E6FB5E20-DE35-11CF-9C87-00AA005127ED}";
+        StartupRow AddOn(string clsid, string location, string? dll = null)
+        {
+            var row = new StartupRow(new StartupEntry(StartupKind.ExplorerAddOn, "Shell service object: WebCheck", dll ?? clsid, dll, location, Hive.Machine, null,
+                $"exploreraddon:Shell service object:{clsid}"), Loc.Instance.Language, null!, null!);
+            row.SetSignature(notFound, runsScriptHost: false, Loc.Instance.Language);
+            return row;
+        }
+        Assert.True(AddOn(webCheck, ssodl).IsPlainMicrosoft);
+        Assert.False(AddOn("{11111111-2222-3333-4444-555555555555}", ssodl).IsPlainMicrosoft);
+        Assert.False(AddOn(webCheck, @"HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\SharedTaskScheduler").IsPlainMicrosoft);
+        Assert.False(AddOn(webCheck, ssodl, @"C:\Users\x\AppData\Local\Temp\webcheck.dll").IsPlainMicrosoft);
         // A Windows file is Microsoft's whichever of Windows' own signers signed it, the HAL publisher too.
         var hal = new SignatureInfo(SignatureStatus.Signed, "Microsoft Windows Hardware Abstraction Layer Publisher", Catalog: false, MicrosoftRoot: true);
         Assert.True(Row(Entry(StartupKind.Driver, "intelpep", enabled: null), hal).IsPlainMicrosoft);
@@ -293,6 +312,11 @@ public sealed class StartupViewModelTests
     [Theory]
     [InlineData("Bluetooth Support Service: for Bluetooth controllers.", "Bluetooth Support Service", "For Bluetooth controllers.")]
     [InlineData("bluetooth support service: for Bluetooth controllers.", "Bluetooth Support Service", "For Bluetooth controllers.")]
+    // Hyphens, spaces and case may differ between the catalog and Windows; other words still count as another name.
+    [InlineData("Xbox Live-Authentifizierungs-Manager: für Anmeldungen bei Xbox Live.", "Xbox Live Authentifizierungs-Manager", "Für Anmeldungen bei Xbox Live.")]
+    [InlineData("Xbox Live Auth Manager: for Xbox Live sign-ins.", "Xbox Live Auth-Manager", "For Xbox Live sign-ins.")]
+    [InlineData("Netzwerkservice: für das Netzwerk.", "Netzwerkdienst", "Netzwerkservice: für das Netzwerk.")]
+    [InlineData("Xbox: Live Manager: x.", "Xbox Live Manager", "Xbox: Live Manager: x.")]
     [InlineData("Print Spooler: needed for printing.", "Druckwarteschlange", "Print Spooler: needed for printing.")]
     [InlineData("Bluetooth Support Service", "Bluetooth Support Service", "Bluetooth Support Service")]
     [InlineData(null, "x", null)]

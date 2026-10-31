@@ -28,6 +28,16 @@ public sealed class RatingMark : StackPanel
         set => SetValue(KeepsPlaceProperty, value);
     }
 
+    public static readonly DependencyProperty ShowsNumeralProperty =
+        DependencyProperty.Register(nameof(ShowsNumeral), typeof(bool), typeof(RatingMark), new PropertyMetadata(true, (d, _) => ((RatingMark)d).Update()));
+
+    /// <summary>The numeral before the bars: off where the words next to the mark already name the number (details pane).</summary>
+    public bool ShowsNumeral
+    {
+        get => (bool)GetValue(ShowsNumeralProperty);
+        set => SetValue(ShowsNumeralProperty, value);
+    }
+
     /// <summary>Impact 0 to 5; null or 0 draws nothing.</summary>
     public int? Value
     {
@@ -82,6 +92,7 @@ public sealed class RatingMark : StackPanel
         var value = Math.Clamp(Value ?? 0, 0, 5);
         Visibility = value > 0 ? Visibility.Visible : KeepsPlace ? Visibility.Hidden : Visibility.Collapsed;
         _numeral.Text = value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        _numeral.Visibility = ShowsNumeral ? Visibility.Visible : Visibility.Collapsed;
         _numeral.SetResourceReference(TextBlock.ForegroundProperty, Disputed ? "TextFillColorSecondaryBrush" : "TextFillColorPrimaryBrush");
         for (var i = 0; i < _bars.Length; i++)
         {

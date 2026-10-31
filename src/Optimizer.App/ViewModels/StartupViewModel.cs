@@ -129,7 +129,8 @@ public sealed partial class StartupRow : SwitchRow
     /// <summary>
     /// A place only Windows and administrators write to, naming a file this PC does not have: a task below
     /// \Microsoft\Windows\ (ReconcileLanguageResources), a Known DLL of another architecture (_wowarmhw) or an Active
-    /// Setup component of the machine whose stub is no path at all ("U", "/UserInstall"). Nothing of another program
+    /// Setup component of the machine whose stub is no path at all ("U", "/UserInstall"), or Windows' own shell service
+    /// object WebCheck without its COM server. Nothing of another program
     /// runs from it; a missing file of another program (a path in Program Files) still shows.
     /// </summary>
     private bool IsWindowsWithoutFile => _signatureStatus == SignatureStatus.NotFound && Entry.Kind switch
@@ -137,6 +138,7 @@ public sealed partial class StartupRow : SwitchRow
         StartupKind.LogonTask => StartupScanner.IsWindowsTask(Entry.Target),
         StartupKind.KnownDll => true,
         StartupKind.ActiveSetup => Entry.Hive == Hive.Machine && Entry.Command is { } stub && stub.IndexOfAny(['\\', '.', ':']) < 0,
+        StartupKind.ExplorerAddOn => StartupScanner.IsWindowsShellServiceObjectWithoutServer(Entry),
         _ => false,
     };
 
@@ -441,8 +443,9 @@ public sealed partial class StartupViewModel(IPageHost owner, AppServices servic
     }
 
     /// <summary>
-    /// What the open tab holds, in sentences: first how many of its entries the search and filters leave (the number in
-    /// the tab's header), then how many entries it has, how many of them are turned off and how many need attention.
+    /// What the open tab holds, in sentences: how many of its entries the search and filters leave of how many (the number
+    /// in the tab's header), or with none hidden what the entries are, then how many are turned off and how many need
+    /// attention.
     /// While the signatures are checked, a note instead of the first and the last.
     /// </summary>
     internal static string Summary(StartupTab tab, int total, int off, int attention, int hidden, bool checking)
@@ -457,11 +460,17 @@ public sealed partial class StartupViewModel(IPageHost owner, AppServices servic
             _ => one ? "Startup_CountAdvancedOne" : "Startup_CountAdvanced",
         }, total);
         List<string> parts = [];
-        // Leads with what the list shows, so it matches the header: "Showing 5 of 51." before "51 apps start at sign-in".
-        if (!checking && hidden > 0) parts.Add(Loc.Instance.Format("Startup_Showing", total - hidden, total));
-        parts.Add(off == 0 ? Loc.Instance.Format("Startup_SummaryCount", count)
-            : one ? Loc.Instance.Format("Startup_SummaryCountOff", count)
-            : Loc.Instance.Format("Startup_SummaryCountSomeOff", count, off));
+        // Leads with what the list shows, so it matches the header, and then names the total only there:
+        // "Showing 4 of 51. 16 are turned off." instead of "51 apps start at sign-in" a second time.
+        if (!checking && hidden > 0)
+        {
+            parts.Add(Loc.Instance.Format("Startup_Showing", total - hidden, total));
+            if (off > 0) parts.Add(Loc.Instance.Format(off == 1 ? "Startup_OffOne" : "Startup_Off", off));
+        }
+        else
+            parts.Add(off == 0 ? Loc.Instance.Format("Startup_SummaryCount", count)
+                : one ? Loc.Instance.Format("Startup_SummaryCountOff", count)
+                : Loc.Instance.Format("Startup_SummaryCountSomeOff", count, off));
         if (checking) parts.Add(Loc.Instance["Startup_SummaryChecking"]);
         else if (attention > 0) parts.Add(Loc.Instance.Format(attention == 1 ? "Startup_AttentionOne" : "Startup_Attention", attention));
         return string.Join(" ", parts);

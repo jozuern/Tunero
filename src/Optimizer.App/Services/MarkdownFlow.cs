@@ -30,8 +30,13 @@ public static class MarkdownFlow
             FontFamily = new FontFamily("Segoe UI Variable Text, Segoe UI"),
             FontSize = 14.5,
             Foreground = foreground,
-            PagePadding = new Thickness(0, 0, 12, 24),
+            // The right padding is the pane's gutter: the text ends where the header above it does, and the scroll bar
+            // runs in the gutter instead of over the ends of the lines.
+            PagePadding = new Thickness(0, 0, 24, 24),
             TextAlignment = TextAlignment.Left,
+            // The paragraphs' LineHeight holds for every line: by default a line grows to its tallest run, so the lines of
+            // a registry path in the mono font stood further apart than the text around them.
+            LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
         };
         var ctx = new Ctx(secondary, codeBackground, line, openLink, linkBrush);
         foreach (var block in Markdown.Parse(markdown, Pipeline))

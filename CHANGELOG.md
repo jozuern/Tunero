@@ -5,6 +5,9 @@
 ### Changed
 
 - **.NET runtime 10.0.14:** the exe carries the .NET and Windows Desktop runtime of Microsoft's out-of-band security release of October 25, 2026, which fixes a Brotli decoder flaw ([release notes](https://github.com/dotnet/core/blob/main/release-notes/10.0/10.0.14/10.0.14.md)), instead of 10.0.13.
+- **Restore point question:** shorter buttons ("Turn on", "Continue without it") on one line at one height; dialog buttons always share their height.
+- **Details pane:** text keeps clear of the scroll bar, the impact shows its number once, registry paths keep the line spacing, and the "already set" note reads clearly.
+- **Changes:** the Move to another PC card has its buttons at the top right and the export options in a row below. **Startup** names the total once ("Showing 4 of 51. 16 are turned off."), and German reload buttons say "Neu laden" on every page.
 - **Navigation** group headings show whenever they fit, also after the start-up scan; a running scan takes the "Last scan" line instead of adding one.
 - **Windows install media:** the summary bar breaks only between items, the failure bar holds its Show why button, and the review names the keyboard layout.
 - **Remove apps:** note and info bars first, then the Remove selected card above a divider; **Graphics & DNS** has a Graphics section header; **Storage** treemap labels sit on the tiles in black or white.
@@ -30,6 +33,7 @@
 
 ### Fixed
 
+- **Startup:** Windows' leftover shell service object WebCheck counts as a Windows entry; **Services & tasks** notes no longer repeat the name when only hyphens or spaces differ; the priority form's check boxes line up.
 - **Ignore:** a result ignored while a scan runs no longer leaves a change recommended for it until the next scan; the note that all changes survived a Windows update follows a language switch.
 - **German:** a few sentences that could read as formal address now say what they mean (the storage protection notice, three explanation pages).
 - **Windows install media:** Build and Resume stay off while another change or an update runs, and a saved build is no longer deleted when a build could not start. A partly ticked app group ticks the whole group on click; choices loaded while your ISO is read keep their edition; German text uses "du" throughout.
