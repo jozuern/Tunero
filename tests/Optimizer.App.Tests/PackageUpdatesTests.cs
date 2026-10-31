@@ -96,6 +96,12 @@ public sealed class PackageUpdatesTests
         var results = await Updates().RunAllAsync([Winget(user: null), Choco(), ScoopManager, Store], new Lines());
         Assert.Equal([Loc.Instance.Format("Apps_UpdateFailed", "0x00000001"), Loc.Instance.Format("Apps_ChocoUpdateFailed", 1),
             Loc.Instance["Apps_ScoopNotStarted"], Loc.Instance["Apps_StoreNotOpened"]], results);
+
+        // winget's window for the user's own programs that does not open says so too, for the whole PC and for the user alone.
+        _codes["winget.exe"] = 0;
+        Assert.Equal([Loc.Instance["Apps_UpdateAllDone"], Loc.Instance["Apps_UpdateAllUserNotStarted"]], await Updates().RunAllAsync([Winget()], new Lines()));
+        Assert.Equal([Loc.Instance["Apps_UpdateAllUserNotStarted"]],
+            await Updates().RunAllAsync([new PackageManagerInfo(ManagerKind.Winget, "winget", WingetUser, ManagerRun.AsUser)], new Lines()));
     }
 
     /// <summary>A reboot request (3010) and "nothing to do" (2, enhanced exit codes) are no failures.</summary>

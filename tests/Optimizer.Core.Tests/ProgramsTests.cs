@@ -42,6 +42,62 @@ public class ProgramsTests
         Assert.Equal([false, false, false, true], all.Select(p => p.SystemComponent));
     }
 
+    /// <summary>
+    /// The Apps page reads once with the system components and leaves them out for the uninstall list: a visible entry
+    /// that a hidden one with the same name and version duplicates stays, and the catalog's list keeps one entry per name.
+    /// </summary>
+    [Fact]
+    public void OneReadServesTheUninstallListAndTheAppCatalog()
+    {
+        using var r = new SandboxRegistry();
+        App(r, Hive.Machine, "Contoso", ("DisplayName", "string", "Contoso"), ("DisplayVersion", "string", "1.0"));
+        App(r, Hive.Machine, "ContosoPart", ("DisplayName", "string", "Contoso"), ("DisplayVersion", "string", "1.0"), ("SystemComponent", "dword", "1"),
+            ("UninstallString", "string", "x.exe"));
+        App(r, Hive.Machine, "WebView", ("DisplayName", "string", "Microsoft Edge WebView2 Runtime"), ("SystemComponent", "dword", "1"));
+        App(r, Hive.User, "Discord", ("DisplayName", "string", "Discord"), ("UninstallString", "string", "u.exe"));
+
+        var all = Programs.Read(r, systemComponents: true);
+        Assert.Equal(Programs.Read(r).Select(p => p.RegistryKey), all.Where(p => !p.SystemComponent).Select(p => p.RegistryKey));
+        var installed = Optimizer.Core.Hardware.Probes.InstalledPrograms.From(all);
+        Assert.Equal(["Contoso", "Discord", "Microsoft Edge WebView2 Runtime"], installed.Select(p => p.Name));
+        Assert.Equal([false, false, true], installed.Select(p => p.SystemComponent));
+        Assert.True(installed.Single(p => p.Name == "Discord").PerUser);
+    }
+
+    /// <summary>An entry only the system can read leaves out that entry, not the whole list (and with it the app catalog's detection).</summary>
+    [Fact]
+    public void AnUnreadableEntryLeavesOutOnlyThatEntry()
+    {
+        using var r = new SandboxRegistry();
+        App(r, Hive.Machine, "7-Zip", ("DisplayName", "string", "7-Zip 24.08 (x64)"), ("UninstallString", "string", @"""C:\Program Files\7-Zip\Uninstall.exe"""));
+        App(r, Hive.Machine, "Locked", ("DisplayName", "string", "Locked"), ("UninstallString", "string", "x.exe"));
+        App(r, Hive.User, "Discord", ("DisplayName", "string", "Discord"), ("UninstallString", "string", "u.exe"));
+        // Only the sandbox key of this test is changed: reading it is denied to this account, then allowed again.
+        var me = System.Security.Principal.WindowsIdentity.GetCurrent().User!;
+        var deny = new System.Security.AccessControl.RegistryAccessRule(me, System.Security.AccessControl.RegistryRights.QueryValues | System.Security.AccessControl.RegistryRights.EnumerateSubKeys,
+            System.Security.AccessControl.AccessControlType.Deny);
+        using (var locked = r.Open(Hive.Machine, $@"{Uninstall}\Locked", writable: true)!)
+        {
+            var security = locked.GetAccessControl();
+            security.AddAccessRule(deny);
+            locked.SetAccessControl(security);
+        }
+        try
+        {
+            Assert.Equal(["7-Zip 24.08 (x64)", "Discord"], Programs.Read(r).Select(p => p.Name));
+        }
+        finally
+        {
+            using var parent = r.Open(Hive.Machine, Uninstall, writable: false)!;
+            // ReadWriteSubTree: .NET writes an ACL only through a key it opened for writing.
+            using var locked = parent.OpenSubKey("Locked", Microsoft.Win32.RegistryKeyPermissionCheck.ReadWriteSubTree,
+                System.Security.AccessControl.RegistryRights.ReadPermissions | System.Security.AccessControl.RegistryRights.ChangePermissions)!;
+            var security = locked.GetAccessControl();
+            security.RemoveAccessRule(deny);
+            locked.SetAccessControl(security);
+        }
+    }
+
     [Fact]
     public void OnlyUninstallersInAdminOnlyFoldersRunElevated()
     {

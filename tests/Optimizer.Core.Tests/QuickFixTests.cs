@@ -37,6 +37,41 @@ public class QuickFixTests
         var step = Assert.Single(QuickFixes.Get("AdvancedStartup").Steps);
         Assert.Equal(("shutdown.exe", "/r /o /t 0"), (step.File, step.Arguments));
         Assert.DoesNotContain(QuickFixes.All.SelectMany(f => f.Steps), s => s.File.Contains("bcdedit", StringComparison.OrdinalIgnoreCase));
+        // It restarts the PC at once: its own tag, not "Restart needed" as for Winsock, whose restart can wait.
+        Assert.True(QuickFixes.Get("AdvancedStartup") is { RestartsNow: true, NeedsRestart: false });
+        Assert.Equal(["AdvancedStartup"], QuickFixes.All.Where(f => f.RestartsNow).Select(f => f.Id));
+    }
+
+    /// <summary>
+    /// The icon caches Windows 11 uses (Explorer's iconcache_*.db) go with the old IconCache.db; the thumbnail caches stay,
+    /// and a file another program holds open is left and counted without stopping the others.
+    /// </summary>
+    [Fact]
+    public void IconCacheDeletesEveryIconCacheAndSkipsOpenOnes()
+    {
+        var local = Path.Combine(Path.GetTempPath(), "pco-iconcache-" + Guid.NewGuid().ToString("N"));
+        var explorer = Path.Combine(local, "Microsoft", "Windows", "Explorer");
+        Directory.CreateDirectory(explorer);
+        try
+        {
+            foreach (var f in new[] { Path.Combine(local, "IconCache.db"), Path.Combine(explorer, "iconcache_16.db"), Path.Combine(explorer, "iconcache_idx.db"),
+                         Path.Combine(explorer, "iconcache_32.db"), Path.Combine(explorer, "thumbcache_32.db") })
+                File.WriteAllText(f, "x");
+            Assert.Equal(4, IconCache.Files(local).Count);
+            (int Deleted, int Skipped) result;
+            // Open without delete sharing, as a program that still reads the cache.
+            using (File.Open(Path.Combine(explorer, "iconcache_32.db"), FileMode.Open, FileAccess.Read, FileShare.Read))
+                result = IconCache.Delete(local);
+            Assert.Equal((3, 1), result);
+            Assert.Equal(["iconcache_32.db", "thumbcache_32.db"], Directory.GetFiles(explorer).Select(Path.GetFileName).Order());
+            Assert.False(File.Exists(Path.Combine(local, "IconCache.db")));
+            // Nothing there (a new profile): nothing to do.
+            Assert.Equal((0, 0), IconCache.Delete(Path.Combine(local, "missing")));
+        }
+        finally
+        {
+            Directory.Delete(local, recursive: true);
+        }
     }
 
     [Fact]

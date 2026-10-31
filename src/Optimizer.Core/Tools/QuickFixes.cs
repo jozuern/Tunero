@@ -22,6 +22,9 @@ public sealed record QuickFix(string Id, bool Confirm, bool NeedsRestart, IReadO
 
     /// <summary>Can take several minutes: the card and the progress banner say so.</summary>
     public bool TakesMinutes { get; init; }
+
+    /// <summary>Restarts the PC at once (not a restart needed later): the card says so in its own tag.</summary>
+    public bool RestartsNow { get; init; }
 }
 
 public static class QuickFixes
@@ -74,8 +77,8 @@ public static class QuickFixes
             "https://learn.microsoft.com/en-us/windows/package-manager/winget/source") { ShowOutput = true },
         // Restarts into the Advanced startup menu, where Startup Settings offers Safe Mode (for DDU) for this one start.
         // Nothing in the boot configuration changes, so the start after that is normal again: no way back to set up.
-        new("AdvancedStartup", Confirm: true, NeedsRestart: true, [new("shutdown.exe", "/r /o /t 0")],
-            "https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/shutdown"),
+        new("AdvancedStartup", Confirm: true, NeedsRestart: false, [new("shutdown.exe", "/r /o /t 0")],
+            "https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/shutdown") { RestartsNow = true },
     ];
 
     /// <summary>Stands for winget.exe from the protected App Installer folder (<see cref="Apps.Winget.FindTrusted()"/>), resolved when the step runs.</summary>

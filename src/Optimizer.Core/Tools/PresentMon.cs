@@ -69,32 +69,33 @@ public static class PresentMon
         // Held open without write or delete sharing from the hash check until the process has started, so the checked
         // file is the one that runs. The pinned hash already proves it is Intel's unmodified build; no signature check is needed on top.
         var hold = new FileStream(exe, FileMode.Open, FileAccess.Read, FileShare.Read);
-        int code;
         try
         {
-            if (Convert.ToHexString(SHA256.HashData(hold)) != Sha256) throw new InvalidDataException("PresentMon hash mismatch");
-            code = await processes.RunAsync(exe, Arguments(processName, csv, seconds), TimeSpan.FromSeconds(seconds) + ToolTimeouts.CaptureGrace, ct, lines,
-                new RunOptions { Started = hold.Dispose });
-        }
-        finally
-        {
-            hold.Dispose();
-        }
-        if (!File.Exists(csv))
-        {
-            Log.Warn("presentmon", $"no output (exit {code})");
-            return null;
-        }
-        try
-        {
+            int code;
+            try
+            {
+                if (Convert.ToHexString(SHA256.HashData(hold)) != Sha256) throw new InvalidDataException("PresentMon hash mismatch");
+                code = await processes.RunAsync(exe, Arguments(processName, csv, seconds), TimeSpan.FromSeconds(seconds) + ToolTimeouts.CaptureGrace, ct, lines,
+                    new RunOptions { Started = hold.Dispose });
+            }
+            finally
+            {
+                hold.Dispose();
+            }
+            if (!File.Exists(csv))
+            {
+                Log.Warn("presentmon", $"no output (exit {code})");
+                return null;
+            }
             return Parse(File.ReadLines(csv));
         }
         finally
         {
-            // Only the stats are kept; a CSV per capture would pile up in the data folder.
+            // Only the stats are kept; a CSV per capture would pile up in the data folder. A stopped or timed-out run
+            // leaves a partial one too: PresentMon has ended by then (the runner waits for it), so it goes as well.
             try
             {
-                File.Delete(csv);
+                if (File.Exists(csv)) File.Delete(csv);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {

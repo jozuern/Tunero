@@ -11,7 +11,14 @@ public sealed record InstalledProgram(string Name, string? Version, string? Publ
 public static class InstalledPrograms
 {
     public static IReadOnlyList<InstalledProgram> Read(string? userSid = null) =>
-        Apps.Programs.Read(new Platform.SystemRegistryRoots(userSid), systemComponents: true)
+        From(Apps.Programs.Read(new Platform.SystemRegistryRoots(userSid), systemComponents: true));
+
+    /// <summary>
+    /// One entry per name from a read with the system components (<see cref="Apps.Programs.Read"/>), the visible entry
+    /// before a hidden one: the Apps page builds the catalog's installed state from its own read this way.
+    /// </summary>
+    public static IReadOnlyList<InstalledProgram> From(IEnumerable<Apps.DesktopProgram> programs) =>
+        programs
             .GroupBy(p => p.Name, StringComparer.OrdinalIgnoreCase)
             .Select(g => g.OrderBy(p => p.SystemComponent).First())
             .Select(p => new InstalledProgram(p.Name, p.Version, p.Publisher, p.PerUser, p.SystemComponent))

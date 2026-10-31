@@ -197,7 +197,7 @@
       "name": "Signal",
       "category": "communication",
       "scope": "user",
-      "detect": "^Signal",
+      "detect": "^Signal(\\s|$)",
       "en": "Encrypted messenger.",
       "de": "Verschlüsselter Messenger."
     },

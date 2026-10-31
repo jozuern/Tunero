@@ -505,6 +505,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Apps_Title" xml:space="preserve">
     <value>Installieren &amp; aktualisieren</value>
   </data>
+  <data name="Apps_Reload" xml:space="preserve"><value>Neu laden</value></data>
   <data name="Apps_Hint" xml:space="preserve">
     <value>Gängige Gaming-Apps und Tools, dazu das Alter deiner Treiber und wo es Updates gibt.</value>
   </data>
@@ -530,10 +531,10 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
     <value>Treiber</value>
   </data>
   <data name="Drv_Hint" xml:space="preserve">
-    <value>Grafik-, Netzwerk-, Audio-, Speicher- und Chipsatztreiber. Die App installiert nie Treiber, sie verlinkt zum Hersteller.</value>
+    <value>Grafik-, Netzwerk-, Audio-, Speicher- und Chipsatztreiber. Tunero installiert nie Treiber, es verlinkt zum Hersteller.</value>
   </data>
   <data name="Drv_Update" xml:space="preserve">
-    <value>Update holen</value>
+    <value>Treiberseite öffnen</value>
   </data>
   <data name="DrvClass_DISPLAY" xml:space="preserve">
     <value>Grafik</value>
@@ -560,7 +561,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
     <value>Tools</value>
   </data>
   <data name="Tools_Hint" xml:space="preserve">
-    <value>Windows-Features, Programmprioritäten, Netzwerkhilfen und Windows-Reparatur.</value>
+    <value>Reparaturen für Netzwerk und Windows, Windows-Features und Startprioritäten für Programme.</value>
   </data>
   <data name="Storage_Progress" xml:space="preserve">
     <value>Dateien: {0}, {1}</value>
@@ -1308,21 +1309,24 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Apps_UpdateAllTitle" xml:space="preserve"><value>Alle Apps aktualisieren?</value></data>
   <data name="Apps_UpdateAllDone" xml:space="preserve"><value>winget ist mit dem Aktualisieren fertig.</value></data>
   <data name="Apps_UpdateAllUser" xml:space="preserve"><value>Programme, die nur für dein Konto installiert sind, werden in einem eigenen winget-Fenster aktualisiert.</value></data>
+  <data name="Apps_UpdateAllUserNotStarted" xml:space="preserve"><value>winget konnte sein Fenster für die Programme, die nur für dein Konto installiert sind, nicht öffnen. Führe winget upgrade --all in einem Terminal aus.</value></data>
   <data name="Apps_UpdateFailed" xml:space="preserve"><value>Update fehlgeschlagen (winget-Code {0}).</value></data>
   <data name="Net_UseFastest" xml:space="preserve"><value>Den schnellsten nutzen: {0}</value></data>
   <data name="Changes_OpenRestore" xml:space="preserve"><value>Systemwiederherstellung öffnen</value></data>
   <data name="Debloat_CameBack" xml:space="preserve"><value>Diese entfernten Apps sind wieder installiert, etwa durch ein Windows-Update oder Software des PC-Herstellers: {0}. Sie stehen unten, falls du sie wieder entfernen willst.</value></data>
   <data name="Drv_CleanTitle" xml:space="preserve"><value>Grafiktreiber vollständig entfernen</value></data>
-  <data name="Drv_CleanHint" xml:space="preserve"><value>Wenn du die Grafikkartenmarke wechselst oder ein Treiber immer wieder Probleme macht, entfernt Display Driver Uninstaller (DDU) den alten Treiber vollständig, bevor du den neuen installierst. Der Autor empfiehlt den abgesicherten Modus und vorher eine Sicherung oder einen Wiederherstellungspunkt. Tunero entfernt selbst keine Treiber.</value></data>
+  <data name="Drv_CleanHint" xml:space="preserve"><value>Wenn du die Grafikkartenmarke wechselst oder ein Treiber immer wieder Probleme macht, entfernt Display Driver Uninstaller (DDU) den alten Treiber vollständig, bevor du den neuen installierst. Der Autor empfiehlt den abgesicherten Modus und vorher eine Sicherung oder einen Wiederherstellungspunkt. Tunero entfernt selbst keine Treiber. Für den abgesicherten Modus findest du unter Tools „In die erweiterten Startoptionen neu starten“.</value></data>
   <data name="Drv_CleanOpen" xml:space="preserve"><value>DDU-Seite öffnen</value></data>
   <data name="Prio_Title" xml:space="preserve"><value>Startprioritäten für Programme</value></data>
-  <data name="Prio_Hint" xml:space="preserve"><value>Windows startet das Programm jedes Mal mit dieser CPU-Priorität, ohne Hintergrundprogramm. Sinnvoll für ein Spiel, das mit beschäftigten Hintergrundprogrammen konkurriert, oder damit ein Backup- oder Download-Tool sich zurückhält. Microsoft dokumentiert diese Werte nicht, deshalb tragen die Regeln das Etikett Vorschau, und manche Anti-Cheat-Systeme prüfen diesen Teil der Registry.</value></data>
+  <data name="Prio_Hint" xml:space="preserve"><value>Windows startet das Programm jedes Mal mit dieser CPU-Priorität, ohne Hintergrundprogramm. Sinnvoll für ein Spiel, das mit beschäftigten Hintergrundprogrammen konkurriert, oder damit ein Backup- oder Download-Tool sich zurückhält.</value></data>
+  <data name="Prio_Warning" xml:space="preserve"><value>Microsoft dokumentiert diese Werte nicht, deshalb tragen die Regeln das Etikett „Undokumentierter Wert“; ein Test in einer virtuellen Maschine mit Windows 11 hat gezeigt, dass Windows sie anwendet. Manche Anti-Cheat-Systeme prüfen diesen Teil der Registry.</value></data>
   <data name="Prio_ExePlaceholder" xml:space="preserve"><value>Programmdatei, zum Beispiel game.exe</value></data>
   <data name="Prio_LowIoOption" xml:space="preserve"><value>Niedrige Datenträgerpriorität</value></data>
   <data name="Prio_LowMemoryOption" xml:space="preserve"><value>Niedrige Speicherpriorität</value></data>
   <data name="Prio_LowMemoryHint" xml:space="preserve"><value>Wird der Arbeitsspeicher knapp, nimmt Windows ihn zuerst diesem Programm weg, damit andere ihren behalten. Für Hintergrundprogramme, nicht für Spiele.</value></data>
   <data name="Prio_LowMemory" xml:space="preserve"><value>niedrige Speicherpriorität</value></data>
   <data name="Prio_Add" xml:space="preserve"><value>Regel hinzufügen</value></data>
+  <data name="Prio_None" xml:space="preserve"><value>Noch keine Regeln für Startprioritäten.</value></data>
   <data name="Prio_Remove" xml:space="preserve"><value>Entfernen</value></data>
   <data name="Prio_AboveNormal" xml:space="preserve"><value>Höher als normal</value></data>
   <data name="Prio_High" xml:space="preserve"><value>Hoch</value></data>
@@ -1428,7 +1432,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Uninstall_PackageManual" xml:space="preserve"><value>{0} konnte nicht aus Tunero gestartet werden. Schließe Tunero und führe {1} in einem Terminal aus.</value></data>
   <!-- ui -->
   <data name="Drv_NoRealDate" xml:space="preserve"><value>Das Paket nennt kein echtes Veröffentlichungsdatum</value></data>
-  <data name="Drv_AgeNew" xml:space="preserve"><value>jünger als zwei Monate</value></data>
+  <data name="Drv_AgeNew" xml:space="preserve"><value>weniger als zwei Monate alt</value></data>
   <data name="Drv_AgeMonths" xml:space="preserve"><value>etwa {0} Monate alt</value></data>
   <data name="Drv_AgeYears" xml:space="preserve"><value>etwa {0} Jahre alt</value></data>
   <data name="Drv_GroupFrom" xml:space="preserve"><value>Updates von {0}</value></data>
@@ -1446,7 +1450,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Debloat_PageHint" xml:space="preserve"><value>Apps, die mit Windows kamen, und Desktopprogramme, die du installiert hast.</value></data>
   <data name="Debloat_TabStore" xml:space="preserve"><value>Vorinstallierte Apps</value></data>
   <data name="Apps_TabApps" xml:space="preserve"><value>Apps holen</value></data>
-  <data name="Apps_TabAppsHint" xml:space="preserve"><value>„Alle Apps aktualisieren“ führt die Paketmanager unten aus. Die Apps in der Liste installiert winget aus ihren offiziellen Quellen.</value></data>
+  <data name="Apps_TabAppsHint" xml:space="preserve"><value>Die Apps unten installiert winget aus ihren offiziellen Quellen.</value></data>
   <data name="Apps_SearchTitle" xml:space="preserve"><value>Weitere Apps über winget suchen</value></data>
   <data name="Apps_SearchHint" xml:space="preserve"><value>Jedes Paket aus dem winget-Community-Verzeichnis, über die Liste unten hinaus. Tunero hat diese nicht geprüft: winget installiert das Paket so, wie sein Eintrag dort es angibt, aus dem Download des Herstellers.</value></data>
   <data name="Apps_SearchPlaceholder" xml:space="preserve"><value>Name oder ID, zum Beispiel Blender</value></data>
@@ -1458,8 +1462,9 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Apps_SearchMeta" xml:space="preserve"><value>{0}, Version {1}</value></data>
   <data name="Apps_FoundConfirmTitle" xml:space="preserve"><value>{0} installieren?</value></data>
   <data name="Apps_FoundConfirmText" xml:space="preserve"><value>{0} ({1}) steht nicht auf Tuneros geprüfter Liste. winget lädt und installiert es so, wie sein Eintrag im Community-Verzeichnis es angibt, für den ganzen PC, wo das Paket das anbietet, sonst für dein Konto. Installiere es nur, wenn du dem Hersteller vertraust.</value></data>
-  <data name="Quick_TabFixes" xml:space="preserve"><value>Hilfen und Reparatur</value></data>
+  <data name="Quick_TabFixes" xml:space="preserve"><value>Reparaturen</value></data>
   <data name="Tag_Restart" xml:space="preserve"><value>Neustart nötig</value></data>
+  <data name="Tag_RestartsNow" xml:space="preserve"><value>Startet den PC sofort neu</value></data>
   <data name="Scroll_Up" xml:space="preserve"><value>Nach oben scrollen</value></data>
   <data name="Scroll_Down" xml:space="preserve"><value>Nach unten scrollen</value></data>
   <data name="Scroll_Left" xml:space="preserve"><value>Nach links scrollen</value></data>
@@ -1482,19 +1487,20 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Quick_IconCacheAction" xml:space="preserve"><value>Neu aufbauen</value></data>
   <data name="Quick_IconCacheConfirm" xml:space="preserve"><value>Taskleiste, Startmenü und geöffnete Explorer-Fenster schließen sich kurz und öffnen sich wieder; Kopier- und Verschiebevorgänge, die im Explorer noch laufen, brechen ab. Die Symbole können einen Moment brauchen, bis sie wieder da sind.</value></data>
   <data name="Quick_IconCacheDone" xml:space="preserve"><value>Symbolcache gelöscht und Explorer neu gestartet. Windows baut die Symbole neu auf.</value></data>
+  <data name="Quick_IconCacheSkipped" xml:space="preserve"><value>Nicht gelöschte Dateien, meist weil ein anderes Programm sie geöffnet hat: {0}.</value></data>
   <data name="Quick_IconCacheNoProfile" xml:space="preserve"><value>Der Ordner des angemeldeten Benutzers wurde nicht gefunden, deshalb ist sein Symbolcache nicht erreichbar.</value></data>
   <data name="Quick_DefenderUpdate" xml:space="preserve"><value>Microsoft Defender aktualisieren</value></data>
-  <data name="Quick_DefenderUpdateHint" xml:space="preserve"><value>Lädt jetzt die neuesten Virendefinitionen (Update-MpSignature), wie Nach Updates suchen in der Windows-Sicherheit. Braucht Internet.</value></data>
+  <data name="Quick_DefenderUpdateHint" xml:space="preserve"><value>Lädt jetzt die neuesten Virendefinitionen (Update-MpSignature), wie „Nach Updates suchen“ in der Windows-Sicherheit. Braucht Internet.</value></data>
   <data name="Quick_DefenderUpdateAction" xml:space="preserve"><value>Aktualisieren</value></data>
   <data name="Quick_DefenderUpdateDone" xml:space="preserve"><value>Fertig: Microsoft Defender hat die neuesten Definitionen.</value></data>
   <data name="Quick_WingetSourceReset" xml:space="preserve"><value>winget-Quellen zurücksetzen</value></data>
-  <data name="Quick_WingetSourceResetHint" xml:space="preserve"><value>Wenn Installieren &amp; aktualisieren den winget-Katalog nicht erreicht: stellt die Standardquellen von winget wieder her (winget source reset). Selbst hinzugefügte Quellen werden entfernt.</value></data>
+  <data name="Quick_WingetSourceResetHint" xml:space="preserve"><value>Wenn die Seite „Installieren &amp; aktualisieren“ den winget-Katalog nicht erreicht: stellt die Standardquellen von winget wieder her (winget source reset). Selbst hinzugefügte Quellen werden entfernt.</value></data>
   <data name="Quick_WingetSourceResetAction" xml:space="preserve"><value>Zurücksetzen</value></data>
   <data name="Quick_WingetSourceResetConfirm" xml:space="preserve"><value>Entfernt alle Quellen außer den Standardquellen von winget (msstore, winget, winget-font) und richtet diese neu ein. Quellen, die du oder deine Firma hinzugefügt habt, musst du neu hinzufügen. Beim nächsten Mal fragt winget wieder nach der Zustimmung zu den Quellenvereinbarungen.</value></data>
   <data name="Quick_WingetSourceResetDone" xml:space="preserve"><value>winget-Quellen zurückgesetzt. winget meldet:</value></data>
   <data name="Quick_AdvancedStartup" xml:space="preserve"><value>In die erweiterten Startoptionen neu starten</value></data>
   <data name="Quick_AdvancedStartupHint" xml:space="preserve"><value>Für den abgesicherten Modus, zum Beispiel für DDU: startet in das blaue Menü der erweiterten Startoptionen neu. Wähle dort Problembehandlung &gt; Erweiterte Optionen &gt; Starteinstellungen &gt; Neu starten und dann 4 für den abgesicherten Modus. An den Starteinstellungen ändert sich nichts, der Start danach ist wieder normal.</value></data>
-  <data name="Quick_AdvancedStartupAction" xml:space="preserve"><value>Neu starten</value></data>
+  <data name="Quick_AdvancedStartupAction" xml:space="preserve"><value>Jetzt neu starten</value></data>
   <data name="Quick_AdvancedStartupConfirm" xml:space="preserve"><value>Der PC startet sofort neu. Speichere vorher deine Arbeit und schließe deine Programme. Ist BitLocker oder die Geräteverschlüsselung an, halte den Wiederherstellungsschlüssel bereit, falls das Menü danach fragt.</value></data>
   <data name="Quick_AdvancedStartupDone" xml:space="preserve"><value>Neustart in die erweiterten Startoptionen.</value></data>
   <data name="Prio_Browse" xml:space="preserve"><value>Durchsuchen</value></data>
@@ -1743,7 +1749,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Hint_TakesMinutesServicingSentence" xml:space="preserve"><value>Das kann mehrere Minuten dauern, bei laufenden Windows-Updates auch länger.</value></data>
   <data name="Hint_TakesMinutesSentence" xml:space="preserve"><value>Das kann mehrere Minuten dauern.</value></data>
   <data name="Hint_TakesHalfHour" xml:space="preserve"><value>Kann eine halbe Stunde oder länger dauern</value></data>
-  <data name="Badge_TipMinutes" xml:space="preserve"><value>Das Ein- oder Ausschalten kann mehrere Minuten dauern, länger, während Windows Updates installiert. Das Banner oben zeigt, dass es noch läuft.</value></data>
+  <data name="Badge_TipMinutes" xml:space="preserve"><value>Das Ein- oder Ausschalten kann mehrere Minuten dauern, länger, wenn Windows gerade Updates installiert. Das Banner oben zeigt, dass es noch läuft.</value></data>
   <data name="Result_BatchStopped" xml:space="preserve"><value>Angehalten. {0} angewendet, {1} fehlgeschlagen, {2} übersprungen, {3} nicht begonnen.</value></data>
   <data name="Setup_Title" xml:space="preserve"><value>Tunero einrichten</value></data>
   <data name="Setup_Location" xml:space="preserve"><value>Tunero läuft gerade aus {0}.</value></data>
@@ -1986,7 +1992,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Apps_UpdateAllRuns" xml:space="preserve"><value>Läuft nacheinander: {0}.</value></data>
   <data name="Apps_UpdateAllWinget" xml:space="preserve"><value>winget aktualisiert jedes Programm, für das es in seiner Quelle eine neuere Version kennt, ohne einzeln zu fragen. Programme für den ganzen PC werden hier aktualisiert, Programme nur für dein Konto in einem eigenen winget-Fenster.</value></data>
   <data name="Apps_UpdateAllChoco" xml:space="preserve"><value>Chocolatey aktualisiert hier jedes veraltete Paket, mit Administratorrechten. Tunero selbst bleibt außen vor: Es aktualisiert sich über „Jetzt aktualisieren“ in den Einstellungen.</value></data>
-  <data name="Apps_UpdateAllScoop" xml:space="preserve"><value>Scoop aktualisiert sich selbst und danach jede App in einem eigenen Fenster, als dein Konto und ohne Administratorrechte.</value></data>
+  <data name="Apps_UpdateAllScoop" xml:space="preserve"><value>Scoop aktualisiert sich selbst und danach jede App in einem eigenen Fenster, ohne Administratorrechte.</value></data>
   <data name="Apps_UpdateAllStore" xml:space="preserve"><value>Der Microsoft Store öffnet seine Seite für Updates; wähle dort „Updates abrufen“.</value></data>
   <data name="Apps_UpdateAllRestart" xml:space="preserve"><value>Geöffnete Programme brauchen eventuell einen Neustart.</value></data>
   <data name="Apps_ChocoDone" xml:space="preserve"><value>Chocolatey ist mit dem Aktualisieren fertig.</value></data>
@@ -2001,11 +2007,11 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Apps_ManagerVersion" xml:space="preserve"><value>Version {0}</value></data>
   <data name="Apps_ManagerIncluded" xml:space="preserve"><value>Enthalten</value></data>
   <data name="Apps_ManagerExcluded" xml:space="preserve"><value>Nicht enthalten</value></data>
-  <data name="Apps_HowWinget" xml:space="preserve"><value>Programme für den ganzen PC werden hier aktualisiert, Programme für dein Konto in einem eigenen Fenster.</value></data>
-  <data name="Apps_HowWingetUser" xml:space="preserve"><value>Aktualisiert in einem eigenen Fenster, als dein Konto.</value></data>
-  <data name="Apps_HowChoco" xml:space="preserve"><value>Aktualisiert hier jedes veraltete Paket, mit Administratorrechten.</value></data>
+  <data name="Apps_HowWinget" xml:space="preserve"><value>Programme für den ganzen PC aktualisiert Tunero direkt, Programme für dein Konto in einem eigenen Fenster.</value></data>
+  <data name="Apps_HowWingetUser" xml:space="preserve"><value>Aktualisiert die Programme für dein Konto in einem eigenen Fenster.</value></data>
+  <data name="Apps_HowChoco" xml:space="preserve"><value>Aktualisiert jedes veraltete Paket direkt in Tunero, mit Administratorrechten.</value></data>
   <data name="Apps_HowChocoUntrusted" xml:space="preserve"><value>Sein Ordner oder ein Ordner, aus dem es Skripte lädt, lässt sich ohne Administratorrechte ändern, deshalb startet Tunero es nicht mit diesen Rechten. Wenn du ihm vertraust, führe choco upgrade all selbst in einem Terminal aus.</value></data>
-  <data name="Apps_HowScoop" xml:space="preserve"><value>Aktualisiert sich selbst und seine Apps in einem eigenen Fenster, als dein Konto.</value></data>
+  <data name="Apps_HowScoop" xml:space="preserve"><value>Aktualisiert sich selbst und seine Apps in einem eigenen Fenster, ohne Administratorrechte.</value></data>
   <data name="Apps_HowStore" xml:space="preserve"><value>Öffnet die Seite des Stores für Updates; wähle dort „Updates abrufen“.</value></data>
   <data name="Apps_DevToolsTitle" xml:space="preserve"><value>Entwicklerwerkzeuge</value></data>
   <data name="Apps_DevToolsHint" xml:space="preserve"><value>Tunero führt diese nicht aus. Kopiere den Befehl und führe ihn in einem eigenen Terminal aus.</value></data>
@@ -2024,8 +2030,8 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Apps_ChocoCheckFailed" xml:space="preserve"><value>Chocolatey konnte nicht nach Updates suchen.</value></data>
   <data name="Apps_ChocoMeta" xml:space="preserve"><value>Chocolatey, {0} auf {1}</value></data>
   <data name="Apps_UpdateAllWingetMachine" xml:space="preserve"><value>winget aktualisiert hier jedes Programm für den ganzen PC, für das es in seiner Quelle eine neuere Version kennt, ohne einzeln zu fragen.</value></data>
-  <data name="Apps_UpdateAllWingetUser" xml:space="preserve"><value>winget aktualisiert die Programme für dein Konto in einem eigenen Fenster, als dein Konto.</value></data>
-  <data name="Apps_HowWingetMachine" xml:space="preserve"><value>Aktualisiert hier die Programme für den ganzen PC.</value></data>
+  <data name="Apps_UpdateAllWingetUser" xml:space="preserve"><value>winget aktualisiert die Programme für dein Konto in einem eigenen Fenster.</value></data>
+  <data name="Apps_HowWingetMachine" xml:space="preserve"><value>Aktualisiert die Programme für den ganzen PC direkt in Tunero.</value></data>
   <data name="Apps_ChocoTimeout" xml:space="preserve"><value>Chocolatey hat nicht innerhalb von 2 Minuten geantwortet. Versuche es später noch einmal.</value></data>
   <data name="Apps_DevInCommandPrompt" xml:space="preserve"><value>Führe ihn in der Eingabeaufforderung aus.</value></data>
   <data name="Apps_ManagerOpensPage" xml:space="preserve"><value>Öffnet seine Seite</value></data>

@@ -383,6 +383,8 @@ public partial class App : Application
             }
         }
         await Task.Delay(1500); // pages that load their own data (startup, services, apps)
+        // Install & update reads its drivers last, which can take longer than that on a busy PC.
+        for (var waited = 0; vm.CurrentPage == Page.Apps && vm.Apps.IsLoading && waited < 20_000; waited += 250) await Task.Delay(250);
         if (args.Value("--preview-uninstall") is "on")
         {
             vm.CurrentPage = Page.Debloat;

@@ -11,7 +11,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
         <DockPanel Grid.Row="0">
-            <ui:Button DockPanel.Dock="Right" Content="{l:Tr Common_Refresh}" Icon="{ui:SymbolIcon ArrowClockwise20}" Command="{Binding Apps.ReloadCommand}" ToolTip="F5" VerticalAlignment="Top" />
+            <ui:Button DockPanel.Dock="Right" Content="{l:Tr Apps_Reload}" Icon="{ui:SymbolIcon ArrowClockwise20}" Command="{Binding Apps.ReloadCommand}" ToolTip="F5" VerticalAlignment="Top" />
             <StackPanel>
                 <ui:TextBlock Style="{StaticResource PageTitle}" Text="{l:Tr Apps_Title}" />
                 <ui:TextBlock Style="{StaticResource PageIntro}" Text="{l:Tr Apps_Hint}" />
@@ -24,17 +24,21 @@
                     <StackPanel Style="{StaticResource EdgeContent}">
                         <!-- Update all at the top, not after the last of about thirty apps -->
                         <DockPanel Margin="0,0,0,8">
-                            <ui:Button DockPanel.Dock="Right" Content="{l:Tr Apps_UpdateAll}" Icon="{ui:SymbolIcon ArrowDownload20}" Command="{Binding Apps.UpdateAllCommand}"
-                                       IsEnabled="{Binding Apps.IsUpdatingAll, Converter={StaticResource InverseBool}}" VerticalAlignment="Top" Margin="8,0,0,0" />
-                            <!-- Which apps have an update: winget compares its catalog with what is installed (started here, installs nothing) -->
-                            <ui:Button DockPanel.Dock="Right" Content="{l:Tr Apps_CheckUpdates}" Icon="{ui:SymbolIcon ArrowSync20}" Command="{Binding Apps.CheckUpdatesCommand}"
-                                       IsEnabled="{Binding Apps.IsCheckingUpdates, Converter={StaticResource InverseBool}}" VerticalAlignment="Top" Margin="16,0,0,0"
-                                       ToolTip="{l:Tr Apps_CheckUpdatesHint}" Visibility="{Binding Apps.WingetMissing, Converter={StaticResource InverseBoolToVisibility}}" />
-                            <StackPanel VerticalAlignment="Center">
+                            <StackPanel DockPanel.Dock="Right" Margin="16,0,0,0" VerticalAlignment="Top">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                    <!-- Which apps have an update: winget compares its catalog with what is installed (started here, installs nothing) -->
+                                    <ui:Button Content="{l:Tr Apps_CheckUpdates}" Icon="{ui:SymbolIcon ArrowSync20}" Command="{Binding Apps.CheckUpdatesCommand}"
+                                               IsEnabled="{Binding Apps.IsCheckingUpdates, Converter={StaticResource InverseBool}}" Margin="0,0,8,0"
+                                               ToolTip="{l:Tr Apps_CheckUpdatesHint}" Visibility="{Binding Apps.WingetMissing, Converter={StaticResource InverseBoolToVisibility}}" />
+                                    <ui:Button Content="{l:Tr Apps_UpdateAll}" Icon="{ui:SymbolIcon ArrowDownload20}" Command="{Binding Apps.UpdateAllCommand}"
+                                               IsEnabled="{Binding Apps.IsUpdatingAll, Converter={StaticResource InverseBool}}" />
+                                </StackPanel>
+                                <!-- Under the button it is about: Update all runs every package manager in turn, each downloading and installing -->
+                                <ContentControl Style="{StaticResource DurationHint}" HorizontalAlignment="Right" Margin="0,8,0,0" />
+                            </StackPanel>
+                            <StackPanel VerticalAlignment="Top">
                                 <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Apps_TabAppsHint}" TextWrapping="Wrap" />
-                                <!-- Update all runs every package manager in turn, each downloading and installing -->
-                                <ContentControl Style="{StaticResource DurationHint}" Margin="0,8,0,0" />
-                                <StackPanel Orientation="Horizontal" Margin="0,4,0,0" Visibility="{Binding Apps.UpdatesText, Converter={StaticResource NullToVisibility}}">
+                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0" Visibility="{Binding Apps.UpdatesText, Converter={StaticResource NullToVisibility}}">
                                     <ui:ProgressRing IsIndeterminate="True" Width="16" Height="16" Margin="0,0,8,0"
                                                      Visibility="{Binding Apps.IsCheckingUpdates, Converter={StaticResource BoolToVisibility}}" />
                                     <ui:TextBlock FontTypography="Body" Text="{Binding Apps.UpdatesText}" TextWrapping="Wrap" VerticalAlignment="Center" />
@@ -45,10 +49,6 @@
                         <ui:Button Content="{l:Tr Apps_GetAppInstaller}" Icon="{ui:SymbolIcon Open20}" Margin="0,0,0,8"
                                    Command="{Binding OpenLinkCommand}" CommandParameter="https://apps.microsoft.com/detail/9nblggh4nns1"
                                    Visibility="{Binding Apps.WingetMissing, Converter={StaticResource BoolToVisibility}}" />
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8" Visibility="{Binding Apps.IsLoading, Converter={StaticResource BoolToVisibility}}">
-                            <ui:ProgressRing IsIndeterminate="True" Width="16" Height="16" Margin="0,0,8,0" />
-                            <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Apps_Loading}" VerticalAlignment="Center" />
-                        </StackPanel>
 
                         <!-- Package managers: what Update all runs, Chocolatey's update list, developer tools with a command to copy.
                              Folded by default with a one-line summary, so the winget search stays on the first screen. -->
@@ -189,6 +189,11 @@
                             </StackPanel>
                         </ui:Card>
 
+                        <!-- Above the list whose installed state it reads, not next to the duration of Update all -->
+                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0" Visibility="{Binding Apps.IsLoading, Converter={StaticResource BoolToVisibility}}">
+                            <ui:ProgressRing IsIndeterminate="True" Width="16" Height="16" Margin="0,0,8,0" />
+                            <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Apps_Loading}" VerticalAlignment="Center" />
+                        </StackPanel>
                         <v:ItemList ItemsSource="{Binding Apps.Apps}">
                             <v:ItemList.ItemTemplate>
                                 <DataTemplate>
@@ -239,16 +244,6 @@
                 <ScrollViewer Style="{StaticResource EdgeTabScroll}">
                     <StackPanel Style="{StaticResource EdgeContent}">
                         <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Drv_Hint}" Margin="0,0,0,8" TextWrapping="Wrap" />
-                        <ui:CardControl Padding="{StaticResource CardPadding}" Margin="{StaticResource CardRowMargin}">
-                            <ui:CardControl.Header>
-                                <StackPanel>
-                                    <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Drv_CleanTitle}" />
-                                    <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Drv_CleanHint}" Margin="0,4,0,0" TextWrapping="Wrap" />
-                                </StackPanel>
-                            </ui:CardControl.Header>
-                            <ui:Button Content="{l:Tr Drv_CleanOpen}" Icon="{ui:SymbolIcon Open20}" Command="{Binding OpenLinkCommand}"
-                                       CommandParameter="https://www.guru3d.com/download/display-driver-uninstaller-download/" />
-                        </ui:CardControl>
                         <v:ItemList ItemsSource="{Binding Apps.Drivers}">
                             <v:ItemList.ItemTemplate>
                                 <DataTemplate>
@@ -264,20 +259,33 @@
                                                 <StackPanel>
                                                     <ui:TextBlock FontTypography="BodyStrong" Text="{Binding Device}" TextWrapping="Wrap" />
                                                     <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" Margin="0,4,0,0" Text="{Binding MetaText, Mode=OneWay}" />
-                                                    <ui:TextBlock x:Name="Date" FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,4,0,0" Text="{Binding DateText, Mode=OneWay}" />
                                                 </StackPanel>
                                             </ui:CardControl.Header>
+                                            <!-- The age, what the tab is about: on the right of every card, so the ages line up in one column -->
+                                            <ui:TextBlock x:Name="Age" FontTypography="Body" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{Binding AgeText, Mode=OneWay}"
+                                                          TextWrapping="Wrap" TextAlignment="Right" MaxWidth="220" Margin="16,0,0,0" />
                                         </ui:CardControl>
                                     </DockPanel>
-                        <!-- More than two years old, for graphics, network or audio: worth an update, so the date is in the caution color -->
+                                    <!-- More than two years old, for graphics, network or audio: worth an update, so the age is in the caution color -->
                                     <DataTemplate.Triggers>
                                         <DataTrigger Binding="{Binding Old}" Value="True">
-                                            <Setter TargetName="Date" Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
+                                            <Setter TargetName="Age" Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
                                         </DataTrigger>
                                     </DataTemplate.Triggers>
                                 </DataTemplate>
                             </v:ItemList.ItemTemplate>
                         </v:ItemList>
+                        <!-- Rarely needed: after the drivers the tab is about -->
+                        <ui:CardControl Padding="{StaticResource CardPadding}" Margin="0,16,0,0">
+                            <ui:CardControl.Header>
+                                <StackPanel>
+                                    <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Drv_CleanTitle}" />
+                                    <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Drv_CleanHint}" Margin="0,4,0,0" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </ui:CardControl.Header>
+                            <ui:Button Content="{l:Tr Drv_CleanOpen}" Icon="{ui:SymbolIcon Open20}" Command="{Binding OpenLinkCommand}"
+                                       CommandParameter="https://www.guru3d.com/download/display-driver-uninstaller-download/" />
+                        </ui:CardControl>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>

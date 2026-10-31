@@ -58,8 +58,9 @@ public sealed class PackageUpdates(Launch launch, ElevationInfo? elevation)
                     }
                     // Per-user programs update as the signed-in user, in a window of their own.
                     var user = m.Run == ManagerRun.AsUser ? m.Path : m.UserPath;
-                    if (user is not null && launch.OpenAsUser(user, Winget.UpgradeAllArguments("user"), elevation))
-                        results.Add(l["Apps_UpdateAllUser"]);
+                    // A window that did not open says so, as Scoop and the Store do: the question promised it.
+                    if (user is not null)
+                        results.Add(launch.OpenAsUser(user, Winget.UpgradeAllArguments("user"), elevation) ? l["Apps_UpdateAllUser"] : l["Apps_UpdateAllUserNotStarted"]);
                     break;
                 case ManagerKind.Chocolatey when m.Run == ManagerRun.Elevated && m.Root is { } root:
                     var choco = await launch.Processes.RunAsync(m.Path, Chocolatey.UpgradeAllArguments, null, CancellationToken.None, lines, ChocolateyRun(root));

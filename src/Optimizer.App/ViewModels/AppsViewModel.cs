@@ -182,31 +182,34 @@ public sealed partial class ChocolateyUpdateRow(ChocolateyOutdated package) : Ob
     }
 }
 
-public sealed record DriverItem(string Device, string ClassText, string Provider, string Version, string DateText, string? UpdateUrl, bool Old)
+public sealed record DriverItem(string Device, string ClassText, string Provider, string Version, string DateText, string AgeText, string? UpdateUrl, bool Old)
 {
-    // What screen readers announce for this item in a list or combo box.
-    public override string ToString() => Device;
+    // What screen readers announce for this item in a list or combo box: the age is part of what the row says.
+    public override string ToString() => AgeText.Length == 0 ? Device : $"{Device}, {AgeText}";
 
-    /// <summary>Class, provider and version; a driver without provider or version shows no empty part.</summary>
-    public string MetaText => string.Join(", ", new[] { ClassText, $"{Provider} {Version}".Trim() }.Where(x => x.Length > 0));
+    /// <summary>Class, provider and version, then the date; a driver without one of them shows no empty part.</summary>
+    public string MetaText => string.Join(", ", new[] { ClassText, $"{Provider} {Version}".Trim(), DateText }.Where(x => x.Length > 0));
 
     /// <summary>Heading above the first driver of an update source ("Updates from Intel"), with one link for the group.</summary>
     public string? GroupHeader { get; init; }
 
     public string? GroupUrl { get; init; }
 
-    /// <summary>"10.08.2018, about 8 years old": the date in the app language and a rounded age. Placeholder dates say so.</summary>
-    public static string Describe(DateTime? date, int? ageDays)
+    /// <summary>
+    /// The date in the app language ("10.08.2018", for the caption) and a rounded age ("about 8 years old", on the right of
+    /// the card). A placeholder date is not shown; the age place says that the package gives no real one.
+    /// </summary>
+    public static (string Date, string Age) Describe(DateTime? date, int? ageDays)
     {
-        if (date is not { } d) return "";
-        if (ageDays is not { } a) return Loc.Instance["Drv_NoRealDate"];
+        if (date is not { } d) return ("", "");
+        if (ageDays is not { } a) return ("", Loc.Instance["Drv_NoRealDate"]);
         var shown = d.ToString("d", System.Globalization.CultureInfo.CurrentCulture);
         // A date after today (some inbox drivers carry one) has no meaningful age.
-        if (a < 0) return shown;
+        if (a < 0) return (shown, "");
         var age = a < 60 ? Loc.Instance["Drv_AgeNew"]
             : a < 730 ? Loc.Instance.Format("Drv_AgeMonths", (int)Math.Round(a / 30.44))
             : Loc.Instance.Format("Drv_AgeYears", (int)Math.Round(a / 365.25));
-        return $"{shown}, {age}";
+        return (shown, age);
     }
 }
 
@@ -328,10 +331,20 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
         OnPropertyChanged(nameof(ProgramsNoMatch));
     }
 
+    /// <summary>
+    /// The installed programs as the app catalog matches them (system components included), from this page's own read.
+    /// Null until the first read: the list then uses the last scan's.
+    /// </summary>
+    private IReadOnlyList<Optimizer.Core.Hardware.Probes.InstalledProgram>? _installed;
+
     [RelayCommand]
     private async Task LoadProgramsAsync()
     {
-        var list = await Task.Run(() => Programs.Read(services.Context.Registry));
+        // One read for both lists, through the page's registry: the uninstall list leaves out the system components, the
+        // app catalog needs them (WebView2 registers that way).
+        var all = await Task.Run(() => Programs.Read(services.Context.Registry, systemComponents: true));
+        _installed = Optimizer.Core.Hardware.Probes.InstalledPrograms.From(all);
+        var list = all.Where(p => !p.SystemComponent);
         // The selection and the state lines survive a reload for the programs that are still listed.
         var old = _allPrograms.GroupBy(r => r.Program.RegistryKey, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
         _allPrograms = list.Select(p => new ProgramRow(p)
@@ -343,6 +356,26 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
         UpdateSelection();
         services.Search.UpdateRuntime(Optimizer.Core.Search.SearchKind.InstalledProgram, _allPrograms.Select(r => ("Debloat", r.Program.RegistryKey, r.Name, r.Meta)));
         FilterPrograms();
+        RefreshInstalled();
+    }
+
+    /// <summary>
+    /// After a read of the programs: rows of the app list whose installed state changed (installed here, removed in
+    /// Installed programs, or outside Tunero) follow it. Only those rows change; the rest keep their state lines, and a
+    /// row whose install or update runs is left to that run.
+    /// </summary>
+    private void RefreshInstalled()
+    {
+        if (_installed is not { } programs) return;
+        foreach (var row in Apps)
+        {
+            if (row.IsInstalling) continue;
+            var now = row.App.IsInstalled(programs);
+            if (now == row.Installed) continue;
+            row.Installed = now;
+            row.StateText = now ? Loc.Instance["Apps_Installed"] : "";
+            if (now && _upgrades is { } upgrades) row.ShowUpdate(upgrades.FirstOrDefault(u => string.Equals(u.Id, row.App.Id, StringComparison.OrdinalIgnoreCase)));
+        }
     }
 
     /// <summary>Runs the program's own uninstaller (see <see cref="Programs.Command"/> for when it runs elevated).</summary>
@@ -1024,7 +1057,7 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
     private void ShowApps()
     {
         var lang = Lang;
-        var programs = Owner.Profile?.Extras?.Programs ?? [];
+        var programs = _installed ?? Owner.Profile?.Extras?.Programs ?? [];
         // A row whose install or update runs stays the same object: that run writes its progress and result to it.
         var running = new Dictionary<string, AppRow>(StringComparer.OrdinalIgnoreCase);
         foreach (var r in Apps)
@@ -1055,8 +1088,9 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
             foreach (var d in g)
             {
                 var url = g.Key.Length == 0 ? null : g.Key;
+                var (date, age) = DriverItem.Describe(d.Date, d.AgeDays(today));
                 Drivers.Add(new DriverItem(d.Device, Loc.Instance[$"DrvClass_{d.Class}"] is var c && c != $"DrvClass_{d.Class}" ? c : d.Class,
-                    d.Provider ?? "", d.Version ?? "", DriverItem.Describe(d.Date, d.AgeDays(today)), url,
+                    d.Provider ?? "", d.Version ?? "", date, age, url,
                     d.AgeDays(today) > 2 * 365 && d.Class is "DISPLAY" or "NET" or "MEDIA")
                 {
                     GroupHeader = first ? GroupTitle(url) : null,

@@ -505,6 +505,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Apps_Title" xml:space="preserve">
     <value>Install &amp; update</value>
   </data>
+  <data name="Apps_Reload" xml:space="preserve"><value>Refresh</value></data>
   <data name="Apps_Hint" xml:space="preserve">
     <value>Common gaming apps and tools, and the age of your drivers with where to get updates.</value>
   </data>
@@ -530,10 +531,10 @@ The files are deleted permanently. Files in use are skipped.</value>
     <value>Drivers</value>
   </data>
   <data name="Drv_Hint" xml:space="preserve">
-    <value>Graphics, network, audio, storage and chipset drivers. The app never installs drivers; it links to the manufacturer.</value>
+    <value>Graphics, network, audio, storage and chipset drivers. Tunero never installs drivers; it links to the manufacturer.</value>
   </data>
   <data name="Drv_Update" xml:space="preserve">
-    <value>Get update</value>
+    <value>Open driver page</value>
   </data>
   <data name="DrvClass_DISPLAY" xml:space="preserve">
     <value>Graphics</value>
@@ -560,7 +561,7 @@ The files are deleted permanently. Files in use are skipped.</value>
     <value>Tools</value>
   </data>
   <data name="Tools_Hint" xml:space="preserve">
-    <value>Windows features, program priorities, network fixes and Windows repair.</value>
+    <value>Network fixes and Windows repair, Windows features and program start priorities.</value>
   </data>
   <data name="Storage_Progress" xml:space="preserve">
     <value>Files: {0}, {1}</value>
@@ -1308,21 +1309,24 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Apps_UpdateAllTitle" xml:space="preserve"><value>Update all apps?</value></data>
   <data name="Apps_UpdateAllDone" xml:space="preserve"><value>winget finished updating.</value></data>
   <data name="Apps_UpdateAllUser" xml:space="preserve"><value>Programs installed only for your account are updating in a winget window of their own.</value></data>
+  <data name="Apps_UpdateAllUserNotStarted" xml:space="preserve"><value>winget could not open its window for the programs installed only for your account. Run winget upgrade --all in a terminal.</value></data>
   <data name="Apps_UpdateFailed" xml:space="preserve"><value>Update failed (winget code {0}).</value></data>
   <data name="Net_UseFastest" xml:space="preserve"><value>Use the fastest: {0}</value></data>
   <data name="Changes_OpenRestore" xml:space="preserve"><value>Open System Restore</value></data>
   <data name="Debloat_CameBack" xml:space="preserve"><value>These apps you removed are installed again, for example by a Windows update or the PC maker's software: {0}. They are listed below if you want to remove them again.</value></data>
   <data name="Drv_CleanTitle" xml:space="preserve"><value>Clean graphics driver removal</value></data>
-  <data name="Drv_CleanHint" xml:space="preserve"><value>When you switch graphics card brand or a driver keeps failing, Display Driver Uninstaller (DDU) removes the old driver completely before you install the new one. Its author recommends Safe Mode and a backup or restore point first. Tunero does not remove drivers itself.</value></data>
+  <data name="Drv_CleanHint" xml:space="preserve"><value>When you switch graphics card brand or a driver keeps failing, Display Driver Uninstaller (DDU) removes the old driver completely before you install the new one. Its author recommends Safe Mode and a backup or restore point first. Tunero does not remove drivers itself. For Safe Mode, Tools has Restart to Advanced startup.</value></data>
   <data name="Drv_CleanOpen" xml:space="preserve"><value>Open DDU page</value></data>
   <data name="Prio_Title" xml:space="preserve"><value>Program start priorities</value></data>
-  <data name="Prio_Hint" xml:space="preserve"><value>Windows starts the program with this CPU priority every time, without a background program. Useful for a game that competes with busy background programs, or to keep a backup or download tool out of the way. Microsoft does not document these values, so the rules are tagged Preview, and some anti-cheat systems check this part of the registry.</value></data>
+  <data name="Prio_Hint" xml:space="preserve"><value>Windows starts the program with this CPU priority every time, without a background program. Useful for a game that competes with busy background programs, or to keep a backup or download tool out of the way.</value></data>
+  <data name="Prio_Warning" xml:space="preserve"><value>Microsoft does not document these values, so the rules carry the Undocumented value tag; a test in a Windows 11 virtual machine showed that Windows applies them. Some anti-cheat systems check this part of the registry.</value></data>
   <data name="Prio_ExePlaceholder" xml:space="preserve"><value>Program file, for example game.exe</value></data>
   <data name="Prio_LowIoOption" xml:space="preserve"><value>Low disk priority</value></data>
   <data name="Prio_LowMemoryOption" xml:space="preserve"><value>Low memory priority</value></data>
   <data name="Prio_LowMemoryHint" xml:space="preserve"><value>Windows takes memory from this program first when memory runs short, so other programs keep theirs. For background programs, not for games.</value></data>
   <data name="Prio_LowMemory" xml:space="preserve"><value>low memory priority</value></data>
   <data name="Prio_Add" xml:space="preserve"><value>Add rule</value></data>
+  <data name="Prio_None" xml:space="preserve"><value>No start priority rules yet.</value></data>
   <data name="Prio_Remove" xml:space="preserve"><value>Remove</value></data>
   <data name="Prio_AboveNormal" xml:space="preserve"><value>Above normal</value></data>
   <data name="Prio_High" xml:space="preserve"><value>High</value></data>
@@ -1446,7 +1450,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Debloat_PageHint" xml:space="preserve"><value>Apps that came with Windows, and desktop programs you installed.</value></data>
   <data name="Debloat_TabStore" xml:space="preserve"><value>Preinstalled apps</value></data>
   <data name="Apps_TabApps" xml:space="preserve"><value>Get apps</value></data>
-  <data name="Apps_TabAppsHint" xml:space="preserve"><value>Update all apps runs the package managers below. The apps in the list install with winget from their official sources.</value></data>
+  <data name="Apps_TabAppsHint" xml:space="preserve"><value>The apps below install with winget from their official sources.</value></data>
   <data name="Apps_SearchTitle" xml:space="preserve"><value>Search winget for other apps</value></data>
   <data name="Apps_SearchHint" xml:space="preserve"><value>Any package of the winget community repository, beyond the list below. Tunero has not reviewed these: winget installs the package as its listing there says, from the vendor's download.</value></data>
   <data name="Apps_SearchPlaceholder" xml:space="preserve"><value>Name or id, for example Blender</value></data>
@@ -1460,6 +1464,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Apps_FoundConfirmText" xml:space="preserve"><value>{0} ({1}) is not on Tunero's reviewed list. winget downloads and installs it as its listing in the community repository says, for the whole PC where the package offers that, else for your account. Install it only if you trust the vendor.</value></data>
   <data name="Quick_TabFixes" xml:space="preserve"><value>Fixes and repair</value></data>
   <data name="Tag_Restart" xml:space="preserve"><value>Restart needed</value></data>
+  <data name="Tag_RestartsNow" xml:space="preserve"><value>Restarts the PC now</value></data>
   <data name="Scroll_Up" xml:space="preserve"><value>Scroll up</value></data>
   <data name="Scroll_Down" xml:space="preserve"><value>Scroll down</value></data>
   <data name="Scroll_Left" xml:space="preserve"><value>Scroll left</value></data>
@@ -1482,6 +1487,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Quick_IconCacheAction" xml:space="preserve"><value>Rebuild</value></data>
   <data name="Quick_IconCacheConfirm" xml:space="preserve"><value>The taskbar, Start and open Explorer windows close briefly and open again; copy and move operations still running in Explorer stop. Icons can take a moment to come back.</value></data>
   <data name="Quick_IconCacheDone" xml:space="preserve"><value>Icon cache deleted and Explorer started again. Windows builds the icons anew.</value></data>
+  <data name="Quick_IconCacheSkipped" xml:space="preserve"><value>Files left in place, usually because another program has them open: {0}.</value></data>
   <data name="Quick_IconCacheNoProfile" xml:space="preserve"><value>The signed-in user's folder was not found, so their icon cache cannot be reached.</value></data>
   <data name="Quick_DefenderUpdate" xml:space="preserve"><value>Update Microsoft Defender</value></data>
   <data name="Quick_DefenderUpdateHint" xml:space="preserve"><value>Downloads the latest virus definitions now (Update-MpSignature), as Check for updates in Windows Security does. Needs the internet.</value></data>
@@ -1494,7 +1500,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Quick_WingetSourceResetDone" xml:space="preserve"><value>winget sources reset. winget reports:</value></data>
   <data name="Quick_AdvancedStartup" xml:space="preserve"><value>Restart to Advanced startup</value></data>
   <data name="Quick_AdvancedStartupHint" xml:space="preserve"><value>For Safe Mode, for example to run DDU: restarts into the blue Advanced startup menu. There choose Troubleshoot &gt; Advanced options &gt; Startup Settings &gt; Restart, then 4 for Safe Mode. Nothing in the boot settings changes, so the start after that is normal again.</value></data>
-  <data name="Quick_AdvancedStartupAction" xml:space="preserve"><value>Restart</value></data>
+  <data name="Quick_AdvancedStartupAction" xml:space="preserve"><value>Restart now</value></data>
   <data name="Quick_AdvancedStartupConfirm" xml:space="preserve"><value>The PC restarts right away. Save your work and close your programs first. With BitLocker or device encryption on, have the recovery key ready in case the menu asks for it.</value></data>
   <data name="Quick_AdvancedStartupDone" xml:space="preserve"><value>Restarting to Advanced startup.</value></data>
   <data name="Prio_Browse" xml:space="preserve"><value>Browse</value></data>
@@ -1986,7 +1992,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Apps_UpdateAllRuns" xml:space="preserve"><value>Runs one after the other: {0}.</value></data>
   <data name="Apps_UpdateAllWinget" xml:space="preserve"><value>winget updates every program it knows a newer version for in its source, without asking per program. Programs installed for the whole PC update here; programs installed only for your account update in a winget window of their own.</value></data>
   <data name="Apps_UpdateAllChoco" xml:space="preserve"><value>Chocolatey updates every outdated package here, with administrator rights. Tunero itself is left out: it updates through Update now in Settings.</value></data>
-  <data name="Apps_UpdateAllScoop" xml:space="preserve"><value>Scoop updates itself and then every app in a window of its own, as your account, without administrator rights.</value></data>
+  <data name="Apps_UpdateAllScoop" xml:space="preserve"><value>Scoop updates itself and then every app in a window of its own, without administrator rights.</value></data>
   <data name="Apps_UpdateAllStore" xml:space="preserve"><value>The Microsoft Store opens its page for updates; select Get updates there.</value></data>
   <data name="Apps_UpdateAllRestart" xml:space="preserve"><value>Programs that are open may need a restart.</value></data>
   <data name="Apps_ChocoDone" xml:space="preserve"><value>Chocolatey finished updating.</value></data>
@@ -2001,11 +2007,11 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Apps_ManagerVersion" xml:space="preserve"><value>Version {0}</value></data>
   <data name="Apps_ManagerIncluded" xml:space="preserve"><value>Included</value></data>
   <data name="Apps_ManagerExcluded" xml:space="preserve"><value>Not included</value></data>
-  <data name="Apps_HowWinget" xml:space="preserve"><value>Programs for the whole PC update here, programs for your account in a window of their own.</value></data>
-  <data name="Apps_HowWingetUser" xml:space="preserve"><value>Updates in a window of its own, as your account.</value></data>
-  <data name="Apps_HowChoco" xml:space="preserve"><value>Updates every outdated package here, with administrator rights.</value></data>
+  <data name="Apps_HowWinget" xml:space="preserve"><value>Programs for the whole PC update inside Tunero, programs for your account in a separate window.</value></data>
+  <data name="Apps_HowWingetUser" xml:space="preserve"><value>Updates the programs for your account in a window of its own.</value></data>
+  <data name="Apps_HowChoco" xml:space="preserve"><value>Updates every outdated package inside Tunero, with administrator rights.</value></data>
   <data name="Apps_HowChocoUntrusted" xml:space="preserve"><value>Its folder, or a folder it loads scripts from, can be changed without administrator rights, so Tunero does not run it with them. If you trust it, run choco upgrade all in a terminal yourself.</value></data>
-  <data name="Apps_HowScoop" xml:space="preserve"><value>Updates itself and its apps in a window of its own, as your account.</value></data>
+  <data name="Apps_HowScoop" xml:space="preserve"><value>Updates itself and its apps in a window of its own, without administrator rights.</value></data>
   <data name="Apps_HowStore" xml:space="preserve"><value>Opens the Store's page for updates; select Get updates there.</value></data>
   <data name="Apps_DevToolsTitle" xml:space="preserve"><value>Developer tools</value></data>
   <data name="Apps_DevToolsHint" xml:space="preserve"><value>Tunero does not run these. Copy the command and run it in a terminal of your own.</value></data>
@@ -2024,8 +2030,8 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Apps_ChocoCheckFailed" xml:space="preserve"><value>Chocolatey could not check for updates.</value></data>
   <data name="Apps_ChocoMeta" xml:space="preserve"><value>Chocolatey, {0} to {1}</value></data>
   <data name="Apps_UpdateAllWingetMachine" xml:space="preserve"><value>winget updates every program installed for the whole PC that it knows a newer version for in its source, here and without asking per program.</value></data>
-  <data name="Apps_UpdateAllWingetUser" xml:space="preserve"><value>winget updates the programs installed for your account in a window of its own, as your account.</value></data>
-  <data name="Apps_HowWingetMachine" xml:space="preserve"><value>Updates programs for the whole PC here.</value></data>
+  <data name="Apps_UpdateAllWingetUser" xml:space="preserve"><value>winget updates the programs installed for your account in a window of its own.</value></data>
+  <data name="Apps_HowWingetMachine" xml:space="preserve"><value>Updates the programs for the whole PC inside Tunero.</value></data>
   <data name="Apps_ChocoTimeout" xml:space="preserve"><value>Chocolatey did not answer within 2 minutes. Try again later.</value></data>
   <data name="Apps_DevInCommandPrompt" xml:space="preserve"><value>Run it in Command Prompt.</value></data>
   <data name="Apps_ManagerOpensPage" xml:space="preserve"><value>Opens its page</value></data>

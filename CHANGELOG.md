@@ -5,6 +5,9 @@
 ### Changed
 
 - **.NET runtime 10.0.14:** the exe carries the .NET and Windows Desktop runtime of Microsoft's out-of-band security release of October 25, 2026, which fixes a Brotli decoder flaw ([release notes](https://github.com/dotnet/core/blob/main/release-notes/10.0/10.0.14/10.0.14.md)), instead of 10.0.13.
+- **Drivers:** each driver's age lines up on the right of its card; the DDU card moved below the list.
+- **Tools:** Restart to Advanced startup says it restarts the PC now; start priority rules show their tags, the warning in an info bar, a labeled form and an empty state; the German tab is Reparaturen.
+- **Install & update:** the reload button is Neu laden in German, so it no longer reads like an update.
 - **Graphics & DNS:** without an NVIDIA card, a card says why there are no driver settings; the network links moved to Related settings at the end of the page.
 - **Remove apps:** preinstalled apps under a header per group, a bar that always shows Remove selected, and OneDrive and Edge in one section.
 - **Storage:** before an analysis the page explains Analyze; the folder list is wider than the treemap, larger tiles carry names, and the legend lists only the types on the map.
@@ -23,6 +26,9 @@
 
 ### Fixed
 
+- **Install & update:** the app list follows installs and removals since the last scan; one unreadable uninstall entry no longer hides the whole program list; Signal no longer shows as installed when only SignalRGB is; Update all says when winget cannot open its window for per-user programs.
+- **Rebuild the icon cache** also deletes the `iconcache_*.db` files Windows 10 and 11 use.
+- **Benchmark:** a stopped or timed-out capture no longer leaves its CSV file behind.
 - **Graphics & DNS:** links and benchmark columns are no longer cut off in narrow windows; switching DNS servers no longer waits for an extra full scan.
 - **Remove apps:** the Left behind card scrolls on short windows, and a page opened during the first scan loads once.
 - **Cleanup:** Temporary files keeps empty folders created in the last day, which a running installer may still need.

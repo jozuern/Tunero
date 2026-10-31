@@ -91,11 +91,24 @@ public sealed partial class ToolsViewModel(IPageHost owner, AppServices services
         NewPriority ??= PriorityChoices[0];
         var rules = await Task.Run(() => ProgramPriority.Read(services.Context.Registry));
         PriorityRules.Clear();
+        // Every rule uses the same undocumented values in a place anti-cheat systems check, set here or by another program.
+        IReadOnlyList<Badge> badges =
+        [
+            new(Labels.Current.Get(Lang, "badge.undocumented"), false, Loc.Instance["Badge_TipUndocumented"]),
+            new(Labels.Current.Get(Lang, "badge.antiCheat"), true, Loc.Instance["Badge_TipAntiCheat"]),
+        ];
         foreach (var r in rules)
             PriorityRules.Add(new PriorityRow(r, r.Cpu is { } c ? PriorityChoices.First(o => o.Key == c.ToString()).Text
                     : r.OtherCpu is { } o ? Loc.Instance.Format("Prio_Other", o) : "",
-                string.Join(", ", new[] { r.LowIo ? Loc.Instance["Prio_LowIo"] : null, r.LowMemory ? Loc.Instance["Prio_LowMemory"] : null }.OfType<string>()) is { Length: > 0 } low ? low : null));
+                string.Join(", ", new[] { r.LowIo ? Loc.Instance["Prio_LowIo"] : null, r.LowMemory ? Loc.Instance["Prio_LowMemory"] : null }.OfType<string>()) is { Length: > 0 } low ? low : null)
+            {
+                Badges = badges,
+            });
+        NoPriorityRules = PriorityRules.Count == 0;
     }
+
+    /// <summary>The rules were read and there are none: the page says so (an empty area could also be a list still loading).</summary>
+    [ObservableProperty] private bool _noPriorityRules;
 
     [RelayCommand]
     private void BrowsePriorityExe()
@@ -206,8 +219,8 @@ public sealed partial class ToolsViewModel(IPageHost owner, AppServices services
     }
 
     /// <summary>
-    /// Rebuilds the icon cache the way Microsoft's troubleshooting article does: Explorer ends, the signed-in user's
-    /// IconCache.db is deleted, Explorer starts again and builds a new one.
+    /// Rebuilds the icon cache: Explorer ends, the signed-in user's icon cache files are deleted (Explorer's
+    /// iconcache_*.db, which Windows 10 and 11 use, and the older IconCache.db), Explorer starts again and builds new ones.
     /// </summary>
     [RelayCommand]
     private async Task ResetIconCacheAsync()
@@ -218,16 +231,21 @@ public sealed partial class ToolsViewModel(IPageHost owner, AppServices services
             return;
         }
         if (!dialogs.Ask(Loc.Instance["Quick_IconCache"], Loc.Instance["Quick_IconCacheConfirm"], Loc.Instance["Quick_IconCacheAction"])) return;
-        var cache = Path.Combine(profile, "AppData", "Local", "IconCache.db");
+        var local = Path.Combine(profile, "AppData", "Local");
         await RunWorkAsync("reset icon cache", () => RestartExplorerCoreAsync(() =>
         {
-            // The user's own folder: deleted only through a handle that resolves to this very file (no link swapped in).
-            if (File.Exists(cache)) SafeDelete.DeleteFile(cache);
+            // The user's own folder: each file is deleted only through a handle that resolves to that very file (no link
+            // swapped in). One still open in another program stays and is named in the result, the others go.
+            var (_, skipped) = IconCache.Delete(local);
+            return skipped == 0 ? null : (Loc.Instance["Quick_IconCacheDone"] + " " + Loc.Instance.Format("Quick_IconCacheSkipped", skipped), Wpf.Ui.Controls.InfoBarSeverity.Warning);
         }, Loc.Instance["Quick_IconCacheDone"]));
     }
 
-    /// <param name="whileStopped">Runs after Explorer ended and before it starts again; an exception is shown and Explorer still starts.</param>
-    private async Task RestartExplorerCoreAsync(Action? whileStopped, string done)
+    /// <param name="whileStopped">
+    /// Runs after Explorer ended and before it starts again; an exception is shown and Explorer still starts. What it
+    /// returns, if anything, replaces <paramref name="done"/> as the result.
+    /// </param>
+    private async Task RestartExplorerCoreAsync(Func<(string Text, Wpf.Ui.Controls.InfoBarSeverity Severity)?>? whileStopped, string done)
     {
         // Only Explorer of this session: the elevated taskkill would otherwise end it for every signed-in user, and it is
         // started again only for this one.
@@ -236,11 +254,12 @@ public sealed partial class ToolsViewModel(IPageHost owner, AppServices services
         await Task.Run(() => services.Context.Processes.Run("taskkill.exe", $"/f /im explorer.exe /fi \"SESSION eq {session}\""));
         await Task.Delay(1000);
         string? failure = null;
+        (string Text, Wpf.Ui.Controls.InfoBarSeverity Severity)? result = null;
         if (whileStopped is not null)
         {
             try
             {
-                await Task.Run(whileStopped);
+                result = await Task.Run(whileStopped);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
@@ -251,6 +270,7 @@ public sealed partial class ToolsViewModel(IPageHost owner, AppServices services
         var path = DeElevatedLauncher.Open(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "explorer.exe"), null, services.Elevation);
         if (path == DeElevatedLauncher.Path.Failed) Owner.ShowResult(Loc.Instance["Quick_ExplorerManual"], Wpf.Ui.Controls.InfoBarSeverity.Warning);
         else if (failure is not null) Owner.ShowResult(Loc.Instance.Format("Result_Error", failure), Wpf.Ui.Controls.InfoBarSeverity.Error);
+        else if (result is { } r) Owner.ShowResult(r.Text, r.Severity);
         else Owner.ShowResult(done, Wpf.Ui.Controls.InfoBarSeverity.Success);
     }
 
@@ -284,6 +304,9 @@ public sealed record PriorityRow(PriorityRule Rule, string CpuText, string? IoTe
     public string Exe => Rule.Exe;
     public string Details => IoText is null ? CpuText : CpuText.Length == 0 ? IoText : $"{CpuText}, {IoText}";
 
+    /// <summary>Undocumented value and Anti-cheat, as on the tweak rows and in the confirmation.</summary>
+    public IReadOnlyList<Badge> Badges { get; init; } = [];
+
     /// <summary>What a screen reader says for the row's Remove button.</summary>
     public string RemoveLabel => Loc.Instance.Format("Prio_RemoveName", Exe);
 }
@@ -299,6 +322,9 @@ public sealed partial class QuickFixRow(QuickFix fix) : ObservableObject
     public string ActionText => Loc.Instance[$"Quick_{Fix.Id}Action"];
 
     public bool NeedsRestart => Fix.NeedsRestart;
+
+    /// <summary>Restarts the PC right away (Advanced startup): its own tag, not "Restart needed".</summary>
+    public bool RestartsNow => Fix.RestartsNow;
 
     /// <summary>Can take several minutes (chkdsk /scan): the card shows the clock line.</summary>
     public bool TakesMinutes => Fix.TakesMinutes;

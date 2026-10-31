@@ -326,6 +326,10 @@ public class DebloatServicesAppsTests
         var steam = CatalogData.Current.Apps.Apps.Single(a => a.Id == "Valve.Steam");
         Assert.True(steam.IsInstalled([new Hardware.Probes.InstalledProgram("Steam", "2.10", "Valve", false)]));
         Assert.False(steam.IsInstalled([new Hardware.Probes.InstalledProgram("Steam Link", "1", "Valve", false)]));
+        // SignalRGB (also in the list) is not the Signal messenger.
+        var signal = CatalogData.Current.Apps.Apps.Single(a => a.Id == "OpenWhisperSystems.Signal");
+        Assert.True(signal.IsInstalled([new Hardware.Probes.InstalledProgram("Signal 7.40.0", "7.40.0", "Signal Messenger, LLC", true)]));
+        Assert.False(signal.IsInstalled([new Hardware.Probes.InstalledProgram("SignalRGB", "2.4", "WhirlwindFX", false)]));
         Assert.Equal(new DateTime(2024, 5, 17), DriverInventory.ParseCimDate("20240517000000.******+000"));
     }
 

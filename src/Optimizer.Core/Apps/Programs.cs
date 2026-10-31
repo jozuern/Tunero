@@ -50,30 +50,20 @@ public static class Programs
     public static IReadOnlyList<DesktopProgram> Read(IRegistryRoots registry, bool systemComponents = false)
     {
         var list = new List<DesktopProgram>();
+        // Each entry on its own: one only the system can read leaves out that entry, not the whole list (no user hive
+        // leaves out that root).
         foreach (var (hive, path) in new[] { (Hive.Machine, Uninstall), (Hive.Machine, Uninstall32), (Hive.User, Uninstall) })
         {
-            Microsoft.Win32.RegistryKey? key;
-            try
+            ProgramOrphans.ReadEach(registry, hive, path, (key, sub) =>
             {
-                key = registry.Open(hive, path, writable: false);
-            }
-            catch (Exception ex) when (ex is InvalidOperationException or UnauthorizedAccessException or System.Security.SecurityException)
-            {
-                continue; // no user hive
-            }
-            using (key)
-            {
-                foreach (var sub in key?.GetSubKeyNames() ?? [])
-                {
-                    using var app = key!.OpenSubKey(sub);
-                    if (app is null || Read(app, sub, hive, path) is not { } p || (p.SystemComponent && !systemComponents)) continue;
-                    list.Add(p);
-                }
-            }
+                using var app = key.OpenSubKey(sub);
+                if (app is not null && Read(app, sub, hive, path) is { } p && (!p.SystemComponent || systemComponents)) list.Add(p);
+            });
         }
-        // The same program can be listed by both views; keep the entry that can be uninstalled.
+        // The same program can be listed by both views; keep the entry that can be uninstalled. A visible entry goes before
+        // a hidden one, so leaving out the system components afterwards gives the same list as a read without them.
         return list.GroupBy(p => (p.Name, p.Version), new NameVersionComparer())
-            .Select(g => g.OrderByDescending(p => p.CanUninstall).First())
+            .Select(g => g.OrderBy(p => p.SystemComponent).ThenByDescending(p => p.CanUninstall).First())
             .OrderBy(p => p.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
     }
 

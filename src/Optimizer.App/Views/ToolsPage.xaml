@@ -19,6 +19,11 @@
                                 Visibility="{Binding NeedsRestart, Converter={StaticResource BoolToVisibility}}">
                             <TextBlock Text="{l:Tr Tag_Restart}" FontSize="12" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
                         </Border>
+                        <!-- One that restarts the whole PC at once says so before the confirmation does -->
+                        <Border Style="{StaticResource TagBorder}" Margin="0,6,0,0" Background="{DynamicResource SystemFillColorCautionBackgroundBrush}"
+                                Visibility="{Binding RestartsNow, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Text="{l:Tr Tag_RestartsNow}" FontSize="12" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                        </Border>
                         <!-- The tool's report (chkdsk, reagentc) under the card that ran it -->
                         <TextBox Style="{StaticResource OutputBox}" AutomationProperties.Name="{Binding Title}" Text="{Binding Output, Mode=OneWay}" Visibility="{Binding Output, Converter={StaticResource NullToVisibility}}" />
                     </StackPanel>
@@ -161,21 +166,30 @@
                     <StackPanel Style="{StaticResource EdgeContent}">
                         <!-- Start priorities (Image File Execution Options) -->
                         <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Prio_Hint}" Margin="0,0,0,8" TextWrapping="Wrap" />
+                        <!-- The risk in its own bar, not as the last clause of the caption: the values are undocumented and anti-cheat checks them -->
+                        <ui:InfoBar Title="" Message="{l:Tr Prio_Warning}" Severity="Warning" IsClosable="False" IsOpen="True" Margin="0,0,0,8" />
+                        <!-- One field per line in a fixed order, so the layout is the same in every language -->
                         <ui:Card Padding="{StaticResource CardPadding}" Margin="{StaticResource CardRowMargin}">
                             <StackPanel>
-                                <WrapPanel>
-                                    <ui:TextBox PlaceholderText="{l:Tr Prio_ExePlaceholder}" Text="{Binding Tools.NewPriorityExe, UpdateSourceTrigger=PropertyChanged}" MinWidth="240" Margin="0,0,8,8" AutomationProperties.Name="{l:Tr Prio_ExePlaceholder}" />
-                                    <ui:Button Content="{l:Tr Prio_Browse}" Icon="{ui:SymbolIcon FolderOpen20}" Command="{Binding Tools.BrowsePriorityExeCommand}" Margin="0,0,16,8" />
-                                    <ComboBox ItemsSource="{Binding Tools.PriorityChoices}" SelectedItem="{Binding Tools.NewPriority}" DisplayMemberPath="Text" MinWidth="180" Margin="0,0,8,8" AutomationProperties.Name="{l:Tr Prio_Priority}" />
-                                    <CheckBox Content="{l:Tr Prio_LowIoOption}" IsChecked="{Binding Tools.NewPriorityLowIo}" Margin="0,0,8,8" VerticalAlignment="Center" />
-                                    <CheckBox Content="{l:Tr Prio_LowMemoryOption}" IsChecked="{Binding Tools.NewPriorityLowMemory}" Margin="0,0,8,8" VerticalAlignment="Center"
-                                              ToolTip="{l:Tr Prio_LowMemoryHint}" />
-                                    <ui:Button Content="{l:Tr Prio_Add}" Icon="{ui:SymbolIcon Add20}" Command="{Binding Tools.AddPriorityRuleCommand}" Margin="0,0,0,8" />
+                                <DockPanel>
+                                    <ui:Button DockPanel.Dock="Right" Content="{l:Tr Prio_Browse}" Icon="{ui:SymbolIcon FolderOpen20}" Command="{Binding Tools.BrowsePriorityExeCommand}" Margin="8,0,0,0" />
+                                    <ui:TextBox PlaceholderText="{l:Tr Prio_ExePlaceholder}" Text="{Binding Tools.NewPriorityExe, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="{l:Tr Prio_ExePlaceholder}" />
+                                </DockPanel>
+                                <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Prio_Priority}" Margin="0,12,0,4" />
+                                <ComboBox ItemsSource="{Binding Tools.PriorityChoices}" SelectedItem="{Binding Tools.NewPriority}" DisplayMemberPath="Text" MinWidth="200" HorizontalAlignment="Left"
+                                          AutomationProperties.Name="{l:Tr Prio_Priority}" />
+                                <WrapPanel Margin="0,12,0,0">
+                                    <CheckBox Content="{l:Tr Prio_LowIoOption}" IsChecked="{Binding Tools.NewPriorityLowIo}" Margin="0,0,24,0" />
+                                    <CheckBox Content="{l:Tr Prio_LowMemoryOption}" IsChecked="{Binding Tools.NewPriorityLowMemory}" ToolTip="{l:Tr Prio_LowMemoryHint}" />
                                 </WrapPanel>
-                                <ui:TextBlock Style="{StaticResource Caption}" Foreground="{DynamicResource SystemFillColorCautionBrush}" Text="{Binding Tools.PriorityNote}"
+                                <ui:TextBlock Style="{StaticResource Caption}" Foreground="{DynamicResource SystemFillColorCautionBrush}" Text="{Binding Tools.PriorityNote}" Margin="0,12,0,0"
                                               Visibility="{Binding Tools.PriorityNote, Converter={StaticResource NullToVisibility}}" />
+                                <ui:Button Content="{l:Tr Prio_Add}" Icon="{ui:SymbolIcon Add20}" Appearance="Primary" Command="{Binding Tools.AddPriorityRuleCommand}" HorizontalAlignment="Right" Margin="0,12,0,0" />
                             </StackPanel>
                         </ui:Card>
+                        <!-- No rules yet: said in words, so an empty area does not look like a list that failed to load -->
+                        <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Prio_None}" Margin="0,8,0,0"
+                                      Visibility="{Binding Tools.NoPriorityRules, Converter={StaticResource BoolToVisibility}}" />
                         <v:ItemList ItemsSource="{Binding Tools.PriorityRules}">
                             <v:ItemList.ItemTemplate>
                                 <DataTemplate>
@@ -184,6 +198,13 @@
                                             <StackPanel>
                                                 <ui:TextBlock FontTypography="BodyStrong" Text="{Binding Exe}" />
                                                 <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding Details}" Margin="0,4,0,0" />
+                                                <v:ItemList ItemsSource="{Binding Badges}" ItemTemplate="{StaticResource BadgeTag}" Focusable="False" Margin="0,4,0,0">
+                                                    <v:ItemList.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <WrapPanel />
+                                                        </ItemsPanelTemplate>
+                                                    </v:ItemList.ItemsPanel>
+                                                </v:ItemList>
                                             </StackPanel>
                                         </ui:CardControl.Header>
                                         <ui:Button Content="{l:Tr Prio_Remove}" Icon="{ui:SymbolIcon Delete20}" CommandParameter="{Binding}" AutomationProperties.Name="{Binding RemoveLabel}"

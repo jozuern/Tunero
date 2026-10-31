@@ -207,7 +207,7 @@ public class ProcessRunnerFlowTests
         }
     }
 
-    /// <summary>Stop during a capture: a cancellation, no stats, and the exe is not held open afterwards.</summary>
+    /// <summary>Stop during a capture: a cancellation, no stats, no partial CSV left, and the exe is not held open afterwards.</summary>
     [Fact]
     public async Task AStoppedCaptureKeepsNothing()
     {
@@ -215,13 +215,25 @@ public class ProcessRunnerFlowTests
         try
         {
             var exe = PresentMon.Extract(Path.Combine(folder, "tools"));
-            var processes = new FakeProcesses { Hangs = true };
+            var captures = Path.Combine(folder, "captures");
+            var processes = new FakeProcesses
+            {
+                Hangs = true,
+                // PresentMon writes its CSV while it records: a stopped run leaves part of one.
+                StreamHandler = (_, arguments) =>
+                {
+                    File.WriteAllLines(arguments.Split("--output_file \"")[1].Split('"')[0], ["Application,ProcessID,PresentMode,MsBetweenPresents", "game.exe,1,Hardware: Independent Flip,10"]);
+                    return (0, []);
+                },
+            };
             using var stop = new CancellationTokenSource();
-            var capture = PresentMon.CaptureAsync(processes, exe, "game.exe", 30, Path.Combine(folder, "captures"), null, stop.Token);
+            var capture = PresentMon.CaptureAsync(processes, exe, "game.exe", 30, captures, null, stop.Token);
             await processes.Hanging.WaitAsync(TimeSpan.FromSeconds(10));
+            Assert.Single(Directory.GetFiles(captures));
             stop.Cancel();
             await Assert.ThrowsAnyAsync<OperationCanceledException>(() => capture);
             Assert.Equal(1, processes.Ended);
+            Assert.Empty(Directory.GetFiles(captures));
             using (File.Open(exe, FileMode.Open, FileAccess.Read, FileShare.None))
             {
             }
