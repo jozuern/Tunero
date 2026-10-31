@@ -213,8 +213,12 @@ public sealed partial class HealthViewModel(IPageHost owner, IDialogs dialogs, A
         {
             // sfc and dism print how far they are; other lines (the phase) keep the last percentage.
             if (ToolProgress.Percent(l) is { } percent) banner?.Report(percent, l);
-            OutputLines.Add(lines, l);
-            ToolOutput = string.Join("\n", lines);
+            // Locked: in the app this runs on the window's thread, without a context (tests) on the thread pool.
+            lock (lines)
+            {
+                OutputLines.Add(lines, l);
+                ToolOutput = string.Join("\n", lines);
+            }
         });
         try
         {
@@ -225,8 +229,11 @@ public sealed partial class HealthViewModel(IPageHost owner, IDialogs dialogs, A
                 try
                 {
                     var code = await run(ToolRunner, progress, token);
-                    lines.Add(Loc.Instance.Format("Health_ExitCode", code));
-                    ToolOutput = string.Join("\n", lines);
+                    lock (lines)
+                    {
+                        lines.Add(Loc.Instance.Format("Health_ExitCode", code));
+                        ToolOutput = string.Join("\n", lines);
+                    }
                 }
                 catch (OperationCanceledException) when (token.IsCancellationRequested)
                 {

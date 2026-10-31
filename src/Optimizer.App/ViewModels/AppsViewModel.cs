@@ -788,9 +788,13 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
         WorkProgress.Scope? banner = null;
         var progress = new Progress<string>(l =>
         {
-            lines.Add(l);
-            if (lines.Count > 40) lines.RemoveAt(0);
-            ManagerOutput = string.Join("\n", lines);
+            // Locked: in the app this runs on the window's thread, without a context (tests) on the thread pool.
+            lock (lines)
+            {
+                lines.Add(l);
+                if (lines.Count > 40) lines.RemoveAt(0);
+                ManagerOutput = string.Join("\n", lines);
+            }
             // "(2/5) Found ..." as winget starts each package; without it the bar keeps moving.
             if (ToolProgress.WingetPackage(l) is var (done, total)) banner?.Step(done, total, l[(l.IndexOf(')') + 1)..].Trim());
         });
@@ -802,8 +806,11 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
             {
                 banner = work;
                 var results = await PackageRuns.RunAllAsync(plan, progress);
-                lines.AddRange(results);
-                ManagerOutput = string.Join("\n", lines);
+                lock (lines)
+                {
+                    lines.AddRange(results);
+                    ManagerOutput = string.Join("\n", lines);
+                }
             }, slow: true);
         }
         finally
@@ -963,9 +970,13 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
         var lines = new List<string>();
         var progress = new Progress<string>(l =>
         {
-            lines.Add(l);
-            if (lines.Count > 40) lines.RemoveAt(0);
-            ManagerOutput = string.Join("\n", lines);
+            // Locked: in the app this runs on the window's thread, without a context (tests) on the thread pool.
+            lock (lines)
+            {
+                lines.Add(l);
+                if (lines.Count > 40) lines.RemoveAt(0);
+                ManagerOutput = string.Join("\n", lines);
+            }
         });
         try
         {
@@ -1130,9 +1141,13 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
         var lines = new List<string>();
         var progress = new Progress<string>(l =>
         {
-            lines.Add(l);
-            if (lines.Count > 40) lines.RemoveAt(0);
-            Output = string.Join("\n", lines);
+            // Locked: in the app this runs on the window's thread, without a context (tests) on the thread pool.
+            lock (lines)
+            {
+                lines.Add(l);
+                if (lines.Count > 40) lines.RemoveAt(0);
+                Output = string.Join("\n", lines);
+            }
         });
         try
         {
@@ -1167,9 +1182,13 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
         var lines = new List<string>();
         var progress = new Progress<string>(l =>
         {
-            lines.Add(l);
-            if (lines.Count > 40) lines.RemoveAt(0);
-            Output = string.Join("\n", lines);
+            // Locked: in the app this runs on the window's thread, without a context (tests) on the thread pool.
+            lock (lines)
+            {
+                lines.Add(l);
+                if (lines.Count > 40) lines.RemoveAt(0);
+                Output = string.Join("\n", lines);
+            }
         });
         try
         {
@@ -1264,9 +1283,13 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
         var lines = new List<string>();
         var progress = new Progress<string>(l =>
         {
-            lines.Add(l);
-            if (lines.Count > 40) lines.RemoveAt(0);
-            SearchOutput = string.Join("\n", lines);
+            // Locked: in the app this runs on the window's thread, without a context (tests) on the thread pool.
+            lock (lines)
+            {
+                lines.Add(l);
+                if (lines.Count > 40) lines.RemoveAt(0);
+                SearchOutput = string.Join("\n", lines);
+            }
         });
         try
         {
