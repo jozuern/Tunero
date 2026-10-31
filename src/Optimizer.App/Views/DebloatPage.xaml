@@ -49,7 +49,7 @@
                                    Visibility="{Binding Debloat.CameBackText, Converter={StaticResource NullToVisibility}}" />
                         <!-- Several apps in one go: one confirmation names each of them. Outside the scrolling list and always there,
                              as on Cleanup, so the action is in view wherever an app is ticked and the list does not move. -->
-                        <ui:Card Padding="16,12" Margin="0,12,0,0">
+                        <ui:Card Padding="{StaticResource CardPadding}" Margin="0,12,0,0">
                             <DockPanel>
                                 <ui:Button DockPanel.Dock="Right" Appearance="Primary" Content="{l:Tr Debloat_RemoveSelected}" Icon="{ui:SymbolIcon Delete20}" Margin="16,0,0,0"
                                            Command="{Binding Debloat.RemoveSelectedCommand}" IsEnabled="{Binding Debloat.HasSelection}" VerticalAlignment="Center" />
@@ -62,7 +62,7 @@
                 <ScrollViewer Grid.Row="1" Style="{StaticResource EdgeScroll}">
                     <StackPanel Style="{StaticResource EdgeContent}">
                         <ui:ProgressRing IsIndeterminate="True" Width="24" Height="24" HorizontalAlignment="Left" Margin="0,16,0,0" Visibility="{Binding Debloat.IsLoading, Converter={StaticResource BoolToVisibility}}" />
-                        <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Debloat_Empty}" Margin="0,16,0,0" Visibility="{Binding Debloat.ItemsEmpty, Converter={StaticResource BoolToVisibility}}" />
+                        <ui:TextBlock Style="{StaticResource EmptyState}" Text="{l:Tr Debloat_Empty}" Margin="0,16,0,0" Visibility="{Binding Debloat.ItemsEmpty, Converter={StaticResource BoolToVisibility}}" />
 
                         <!-- No icon per row: it only repeated the group, which the header now names -->
                         <v:ItemList ItemsSource="{Binding Source={StaticResource GroupedApps}}">
@@ -128,9 +128,9 @@
                                     <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Debloat_UnreviewedHint}" Margin="0,4,0,0" />
                                 </StackPanel>
                             </ui:CardControl.Header>
-                            <ui:ToggleSwitch AutomationProperties.Name="{l:Tr Debloat_UnreviewedSwitch}" IsChecked="{Binding Debloat.ShowUnreviewed}" />
+                            <ui:ToggleSwitch Style="{StaticResource SettingSwitch}" AutomationProperties.Name="{l:Tr Debloat_UnreviewedSwitch}" IsChecked="{Binding Debloat.ShowUnreviewed}" />
                         </ui:CardControl>
-                        <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Debloat_UnreviewedEmpty}" Margin="0,8,0,0"
+                        <ui:TextBlock Style="{StaticResource EmptyState}" Text="{l:Tr Debloat_UnreviewedEmpty}" Margin="0,8,0,0"
                                       Visibility="{Binding Debloat.UnreviewedEmpty, Converter={StaticResource BoolToVisibility}}" />
                         <v:ItemList ItemsSource="{Binding Debloat.Unreviewed}" Margin="0,8,0,0">
                             <v:ItemList.ItemTemplate>
@@ -194,7 +194,7 @@
 
                         <!-- Removed apps -->
                         <ui:TextBlock Style="{StaticResource SectionHeader}" Text="{l:Tr Debloat_RemovedTitle}" />
-                        <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Debloat_RemovedEmpty}" Visibility="{Binding Debloat.RemovedEmpty, Converter={StaticResource BoolToVisibility}}" />
+                        <ui:TextBlock Style="{StaticResource EmptyState}" Text="{l:Tr Debloat_RemovedEmpty}" Visibility="{Binding Debloat.RemovedEmpty, Converter={StaticResource BoolToVisibility}}" />
                         <v:ItemList ItemsSource="{Binding Debloat.Removed}">
                             <v:ItemList.ItemTemplate>
                                 <DataTemplate>
@@ -241,7 +241,7 @@
                                       MinWidth="160" Margin="12,0,0,0" AutomationProperties.Name="{l:Tr Programs_Sort}" ToolTip="{l:Tr Programs_Sort}" />
                             <ui:TextBox PlaceholderText="{l:Tr Programs_Search}" AutomationProperties.Name="{l:Tr Programs_Search}" Icon="{ui:SymbolIcon Search20}" Text="{Binding Apps.ProgramSearch, UpdateSourceTrigger=PropertyChanged, Delay=200}" />
                         </DockPanel>
-                        <ui:TextBlock FontTypography="Body" Text="{l:Tr List_NoMatch}" Margin="0,0,0,8"
+                        <ui:TextBlock Style="{StaticResource EmptyState}" Text="{l:Tr List_NoMatch}" Margin="0,0,0,8"
                                       Visibility="{Binding Apps.ProgramsNoMatch, Converter={StaticResource BoolToVisibility}}" />
                         <!-- Several programs in one go: one after the other, quietly where the program offers it -->
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,8" Visibility="{Binding Apps.HasSelection, Converter={StaticResource BoolToVisibility}}">
@@ -249,7 +249,7 @@
                                        IsEnabled="{Binding Apps.IsQueueRunning, Converter={StaticResource InverseBool}}" />
                             <CheckBox Content="{l:Tr Programs_Quiet}" IsChecked="{Binding Apps.QuietUninstall}" Margin="16,0,0,0" VerticalAlignment="Center" ToolTip="{l:Tr Programs_QuietHint}" />
                         </StackPanel>
-                        <ui:Card Padding="16,12" Margin="0,0,0,8" Visibility="{Binding Apps.IsQueueRunning, Converter={StaticResource BoolToVisibility}}">
+                        <ui:Card Padding="{StaticResource CardPadding}" Margin="0,0,0,8" Visibility="{Binding Apps.IsQueueRunning, Converter={StaticResource BoolToVisibility}}">
                             <DockPanel>
                                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
                                     <ui:Button Content="{l:Tr Programs_QueueContinue}" Command="{Binding Apps.ContinueQueueCommand}" Margin="0,0,8,0" ToolTip="{l:Tr Programs_QueueContinueHint}"
@@ -265,7 +265,7 @@
                             </DockPanel>
                         </ui:Card>
                         <!-- What uninstalled programs left behind: reviewed here, then moved to the Recycle Bin -->
-                        <ui:Card Padding="16,12" Margin="0,0,0,8" Visibility="{Binding Apps.Leftovers.Count, Converter={StaticResource CountToVisibility}}">
+                        <ui:Card Padding="{StaticResource CardPadding}" Margin="0,0,0,8" Visibility="{Binding Apps.Leftovers.Count, Converter={StaticResource CountToVisibility}}">
                             <StackPanel>
                                 <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Leftovers_Title}" />
                                 <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Leftovers_Hint}" TextWrapping="Wrap" Margin="0,4,0,8" />

@@ -113,7 +113,7 @@
                             <ColumnDefinition Width="*" MaxWidth="1000" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <ui:Card Padding="16,12" DataContext="{Binding Runner.Work}">
+                        <ui:Card Padding="{StaticResource CardPadding}" DataContext="{Binding Runner.Work}">
                             <DockPanel>
                                 <ui:Button DockPanel.Dock="Right" Content="{l:Tr Common_Stop}" Icon="{ui:SymbolIcon Stop20}" Command="{Binding StopCommand}" VerticalAlignment="Center" Margin="16,0,0,0"
                                            Visibility="{Binding CanStop, Converter={StaticResource BoolToVisibility}}" />
@@ -162,7 +162,7 @@
                 <Border Background="{DynamicResource SolidBackgroundFillColorTertiaryBrush}" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
                         BorderThickness="1" CornerRadius="8" Padding="4" Margin="0,4,0,0">
                     <StackPanel>
-                        <ui:TextBlock FontTypography="Body" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{l:Tr Search_Empty}" Margin="12,8"
+                        <ui:TextBlock Style="{StaticResource EmptyState}" Text="{l:Tr Search_Empty}" Margin="12,8"
                                       Visibility="{Binding SearchEmpty, Converter={StaticResource BoolToVisibility}}" />
                         <ListBox x:Name="SearchList" ItemsSource="{Binding SearchResults}" MaxHeight="440" BorderThickness="0" Background="Transparent"
                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled" PreviewKeyDown="SearchList_PreviewKeyDown" MouseLeftButtonUp="SearchList_MouseLeftButtonUp"

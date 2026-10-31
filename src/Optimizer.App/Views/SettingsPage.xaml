@@ -46,7 +46,7 @@
                         <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding StartMenuHint}" Margin="0,4,0,0" />
                     </StackPanel>
                 </ui:CardControl.Header>
-                <ui:ToggleSwitch OnContent="{l:Tr Feature_On}" OffContent="{l:Tr Feature_Off}" AutomationProperties.Name="{l:Tr StartMenu_Setting}" IsChecked="{Binding StartMenuEntry}" IsEnabled="{Binding CanAddToStartMenu}" />
+                <ui:ToggleSwitch Style="{StaticResource SettingSwitch}" AutomationProperties.Name="{l:Tr StartMenu_Setting}" IsChecked="{Binding StartMenuEntry}" IsEnabled="{Binding CanAddToStartMenu}" />
             </ui:CardControl>
 
             <ui:CardControl Padding="{StaticResource CardPadding}" Margin="{StaticResource CardRowMargin}">
@@ -59,7 +59,7 @@
                         <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Settings_TechnicalHint}" Margin="0,4,0,0" />
                     </StackPanel>
                 </ui:CardControl.Header>
-                <ui:ToggleSwitch OnContent="{l:Tr Feature_On}" OffContent="{l:Tr Feature_Off}" AutomationProperties.Name="{l:Tr Settings_Technical}" IsChecked="{Binding ShowTechnical}" />
+                <ui:ToggleSwitch Style="{StaticResource SettingSwitch}" AutomationProperties.Name="{l:Tr Settings_Technical}" IsChecked="{Binding ShowTechnical}" />
             </ui:CardControl>
 
             <!-- The section names what Expert mode is about; the card itself is called Expert mode -->
@@ -74,7 +74,7 @@
                         <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Settings_ExpertHint}" Margin="0,4,0,0" />
                     </StackPanel>
                 </ui:CardControl.Header>
-                <ui:ToggleSwitch OnContent="{l:Tr Feature_On}" OffContent="{l:Tr Feature_Off}" AutomationProperties.Name="{l:Tr Settings_Expert}" IsChecked="{Binding ExpertMode}" />
+                <ui:ToggleSwitch Style="{StaticResource SettingSwitch}" AutomationProperties.Name="{l:Tr Settings_Expert}" IsChecked="{Binding ExpertMode}" />
             </ui:CardControl>
             <!-- A downloaded, signed copy that was not installed: the first start's setup again (MainViewModel.Setup) -->
             <ui:CardControl Padding="{StaticResource CardPadding}" Margin="0,4,0,0" Visibility="{Binding CanInstall, Converter={StaticResource BoolToVisibility}}">
@@ -100,7 +100,7 @@
                         <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding ReapplyHint}" Margin="0,4,0,0" />
                     </StackPanel>
                 </ui:CardControl.Header>
-                <ui:ToggleSwitch OnContent="{l:Tr Feature_On}" OffContent="{l:Tr Feature_Off}" AutomationProperties.Name="{l:Tr Settings_Reapply}" IsChecked="{Binding ReapplyOn}">
+                <ui:ToggleSwitch Style="{StaticResource SettingSwitch}" AutomationProperties.Name="{l:Tr Settings_Reapply}" IsChecked="{Binding ReapplyOn}">
                     <ui:ToggleSwitch.IsEnabled>
                         <MultiBinding Converter="{StaticResource AllTrue}">
                             <Binding Path="ReapplyAvailable" />
@@ -112,7 +112,7 @@
 
             <ui:TextBlock Style="{StaticResource SectionHeader}" Text="VirusTotal" />
             <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Vt_SettingsHint}" Margin="0,0,0,8" />
-            <ui:Card Padding="16,12">
+            <ui:Card Padding="{StaticResource CardPadding}">
                 <StackPanel>
                     <WrapPanel>
                         <ui:PasswordBox x:Name="VtKey" PasswordChanged="VtKey_PasswordChanged" PlaceholderText="{l:Tr Vt_KeyPlaceholder}" AutomationProperties.Name="{l:Tr Vt_KeyPlaceholder}" MinWidth="320" Margin="0,0,8,0" />
@@ -131,7 +131,7 @@
             </ui:Card>
 
             <ui:TextBlock Style="{StaticResource SectionHeader}" Text="{l:Tr Settings_Diagnostics}" />
-            <ui:Card Padding="16,12">
+            <ui:Card Padding="{StaticResource CardPadding}">
                 <StackPanel>
                     <ui:TextBlock FontTypography="Body" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{l:Tr Settings_Logs}" />
                     <DockPanel Margin="0,4,0,8">
@@ -158,7 +158,7 @@
             <ui:Card Padding="{StaticResource CardPadding}">
                 <StackPanel>
                     <DockPanel>
-                        <ui:ToggleSwitch OnContent="{l:Tr Feature_On}" OffContent="{l:Tr Feature_Off}" DockPanel.Dock="Right" AutomationProperties.Name="{l:Tr Update_AtStart}" IsChecked="{Binding CheckForUpdates}" VerticalAlignment="Center" Margin="16,0,0,0" />
+                        <ui:ToggleSwitch Style="{StaticResource SettingSwitch}" DockPanel.Dock="Right" AutomationProperties.Name="{l:Tr Update_AtStart}" IsChecked="{Binding CheckForUpdates}" VerticalAlignment="Center" Margin="16,0,0,0" />
                         <ui:SymbolIcon Symbol="ArrowSync20" FontSize="24" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" Margin="0,0,16,0" VerticalAlignment="Center" />
                         <StackPanel>
                             <ui:TextBlock FontTypography="Body" Text="{l:Tr Update_AtStart}" />
@@ -191,7 +191,7 @@
             </ui:CardControl>
 
             <ui:TextBlock Style="{StaticResource SectionHeader}" Text="{l:Tr Settings_About}" />
-            <ui:Card Padding="16,12">
+            <ui:Card Padding="{StaticResource CardPadding}">
                 <StackPanel>
                     <ui:TextBlock FontTypography="Body" Text="{Binding AboutText}" TextWrapping="Wrap" />
                     <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr About_License}" Margin="0,4,0,0" />

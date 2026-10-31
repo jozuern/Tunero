@@ -41,7 +41,7 @@
 
         <!-- One card above the list, laid out like the Tweaks page: what to look for (search, and on Advanced the kind), the
              filters, then below a line the counts and under them the actions. -->
-        <ui:Card Grid.Row="2" Padding="16,12" Margin="0,0,0,8">
+        <ui:Card Grid.Row="2" Padding="{StaticResource CardPadding}" Margin="0,0,0,8">
             <StackPanel>
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -99,7 +99,7 @@
                 <ui:ProgressRing IsIndeterminate="True" Width="16" Height="16" Margin="0,0,8,0" />
                 <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Startup_Loading}" VerticalAlignment="Center" />
             </StackPanel>
-            <ui:TextBlock FontTypography="Body" Text="{l:Tr List_NoMatch}" Margin="0,0,0,8"
+            <ui:TextBlock Style="{StaticResource EmptyState}" Text="{l:Tr List_NoMatch}" Margin="0,0,0,8"
                           Visibility="{Binding Startup.NoMatch, Converter={StaticResource BoolToVisibility}}" />
             <!-- Services and tasks also start with Windows, so they are listed here; their own page explains them -->
             <WrapPanel Margin="0,0,0,8" Visibility="{Binding Startup.ShowServicesHint, Converter={StaticResource BoolToVisibility}}">

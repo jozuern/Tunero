@@ -26,7 +26,7 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-                    <ui:Card Padding="16,12" Margin="0,0,0,8">
+                    <ui:Card Padding="{StaticResource CardPadding}" Margin="0,0,0,8">
                         <StackPanel>
                             <WrapPanel>
                                 <ui:TextBox PlaceholderText="{l:Tr Svc_Search}" AutomationProperties.Name="{l:Tr Svc_Search}" Text="{Binding ServicesPage.Search, UpdateSourceTrigger=PropertyChanged, Delay=200}" MinWidth="280" Margin="0,0,16,0"
@@ -34,7 +34,7 @@
                                 <ui:ToggleSwitch Content="{l:Tr Svc_ShowWindows}" IsChecked="{Binding ServicesPage.ShowWindowsServices}" />
                             </WrapPanel>
                             <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Svc_Rules}" Margin="0,8,0,0" />
-                            <ui:TextBlock FontTypography="Body" Text="{l:Tr List_NoMatch}" Margin="0,8,0,0"
+                            <ui:TextBlock Style="{StaticResource EmptyState}" Text="{l:Tr List_NoMatch}" Margin="0,8,0,0"
                                           Visibility="{Binding ServicesPage.RowsNoMatch, Converter={StaticResource BoolToVisibility}}" />
                             <StackPanel Orientation="Horizontal" Margin="0,8,0,0" Visibility="{Binding ServicesPage.IsLoading, Converter={StaticResource BoolToVisibility}}">
                                 <ui:ProgressRing IsIndeterminate="True" Width="16" Height="16" Margin="0,0,8,0" />
@@ -95,7 +95,7 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-                    <ui:Card Padding="16,12" Margin="0,0,0,8">
+                    <ui:Card Padding="{StaticResource CardPadding}" Margin="0,0,0,8">
                         <StackPanel>
                             <WrapPanel>
                                 <ui:TextBox PlaceholderText="{l:Tr Task_Search}" AutomationProperties.Name="{l:Tr Task_Search}" Text="{Binding ServicesPage.TaskSearch, UpdateSourceTrigger=PropertyChanged, Delay=200}"
@@ -107,7 +107,7 @@
                                 <ui:ProgressRing IsIndeterminate="True" Width="16" Height="16" Margin="0,0,8,0" />
                                 <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Svc_Loading}" VerticalAlignment="Center" />
                             </StackPanel>
-                            <ui:TextBlock FontTypography="Body" Text="{l:Tr List_NoMatch}" Margin="0,8,0,0"
+                            <ui:TextBlock Style="{StaticResource EmptyState}" Text="{l:Tr List_NoMatch}" Margin="0,8,0,0"
                                           Visibility="{Binding ServicesPage.TasksNoMatch, Converter={StaticResource BoolToVisibility}}" />
                         </StackPanel>
                     </ui:Card>

@@ -5,6 +5,7 @@
 ### Changed
 
 - **.NET runtime 10.0.14:** the exe carries the .NET and Windows Desktop runtime of Microsoft's out-of-band security release of October 25, 2026, which fixes a Brotli decoder flaw ([release notes](https://github.com/dotnet/core/blob/main/release-notes/10.0/10.0.14/10.0.14.md)), instead of 10.0.13.
+- **Consistent pages:** empty lists say so the same way on every page, switches for settings show On or Off everywhere (also on Remove apps and in the install media's Expert options), and cards share one padding.
 - **Restore point question:** shorter buttons ("Turn on", "Continue without it") on one line at one height; dialog buttons always share their height.
 - **Details pane:** text keeps clear of the scroll bar, the impact shows its number once, registry paths keep the line spacing, and the "already set" note reads clearly.
 - **Changes:** the Move to another PC card has its buttons at the top right and the export options in a row below. **Startup** names the total once ("Showing 4 of 51. 16 are turned off."), and German reload buttons say "Neu laden" on every page.

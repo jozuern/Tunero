@@ -21,7 +21,7 @@
             <!-- One card for everything above the list. First row: search (it takes the rest) and what to show. Below a
                  divider: the counts and the two links on the left, the buttons on the right, both centered on one line. The
                  profile is a setting of the whole app, chosen on the overview: here it is named, with the way there. -->
-            <ui:Card Padding="16,12" Margin="0,0,0,8">
+            <ui:Card Padding="{StaticResource CardPadding}" Margin="0,0,0,8">
                 <StackPanel>
                     <!-- Narrow (the details pane open): the filters go under the search box (code-behind) -->
                     <Grid x:Name="FilterRow" SizeChanged="FilterRow_SizeChanged">
@@ -89,7 +89,7 @@
                     </StackPanel>
                 </StackPanel>
             </ui:Card>
-            <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Empty_List}" Visibility="{Binding Tweaks.Count, Converter={StaticResource EmptyToVisibility}}" />
+            <ui:TextBlock Style="{StaticResource EmptyState}" Text="{l:Tr Empty_List}" Visibility="{Binding Tweaks.Count, Converter={StaticResource EmptyToVisibility}}" />
         </StackPanel>
         <!-- One list for the group headings and the tweaks of the open groups, so only the cards in view are built. The
              tweaks are indented under their heading. -->

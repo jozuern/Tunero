@@ -20,7 +20,7 @@
                 </StackPanel>
             </DockPanel>
             <!-- What was checked and how it came out: the page says that much even when nothing needs a change -->
-            <ui:Card Padding="16,12" Margin="0,0,0,8" Visibility="{Binding AdvisorSummaryTitle, Converter={StaticResource NullToVisibility}}">
+            <ui:Card Padding="{StaticResource CardPadding}" Margin="0,0,0,8" Visibility="{Binding AdvisorSummaryTitle, Converter={StaticResource NullToVisibility}}">
                 <DockPanel>
                     <!-- 24 + 14 px: the title starts where the titles of the cards below start -->
                     <Grid DockPanel.Dock="Left" Width="24" Margin="0,0,14,0" VerticalAlignment="Center">
@@ -36,7 +36,7 @@
                 </DockPanel>
             </ui:Card>
             <!-- Only without the summary card: with it, the card names the passed checks and the switch -->
-            <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Empty_List}" Visibility="{Binding AdvisorEmpty, Converter={StaticResource BoolToVisibility}}" />
+            <ui:TextBlock Style="{StaticResource EmptyState}" Text="{l:Tr Empty_List}" Visibility="{Binding AdvisorEmpty, Converter={StaticResource BoolToVisibility}}" />
         </StackPanel>
         <v:ItemList Grid.Row="1" Style="{StaticResource VirtualCardList}" ItemsSource="{Binding AdvisorItems}" ItemTemplate="{StaticResource FindingRow}" />
     </Grid>

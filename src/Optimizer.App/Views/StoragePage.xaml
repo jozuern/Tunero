@@ -161,7 +161,9 @@
                                 <RowDefinition x:Name="GapRow" Height="16" />
                                 <RowDefinition x:Name="MapRow" Height="Auto" />
                             </Grid.RowDefinitions>
-                            <!-- The folder tree as a flat list: only expanded folders become rows (a drive has millions of entries) -->
+                            <!-- The folder tree as a flat list: only expanded folders become rows (a drive has millions of entries).
+                                 No side padding: the rows' hover and selection highlights come nearer the card's edges than
+                                 CardPadding allows; the header and the list set their own insets. -->
                             <ui:Card x:Name="ListCard" Padding="0,8" VerticalAlignment="Stretch" VerticalContentAlignment="Stretch">
                                 <DockPanel>
                                     <Grid DockPanel.Dock="Top" Margin="16,0,28,4">
@@ -297,7 +299,8 @@
                     <StackPanel Style="{StaticResource EdgeContent}">
                         <StackPanel Visibility="{Binding Storage.HasResult, Converter={StaticResource BoolToVisibility}}">
                             <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Storage_TypesHint}" Margin="0,0,0,8" />
-                            <!-- Groups by size; a group opens into its extensions (rows exist only for opened groups) -->
+                            <!-- Groups by size; a group opens into its extensions (rows exist only for opened groups). No side
+                                 padding, as in the folder list: the header and the list set their own insets. -->
                             <ui:Card Padding="0,8" Margin="0,0,0,8">
                                 <StackPanel>
                                     <Grid Margin="16,0,16,4">

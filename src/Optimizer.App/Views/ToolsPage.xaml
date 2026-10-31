@@ -76,7 +76,7 @@
 
                         <ui:TextBlock Style="{StaticResource SectionHeader}" Text="{l:Tr Quick_GroupRepair}" />
                         <!-- System files (sfc, DISM): commands of the Health view model -->
-                        <ui:Card Padding="16,12" Margin="{StaticResource CardRowMargin}">
+                        <ui:Card Padding="{StaticResource CardPadding}" Margin="{StaticResource CardRowMargin}">
                             <StackPanel>
                                 <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Health_SystemFiles}" />
                                 <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Health_SystemFilesHint}" Margin="0,4,0,0" />
@@ -146,7 +146,7 @@
                                                               Visibility="{Binding Note, Converter={StaticResource NullToVisibility}}" />
                                             </StackPanel>
                                         </ui:CardControl.Header>
-                                        <ui:ToggleSwitch AutomationProperties.Name="{Binding Title}" IsChecked="{Binding SwitchState, Mode=TwoWay}" OnContent="{l:Tr Feature_On}" OffContent="{l:Tr Feature_Off}">
+                                        <ui:ToggleSwitch AutomationProperties.Name="{Binding Title}" IsChecked="{Binding SwitchState, Mode=TwoWay}" Style="{StaticResource SettingSwitch}">
                                             <ui:ToggleSwitch.IsEnabled>
                                                 <MultiBinding Converter="{StaticResource AllTrue}">
                                                     <Binding Path="CanToggle" />
@@ -189,7 +189,7 @@
                             </StackPanel>
                         </ui:Card>
                         <!-- No rules yet: said in words, so an empty area does not look like a list that failed to load -->
-                        <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Prio_None}" Margin="0,8,0,0"
+                        <ui:TextBlock Style="{StaticResource EmptyState}" Text="{l:Tr Prio_None}" Margin="0,8,0,0"
                                       Visibility="{Binding Tools.NoPriorityRules, Converter={StaticResource BoolToVisibility}}" />
                         <v:ItemList ItemsSource="{Binding Tools.PriorityRules}">
                             <v:ItemList.ItemTemplate>

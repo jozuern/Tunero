@@ -63,6 +63,7 @@
                 </v:ItemList.ItemsPanel>
                 <v:ItemList.ItemTemplate>
                     <DataTemplate>
+                        <!-- A tile, not a row: the same 16 px on every side (XamlRulesTests allow list) -->
                         <ui:Card Padding="16" Margin="0,0,8,8" VerticalAlignment="Stretch" VerticalContentAlignment="Top">
                             <DockPanel>
                                 <ui:SymbolIcon DockPanel.Dock="Left" Symbol="{Binding Icon}" FontSize="20" VerticalAlignment="Top" Margin="0,2,12,0"
@@ -83,7 +84,7 @@
             <v:ItemList ItemsSource="{Binding HardwareSections}">
                 <v:ItemList.ItemTemplate>
                     <DataTemplate>
-                        <ui:Card Padding="16,12" Margin="0,0,0,12">
+                        <ui:Card Padding="{StaticResource CardPadding}" Margin="0,0,0,12">
                             <StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                                     <ui:SymbolIcon Symbol="{Binding Icon}" FontSize="20" Margin="0,0,12,0" VerticalAlignment="Center"

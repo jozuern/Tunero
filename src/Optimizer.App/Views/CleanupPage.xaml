@@ -22,7 +22,7 @@
             <ui:ProgressRing IsIndeterminate="True" Width="24" Height="24" HorizontalAlignment="Left" Margin="0,0,0,8" Visibility="{Binding Cleanup.IsLoading, Converter={StaticResource BoolToVisibility}}" />
 
             <!-- Total and the button above the list, so they stay in view without scrolling past every category -->
-            <ui:Card Padding="16,12" Margin="0,0,0,8">
+            <ui:Card Padding="{StaticResource CardPadding}" Margin="0,0,0,8">
                 <DockPanel>
                     <ui:Button DockPanel.Dock="Right" Appearance="Primary" Content="{l:Tr Cleanup_Clean}" Icon="{ui:SymbolIcon Broom20}" Command="{Binding Cleanup.CleanCommand}"
                                IsEnabled="{Binding Cleanup.IsWorking, Converter={StaticResource InverseBool}}" />
@@ -69,7 +69,7 @@
                 </v:ItemList.ItemTemplate>
             </v:ItemList>
 
-            <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding Cleanup.EmptyText}" Margin="0,4,0,0" TextWrapping="Wrap"
+            <ui:TextBlock Style="{StaticResource EmptyState}" Text="{Binding Cleanup.EmptyText}" Margin="0,4,0,0"
                           Visibility="{Binding Cleanup.EmptyText, Converter={StaticResource NullToVisibility}}" />
             <ui:TextBlock Style="{StaticResource SectionHeader}" Text="{l:Tr Cleanup_More}" />
             <ui:CardControl Padding="{StaticResource CardPadding}" Margin="{StaticResource CardRowMargin}">

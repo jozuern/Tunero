@@ -16,7 +16,7 @@
                            Visibility="{Binding ChangesEmpty, Converter={StaticResource InverseBoolToVisibility}}" />
                 <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Changes_Backups}" VerticalAlignment="Center" />
             </DockPanel>
-            <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Changes_Empty}" Visibility="{Binding ChangesEmpty, Converter={StaticResource BoolToVisibility}}" />
+            <ui:TextBlock Style="{StaticResource EmptyState}" Text="{l:Tr Changes_Empty}" Visibility="{Binding ChangesEmpty, Converter={StaticResource BoolToVisibility}}" />
             <v:ItemList ItemsSource="{Binding ChangeRecords}">
                 <v:ItemList.ItemTemplate>
                     <DataTemplate>
@@ -48,7 +48,7 @@
 
             <!-- Only once something ran: an empty log would only repeat the empty list above -->
             <ui:TextBlock Style="{StaticResource SectionHeader}" Text="{l:Tr Changes_Log}" Visibility="{Binding ChangeLogEmpty, Converter={StaticResource InverseBoolToVisibility}}" />
-            <ui:Card Padding="16,12" Visibility="{Binding ChangeLogEmpty, Converter={StaticResource InverseBoolToVisibility}}">
+            <ui:Card Padding="{StaticResource CardPadding}" Visibility="{Binding ChangeLogEmpty, Converter={StaticResource InverseBoolToVisibility}}">
                 <v:ItemList ItemsSource="{Binding ChangeLog}">
                     <v:ItemList.ItemTemplate>
                         <DataTemplate>

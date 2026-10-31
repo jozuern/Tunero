@@ -14,7 +14,7 @@
             <!-- Throttle check -->
             <ui:TextBlock Style="{StaticResource SectionHeader}" Text="{l:Tr Throttle_Title}" Margin="0,0,0,8" />
             <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Throttle_Hint}" Margin="0,0,0,8" />
-            <ui:Card Padding="16,12">
+            <ui:Card Padding="{StaticResource CardPadding}">
                 <StackPanel>
                     <WrapPanel>
                         <!-- A visible label: a bare "120 s" could be a delay as well as the length of the check -->
@@ -34,7 +34,7 @@
             <ui:TextBlock Style="{StaticResource SectionHeader}" Text="{l:Tr Bench_Title}" />
             <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Bench_Hint}" Margin="0,0,0,4" />
 
-            <ui:Card Padding="16,12">
+            <ui:Card Padding="{StaticResource CardPadding}">
                 <StackPanel>
                     <!-- Where the measurement stands: four marks (reached ones in the accent color), "Step 2 of 4" and what to do now -->
                     <UniformGrid Rows="1" Columns="4" Width="240" HorizontalAlignment="Left" Margin="0,4,0,8">
@@ -178,7 +178,7 @@
                 <StackPanel Orientation="Horizontal">
                     <ui:Button Content="{l:Tr Sensors_InstallPawnIo}" Margin="0,0,16,0" Command="{Binding Health.InstallPawnIoCommand}"
                                Visibility="{Binding Health.CanInstallPawnIo, Converter={StaticResource BoolToVisibility}}" />
-                    <ui:ToggleSwitch AutomationProperties.Name="{l:Tr Sensors_Live}" IsChecked="{Binding Health.SensorsOn}" OnContent="{l:Tr Feature_On}" OffContent="{l:Tr Feature_Off}" />
+                    <ui:ToggleSwitch AutomationProperties.Name="{l:Tr Sensors_Live}" IsChecked="{Binding Health.SensorsOn}" Style="{StaticResource SettingSwitch}" />
                 </StackPanel>
             </ui:CardControl>
             <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding Health.SensorsStatus}" Margin="0,8,0,0"
@@ -274,7 +274,7 @@
                                                 </DataTemplate>
                                             </v:ItemList.ItemTemplate>
                                         </v:ItemList>
-                                        <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{Binding Activity.EmptyText}"
+                                        <ui:TextBlock Style="{StaticResource EmptyState}" Text="{Binding Activity.EmptyText}"
                                                       Visibility="{Binding Activity.EmptyText, Converter={StaticResource NullToVisibility}}" />
                                         <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{Binding Activity.UnavailableText}" TextWrapping="Wrap"
                                                       Visibility="{Binding Activity.UnavailableText, Converter={StaticResource NullToVisibility}}" />

@@ -10,7 +10,7 @@
             <ui:TextBlock FontTypography="Title" Text="{l:Tr Setup_Title}" />
             <ui:TextBlock FontTypography="Body" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{Binding SetupLocationText}"
                           TextWrapping="Wrap" Margin="0,8,0,24" />
-            <ui:Card Padding="16" Margin="0,0,0,4">
+            <ui:Card Padding="{StaticResource CardPadding}" Margin="0,0,0,4">
                 <CheckBox IsChecked="{Binding SetupToProgramFiles}" VerticalContentAlignment="Top" AutomationProperties.Name="{l:Tr Setup_ProgramFiles}">
                     <StackPanel Margin="4,0,0,0">
                         <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Setup_ProgramFiles}" TextWrapping="Wrap" />
@@ -18,7 +18,7 @@
                     </StackPanel>
                 </CheckBox>
             </ui:Card>
-            <ui:Card Padding="16">
+            <ui:Card Padding="{StaticResource CardPadding}">
                 <CheckBox IsChecked="{Binding SetupStartMenu}" VerticalContentAlignment="Top" AutomationProperties.Name="{l:Tr Setup_StartMenu}">
                     <StackPanel Margin="4,0,0,0">
                         <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Setup_StartMenu}" TextWrapping="Wrap" />

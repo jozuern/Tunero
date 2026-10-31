@@ -28,7 +28,7 @@
 
             <!-- 1. Source -->
             <ui:TextBlock Style="{StaticResource SectionHeader}" Text="{l:Tr Media_SourceTitle}" Margin="0,0,0,8" />
-            <ui:Card Padding="16,12" Margin="{StaticResource CardRowMargin}" IsEnabled="{Binding InstallMedia.CanEdit}">
+            <ui:Card Padding="{StaticResource CardPadding}" Margin="{StaticResource CardRowMargin}" IsEnabled="{Binding InstallMedia.CanEdit}">
                 <DockPanel>
                 <ui:SymbolIcon Style="{StaticResource MediaCardIcon}" Symbol="CloudArrowDown24" VerticalAlignment="Top" Margin="0,2,16,0" />
                 <StackPanel>
@@ -91,7 +91,8 @@
                           MinWidth="240" AutomationProperties.Name="{l:Tr Media_Edition}" />
             </ui:CardControl>
 
-            <!-- 3. Changes: each a switch, its options folded below -->
+            <!-- 3. Changes: each a switch, its options folded below. No On or Off next to these switches: the summary left of
+                 each says what is on ("Apps to remove: 18") or Off (XamlRulesTests.SwitchesSayWhatTheyShow allow list). -->
             <ui:TextBlock Style="{StaticResource SectionHeader}" Text="{l:Tr Media_ChangesTitle}" />
             <ui:CardExpander Margin="{StaticResource CardRowMargin}" HorizontalContentAlignment="Stretch" IsExpanded="{Binding InstallMedia.ExpandOptions, Mode=OneWay}" IsEnabled="{Binding InstallMedia.CanEdit}">
                 <ui:CardExpander.Header>
@@ -306,7 +307,7 @@
             </ui:CardExpander>
 
             <!-- How Windows is stored on the media: two choices, no switch -->
-            <ui:Card Padding="16,12" Margin="{StaticResource CardRowMargin}" IsEnabled="{Binding InstallMedia.CanEdit}">
+            <ui:Card Padding="{StaticResource CardPadding}" Margin="{StaticResource CardRowMargin}" IsEnabled="{Binding InstallMedia.CanEdit}">
                 <DockPanel>
                 <ui:SymbolIcon Style="{StaticResource MediaCardIcon}" Symbol="Archive24" VerticalAlignment="Top" Margin="0,2,16,0" />
                 <StackPanel>
@@ -374,7 +375,7 @@
                     </StackPanel>
                     </DockPanel>
                 </ui:CardControl.Header>
-                <ui:ToggleSwitch IsChecked="{Binding InstallMedia.AllowUnsupported}" AutomationProperties.Name="{l:Tr Media_UnsupportedTitle}" />
+                <ui:ToggleSwitch Style="{StaticResource SettingSwitch}" IsChecked="{Binding InstallMedia.AllowUnsupported}" AutomationProperties.Name="{l:Tr Media_UnsupportedTitle}" />
             </ui:CardControl>
 
             <ui:CardControl Padding="{StaticResource CardPadding}" Margin="{StaticResource CardRowMargin}" IsEnabled="{Binding InstallMedia.CanEdit}">
@@ -389,7 +390,7 @@
                     </StackPanel>
                     </DockPanel>
                 </ui:CardControl.Header>
-                <ui:ToggleSwitch IsChecked="{Binding InstallMedia.PreventDeviceEncryption}" AutomationProperties.Name="{l:Tr Media_EncryptionTitle}" />
+                <ui:ToggleSwitch Style="{StaticResource SettingSwitch}" IsChecked="{Binding InstallMedia.PreventDeviceEncryption}" AutomationProperties.Name="{l:Tr Media_EncryptionTitle}" />
             </ui:CardControl>
 
             <ui:CardControl Padding="{StaticResource CardPadding}" Margin="{StaticResource CardRowMargin}" IsEnabled="{Binding InstallMedia.CanEdit}">
@@ -407,7 +408,7 @@
                     </StackPanel>
                     </DockPanel>
                 </ui:CardControl.Header>
-                <ui:ToggleSwitch IsChecked="{Binding InstallMedia.NoReservedStorage}" AutomationProperties.Name="{l:Tr Media_ReservedTitle}" />
+                <ui:ToggleSwitch Style="{StaticResource SettingSwitch}" IsChecked="{Binding InstallMedia.NoReservedStorage}" AutomationProperties.Name="{l:Tr Media_ReservedTitle}" />
             </ui:CardControl>
 
             <ui:CardControl Padding="{StaticResource CardPadding}" Margin="{StaticResource CardRowMargin}" IsEnabled="{Binding InstallMedia.CanEdit}"
@@ -426,13 +427,13 @@
                     </StackPanel>
                     </DockPanel>
                 </ui:CardControl.Header>
-                <ui:ToggleSwitch IsChecked="{Binding InstallMedia.AllowUnsupportedUpgrades}" AutomationProperties.Name="{l:Tr Media_UpgradesTitle}" />
+                <ui:ToggleSwitch Style="{StaticResource SettingSwitch}" IsChecked="{Binding InstallMedia.AllowUnsupportedUpgrades}" AutomationProperties.Name="{l:Tr Media_UpgradesTitle}" />
             </ui:CardControl>
 
             <!-- 4. Build -->
             <ui:TextBlock Style="{StaticResource SectionHeader}" Text="{l:Tr Media_BuildTitle}" />
             <!-- Every stage of the build with its state, from the first Build until the page closes (the banner stays for other pages) -->
-            <ui:Card x:Name="StagesCard" Padding="16,12" Margin="{StaticResource CardRowMargin}"
+            <ui:Card x:Name="StagesCard" Padding="{StaticResource CardPadding}" Margin="{StaticResource CardRowMargin}"
                      Visibility="{Binding InstallMedia.HasStages, Converter={StaticResource BoolToVisibility}}">
                 <DockPanel>
                 <ui:SymbolIcon Style="{StaticResource MediaCardIcon}" Symbol="TextBulletListSquare24" VerticalAlignment="Top" Margin="0,2,16,0" />
@@ -494,7 +495,7 @@
                 </DockPanel>
             </ui:Card>
 
-            <ui:Card x:Name="BuildCard" Padding="16,12" Margin="{StaticResource CardRowMargin}">
+            <ui:Card x:Name="BuildCard" Padding="{StaticResource CardPadding}" Margin="{StaticResource CardRowMargin}">
                 <DockPanel>
                 <ui:SymbolIcon Style="{StaticResource MediaCardIcon}" Symbol="DocumentSave24" VerticalAlignment="Top" Margin="0,2,16,0" />
                 <StackPanel>
@@ -534,8 +535,9 @@
                 </DockPanel>
             </ui:Card>
 
-            <!-- The finished build: where the ISO is, its SHA-256 and what to do with it -->
-            <ui:Card Padding="16,16" Margin="{StaticResource CardRowMargin}"
+            <!-- The finished build: where the ISO is, its SHA-256 and what to do with it. 16 px on every side around the
+                 48 px check mark and the subtitle, more room than a row (XamlRulesTests allow list). -->
+            <ui:Card Padding="16" Margin="{StaticResource CardRowMargin}"
                      Visibility="{Binding InstallMedia.HasFinished, Converter={StaticResource BoolToVisibility}}">
                 <DockPanel>
                 <ui:SymbolIcon DockPanel.Dock="Left" Symbol="CheckmarkCircle48" Filled="True" FontSize="48" VerticalAlignment="Top" Margin="0,0,16,0"
@@ -602,7 +604,7 @@
         <!-- What Save, Load or Reset did, or which remembered choices no longer fit -->
         <ui:InfoBar Title="" Message="{Binding InstallMedia.ChoicesNote}" Severity="{Binding InstallMedia.ChoicesNoteSeverity}" IsClosable="False" Margin="0,0,0,8"
                     IsOpen="{Binding InstallMedia.ChoicesNote, Converter={StaticResource NullToBool}}" />
-        <ui:Card Padding="16,12">
+        <ui:Card Padding="{StaticResource CardPadding}">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />

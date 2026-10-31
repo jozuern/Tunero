@@ -144,6 +144,28 @@
                 <Setter Property="TextWrapping" Value="Wrap" />
             </Style>
 
+            <!-- The line a list shows when it is empty or nothing matches its search ("No changes yet", "Nothing matches"): in
+                 the size of the rows it stands in for and in the secondary color, quieter than a row and not a hint caption.
+                 It sits where the list's first row would sit, so its margin is the list's. Its text key or the property that
+                 shows it ends in Empty, NoMatch or _None (XamlRulesTests.EmptyStatesUseTheSharedStyle). -->
+            <Style x:Key="EmptyState" TargetType="ui:TextBlock">
+                <Setter Property="FontTypography" Value="Body" />
+                <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+                <Setter Property="TextWrapping" Value="Wrap" />
+            </Style>
+
+            <!-- Switches, three kinds (XamlRulesTests.SwitchesSayWhatTheyShow):
+                 - A setting in a card: its name in the card's header, the switch on the right with On or Off next to it, as in
+                   Windows Settings. Style SettingSwitch.
+                 - A filter over a list ("Show passed checks", "Show Windows services"): the label is the switch's Content, no
+                   state text; the label says what turning it on shows.
+                 - The state of a row (a tweak, a service, a startup entry): the row's own words ("Applied", "Enabled") as
+                   OnContent and OffContent, in one column (TweakSwitch). -->
+            <Style x:Key="SettingSwitch" TargetType="ui:ToggleSwitch" BasedOn="{StaticResource {x:Type ui:ToggleSwitch}}">
+                <Setter Property="OnContent" Value="{s:Tr Feature_On}" />
+                <Setter Property="OffContent" Value="{s:Tr Feature_Off}" />
+            </Style>
+
             <!-- Work that can take several minutes (SFC, DISM, Windows features, Update all): a clock and a caption next to
                  the button or card that starts it and in the progress banner, one wording everywhere. Content replaces the
                  text where a measurement supports a longer time (the install media). -->
