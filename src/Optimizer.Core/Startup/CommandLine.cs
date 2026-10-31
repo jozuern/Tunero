@@ -116,10 +116,38 @@ public static class CommandLine
     {
         var tokens = Tokens(args).Where(t => !t.StartsWith('/') && !t.StartsWith('-')).ToList();
         if (tokens.Count == 0) return false;
-        var parts = tokens[0].Split(',', 2);
-        if (parts.Length == 2 && ProxyExports.Contains(parts[1].Trim())) return true;
+        if (RundllEntryPoint(args) is { } entry && ProxyExports.Contains(entry)) return true;
         if (args.Contains("://", StringComparison.Ordinal)) return true;
-        return tokens.Skip(1).Any(t => IsPathToken(t) && !trusted(t));
+        var rest = tokens.Skip(1).Select(t => t.Trim(',')).Where(t => t.Length > 0).ToList();
+        // A script host or a launcher among the arguments runs whatever follows it.
+        if (rest.Any(t => IsScriptHost(t) || IsLauncher(t))) return true;
+        return rest.Any(t => IsPathToken(t) && !trusted(t));
+    }
+
+    /// <summary>
+    /// The entry point of a rundll32 line, read as rundll32 reads it: after the DLL and a comma, also when the DLL is
+    /// quoted ("shell32.dll",ShellExec_RunDLL) or a space follows the comma (url.dll, FileProtocolHandler). Null without one.
+    /// </summary>
+    internal static string? RundllEntryPoint(string args)
+    {
+        var rest = args.Trim();
+        while (rest.Length > 0)
+        {
+            var (first, tail) = SplitFirst(rest);
+            // Switches such as "/d" (Windows' own Autochk task) come before the DLL.
+            if (first.Length == 0 || first.StartsWith('/') || first.StartsWith('-'))
+            {
+                if (tail.Length >= rest.Length) return null;
+                rest = tail;
+                continue;
+            }
+            var comma = first.IndexOf(',');
+            var after = (comma >= 0 ? first[(comma + 1)..] + " " + tail : tail).TrimStart(',', ' ', '\t');
+            var end = after.IndexOfAny([' ', '\t', ',']);
+            var entry = (end < 0 ? after : after[..end]).Trim('"');
+            return entry.Length == 0 ? null : entry;
+        }
+        return null;
     }
 
     /// <summary>
@@ -239,6 +267,32 @@ public static class CommandLine
     }
 
     /// <summary>
+    /// A value that names one file, not a command line (an InprocServer32 DLL, a ServiceDll): quotes removed, variables
+    /// expanded, kernel prefixes resolved and a bare name looked up as <see cref="ImagePath"/> does, but spaces are part of
+    /// the path. Read as a command line, "C:\Users\x\Foo Bar\a.dll" would be checked as a planted C:\Users\x\Foo.exe.
+    /// Null when empty.
+    /// </summary>
+    public static string? FilePath(string? path, Func<string, string>? expand = null, Func<string, bool>? exists = null)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return null;
+        expand ??= Platform.PathExpander.Machine.Expand;
+        exists ??= File.Exists;
+        var windows = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+        var s = KernelPrefixes(expand(path.Trim().Trim('"')).Trim(), windows);
+        return s.Length == 0 ? null : Qualify(s, windows, exists);
+    }
+
+    /// <summary>"\??\", "\SystemRoot\" and a leading "System32\" (service image paths) as the file they stand for.</summary>
+    private static string KernelPrefixes(string s, string windows)
+    {
+        if (s.StartsWith(@"\??\", StringComparison.Ordinal)) s = s[4..];
+        if (s.StartsWith(@"\SystemRoot\", StringComparison.OrdinalIgnoreCase)) s = Path.Combine(windows, s[12..]);
+        if (s.StartsWith(@"System32\", StringComparison.OrdinalIgnoreCase) || s.StartsWith(@"SysWOW64\", StringComparison.OrdinalIgnoreCase))
+            s = Path.Combine(windows, s);
+        return s;
+    }
+
+    /// <summary>
     /// The program a command line starts and its arguments, for running it (uninstall commands): unlike
     /// <see cref="ImagePath"/>, a rundll32 line gives rundll32 itself with the DLL and entry point as arguments. Null
     /// when empty.
@@ -260,13 +314,8 @@ public static class CommandLine
         if (string.IsNullOrWhiteSpace(command)) return null;
         expand ??= Platform.PathExpander.Machine.Expand;
         exists ??= File.Exists;
-        var s = expand(command.Trim());
         var system = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
-
-        if (s.StartsWith(@"\??\", StringComparison.Ordinal)) s = s[4..];
-        if (s.StartsWith(@"\SystemRoot\", StringComparison.OrdinalIgnoreCase)) s = Path.Combine(system, s[12..]);
-        if (s.StartsWith(@"System32\", StringComparison.OrdinalIgnoreCase) || s.StartsWith(@"SysWOW64\", StringComparison.OrdinalIgnoreCase))
-            s = Path.Combine(system, s);
+        var s = KernelPrefixes(expand(command.Trim()), system);
 
         var (first, rest) = SplitFirst(s);
         // An unquoted path with spaces is resolved like CreateProcess and the service manager do: the shortest prefix that

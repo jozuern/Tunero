@@ -357,7 +357,7 @@ public sealed partial class StartupScanner
                 // The account's own registration wins over the machine's: read its server first.
                 using var server = Open(Hive.User, $@"Software\Classes\CLSID\{id}\InprocServer32");
                 var dll = server?.GetValue("", null, Microsoft.Win32.RegistryValueOptions.DoNotExpandEnvironmentNames)?.ToString() is { Length: > 0 } own
-                    ? CommandLine.ImagePath(own, _userExpand)
+                    ? CommandLine.FilePath(own, _userExpand)
                     : ComServer(id);
                 yield return new StartupEntry(StartupKind.ShellExtension, handler, dll ?? id, dll, $@"HKCU\Software\Classes\{handlerRoot}\{handler}", Hive.User, null, $"usershellext:{id}");
             }

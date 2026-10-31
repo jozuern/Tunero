@@ -33,7 +33,9 @@ public sealed partial class ServiceRowVm : ObservableObject
     {
         _page = page;
         Row = row;
-        Note = row.Note?.Text(lang);
+        Note = WithoutName(row.Note?.Text(lang), row.DisplayName);
+        // A description that only repeats the name ("ChatGPT") adds nothing under it.
+        Description = string.Equals(row.Description?.Trim(), row.DisplayName.Trim(), StringComparison.CurrentCultureIgnoreCase) ? null : row.Description;
         StateText = Loc.Instance[row.Running ? "Svc_Running" : "Svc_Stopped"];
         Publisher = row.Signature?.Publisher ?? "";
         MetaText = string.Join(", ", new[] { row.Name, StateText, Publisher }.Where(x => x.Length > 0));
@@ -58,10 +60,23 @@ public sealed partial class ServiceRowVm : ObservableObject
 
     private static StartOption Opt(ServiceStart s, string lang) => new(s, Labels.Current.Get(lang, $"serviceStart.{s}"));
 
+    /// <summary>
+    /// The catalog's note without the service's name in front: the notes start with the English or German name
+    /// ("Bluetooth-Unterstützungsdienst: für Bluetooth-Controller"), which the row's title already shows when Windows has
+    /// the app's language. The rest starts with a capital letter, as the note's own sentences do.
+    /// </summary>
+    internal static string? WithoutName(string? note, string displayName)
+    {
+        var prefix = displayName.Trim() + ":";
+        if (note is null || displayName.Trim().Length == 0 || !note.StartsWith(prefix, StringComparison.CurrentCultureIgnoreCase)) return note;
+        var rest = note[prefix.Length..].TrimStart();
+        return rest.Length == 0 ? note : char.ToUpper(rest[0], System.Globalization.CultureInfo.CurrentCulture) + rest[1..];
+    }
+
     public ServiceRow Row { get; }
     public string Name => Row.Name;
     public string DisplayName => Row.DisplayName;
-    public string? Description => Row.Description;
+    public string? Description { get; }
     public string? Note { get; }
     public string StateText { get; }
     public string Publisher { get; }
@@ -158,9 +173,35 @@ public sealed partial class ServicesViewModel(IPageHost owner, AppServices servi
         ShowServices(_serviceRows);
 
         _taskList = await Task.Run(() => services.Context.Tasks.List());
+        _taskChecks = null;
         services.Search.UpdateRuntime(Optimizer.Core.Search.SearchKind.ScheduledTask,
             _taskList.Select(t => ("Services", t.Path, t.Path.TrimStart('\\'), t.Command ?? "")));
         FillTasks();
+        _taskChecks = await Task.Run(() => CheckTasks(_taskList));
+        FillTasks();
+    }
+
+    /// <summary>What a task runs and who signed it, read once per load in the background (the verifier caches the files).</summary>
+    private sealed record TaskCheck(string? Image, SignatureInfo Signature, bool RunsScriptHost);
+
+    /// <summary>
+    /// Until the signatures are read, Windows' own tasks are told by their folder (\Microsoft\); after that by the rule
+    /// of the Startup page (<see cref="StartupRow.IsPlainMicrosoft"/>), so both pages hide the same tasks: a Windows task
+    /// in the root folder too, and not a task another program put below \Microsoft\.
+    /// </summary>
+    private IReadOnlyDictionary<string, TaskCheck>? _taskChecks;
+
+    private Dictionary<string, TaskCheck> CheckTasks(IReadOnlyList<ScheduledTaskInfo> tasks)
+    {
+        var scanner = new StartupScanner(services.Context.Registry, services.Context.Tasks, services.ProfilePath);
+        return tasks.AsParallel().WithDegreeOfParallelism(4).Select(t =>
+            {
+                var image = scanner.TaskImage(t);
+                var command = StartupScanner.TaskCommand(t.Command, t.Arguments);
+                return (t.Path, Check: new TaskCheck(image, SignatureVerifier.Verify(image), CommandLine.RunsUnverifiedScript(command, PathExpander.Machine.Expand)));
+            })
+            .GroupBy(x => x.Path, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First().Check, StringComparer.OrdinalIgnoreCase);
     }
 
     // A language switch builds the rows from the services and tasks already read.
@@ -191,20 +232,28 @@ public sealed partial class ServicesViewModel(IPageHost owner, AppServices servi
         var q = TaskSearch.Trim();
         // A task's program as the signed-in user's sign-in would start it (as the Startup page reads it).
         var userPaths = services.UserPaths;
+        var checks = _taskChecks;
         Tasks.Clear();
-        foreach (var t in _taskList.Where(t => (showMs || !t.Path.StartsWith(@"\Microsoft\", StringComparison.OrdinalIgnoreCase))
-                                               && (q.Length == 0 || t.Path.Contains(q, StringComparison.OrdinalIgnoreCase) || t.Command?.Contains(q, StringComparison.OrdinalIgnoreCase) == true))
+        foreach (var t in _taskList.Where(t => q.Length == 0 || t.Path.Contains(q, StringComparison.OrdinalIgnoreCase) || t.Command?.Contains(q, StringComparison.OrdinalIgnoreCase) == true)
                      .OrderBy(t => t.Path, StringComparer.OrdinalIgnoreCase))
         {
+            var check = checks?.GetValueOrDefault(t.Path);
+            if (!showMs && check is null && t.Path.StartsWith(@"\Microsoft\", StringComparison.OrdinalIgnoreCase)) continue;
             // Full command with arguments: rundll32 resolves to its DLL, and script hosts are judged by what they run.
-            var command = t.Command is null ? null : $"\"{t.Command}\" {t.Arguments}".Trim();
-            var entry = new StartupEntry(StartupKind.LogonTask, t.Path.TrimStart('\\'), command, CommandLine.ImagePath(command, userPaths.Expand),
+            var command = StartupScanner.TaskCommand(t.Command, t.Arguments);
+            var entry = new StartupEntry(StartupKind.LogonTask, t.Path.TrimStart('\\'), command, check is null ? CommandLine.ImagePath(command, userPaths.Expand) : check.Image,
                 t.AtLogon ? Loc.Instance["Task_AtLogon"] : t.AtBoot ? Loc.Instance["Task_AtBoot"] : Loc.Instance["Task_Other"], Hive.Machine, t.Enabled, $"task:{t.Path}")
             {
                 Target = t.Path,
             };
             var path = t.Path;
-            Tasks.Add(new StartupRow(entry, lang, services, runner, on => TaskSwitched(path, on)));
+            var row = new StartupRow(entry, lang, services, runner, on => TaskSwitched(path, on));
+            if (check is not null)
+            {
+                row.SetSignature(check.Signature, check.RunsScriptHost, lang);
+                if (!showMs && row.IsPlainMicrosoft) continue;
+            }
+            Tasks.Add(row);
         }
         OnPropertyChanged(nameof(TasksNoMatch));
     }

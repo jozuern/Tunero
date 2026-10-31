@@ -48,7 +48,16 @@ public static class StartupSnapshot
         }
     }
 
-    private static string Identity(string key, string? command) => key + "\n" + (command ?? "");
+    /// <summary>
+    /// The key and the command. A command that is one quoted path counts as the same path unquoted: Startup folder files
+    /// and shortcuts without arguments were stored unquoted by older versions, so an older snapshot does not call them changed.
+    /// </summary>
+    private static string Identity(string key, string? command)
+    {
+        var c = command?.Trim() ?? "";
+        if (c.Length >= 2 && c[0] == '"' && c.IndexOf('"', 1) == c.Length - 1) c = c[1..^1];
+        return key + "\n" + c;
+    }
 
     public static SnapshotDiff Compare(StartupSnapshotData snapshot, IEnumerable<StartupEntry> current)
     {

@@ -405,8 +405,8 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Startup_AllKinds" xml:space="preserve">
     <value>All locations</value>
   </data>
-  <data name="Startup_HideMicrosoft" xml:space="preserve">
-    <value>Hide Windows entries</value>
+  <data name="Startup_ShowMicrosoft" xml:space="preserve">
+    <value>Show Windows entries</value>
   </data>
   <data name="Startup_SummaryChecking" xml:space="preserve"><value>Checking signatures before hiding Windows entries and counting what needs attention.</value></data>
   <data name="Startup_Loading" xml:space="preserve"><value>Reading the entries and checking their signatures. The list sorts itself again when that is done.</value></data>
@@ -416,6 +416,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Startup_ReadOnly" xml:space="preserve">
     <value>Listed only</value>
   </data>
+  <data name="Startup_ReadOnlyTip" xml:space="preserve"><value>Tunero does not switch this entry. More options can show its file or copy its location.</value></data>
   <data name="Vt_Check" xml:space="preserve">
     <value>Check with VirusTotal</value>
   </data>
@@ -480,6 +481,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Task_ShowMicrosoft" xml:space="preserve">
     <value>Show Windows tasks</value>
   </data>
+  <data name="Task_ReadOnlyTip" xml:space="preserve"><value>Tunero does not switch Windows' own tasks or its own.</value></data>
   <data name="Task_Hint" xml:space="preserve">
     <value>Tasks from other vendors are often updaters and telemetry. Switching one off keeps it, so it can be switched on again.</value>
   </data>
@@ -1486,6 +1488,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Vt_AddKey" xml:space="preserve"><value>Check with VirusTotal: add a key in Settings</value></data>
   <data name="Startup_Enabled" xml:space="preserve"><value>Enabled</value></data>
   <data name="Startup_Disabled" xml:space="preserve"><value>Disabled</value></data>
+  <data name="Startup_ServiceSwitchTip" xml:space="preserve"><value>Manual: the service no longer starts with Windows, but programs that need it can still start it.</value></data>
   <data name="Cleanup_RunClean" xml:space="preserve"><value>Clean up</value></data>
   <data name="Settings_ShowInFolder" xml:space="preserve"><value>Show in folder</value></data>
   <data name="Settings_OpenFolder" xml:space="preserve"><value>Open folder</value></data>
@@ -1645,19 +1648,21 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Net_GameSearch" xml:space="preserve"><value>Search games</value></data>
   <data name="Net_NoGameMatch" xml:space="preserve"><value>No game matches the search.</value></data>
   <data name="Net_ShowAllGames" xml:space="preserve"><value>Show all {0} games</value></data>
-  <data name="Startup_ServicesHint" xml:space="preserve"><value>Their start types, with what each service does, and every scheduled task are on their own page.</value></data>
+  <data name="Startup_ServicesHint" xml:space="preserve"><value>Start types and what each service does are on the Services &amp; tasks page.</value></data>
+  <data name="Startup_TasksHint" xml:space="preserve"><value>All scheduled tasks, not only these, are on the Services &amp; tasks page.</value></data>
   <data name="Startup_ServicesLink" xml:space="preserve"><value>Open Services &amp; tasks</value></data>
   <data name="Startup_Groups" xml:space="preserve"><value>Startup groups</value></data>
-  <data name="Startup_TabTasks" xml:space="preserve"><value>Scheduled tasks</value></data>
+  <data name="Startup_TabTasks" xml:space="preserve"><value>Other scheduled tasks</value></data>
   <data name="Startup_TabServices" xml:space="preserve"><value>Services</value></data>
   <data name="Startup_TabDrivers" xml:space="preserve"><value>Drivers</value></data>
   <data name="Startup_TabAdvanced" xml:space="preserve"><value>Advanced</value></data>
-  <data name="Startup_AdvancedHint" xml:space="preserve"><value>Other places Windows and programs load code from, as Autoruns lists them. Most entries are here to be checked: the program that owns one changes it.</value></data>
+  <data name="Startup_AdvancedHint" xml:space="preserve"><value>Other places Windows and programs load code from, as Autoruns lists them. Most are listed only: change them in the program they belong to.</value></data>
   <data name="Startup_MoreOptions" xml:space="preserve"><value>More options</value></data>
   <data name="Startup_MoreOptionsName" xml:space="preserve"><value>More options for {0}</value></data>
   <data name="Startup_PlainRegistry" xml:space="preserve"><value>Registry</value></data>
   <data name="Startup_PlainFolder" xml:space="preserve"><value>Startup folder</value></data>
-  <data name="Startup_PlainTask" xml:space="preserve"><value>Scheduled task</value></data>
+  <data name="Startup_PlainTask" xml:space="preserve"><value>Scheduled task at sign-in</value></data>
+  <data name="Startup_PlainTaskAtBoot" xml:space="preserve"><value>Scheduled task at startup</value></data>
   <data name="Startup_PlainPolicy" xml:space="preserve"><value>Set by Group Policy</value></data>
   <data name="Startup_PlainRunOnce" xml:space="preserve"><value>Runs once</value></data>
   <data name="Startup_CountSignInOne" xml:space="preserve"><value>1 app starts at sign-in</value></data>
@@ -1675,7 +1680,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Startup_SummaryCountSomeOff" xml:space="preserve"><value>{0}, {1} of them turned off.</value></data>
   <data name="Startup_AttentionOne" xml:space="preserve"><value>1 needs attention.</value></data>
   <data name="Startup_Attention" xml:space="preserve"><value>{0} need attention.</value></data>
-  <data name="Startup_Hidden" xml:space="preserve"><value>Hidden by the search or filters: {0}.</value></data>
+  <data name="Startup_Showing" xml:space="preserve"><value>Showing {0} of {1}.</value></data>
   <data name="Bench_StepOf" xml:space="preserve"><value>Step {0} of 4</value></data>
   <data name="Bench_StepLabelDone" xml:space="preserve"><value>Done</value></data>
   <data name="Bench_PickGame" xml:space="preserve"><value>Pick the game</value></data>

@@ -32,14 +32,31 @@ public sealed partial class StartupRow : SwitchRow
         _switched = switched;
         Entry = entry;
         Tab = StartupViewModel.TabOf(entry);
-        KindText = Labels.Current.Get(lang, $"startupKind.{entry.Kind}");
+        // A task on Apps at sign-in names its trigger: next to the tab of the other tasks it would look misfiled.
+        KindText = Tab == StartupTab.SignIn && entry.Kind == StartupKind.LogonTask ? SignInTaskText(entry)
+            : Labels.Current.Get(lang, $"startupKind.{entry.Kind}");
         SimpleKindText = SimpleKind();
+        // A service is switched between Automatic and Manual, never to Disabled: the switch says so.
+        var service = entry.Kind == StartupKind.Service;
+        OnText = service ? Labels.Current.Get(lang, $"serviceStart.{ServiceStart.Automatic}") : Loc.Instance["Startup_Enabled"];
+        OffText = service ? Labels.Current.Get(lang, $"serviceStart.{ServiceStart.Manual}") : Loc.Instance["Startup_Disabled"];
+        SwitchTip = service ? Loc.Instance["Startup_ServiceSwitchTip"] : null;
         _switchable = entry.Enabled is not null && StartupTweaks.Set(entry, !(entry.Enabled ?? true)) is not null;
         // Until the signature is read, a service counts as Windows' own.
         UpdateCanToggle(microsoftOrUnknown: true);
     }
 
     private readonly bool _switchable;
+
+    private static string SignInTaskText(StartupEntry e) => Loc.Instance[e.AtBootOnly ? "Startup_PlainTaskAtBoot" : "Startup_PlainTask"];
+
+    /// <summary>The switch's words: Enabled and Disabled, for a service the start types Automatic and Manual it sets.</summary>
+    public string OnText { get; }
+
+    public string OffText { get; }
+
+    /// <summary>A service's switch explains Manual; other switches have no tooltip.</summary>
+    public string? SwitchTip { get; }
 
     /// <summary>
     /// A service follows the Services page's rule (<see cref="ServiceRow.EditFor"/>): Windows' own services only when the
@@ -79,7 +96,7 @@ public sealed partial class StartupRow : SwitchRow
         {
             StartupKind.RunKey => Loc.Instance["Startup_PlainRegistry"],
             StartupKind.StartupFolder => Loc.Instance["Startup_PlainFolder"],
-            StartupKind.LogonTask => Loc.Instance["Startup_PlainTask"],
+            StartupKind.LogonTask => SignInTaskText(Entry),
             StartupKind.PolicyRun => Loc.Instance["Startup_PlainPolicy"],
             StartupKind.RunOnce => Loc.Instance["Startup_PlainRunOnce"],
             _ => "",
@@ -103,8 +120,30 @@ public sealed partial class StartupRow : SwitchRow
     /// <summary>Signed by Microsoft does not mean harmless here: the command line decides what the script host runs.</summary>
     public string? ScriptHostNote => RunsScriptHost ? Loc.Instance["Startup_ScriptHost"] : null;
 
-    /// <summary>Hidden by "Hide Microsoft entries" only when signed by Microsoft and nothing else needs a look.</summary>
-    public bool IsPlainMicrosoft => IsMicrosoft && !Entry.Suspicious && !RunsScriptHost;
+    /// <summary>
+    /// Hidden unless "Show Windows entries" is on: signed by Microsoft, or one of Windows' own entries whose file is not
+    /// on this PC (<see cref="IsWindowsWithoutFile"/>), and nothing else needs a look.
+    /// </summary>
+    public bool IsPlainMicrosoft => (IsMicrosoft || IsWindowsWithoutFile) && !Entry.Suspicious && !RunsScriptHost;
+
+    /// <summary>
+    /// A place only Windows and administrators write to, naming a file this PC does not have: a task below
+    /// \Microsoft\Windows\ (ReconcileLanguageResources), a Known DLL of another architecture (_wowarmhw) or an Active
+    /// Setup component of the machine whose stub is no path at all ("U", "/UserInstall"). Nothing of another program
+    /// runs from it; a missing file of another program (a path in Program Files) still shows.
+    /// </summary>
+    private bool IsWindowsWithoutFile => _signatureStatus == SignatureStatus.NotFound && Entry.Kind switch
+    {
+        StartupKind.LogonTask => StartupScanner.IsWindowsTask(Entry.Target),
+        StartupKind.KnownDll => true,
+        StartupKind.ActiveSetup => Entry.Hive == Hive.Machine && Entry.Command is { } stub && stub.IndexOfAny(['\\', '.', ':']) < 0,
+        _ => false,
+    };
+
+    private SignatureStatus? _signatureStatus;
+
+    /// <summary>The signature in words for every result, also Not signed and Invalid (the export has no tags column).</summary>
+    public string ExportSignatureText { get; private set; } = "";
 
     [ObservableProperty, NotifyPropertyChangedFor(nameof(MetaText), nameof(SimpleMetaText))] private string _publisherText = "";
     [ObservableProperty, NotifyPropertyChangedFor(nameof(MetaText), nameof(SimpleMetaText))] private string _signatureText = "";
@@ -128,13 +167,15 @@ public sealed partial class StartupRow : SwitchRow
     public void SetSignature(SignatureInfo s, bool runsScriptHost, string lang)
     {
         _runsScriptHost = runsScriptHost;
+        _signatureStatus = s.Status;
         IsMicrosoft = s.IsMicrosoft;
         // The Services page's rule: without a valid signature (CryptSvc off, a failed check) a file in the Windows folder
         // still counts as Windows' own, so Dhcp or the firewall never become switchable here.
         UpdateCanToggle(ServiceRow.IsWindowsService(s, Entry.ImagePath) || s.Status == SignatureStatus.Error);
         PublisherText = s.Publisher ?? Loc.Instance["Startup_NoPublisher"];
         // Not signed and a bad signature are tags under the name: the line does not say it a second time.
-        SignatureText = s.Status is SignatureStatus.Unsigned or SignatureStatus.Invalid ? "" : Labels.Current.Get(lang, $"signature.{s.Status}");
+        ExportSignatureText = Labels.Current.Get(lang, $"signature.{s.Status}");
+        SignatureText = s.Status is SignatureStatus.Unsigned or SignatureStatus.Invalid ? "" : ExportSignatureText;
         NeedsAttention = Entry.Suspicious || runsScriptHost || s.Status is SignatureStatus.Unsigned or SignatureStatus.Invalid;
         var tags = new List<string>();
         if (s.Status == SignatureStatus.Invalid) tags.Add(Loc.Instance["Startup_TagBadSignature"]);
@@ -147,6 +188,8 @@ public sealed partial class StartupRow : SwitchRow
     protected override async Task<bool> ToggleAsync(bool on)
     {
         if (!await Switching.SetAsync(_services, _runner, enabled => StartupTweaks.Set(Entry, enabled), on)) return false;
+        // Before the callback: a page that counts what is turned off reads the new state.
+        IsOn = on;
         _switched?.Invoke(on);
         return true;
     }
@@ -192,7 +235,8 @@ public sealed partial class StartupViewModel(IPageHost owner, AppServices servic
     [ObservableProperty] private FilterOption? _selectedAdvancedKind;
     private bool _updatingKinds;
 
-    [ObservableProperty] private bool _hideMicrosoft = true;
+    /// <summary>Windows' own entries are hidden until this is on, as on Services &amp; tasks.</summary>
+    [ObservableProperty] private bool _showMicrosoft;
     [ObservableProperty] private string _summaryText = "";
     [ObservableProperty] private string _virusTotalStatus = "";
     [ObservableProperty] private bool _isCheckingVirusTotal;
@@ -218,7 +262,7 @@ public sealed partial class StartupViewModel(IPageHost owner, AppServices servic
     [ObservableProperty] private bool _onlyAttention;
 
     partial void OnOnlyAttentionChanged(bool value) => Filter();
-    partial void OnHideMicrosoftChanged(bool value) => Filter();
+    partial void OnShowMicrosoftChanged(bool value) => Filter();
     partial void OnSelectedTabChanged(int value) => Filter();
 
     partial void OnSelectedAdvancedKindChanged(FilterOption? value)
@@ -254,7 +298,8 @@ public sealed partial class StartupViewModel(IPageHost owner, AppServices servic
     private async Task ShowAsync(IReadOnlyList<StartupEntry> entries)
     {
         var lang = Lang;
-        _all = entries.Select(e => new StartupRow(e, lang, services, runner)).ToList();
+        // A switch changes what the summary counts as turned off: it follows at once, without building the rows again.
+        _all = entries.Select(e => new StartupRow(e, lang, services, runner, _ => UpdateSummary())).ToList();
         // Services and drivers are found on Services & tasks; here only what the Startup page is for.
         services.Search.UpdateRuntime(Optimizer.Core.Search.SearchKind.StartupEntry,
             _all.Where(r => r.Entry.Kind is not (StartupKind.Service or StartupKind.Driver)).Select(r => ("Startup", r.Name, r.Name, r.MetaText)));
@@ -336,31 +381,31 @@ public sealed partial class StartupViewModel(IPageHost owner, AppServices servic
     /// <summary>Entries of the open tab (and on Advanced, of the chosen kind), shown or not: what the summary counts.</summary>
     private int _tabTotal;
 
-    /// <summary>The search, Hide Windows entries, Only new and Only attention; the tab and the Advanced kind are not part of it.</summary>
+    /// <summary>The search, Show Windows entries, Only new and Only attention; the tab and the Advanced kind are not part of it.</summary>
     private bool Passes(StartupRow r, string q) =>
-        !(HideMicrosoft && r.IsPlainMicrosoft) && (!OnlyNew || r.IsNew) && (!OnlyAttention || r.NeedsAttention)
+        (ShowMicrosoft || !r.IsPlainMicrosoft) && (!OnlyNew || r.IsNew) && (!OnlyAttention || r.NeedsAttention)
         && (q.Length == 0 || r.Name.Contains(q, StringComparison.CurrentCultureIgnoreCase)
             || r.Command?.Contains(q, StringComparison.OrdinalIgnoreCase) == true || r.Location.Contains(q, StringComparison.OrdinalIgnoreCase)
             || r.MetaText.Contains(q, StringComparison.CurrentCultureIgnoreCase)
             || r.AttentionTags.Any(t => t.Contains(q, StringComparison.CurrentCultureIgnoreCase)));
 
+    private StartupKind? AdvancedKind => CurrentTab == StartupTab.Advanced && Enum.TryParse<StartupKind>(SelectedAdvancedKind?.Key, out var k) ? k : null;
+
+    /// <summary>On the open tab, and on Advanced of the chosen kind: what the list and the summary are about.</summary>
+    private static bool InOpenTab(StartupRow r, StartupTab tab, StartupKind? kind) => r.Tab == tab && (kind is not { } only || r.Entry.Kind == only);
+
     private void Filter()
     {
         var tab = CurrentTab;
-        StartupKind? kind = tab == StartupTab.Advanced && Enum.TryParse<StartupKind>(SelectedAdvancedKind?.Key, out var k) ? k : null;
+        var kind = AdvancedKind;
         var q = Search.Trim();
         var shownPerTab = new int[Tabs.Count];
-        int total = 0, off = 0, attention = 0;
         var shown = new List<StartupRow>();
         foreach (var r in _all)
         {
             var passes = Passes(r, q);
             if (passes) shownPerTab[(int)r.Tab]++;
-            if (r.Tab != tab || (kind is { } only && r.Entry.Kind != only)) continue;
-            total++;
-            if (r.Entry.Enabled == false) off++;
-            if (r.NeedsAttention) attention++;
-            if (passes) shown.Add(r);
+            if (passes && InOpenTab(r, tab, kind)) shown.Add(r);
         }
         Rows.Clear();
         foreach (var r in shown.OrderByDescending(r => r.IsNew).ThenByDescending(r => r.NeedsAttention).ThenBy(r => r.Entry.Kind).ThenBy(r => r.Name, StringComparer.CurrentCultureIgnoreCase))
@@ -368,17 +413,37 @@ public sealed partial class StartupViewModel(IPageHost owner, AppServices servic
         // The counts wait for the signatures, as the summary does: until then Windows' own entries are not hidden yet.
         foreach (var t in Tabs)
             t.Header = _checkingSignatures || _all.Count == 0 ? TabName(t.Tab) : $"{TabName(t.Tab)} ({shownPerTab[(int)t.Tab]})";
-        _tabTotal = total;
-        OnPropertyChanged(nameof(NoMatch));
-        SummaryText = _all.Count == 0 ? "" : Summary(tab, total, off, attention, total - shown.Count, _checkingSignatures);
+        UpdateSummary();
         OnPropertyChanged(nameof(ServicesHintTab));
+        OnPropertyChanged(nameof(ServicesHintText));
         OnPropertyChanged(nameof(ShowServicesHint));
         OnPropertyChanged(nameof(IsAdvancedTab));
     }
 
     /// <summary>
-    /// What the open tab holds, in sentences: how many entries, how many of them are turned off, how many need attention
-    /// and how many the search and filters hide. While the signatures are checked, a note instead of the last two.
+    /// The summary of the open tab. Turned off is the switch's state (<see cref="SwitchRow.IsOn"/>), not the one of the
+    /// last read: a switch changed here counts at once.
+    /// </summary>
+    private void UpdateSummary()
+    {
+        var tab = CurrentTab;
+        var kind = AdvancedKind;
+        int total = 0, off = 0, attention = 0;
+        foreach (var r in _all.Where(r => InOpenTab(r, tab, kind)))
+        {
+            total++;
+            if (r.Entry.Enabled is not null && !r.IsOn) off++;
+            if (r.NeedsAttention) attention++;
+        }
+        _tabTotal = total;
+        OnPropertyChanged(nameof(NoMatch));
+        SummaryText = _all.Count == 0 ? "" : Summary(tab, total, off, attention, total - Rows.Count, _checkingSignatures);
+    }
+
+    /// <summary>
+    /// What the open tab holds, in sentences: first how many of its entries the search and filters leave (the number in
+    /// the tab's header), then how many entries it has, how many of them are turned off and how many need attention.
+    /// While the signatures are checked, a note instead of the first and the last.
     /// </summary>
     internal static string Summary(StartupTab tab, int total, int off, int attention, int hidden, bool checking)
     {
@@ -391,21 +456,14 @@ public sealed partial class StartupViewModel(IPageHost owner, AppServices servic
             StartupTab.Drivers => one ? "Startup_CountDriversOne" : "Startup_CountDrivers",
             _ => one ? "Startup_CountAdvancedOne" : "Startup_CountAdvanced",
         }, total);
-        List<string> parts =
-        [
-            off == 0 ? Loc.Instance.Format("Startup_SummaryCount", count)
+        List<string> parts = [];
+        // Leads with what the list shows, so it matches the header: "Showing 5 of 51." before "51 apps start at sign-in".
+        if (!checking && hidden > 0) parts.Add(Loc.Instance.Format("Startup_Showing", total - hidden, total));
+        parts.Add(off == 0 ? Loc.Instance.Format("Startup_SummaryCount", count)
             : one ? Loc.Instance.Format("Startup_SummaryCountOff", count)
-            : Loc.Instance.Format("Startup_SummaryCountSomeOff", count, off),
-        ];
-        if (checking)
-        {
-            parts.Add(Loc.Instance["Startup_SummaryChecking"]);
-        }
-        else
-        {
-            if (attention > 0) parts.Add(Loc.Instance.Format(attention == 1 ? "Startup_AttentionOne" : "Startup_Attention", attention));
-            if (hidden > 0) parts.Add(Loc.Instance.Format("Startup_Hidden", hidden));
-        }
+            : Loc.Instance.Format("Startup_SummaryCountSomeOff", count, off));
+        if (checking) parts.Add(Loc.Instance["Startup_SummaryChecking"]);
+        else if (attention > 0) parts.Add(Loc.Instance.Format(attention == 1 ? "Startup_AttentionOne" : "Startup_Attention", attention));
         return string.Join(" ", parts);
     }
 
@@ -415,7 +473,7 @@ public sealed partial class StartupViewModel(IPageHost owner, AppServices servic
     /// </summary>
     public void Reveal(string name)
     {
-        HideMicrosoft = false;
+        ShowMicrosoft = true;
         OnlyAttention = false;
         OnlyNew = false;
         if (_all.FirstOrDefault(r => r.Name == name) is { } row) SelectedTab = (int)row.Tab;
@@ -440,6 +498,9 @@ public sealed partial class StartupViewModel(IPageHost owner, AppServices servic
         StartupTab.Tasks => 1,
         _ => -1,
     };
+
+    /// <summary>What the other page adds for the open tab: start types and explanations, or every task.</summary>
+    public string ServicesHintText => Loc.Instance[ServicesHintTab == 1 ? "Startup_TasksHint" : "Startup_ServicesHint"];
 
     /// <summary>Looks up the hashes of shown entries that are not signed by Microsoft (opt-in, own API key).</summary>
     [RelayCommand]
@@ -553,9 +614,10 @@ public sealed partial class StartupViewModel(IPageHost owner, AppServices servic
         }
         var name = $"Tunero-Startup-{Environment.MachineName}-{DateTime.Now:yyyy-MM-dd}.csv";
         if (Owner.PickSaveFile(name, Loc.Instance["Startup_ExportFileType"], ".csv") is not { } path) return;
+        // The state of the switch, also after a change on this page; the signature in words, also Not signed.
         var rows = _all.Select(r => new StartupExportRow(r.Name, r.KindText,
-            r.Entry.Enabled switch { true => Loc.Instance["Startup_ExportOn"], false => Loc.Instance["Startup_ExportOff"], null => Loc.Instance["Startup_ReadOnly"] },
-            r.PublisherText, r.SignatureText, r.Command, r.Entry.ImagePath, r.Location)).ToList();
+            r.Entry.Enabled is null ? Loc.Instance["Startup_ReadOnly"] : r.IsOn ? Loc.Instance["Startup_ExportOn"] : Loc.Instance["Startup_ExportOff"],
+            r.PublisherText, r.ExportSignatureText, r.Command, r.Entry.ImagePath, r.Location)).ToList();
         string[] headers = [.. Loc.Instance["Startup_ExportHeaders"].Split('|')];
         try
         {

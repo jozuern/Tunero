@@ -42,6 +42,9 @@ public sealed record StartupEntry(
     /// <summary>A task that runs at sign-in or at boot; false for a task on another trigger (a daily updater).</summary>
     public bool StartsWithWindows { get; init; } = true;
 
+    /// <summary>A task that runs when Windows starts but not at sign-in: the page names its trigger as Windows start.</summary>
+    public bool AtBootOnly { get; init; }
+
     /// <summary>
     /// Runs PowerShell, cmd, mshta or a similar script host: Microsoft-signed, but the command decides what runs, so
     /// such entries are never hidden as "Microsoft". Variables are expanded with the machine's values only: this app
@@ -167,7 +170,9 @@ public sealed partial class StartupScanner(IRegistryRoots registry, ITaskSchedul
             foreach (var file in Directory.EnumerateFiles(dir).Where(f => !Path.GetFileName(f).Equals("desktop.ini", StringComparison.OrdinalIgnoreCase)))
             {
                 var name = Path.GetFileName(file);
-                var target = file.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase) ? ShortcutTarget(file) : file;
+                // Quoted: Explorer opens the file itself, so "...\Start Menu\..." must not be read the way CreateProcess
+                // reads an unquoted command line, where a planted ...\Windows\Start.exe would be checked instead.
+                var target = file.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase) ? ShortcutTarget(file) : $"\"{file}\"";
                 // A shortcut with arguments gives "\"target\" args": the image is only the target.
                 yield return new StartupEntry(StartupKind.StartupFolder, Path.GetFileNameWithoutExtension(file), target, CommandLine.ImagePath(target, _userExpand), dir, hive,
                     ApprovedState(hive, "StartupFolder", name), $"folder:{hive}:{name}")
@@ -183,7 +188,10 @@ public sealed partial class StartupScanner(IRegistryRoots registry, ITaskSchedul
         try
         {
             var (target, args) = Platform.ShellLinkFile.Read(lnk);
-            return string.IsNullOrEmpty(args) ? target : $"\"{target}\" {args}";
+            // The target is a path, not a command line: quoted, also without arguments.
+            if (string.IsNullOrWhiteSpace(target)) return null;
+            var quoted = $"\"{target.Trim().Trim('"')}\"";
+            return string.IsNullOrEmpty(args) ? quoted : $"{quoted} {args}";
         }
         catch (Exception)
         {
@@ -222,8 +230,7 @@ public sealed partial class StartupScanner(IRegistryRoots registry, ITaskSchedul
             for (var i = 0; i < programs.Count; i++)
             {
                 var (program, arguments) = programs[i];
-                // A task's program path is often stored with quotes already: quote it only once.
-                var command = program is null ? null : $"\"{program.Trim().Trim('"')}\" {arguments}".Trim();
+                var command = TaskCommand(program, arguments);
                 var image = command is not null ? CommandLine.ImagePath(command, _userExpand) : ComServer(t.ComHandler);
                 var name = t.Path.TrimStart('\\') + (i == 0 ? "" : $" ({i + 1})");
                 yield return new StartupEntry(StartupKind.LogonTask, name, command ?? image, image, t.Path, Hive.Machine, t.Enabled,
@@ -231,10 +238,25 @@ public sealed partial class StartupScanner(IRegistryRoots registry, ITaskSchedul
                 {
                     Target = t.Path,
                     StartsWithWindows = t.AtLogon || t.AtBoot,
+                    AtBootOnly = t.AtBoot && !t.AtLogon,
                 };
             }
         }
     }
+
+    /// <summary>
+    /// A task's program with its arguments, as both pages show it. The program path is often stored with quotes already:
+    /// quoted only once. Null for a task without a program (a COM handler).
+    /// </summary>
+    public static string? TaskCommand(string? program, string? arguments) =>
+        string.IsNullOrWhiteSpace(program) ? null : $"\"{program.Trim().Trim('"')}\" {arguments}".Trim();
+
+    /// <summary>
+    /// The file a task's first action runs, as the Startup page reads it: its program expanded for the signed-in user, or
+    /// the DLL registered for its COM handler. Reads the registry for a COM handler: not for every row on each search.
+    /// </summary>
+    public string? TaskImage(ScheduledTaskInfo t) =>
+        TaskCommand(t.Command, t.Arguments) is { } command ? CommandLine.ImagePath(command, _userExpand) : ComServer(t.ComHandler);
 
     /// <summary>
     /// The DLL registered for a COM class (InprocServer32), expanded with the machine's variables; null when unknown. A
@@ -252,7 +274,7 @@ public sealed partial class StartupScanner(IRegistryRoots registry, ITaskSchedul
             if (!string.IsNullOrWhiteSpace(dll)) break;
         }
         // A file path, not a command line: spaces in "C:\Program Files\..." are part of it.
-        return string.IsNullOrWhiteSpace(dll) ? null : Platform.PathExpander.Machine.Expand(dll.Trim().Trim('"'));
+        return CommandLine.FilePath(dll, Platform.PathExpander.Machine.Expand);
     }
 
     // ---------------- Services and drivers ----------------
@@ -292,7 +314,7 @@ public sealed partial class StartupScanner(IRegistryRoots registry, ITaskSchedul
         if (isService && file is not null && Path.GetFileName(file).Equals("svchost.exe", StringComparison.OrdinalIgnoreCase))
         {
             using var p = key.OpenSubKey("Parameters");
-            if (p?.GetValue("ServiceDll", null, Microsoft.Win32.RegistryValueOptions.DoNotExpandEnvironmentNames)?.ToString() is { } dll) file = CommandLine.ImagePath(dll, Platform.PathExpander.Machine.Expand);
+            if (p?.GetValue("ServiceDll", null, Microsoft.Win32.RegistryValueOptions.DoNotExpandEnvironmentNames)?.ToString() is { } dll) file = CommandLine.FilePath(dll, Platform.PathExpander.Machine.Expand);
         }
         var display = ResolveIndirect(key.GetValue("DisplayName")?.ToString()) ?? name;
         return new StartupEntry(isDriver ? StartupKind.Driver : StartupKind.Service, display, image, file, $@"HKLM\{ServicesKey}\{name}", Hive.Machine,
@@ -334,7 +356,7 @@ public sealed partial class StartupScanner(IRegistryRoots registry, ITaskSchedul
                 using var cls = Open(Hive.Machine, $@"SOFTWARE\Classes\CLSID\{id}");
                 var name = cls?.GetValue("")?.ToString() is { Length: > 0 } n ? n : handler;
                 var blockedForUserOnly = !blockedSet.Contains(id) && userBlockedSet.Contains(id);
-                yield return new StartupEntry(StartupKind.ShellExtension, name, dll, CommandLine.ImagePath(dll), $@"HKCR\{handlerRoot}\{handler}",
+                yield return new StartupEntry(StartupKind.ShellExtension, name, dll, CommandLine.FilePath(dll), $@"HKCR\{handlerRoot}\{handler}",
                     blockedForUserOnly ? Hive.User : Hive.Machine, !blockedSet.Contains(id) && !blockedForUserOnly, $"shellext:{id}")
                 {
                     Target = id,
@@ -437,12 +459,29 @@ public sealed partial class StartupScanner(IRegistryRoots registry, ITaskSchedul
         }
     }
 
-    /// <summary>"@%SystemRoot%\system32\x.dll,-101" display names resolved through SHLoadIndirectString.</summary>
+    /// <summary>
+    /// "@%SystemRoot%\system32\x.dll,-101" display names resolved through SHLoadIndirectString. A driver package writes
+    /// "@oem19.inf,%ServiceDisplayName%;Intel(R) ... Service", which that function cannot read: the text after the ';'
+    /// is the name the service manager shows.
+    /// </summary>
     public static string? ResolveIndirect(string? value)
     {
         if (string.IsNullOrEmpty(value) || !value.StartsWith('@')) return value;
         var sb = new StringBuilder(512);
-        return SHLoadIndirectString(value, sb, sb.Capacity, IntPtr.Zero) == 0 ? sb.ToString() : value;
+        if (SHLoadIndirectString(value, sb, sb.Capacity, IntPtr.Zero) == 0 && sb.ToString() is { Length: > 0 } resolved && !resolved.StartsWith('@')) return resolved;
+        return InfFallback(value) ?? value;
+    }
+
+    /// <summary>The fallback text of "@file.inf,%key%;text"; null for any other form.</summary>
+    internal static string? InfFallback(string value)
+    {
+        var inf = value.IndexOf(".inf,", StringComparison.OrdinalIgnoreCase);
+        if (inf < 0) return null;
+        // The key is between two '%': the ';' that follows it starts the text (which may hold ';' itself).
+        var keyStart = value.IndexOf('%', inf);
+        var keyEnd = keyStart < 0 ? -1 : value.IndexOf('%', keyStart + 1);
+        var semicolon = keyEnd < 0 ? -1 : value.IndexOf(';', keyEnd);
+        return semicolon < 0 || value[(semicolon + 1)..].Trim() is not { Length: > 0 } text ? null : text;
     }
 
     [DllImport("shlwapi.dll", CharSet = CharSet.Unicode)]

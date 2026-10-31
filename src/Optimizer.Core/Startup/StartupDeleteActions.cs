@@ -53,11 +53,11 @@ public static class ScheduledTaskXml
         };
     }
 
-    /// <summary>The first program the task runs with its arguments, for the confirmation; null for a COM handler.</summary>
     /// <summary>The program the task's first Exec action starts, without its arguments; null when it has none.</summary>
     public static string? Program(string xml) =>
         Root(xml)?.Element(Ns + "Actions")?.Element(Ns + "Exec")?.Element(Ns + "Command")?.Value is { Length: > 0 } command ? command : null;
 
+    /// <summary>The first program the task runs with its arguments, for the confirmation; null for a COM handler.</summary>
     public static string? Command(string xml)
     {
         var exec = Root(xml)?.Element(Ns + "Actions")?.Element(Ns + "Exec");

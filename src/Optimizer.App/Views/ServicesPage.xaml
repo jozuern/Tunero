@@ -116,19 +116,32 @@
                             <DataTemplate>
                                 <ui:Card Padding="{StaticResource CardPadding}" Margin="{StaticResource CardRowMargin}">
                                     <DockPanel>
-                                        <ui:ToggleSwitch DockPanel.Dock="Right" AutomationProperties.Name="{Binding Name}" IsChecked="{Binding SwitchState, Mode=TwoWay}" Margin="16,0,0,0" VerticalAlignment="Center"
-                                                         OnContent="{l:Tr Startup_Enabled}" OffContent="{l:Tr Startup_Disabled}">
-                                            <ui:ToggleSwitch.IsEnabled>
-                                                <MultiBinding Converter="{StaticResource AllTrue}">
-                                                    <Binding Path="CanToggle" />
-                                                    <Binding Path="CanChange" Source="{x:Static s:ChangeGate.Instance}" />
-                                                </MultiBinding>
-                                            </ui:ToggleSwitch.IsEnabled>
-                                        </ui:ToggleSwitch>
+                                        <!-- As on the Startup page: a fixed column with the switch on its left, and where Windows'
+                                             own task cannot be switched, the note why in its place instead of a grey switch -->
+                                        <StackPanel DockPanel.Dock="Right" Width="148" Margin="16,0,0,0" VerticalAlignment="Center">
+                                            <ui:ToggleSwitch AutomationProperties.Name="{Binding Name}" IsChecked="{Binding SwitchState, Mode=TwoWay}" HorizontalAlignment="Left"
+                                                             OnContent="{Binding OnText}" OffContent="{Binding OffText}"
+                                                             Visibility="{Binding CanToggle, Converter={StaticResource BoolToVisibility}}">
+                                                <ui:ToggleSwitch.IsEnabled>
+                                                    <MultiBinding Converter="{StaticResource AllTrue}">
+                                                        <Binding Path="CanToggle" />
+                                                        <Binding Path="CanChange" Source="{x:Static s:ChangeGate.Instance}" />
+                                                    </MultiBinding>
+                                                </ui:ToggleSwitch.IsEnabled>
+                                            </ui:ToggleSwitch>
+                                            <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{Binding ReadOnlyNote}" TextWrapping="Wrap"
+                                                          ToolTip="{l:Tr Task_ReadOnlyTip}" Background="Transparent"
+                                                          Visibility="{Binding ReadOnlyNote, Converter={StaticResource NullToVisibility}}" />
+                                        </StackPanel>
                                         <StackPanel>
                                             <ui:TextBlock FontTypography="BodyStrong" Text="{Binding Name}" TextWrapping="Wrap" />
+                                            <!-- The trigger (at sign-in, at startup, on a schedule), not the path again -->
                                             <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding Location}" Margin="0,4,0,0" />
-                                            <TextBlock Style="{StaticResource Mono}" Text="{Binding Command}" Margin="0,4,0,0" />
+                                            <!-- The command with Technical details only, on one line with all of it in the tooltip -->
+                                            <Border Visibility="{Binding DataContext.ShowTechnical, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}">
+                                                <TextBlock Style="{StaticResource Mono}" Text="{Binding Command}" Margin="0,4,0,0" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                                                           ToolTip="{Binding Command}" Visibility="{Binding Command, Converter={StaticResource NullToVisibility}}" />
+                                            </Border>
                                         </StackPanel>
                                     </DockPanel>
                                 </ui:Card>

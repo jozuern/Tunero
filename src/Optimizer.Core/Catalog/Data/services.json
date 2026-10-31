@@ -585,9 +585,9 @@
     },
     {
       "name": "SysMain",
-      "mode": "warn",
-      "en": "SysMain (Superfetch): preloads frequently used programs. See the SysMain tweak.",
-      "de": "SysMain (Superfetch): lädt häufig genutzte Programme vor. Siehe den SysMain-Tweak."
+      "mode": "protected",
+      "en": "SysMain (Superfetch): preloads frequently used programs. Turned off by the tweak SysMain (Superfetch) off (Tweaks, Memory), which also undoes it; not changed here, so the two never record different originals.",
+      "de": "SysMain (Superfetch): lädt häufig genutzte Programme vor. Wird vom Tweak SysMain (Superfetch) aus (Tweaks, RAM) ausgeschaltet, der es auch rückgängig macht; hier nicht änderbar, damit beide nie unterschiedliche Ausgangswerte speichern."
     },
     {
       "name": "edgeupdate",

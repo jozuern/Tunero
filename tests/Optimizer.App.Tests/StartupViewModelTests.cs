@@ -1,6 +1,7 @@
 using Optimizer.App.Services;
 using Optimizer.App.ViewModels;
 using Optimizer.Core.Actions;
+using Optimizer.Core.Docs;
 using Optimizer.Core.Startup;
 
 namespace Optimizer.App.Tests;
@@ -86,11 +87,11 @@ public sealed class StartupViewModelTests
     public void HeadersCountWhatEachTabShowsUnderTheFilters()
     {
         var vm = Page();
-        // Hide Windows entries is on: OneDrive and the Windows service are left out.
+        // Show Windows entries is off: OneDrive and the Windows service are left out.
         Assert.Equal([3, 1, 1, 1, 2], Counts(vm));
         Assert.StartsWith(StartupViewModel.TabName(StartupTab.SignIn), vm.Tabs[0].Header, StringComparison.Ordinal);
 
-        vm.HideMicrosoft = false;
+        vm.ShowMicrosoft = true;
         Assert.Equal([4, 1, 2, 1, 2], Counts(vm));
 
         vm.OnlyAttention = true;
@@ -150,10 +151,12 @@ public sealed class StartupViewModelTests
         var vm = Page();
         // Apps at sign-in: four, Steam turned off and not signed, OneDrive hidden as a Windows entry.
         Assert.Equal(StartupViewModel.Summary(StartupTab.SignIn, 4, 1, 1, 1, checking: false), vm.SummaryText);
+        // It leads with what the list shows, the number in the tab's header.
         Assert.Equal(string.Join(" ",
+            Loc.Instance.Format("Startup_Showing", 3, 4),
             Loc.Instance.Format("Startup_SummaryCountSomeOff", Loc.Instance.Format("Startup_CountSignIn", 4), 1),
-            Loc.Instance.Format("Startup_AttentionOne", 1),
-            Loc.Instance.Format("Startup_Hidden", 1)), vm.SummaryText);
+            Loc.Instance.Format("Startup_AttentionOne", 1)), vm.SummaryText);
+        Assert.Equal(3, Counts(vm)[(int)StartupTab.SignIn]);
 
         vm.SelectedTab = (int)StartupTab.Drivers;
         Assert.Equal(Loc.Instance.Format("Startup_SummaryCount", Loc.Instance.Format("Startup_CountDriversOne", 1)), vm.SummaryText);
@@ -199,7 +202,7 @@ public sealed class StartupViewModelTests
         vm.OnlyAttention = true;
         vm.Reveal("Daily Updater");
         Assert.Equal((int)StartupTab.Tasks, vm.SelectedTab);
-        Assert.False(vm.HideMicrosoft);
+        Assert.True(vm.ShowMicrosoft);
         Assert.False(vm.OnlyAttention);
         Assert.Equal(["Daily Updater"], vm.Rows.Select(r => r.Name));
     }
@@ -216,4 +219,83 @@ public sealed class StartupViewModelTests
         Assert.Equal(winsock.KindText, winsock.SimpleKindText);
         Assert.StartsWith(winsock.KindText, winsock.MetaText, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void WindowsEntriesWithoutTheirFileAreWindowsEntries()
+    {
+        var notFound = new SignatureInfo(SignatureStatus.NotFound, null, Catalog: false);
+        StartupRow Missing(StartupKind kind, string? target, Hive hive = Hive.Machine, string? command = null)
+        {
+            var row = new StartupRow(new StartupEntry(kind, "x", command, null, "HKLM", hive, null, $"{kind}:x") { Target = target }, Loc.Instance.Language, null!, null!);
+            row.SetSignature(notFound, runsScriptHost: false, Loc.Instance.Language);
+            return row;
+        }
+
+        Assert.True(Missing(StartupKind.LogonTask, @"\Microsoft\Windows\LanguageComponentsInstaller\ReconcileLanguageResources").IsPlainMicrosoft);
+        Assert.True(Missing(StartupKind.KnownDll, "_wowarmhw").IsPlainMicrosoft);
+        Assert.True(Missing(StartupKind.ActiveSetup, "{89820200-ECBD-11cf-8B85-00AA005B4383}", command: "U").IsPlainMicrosoft);
+        // Another program's missing file still shows: a task outside Windows' folder, an Active Setup stub with a path.
+        Assert.False(Missing(StartupKind.LogonTask, @"\Vendor\Updater").IsPlainMicrosoft);
+        Assert.False(Missing(StartupKind.ActiveSetup, "{1}", command: @"C:\Program Files\Vendor\setup.exe /user").IsPlainMicrosoft);
+        Assert.False(Missing(StartupKind.ActiveSetup, "{1}", Hive.User, command: "U").IsPlainMicrosoft);
+        Assert.False(Missing(StartupKind.RunKey, "x").IsPlainMicrosoft);
+        // A Windows file is Microsoft's whichever of Windows' own signers signed it, the HAL publisher too.
+        var hal = new SignatureInfo(SignatureStatus.Signed, "Microsoft Windows Hardware Abstraction Layer Publisher", Catalog: false, MicrosoftRoot: true);
+        Assert.True(Row(Entry(StartupKind.Driver, "intelpep", enabled: null), hal).IsPlainMicrosoft);
+        var whql = new SignatureInfo(SignatureStatus.Signed, "Microsoft Windows Hardware Compatibility Publisher", Catalog: false, MicrosoftRoot: true);
+        Assert.False(Row(Entry(StartupKind.Driver, "vendor", enabled: null), whql).IsPlainMicrosoft);
+    }
+
+    [Fact]
+    public void AServiceSwitchNamesTheStartTypesItSets()
+    {
+        var service = Row(Entry(StartupKind.Service, "Vendor Service"), Vendor);
+        Assert.Equal(Labels.Current.Get(Loc.Instance.Language, "serviceStart.Automatic"), service.OnText);
+        Assert.Equal(Labels.Current.Get(Loc.Instance.Language, "serviceStart.Manual"), service.OffText);
+        Assert.Equal(Loc.Instance["Startup_ServiceSwitchTip"], service.SwitchTip);
+        var run = Row(Entry(StartupKind.RunKey, "Steam"), Vendor);
+        Assert.Equal(Loc.Instance["Startup_Enabled"], run.OnText);
+        Assert.Equal(Loc.Instance["Startup_Disabled"], run.OffText);
+        Assert.Null(run.SwitchTip);
+    }
+
+    [Fact]
+    public void ATaskOnAppsAtSignInNamesItsTrigger()
+    {
+        Assert.Equal(Loc.Instance["Startup_PlainTask"], Row(Entry(StartupKind.LogonTask, "Logon"), Vendor).KindText);
+        var boot = Row(Entry(StartupKind.LogonTask, "Boot") with { AtBootOnly = true }, Vendor);
+        Assert.Equal(Loc.Instance["Startup_PlainTaskAtBoot"], boot.KindText);
+        Assert.Equal(Loc.Instance["Startup_PlainTaskAtBoot"], boot.SimpleKindText);
+        // On the tab of the other tasks the kind is the technical name.
+        Assert.Equal(Labels.Current.Get(Loc.Instance.Language, "startupKind.LogonTask"), Row(Entry(StartupKind.LogonTask, "Daily", startsWithWindows: false), Vendor).KindText);
+    }
+
+    [Fact]
+    public void TheHintUnderTheListFitsTheTab()
+    {
+        var vm = Page();
+        vm.SelectedTab = (int)StartupTab.Tasks;
+        Assert.Equal(Loc.Instance["Startup_TasksHint"], vm.ServicesHintText);
+        vm.SelectedTab = (int)StartupTab.Services;
+        Assert.Equal(Loc.Instance["Startup_ServicesHint"], vm.ServicesHintText);
+    }
+
+    [Fact]
+    public void TheExportNamesEverySignature()
+    {
+        var unsigned = Row(Entry(StartupKind.RunKey, "Steam"), Unsigned);
+        // On the card the tag says it; the export has no tags column, so its signature column does.
+        Assert.Equal("", unsigned.SignatureText);
+        Assert.Equal(Labels.Current.Get(Loc.Instance.Language, "signature.Unsigned"), unsigned.ExportSignatureText);
+        Assert.Equal(Labels.Current.Get(Loc.Instance.Language, "signature.Signed"), Row(Entry(StartupKind.RunKey, "Discord"), Vendor).ExportSignatureText);
+    }
+
+    [Theory]
+    [InlineData("Bluetooth Support Service: for Bluetooth controllers.", "Bluetooth Support Service", "For Bluetooth controllers.")]
+    [InlineData("bluetooth support service: for Bluetooth controllers.", "Bluetooth Support Service", "For Bluetooth controllers.")]
+    [InlineData("Print Spooler: needed for printing.", "Druckwarteschlange", "Print Spooler: needed for printing.")]
+    [InlineData("Bluetooth Support Service", "Bluetooth Support Service", "Bluetooth Support Service")]
+    [InlineData(null, "x", null)]
+    public void AServiceNoteDoesNotRepeatTheTitle(string? note, string displayName, string? expected) =>
+        Assert.Equal(expected, ServiceRowVm.WithoutName(note, displayName));
 }

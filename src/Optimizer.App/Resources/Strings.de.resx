@@ -405,8 +405,8 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Startup_AllKinds" xml:space="preserve">
     <value>Alle Orte</value>
   </data>
-  <data name="Startup_HideMicrosoft" xml:space="preserve">
-    <value>Windows-Einträge ausblenden</value>
+  <data name="Startup_ShowMicrosoft" xml:space="preserve">
+    <value>Windows-Einträge zeigen</value>
   </data>
   <data name="Startup_SummaryChecking" xml:space="preserve"><value>Die Signaturen werden geprüft, bevor Windows-Einträge ausgeblendet werden und gezählt wird, was Aufmerksamkeit braucht.</value></data>
   <data name="Startup_Loading" xml:space="preserve"><value>Die Einträge werden gelesen und ihre Signaturen geprüft. Danach sortiert sich die Liste neu.</value></data>
@@ -416,6 +416,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Startup_ReadOnly" xml:space="preserve">
     <value>Nur Anzeige</value>
   </data>
+  <data name="Startup_ReadOnlyTip" xml:space="preserve"><value>Tunero schaltet diesen Eintrag nicht. Unter Weitere Optionen kannst du die Datei zeigen oder den Ort kopieren.</value></data>
   <data name="Vt_Check" xml:space="preserve">
     <value>Mit VirusTotal prüfen</value>
   </data>
@@ -480,6 +481,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Task_ShowMicrosoft" xml:space="preserve">
     <value>Windows-Aufgaben zeigen</value>
   </data>
+  <data name="Task_ReadOnlyTip" xml:space="preserve"><value>Tunero schaltet weder die Aufgaben von Windows selbst noch seine eigenen.</value></data>
   <data name="Task_Hint" xml:space="preserve">
     <value>Aufgaben anderer Hersteller sind oft Updater und Telemetrie. Abgeschaltete Aufgaben bleiben erhalten und lassen sich wieder einschalten.</value>
   </data>
@@ -1486,6 +1488,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Vt_AddKey" xml:space="preserve"><value>Mit VirusTotal prüfen: Schlüssel in den Einstellungen eintragen</value></data>
   <data name="Startup_Enabled" xml:space="preserve"><value>Aktiviert</value></data>
   <data name="Startup_Disabled" xml:space="preserve"><value>Deaktiviert</value></data>
+  <data name="Startup_ServiceSwitchTip" xml:space="preserve"><value>Manuell: Der Dienst startet nicht mehr mit Windows, aber Programme, die ihn brauchen, können ihn weiterhin starten.</value></data>
   <data name="Cleanup_RunClean" xml:space="preserve"><value>Bereinigen</value></data>
   <data name="Settings_ShowInFolder" xml:space="preserve"><value>Im Ordner zeigen</value></data>
   <data name="Settings_OpenFolder" xml:space="preserve"><value>Ordner öffnen</value></data>
@@ -1645,19 +1648,21 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Net_GameSearch" xml:space="preserve"><value>Spiele suchen</value></data>
   <data name="Net_NoGameMatch" xml:space="preserve"><value>Kein Spiel passt zur Suche.</value></data>
   <data name="Net_ShowAllGames" xml:space="preserve"><value>Alle {0} Spiele zeigen</value></data>
-  <data name="Startup_ServicesHint" xml:space="preserve"><value>Ihre Starttypen, mit dem, was jeder Dienst tut, und alle geplanten Aufgaben stehen auf einer eigenen Seite.</value></data>
+  <data name="Startup_ServicesHint" xml:space="preserve"><value>Die Starttypen und was jeder Dienst tut, findest du auf der Seite Dienste &amp; Aufgaben.</value></data>
+  <data name="Startup_TasksHint" xml:space="preserve"><value>Alle geplanten Aufgaben, nicht nur diese, findest du auf der Seite Dienste &amp; Aufgaben.</value></data>
   <data name="Startup_ServicesLink" xml:space="preserve"><value>Dienste &amp; Aufgaben öffnen</value></data>
   <data name="Startup_Groups" xml:space="preserve"><value>Autostart-Gruppen</value></data>
-  <data name="Startup_TabTasks" xml:space="preserve"><value>Geplante Aufgaben</value></data>
+  <data name="Startup_TabTasks" xml:space="preserve"><value>Weitere Aufgaben</value></data>
   <data name="Startup_TabServices" xml:space="preserve"><value>Dienste</value></data>
   <data name="Startup_TabDrivers" xml:space="preserve"><value>Treiber</value></data>
   <data name="Startup_TabAdvanced" xml:space="preserve"><value>Erweitert</value></data>
-  <data name="Startup_AdvancedHint" xml:space="preserve"><value>Weitere Stellen, von denen Windows und Programme Code laden, wie Autoruns sie zeigt. Die meisten Einträge stehen hier zur Prüfung: Ändern sollte sie das Programm, dem sie gehören.</value></data>
+  <data name="Startup_AdvancedHint" xml:space="preserve"><value>Weitere Stellen, von denen Windows und Programme Code laden, wie Autoruns sie zeigt. Die meisten stehen nur zur Anzeige hier: Ändern lassen sie sich im Programm, zu dem sie gehören.</value></data>
   <data name="Startup_MoreOptions" xml:space="preserve"><value>Weitere Optionen</value></data>
   <data name="Startup_MoreOptionsName" xml:space="preserve"><value>Weitere Optionen für {0}</value></data>
   <data name="Startup_PlainRegistry" xml:space="preserve"><value>Registrierung</value></data>
   <data name="Startup_PlainFolder" xml:space="preserve"><value>Autostart-Ordner</value></data>
-  <data name="Startup_PlainTask" xml:space="preserve"><value>Geplante Aufgabe</value></data>
+  <data name="Startup_PlainTask" xml:space="preserve"><value>Geplante Aufgabe bei der Anmeldung</value></data>
+  <data name="Startup_PlainTaskAtBoot" xml:space="preserve"><value>Geplante Aufgabe beim Systemstart</value></data>
   <data name="Startup_PlainPolicy" xml:space="preserve"><value>Per Gruppenrichtlinie</value></data>
   <data name="Startup_PlainRunOnce" xml:space="preserve"><value>Läuft einmal</value></data>
   <data name="Startup_CountSignInOne" xml:space="preserve"><value>1 App startet bei der Anmeldung</value></data>
@@ -1675,7 +1680,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Startup_SummaryCountSomeOff" xml:space="preserve"><value>{0}, davon {1} abgeschaltet.</value></data>
   <data name="Startup_AttentionOne" xml:space="preserve"><value>1 braucht Aufmerksamkeit.</value></data>
   <data name="Startup_Attention" xml:space="preserve"><value>{0} brauchen Aufmerksamkeit.</value></data>
-  <data name="Startup_Hidden" xml:space="preserve"><value>Durch Suche oder Filter ausgeblendet: {0}.</value></data>
+  <data name="Startup_Showing" xml:space="preserve"><value>{0} von {1} werden gezeigt.</value></data>
   <data name="Bench_StepOf" xml:space="preserve"><value>Schritt {0} von 4</value></data>
   <data name="Bench_StepLabelDone" xml:space="preserve"><value>Fertig</value></data>
   <data name="Bench_PickGame" xml:space="preserve"><value>Spiel auswählen</value></data>

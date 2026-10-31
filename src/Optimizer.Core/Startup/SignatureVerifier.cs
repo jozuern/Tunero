@@ -18,11 +18,14 @@ public sealed record SignatureInfo(SignatureStatus Status, string? Publisher, bo
     /// <summary>
     /// Signers of Microsoft's own files. Exact names: "Microsoft Windows Hardware Compatibility Publisher" (WHQL and
     /// attestation signing) and "Microsoft Windows Early Launch Anti-malware Publisher" sign other vendors' drivers and
-    /// files, so a name prefix would count those as Microsoft's.
+    /// files, so a name prefix would count those as Microsoft's. "Microsoft Windows Hardware Abstraction Layer Publisher"
+    /// is the embedded signer of the HAL extensions Windows ships in its own driver packages (intelpep.sys, amdwps.sys,
+    /// IntelPMT.sys, WindowsTrustedRT.sys; checked on Windows 11 build 26300, where the Windows catalog also signs each of them
+    /// as "Microsoft Windows" and no oem*.inf package carries it).
     /// </summary>
     private static readonly HashSet<string> MicrosoftSigners = new(StringComparer.OrdinalIgnoreCase)
     {
-        "Microsoft Windows", "Microsoft Corporation", "Microsoft Windows Publisher",
+        "Microsoft Windows", "Microsoft Corporation", "Microsoft Windows Publisher", "Microsoft Windows Hardware Abstraction Layer Publisher",
     };
 
     public bool IsMicrosoft => Status == SignatureStatus.Signed && MicrosoftRoot != false && Publisher is { } p && MicrosoftSigners.Contains(p.Trim());
