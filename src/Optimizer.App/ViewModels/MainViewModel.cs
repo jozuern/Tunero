@@ -150,10 +150,13 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
     /// <summary>
     /// The verdict: the problems listed under it, or without any, whether recommended changes can still help. The score
     /// counts only problems, so "100 of 100" and two recommended changes are both true; a sentence that said only "nothing
-    /// holds this PC back" next to the recommendations read as a contradiction.
+    /// holds this PC back" next to the recommendations read as a contradiction. A setting that works against the profile
+    /// (listed on the same page with a warning) comes first: it costs what the profile is for.
     /// </summary>
     private void UpdateVerdict() => Verdict = _findingProblems switch
     {
+        0 when AgainstProfile.Count == 1 => Loc.Instance.Format("Dash_VerdictNoneOneAgainst", ProfileName(_usage)),
+        0 when AgainstProfile.Count > 1 => Loc.Instance.Format("Dash_VerdictNoneAgainst", ProfileName(_usage), AgainstProfile.Count),
         0 when _plan.Items.Count == 1 => Loc.Instance["Dash_VerdictNoneOneChange"],
         0 when _plan.Items.Count > 1 => Loc.Instance.Format("Dash_VerdictNoneChanges", _plan.Items.Count),
         0 => Loc.Instance["Dash_VerdictNone"],
@@ -247,12 +250,15 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
     public IReadOnlyList<TweakStatus> DeviceStates => _deviceStates;
 
     public bool FindingsEmpty => Profile is not null && Findings.Count == 0;
-    public bool AdvisorEmpty => Profile is not null && AdvisorItems.Count == 0;
+    /// <summary>The list is empty and no summary card says why (the card names the passed checks and the switch).</summary>
+    public bool AdvisorEmpty => Profile is not null && AdvisorItems.Count == 0 && AdvisorSummaryTitle is null;
 
     /// <summary>Manual checks page: what was checked and how it came out, above the list (which hides the passed ones).</summary>
     [ObservableProperty] private string? _advisorSummaryTitle;
     [ObservableProperty] private string? _advisorSummaryText;
     [ObservableProperty] private bool _advisorAllGood;
+
+    partial void OnAdvisorSummaryTitleChanged(string? value) => OnPropertyChanged(nameof(AdvisorEmpty));
 
     private void BuildAdvisorSummary()
     {
@@ -278,6 +284,8 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
         }.Where(x => x.Count > 0).Select(x => Loc.Instance.Format(x.Key, x.Count)).ToList();
         var checkedText = Loc.Instance.Format("Advisor_SummaryCounts", all.Count);
         AdvisorSummaryText = parts.Count == 0 ? checkedText : $"{checkedText}: {string.Join(", ", parts)}";
+        // Every check passed and the list hides them: the card says how to see them (a second line under it said the same).
+        if (AdvisorItems.Count == 0 && !ShowPassed) AdvisorSummaryText += ". " + Loc.Instance["Advisor_SummaryShowPassed"];
     }
 
     public bool ChangesEmpty => ChangeRecords.Count == 0;

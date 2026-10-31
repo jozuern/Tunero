@@ -716,9 +716,8 @@ public sealed partial class StorageViewModel(IPageHost owner, AppServices servic
             Owner.ShowResult(Loc.Instance.Format("Storage_Missing", pick.Path), InfoBarSeverity.Warning);
             return;
         }
-        var explorer = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "explorer.exe");
-        if (DeElevatedLauncher.Open(explorer, $"/select,\"{pick.Path}\"", Elevation) == DeElevatedLauncher.Path.Failed)
-            Owner.ShowResult(Loc.Instance.Format("Storage_OpenFailed", pick.Path), InfoBarSeverity.Warning);
+        Owner.ShowInExplorer(pick.Path, Elevation, missingText: Loc.Instance.Format("Storage_Missing", pick.Path),
+            failedText: Loc.Instance.Format("Storage_OpenFailed", pick.Path));
     }
 
     /// <summary>The selected paths, one per line.</summary>

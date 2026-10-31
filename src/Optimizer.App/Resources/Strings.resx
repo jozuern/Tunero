@@ -648,6 +648,8 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Storage_BlockReparse" xml:space="preserve"><value>This item, or a folder above it, is a special Windows item (a reparse point, such as a compressed file): remove it in File Explorer.</value></data>
   <data name="Storage_Missing" xml:space="preserve"><value>{0} no longer exists. Analyze again to update the result.</value></data>
   <data name="Storage_OpenFailed" xml:space="preserve"><value>File Explorer did not start. Copy path gives you the path: {0}</value></data>
+  <data name="Explorer_Missing" xml:space="preserve"><value>{0} no longer exists.</value></data>
+  <data name="Explorer_Failed" xml:space="preserve"><value>File Explorer did not start. Open the path yourself: {0}</value></data>
   <data name="Work_FindDuplicates" xml:space="preserve"><value>Looking for duplicate files</value></data>
   <data name="Feat_Title" xml:space="preserve">
     <value>Windows features</value>
@@ -1028,10 +1030,10 @@ The files are deleted permanently. Files in use are skipped.</value>
     <value>No optional features from the list exist on this Windows edition.</value>
   </data>
   <data name="Drift_BannerUpdate" xml:space="preserve">
-    <value>After the Windows update to {0}, these changes are no longer in place: {1}</value>
+    <value>After the Windows update to {0}, these changes are no longer in place: {1}.</value>
   </data>
   <data name="Drift_BannerOther" xml:space="preserve">
-    <value>These changes are no longer in place, changed back by Windows or another program: {0}</value>
+    <value>These changes are no longer in place, changed back by Windows or another program: {0}.</value>
   </data>
   <data name="Drift_More" xml:space="preserve">
     <value>and {0} more</value>
@@ -1112,7 +1114,7 @@ The files are deleted permanently. Files in use are skipped.</value>
     <value>Switch</value>
   </data>
   <data name="Profile_AutoSet" xml:space="preserve">
-    <value>The profile was set to {0} to match this PC. You can change it at the top of the Overview.</value>
+    <value>The profile was set to {0} to match this PC. You can change it under Profile below.</value>
   </data>
   <data name="Findings_HiddenByProfile" xml:space="preserve">
     <value>Problems that only matter for other profiles: {0}. Switch the profile to see them.</value>
@@ -1140,9 +1142,10 @@ The files are deleted permanently. Files in use are skipped.</value>
     <value>Works against the {0} profile</value>
   </data>
   <data name="Rec_AgainstHint" xml:space="preserve">
-    <value>These settings are on and cost what this profile is about. Undo brings back what Tunero changed; for a setting made outside Tunero, Details says how to change it back.</value>
+    <value>These settings are on and work against what this profile is for. Undo reverses a change made by Tunero; for a setting made elsewhere, Details explains how to change it.</value>
   </data>
-  <data name="Rec_AgainstOutside" xml:space="preserve"><value>Set outside this app</value></data>
+  <data name="Rec_AgainstOutside" xml:space="preserve"><value>Set outside Tunero</value></data>
+  <data name="Rec_AgainstIgnore" xml:space="preserve"><value>Ignore this setting</value></data>
   <data name="Dash_ScoreHintGoal" xml:space="preserve">
     <value>Counts the problems the scan found, weighted by their impact on {0}. It rises when you fix them; turning on tweaks adds no points by itself.</value>
   </data>
@@ -1484,7 +1487,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Tweaks_GroupApplyTip" xml:space="preserve"><value>Turns on the tweaks of this group that are off and safe to apply together: Safe risk, fully reversible, not a preview. Alternatives that exclude each other, such as the power plans, are left out for you to choose. You see every change first.</value></data>
   <data name="Tweaks_GroupApplyTitle" xml:space="preserve"><value>Turn on: {0}</value></data>
   <data name="Tweaks_GroupApplyIntro" xml:space="preserve"><value>The tweaks of this group that are off and safe to apply together. Each one can be undone on the Changes page.</value></data>
-  <data name="Tweaks_ExpertLink" xml:space="preserve"><value>Show Expert changes in Settings</value></data>
+  <data name="Tweaks_ExpertLink" xml:space="preserve"><value>Turn on Expert mode in Settings</value></data>
   <data name="Vt_AddKey" xml:space="preserve"><value>Check with VirusTotal: add a key in Settings</value></data>
   <data name="Startup_Enabled" xml:space="preserve"><value>Enabled</value></data>
   <data name="Startup_Disabled" xml:space="preserve"><value>Disabled</value></data>
@@ -1529,6 +1532,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Advisor_SummaryGood" xml:space="preserve"><value>Nothing to change in the BIOS or on the hardware</value></data>
   <data name="Advisor_SummaryProblems" xml:space="preserve"><value>Things to change in the BIOS or on the hardware: {0}</value></data>
   <data name="Advisor_SummaryCounts" xml:space="preserve"><value>{0} checked</value></data>
+  <data name="Advisor_SummaryShowPassed" xml:space="preserve"><value>Turn on “Show passed checks” to see them.</value></data>
   <data name="Meta_Affects" xml:space="preserve"><value>Affects: {0}</value></data>
   <data name="Result_ViewChanges" xml:space="preserve"><value>View changes</value></data>
   <data name="Tweak_SwitchOn" xml:space="preserve"><value>Applied</value></data>
@@ -1694,10 +1698,13 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Dash_VerdictPending" xml:space="preserve"><value>The scan is reading this PC.</value></data>
   <data name="Dash_VerdictFailed" xml:space="preserve"><value>The scan could not finish.</value></data>
   <data name="Details_NoPage" xml:space="preserve"><value>This check has no explanation page in this version.</value></data>
-  <data name="Dash_Readiness" xml:space="preserve"><value>Readiness for {0}: {1} of 100, counted from the problems the scan finds. {2} checks passed.</value></data>
+  <data name="Dash_Readiness" xml:space="preserve"><value>Readiness for {0}: {1} of 100. {2} checks passed.</value></data>
+  <data name="Dash_ReadinessUnknown" xml:space="preserve"><value>Readiness for {0}: {1} of 100. {2} checks passed, {3} unknown.</value></data>
   <data name="Dash_AdvisorLink" xml:space="preserve"><value>To change by hand in the BIOS or on the hardware: {0}</value></data>
   <data name="Dash_VerdictNoneOneChange" xml:space="preserve"><value>No problems found. One recommended change can still help.</value></data>
   <data name="Dash_VerdictNoneChanges" xml:space="preserve"><value>No problems found. {0} recommended changes can still help.</value></data>
+  <data name="Dash_VerdictNoneOneAgainst" xml:space="preserve"><value>No problems found. One setting works against the {0} profile.</value></data>
+  <data name="Dash_VerdictNoneAgainst" xml:space="preserve"><value>No problems found. {1} settings work against the {0} profile.</value></data>
   <data name="Work_Count" xml:space="preserve"><value>{0} of {1}</value></data>
   <data name="Work_Stopping" xml:space="preserve"><value>Stopping after the current step</value></data>
   <data name="Work_RestorePoint" xml:space="preserve"><value>Creating a restore point</value></data>

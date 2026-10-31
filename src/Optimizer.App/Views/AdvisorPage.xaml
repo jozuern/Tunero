@@ -31,10 +31,11 @@
                     </Grid>
                     <StackPanel VerticalAlignment="Center">
                         <ui:TextBlock FontTypography="BodyStrong" Text="{Binding AdvisorSummaryTitle}" TextWrapping="Wrap" />
-                        <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding AdvisorSummaryText}" Margin="0,4,0,0" />
+                        <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding AdvisorSummaryText}" TextWrapping="Wrap" Margin="0,4,0,0" />
                     </StackPanel>
                 </DockPanel>
             </ui:Card>
+            <!-- Only without the summary card: with it, the card names the passed checks and the switch -->
             <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Empty_List}" Visibility="{Binding AdvisorEmpty, Converter={StaticResource BoolToVisibility}}" />
         </StackPanel>
         <v:ItemList Grid.Row="1" Style="{StaticResource VirtualCardList}" ItemsSource="{Binding AdvisorItems}" ItemTemplate="{StaticResource FindingRow}" />

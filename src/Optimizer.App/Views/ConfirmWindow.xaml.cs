@@ -11,14 +11,14 @@ public partial class ConfirmWindow : FluentWindow
     private readonly bool _needsAck;
     private readonly bool _canApply;
 
-    /// <summary>One line of the table; <see cref="Unchanged"/> when the value already is what the change writes (After then says so).</summary>
     /// <summary>
     /// On a short screen (a laptop at 150 %) the dialog would grow past the taskbar and hide its buttons: the list of
-    /// changes scrolls in less room instead, and the dialog stays on the screen.
+    /// changes scrolls in less room instead, and the dialog stays on the screen. The screen is the one the dialog opened
+    /// on (next to the main window), not always the primary one.
     /// </summary>
     private void FitToWorkArea()
     {
-        var area = SystemParameters.WorkArea;
+        var area = ScreenWorkArea.Of(this);
         var limit = area.Height - 48;
         if (limit <= 0) return;
         if (ActualHeight > limit) ChangeScroll.MaxHeight = Math.Max(96, ChangeScroll.ActualHeight - (ActualHeight - limit));
@@ -26,7 +26,11 @@ public partial class ConfirmWindow : FluentWindow
         if (Top + ActualHeight > area.Bottom) Top = Math.Max(area.Top, area.Bottom - ActualHeight);
     }
 
-    /// <summary>A list of choices (the review before a build) has no "now" values: the new value then takes the room of both columns.</summary>
+    /// <summary>
+    /// One line of the table; <see cref="Unchanged"/> when the value already is what the change writes (After then says
+    /// so). A list of choices (the review before a build) has no "now" values: the new value then takes the room of both
+    /// columns.
+    /// </summary>
     private sealed record Row(string Target, string Before, string After, bool Unchanged, bool ListOnly = false)
     {
         public int AfterColumn => ListOnly ? 1 : 2;
@@ -72,8 +76,11 @@ public partial class ConfirmWindow : FluentWindow
         NothingToDo.IsOpen = nothingToDo;
         _canApply = request.Blocks.Count == 0 && !nothingToDo;
         ApplyButton.Visibility = nothingToDo ? Visibility.Collapsed : Visibility.Visible;
-        FooterText.Text = request.Blocks.Count > 0 ? Loc.Instance["Confirm_Blocked"]
-            : nothingToDo ? ""
+        // Nothing to apply says it all (the blue bar): no footer about the red notes, and the only button closes, since
+        // there is nothing to cancel.
+        if (nothingToDo) CancelButton.Content = Loc.Instance["Common_Close"];
+        FooterText.Text = nothingToDo ? ""
+            : request.Blocks.Count > 0 ? Loc.Instance["Confirm_Blocked"]
             : request.Footer ?? Loc.Instance[request.IsUndo ? "Confirm_UndoKeeps" : "Confirm_Backup"];
         _needsAck = request.AntiCheatWarning is not null;
         // The acknowledgement only matters while the change can be made at all.

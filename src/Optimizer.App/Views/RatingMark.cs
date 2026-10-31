@@ -18,9 +18,6 @@ public sealed class RatingMark : StackPanel
     public static readonly DependencyProperty DisputedProperty =
         DependencyProperty.Register(nameof(Disputed), typeof(bool), typeof(RatingMark), new PropertyMetadata(false, (d, _) => ((RatingMark)d).Update()));
 
-    public static readonly DependencyProperty NumeralSizeProperty =
-        DependencyProperty.Register(nameof(NumeralSize), typeof(double), typeof(RatingMark), new PropertyMetadata(20.0, (d, _) => ((RatingMark)d).Update()));
-
     public static readonly DependencyProperty KeepsPlaceProperty =
         DependencyProperty.Register(nameof(KeepsPlace), typeof(bool), typeof(RatingMark), new PropertyMetadata(true, (d, _) => ((RatingMark)d).Update()));
 
@@ -44,17 +41,12 @@ public sealed class RatingMark : StackPanel
         set => SetValue(DisputedProperty, value);
     }
 
-    /// <summary>20 in rows, larger in the details pane.</summary>
-    public double NumeralSize
-    {
-        get => (double)GetValue(NumeralSizeProperty);
-        set => SetValue(NumeralSizeProperty, value);
-    }
-
     private readonly TextBlock _numeral = new()
     {
         FontFamily = new FontFamily("Segoe UI Variable Display, Segoe UI"),
         FontWeight = FontWeights.Light,
+        // One size in the rows and the details pane, so the mark reads the same everywhere.
+        FontSize = 20,
         VerticalAlignment = VerticalAlignment.Center,
         Margin = new Thickness(0, 0, 8, 0),
         MinWidth = 12,
@@ -90,7 +82,6 @@ public sealed class RatingMark : StackPanel
         var value = Math.Clamp(Value ?? 0, 0, 5);
         Visibility = value > 0 ? Visibility.Visible : KeepsPlace ? Visibility.Hidden : Visibility.Collapsed;
         _numeral.Text = value.ToString(System.Globalization.CultureInfo.InvariantCulture);
-        _numeral.FontSize = NumeralSize;
         _numeral.SetResourceReference(TextBlock.ForegroundProperty, Disputed ? "TextFillColorSecondaryBrush" : "TextFillColorPrimaryBrush");
         for (var i = 0; i < _bars.Length; i++)
         {

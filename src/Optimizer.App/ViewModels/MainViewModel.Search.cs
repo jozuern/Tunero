@@ -25,7 +25,9 @@ public sealed record SearchResultItem(SearchResult Result, string Where, string?
     };
 
     public string Title => Result.Title;
-    public string Snippet => LiveSnippet ?? Result.Snippet;
+    /// <summary>The line under the title, or null when it would only repeat the title (a service without a description).</summary>
+    public string? Snippet => (LiveSnippet ?? Result.Snippet) is { } s && !string.IsNullOrWhiteSpace(s)
+        && !string.Equals(s.Trim(), Title.Trim(), StringComparison.OrdinalIgnoreCase) ? s : null;
 
     // What screen readers announce for this item in a list.
     public override string ToString() => $"{Title}, {Where}";
@@ -121,12 +123,9 @@ public sealed partial class MainViewModel
                 // DNS servers are chosen on Graphics & DNS.
                 CurrentPage = Page.Network;
                 return;
-            case SearchKind.Tweak when page == Page.Tweaks:
+            case SearchKind.Tweak when page == Page.Tweaks && _profiled.Any(p => p.Tweak.Id == r.ItemId):
                 // The search filter opens the groups and shows the tweak even outside the profile.
-                TweakViewMode = TweakView.Applicable;
-                TweakSearch = r.Title;
-                CurrentPage = page;
-                SelectedItem = Tweaks.FirstOrDefault(t => t.Tweak.Id == r.ItemId);
+                RevealTweak(r.ItemId);
                 return;
             case SearchKind.Finding:
                 // An ignored result is listed under "Ignored results" on the Overview, not among the passed checks.
@@ -139,7 +138,8 @@ public sealed partial class MainViewModel
                     return;
                 }
                 CurrentPage = page;
-                if (r.ItemId is { } id && Findings.Concat(AdvisorItems).All(f => f.Finding.Id != id)) ShowPassed = true;
+                // The game access check has its own card, shown whatever "Show passed checks" says.
+                if (r.ItemId is { } id && Findings.Concat(AdvisorItems).Append(GameAccess).All(f => f?.Finding.Id != id)) ShowPassed = true;
                 SelectedItem = Findings.Concat(AdvisorItems).Append(GameAccess).FirstOrDefault(f => f?.Finding.Id == r.ItemId);
                 return;
             case SearchKind.Service:

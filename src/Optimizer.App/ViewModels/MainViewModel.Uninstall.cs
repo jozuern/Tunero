@@ -23,13 +23,16 @@ public sealed partial class MainViewModel
     /// <summary>A result that stays until it is closed, whatever its severity (the first sign-in's, <see cref="FirstSignInApplyAsync"/>).</summary>
     private string? _stickyResult;
 
-    /// <summary>Shows the result of an action at the bottom; it closes by itself after long enough to read it.</summary>
+    /// <summary>The style of the result bar: failures in the caution or error style, so they are not read as done.</summary>
     [ObservableProperty] private InfoBarSeverity _resultSeverity = InfoBarSeverity.Informational;
 
-    /// <summary>Shows the result of an action; failures in the caution or error style, so they are not read as done.</summary>
     /// <summary>The save dialog, for pages that write a file the user picks (the Startup list export).</summary>
     public string? PickSaveFile(string defaultName, string filterName, string extension) => _dialogs.PickSaveFile(defaultName, filterName, extension);
 
+    /// <summary>
+    /// Shows the result of an action at the bottom; failures in the caution or error style, so they are not read as done.
+    /// It closes by itself after long enough to read it; errors, warnings and the first sign-in's result stay until closed.
+    /// </summary>
     public void ShowResult(string text, InfoBarSeverity severity = InfoBarSeverity.Informational)
     {
         ResultSeverity = severity;

@@ -37,6 +37,31 @@ public static class DeElevatedLauncher
         return Log(Path.Failed, target);
     }
 
+    /// <summary>
+    /// File Explorer, as the signed-in user, with <paramref name="path"/> selected in its folder; a folder is opened
+    /// instead when <paramref name="openFolder"/> says so. Nothing in it is started. Null, without starting anything, when
+    /// the path is not a full path or no longer exists; the caller says so, as it does for <see cref="Path.Failed"/>.
+    /// </summary>
+    public static Path? ShowInExplorer(string path, ElevationInfo? elevation, bool openFolder = false)
+    {
+        var folder = Directory.Exists(path);
+        if (ExplorerArguments(path, folder ? ItemKind.Folder : File.Exists(path) ? ItemKind.File : ItemKind.Missing, openFolder) is not { } arguments)
+            return null;
+        return Open(System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "explorer.exe"), arguments, elevation);
+    }
+
+    public enum ItemKind { Missing, File, Folder }
+
+    /// <summary>
+    /// Explorer's command line for <see cref="ShowInExplorer"/>: "/select" with the quoted full path, or the quoted folder
+    /// to open it. Null for a relative path (Explorer would read it against its own folder) or a missing item.
+    /// </summary>
+    public static string? ExplorerArguments(string path, ItemKind kind, bool openFolder)
+    {
+        if (kind == ItemKind.Missing || string.IsNullOrWhiteSpace(path) || !System.IO.Path.IsPathFullyQualified(path) || path.Contains('"')) return null;
+        return kind == ItemKind.Folder && openFolder ? $"\"{path}\"" : $"/select,\"{path}\"";
+    }
+
     private static Path Log(Path path, string target)
     {
         Logging.Log.Info("launcher", $"open {target}", new { path = path.ToString() });

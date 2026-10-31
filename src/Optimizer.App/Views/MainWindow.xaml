@@ -24,6 +24,11 @@
             <Setter Property="AutomationProperties.Name" Value="{Binding Text, RelativeSource={RelativeSource Self}}" />
             <Setter Property="AutomationProperties.HeadingLevel" Value="Level2" />
         </Style>
+        <!-- Where the headings do not fit above the footer (and in the rail): a thin line keeps the groups apart -->
+        <Style x:Key="NavGroupLine" TargetType="ui:NavigationViewItemSeparator" BasedOn="{StaticResource {x:Type ui:NavigationViewItemSeparator}}">
+            <Setter Property="Margin" Value="8,4" />
+            <Setter Property="Focusable" Value="False" />
+        </Style>
     </ui:FluentWindow.Resources>
     <Grid>
         <Grid.RowDefinitions>
@@ -54,7 +59,7 @@
                                IsEnabled="{Binding SetupShown, Converter={StaticResource InverseBool}}"
                                IsBackButtonVisible="Collapsed" IsPaneToggleVisible="True" FrameMargin="0">
                 <!-- Grouped like Windows Settings: what to change, what to remove, what to keep in shape and check. The headings show
-                     only in the open pane and when the window is tall enough for them (FitPanes). Navigation goes by page type. -->
+                     only in the open pane and where they fit above the footer, else a line (ShowGroupHeaders). Navigation goes by page type. -->
                 <ui:NavigationView.MenuItems>
                     <!-- Badges say where something waits: problems on the overview, things to change by hand, the changes made -->
                     <v:NavItem Content="{l:Tr Nav_Dashboard}" TargetPageType="{x:Type v:OverviewPage}" Icon="{ui:SymbolIcon Home24}">
@@ -62,15 +67,18 @@
                             <ui:InfoBadge Severity="Caution" Value="{Binding OverviewBadge}" Visibility="{Binding OverviewBadge, Converter={StaticResource NullToVisibility}}" />
                         </v:NavItem.InfoBadge>
                     </v:NavItem>
+                    <ui:NavigationViewItemSeparator x:Name="LineOptimize" Style="{StaticResource NavGroupLine}" />
                     <v:NavHeader x:Name="HeaderOptimize" Text="{l:Tr Nav_GroupOptimize}" Style="{StaticResource NavGroupHeader}" />
                     <v:NavItem Content="{l:Tr Nav_Tweaks}" TargetPageType="{x:Type v:TweaksPage}" Icon="{ui:SymbolIcon Wrench24}" />
                     <v:NavItem Content="{l:Tr Nav_Network}" TargetPageType="{x:Type v:NetworkPage}" Icon="{ui:SymbolIcon DesktopPulse24}" />
                     <v:NavItem Content="{l:Tr Nav_Startup}" TargetPageType="{x:Type v:StartupPage}" Icon="{ui:SymbolIcon Rocket24}" />
                     <v:NavItem Content="{l:Tr Nav_Services}" TargetPageType="{x:Type v:ServicesPage}" Icon="{ui:SymbolIcon AppsListDetail24}" />
+                    <ui:NavigationViewItemSeparator x:Name="LineCleanUp" Style="{StaticResource NavGroupLine}" />
                     <v:NavHeader x:Name="HeaderCleanUp" Text="{l:Tr Nav_GroupCleanUp}" Style="{StaticResource NavGroupHeader}" />
                     <v:NavItem Content="{l:Tr Nav_Debloat}" TargetPageType="{x:Type v:DebloatPage}" Icon="{ui:SymbolIcon Delete24}" />
                     <v:NavItem Content="{l:Tr Nav_Cleanup}" TargetPageType="{x:Type v:CleanupPage}" Icon="{ui:SymbolIcon Broom24}" />
                     <v:NavItem Content="{l:Tr Nav_Storage}" TargetPageType="{x:Type v:StoragePage}" Icon="{ui:SymbolIcon Storage24}" />
+                    <ui:NavigationViewItemSeparator x:Name="LineMaintain" Style="{StaticResource NavGroupLine}" />
                     <v:NavHeader x:Name="HeaderMaintain" Text="{l:Tr Nav_GroupMaintain}" Style="{StaticResource NavGroupHeader}" />
                     <v:NavItem Content="{l:Tr Nav_Apps}" TargetPageType="{x:Type v:AppsPage}" Icon="{ui:SymbolIcon Apps24}" />
                     <v:NavItem Content="{l:Tr Nav_Tools}" TargetPageType="{x:Type v:ToolsPage}" Icon="{ui:SymbolIcon Toolbox24}" />
@@ -158,7 +166,8 @@
                                         <StackPanel>
                                             <ui:TextBlock FontTypography="BodyStrong" Text="{Binding Title}" TextWrapping="Wrap" />
                                             <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{Binding Snippet}"
-                                                          TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="32" Margin="0,2,0,0" />
+                                                          TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="32" Margin="0,2,0,0"
+                                                          Visibility="{Binding Snippet, Converter={StaticResource NullToVisibility}}" />
                                             <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" Text="{Binding Where}" Margin="0,2,0,0" />
                                         </StackPanel>
                                     </DockPanel>

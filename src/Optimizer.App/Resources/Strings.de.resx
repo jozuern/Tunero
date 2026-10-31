@@ -648,6 +648,8 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Storage_BlockReparse" xml:space="preserve"><value>Dieses Element oder ein Ordner darüber ist ein besonderes Windows-Element (ein Analysepunkt, etwa eine komprimierte Datei): Entferne es im Explorer.</value></data>
   <data name="Storage_Missing" xml:space="preserve"><value>{0} existiert nicht mehr. Analysiere erneut, um das Ergebnis zu aktualisieren.</value></data>
   <data name="Storage_OpenFailed" xml:space="preserve"><value>Der Explorer wurde nicht gestartet. Mit Pfad kopieren bekommst du den Pfad: {0}</value></data>
+  <data name="Explorer_Missing" xml:space="preserve"><value>{0} existiert nicht mehr.</value></data>
+  <data name="Explorer_Failed" xml:space="preserve"><value>Der Explorer wurde nicht gestartet. Öffne den Pfad selbst: {0}</value></data>
   <data name="Work_FindDuplicates" xml:space="preserve"><value>Doppelte Dateien werden gesucht</value></data>
   <data name="Feat_Title" xml:space="preserve">
     <value>Windows-Features</value>
@@ -1028,10 +1030,10 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
     <value>Keines der optionalen Features aus der Liste gibt es in dieser Windows-Edition.</value>
   </data>
   <data name="Drift_BannerUpdate" xml:space="preserve">
-    <value>Nach dem Windows-Update auf {0} sind diese Änderungen nicht mehr aktiv: {1}</value>
+    <value>Nach dem Windows-Update auf {0} sind diese Änderungen nicht mehr aktiv: {1}.</value>
   </data>
   <data name="Drift_BannerOther" xml:space="preserve">
-    <value>Diese Änderungen sind nicht mehr aktiv, weil Windows oder ein anderes Programm sie zurückgesetzt hat: {0}</value>
+    <value>Diese Änderungen sind nicht mehr aktiv, weil Windows oder ein anderes Programm sie zurückgesetzt hat: {0}.</value>
   </data>
   <data name="Drift_More" xml:space="preserve">
     <value>und {0} weitere</value>
@@ -1112,7 +1114,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
     <value>Wechseln</value>
   </data>
   <data name="Profile_AutoSet" xml:space="preserve">
-    <value>Das Profil wurde passend zu diesem PC auf {0} gesetzt. Du kannst es oben in der Übersicht ändern.</value>
+    <value>Das Profil wurde passend zu diesem PC auf {0} gesetzt. Du kannst es unten unter „Profil“ ändern.</value>
   </data>
   <data name="Findings_HiddenByProfile" xml:space="preserve">
     <value>Probleme, die nur für andere Profile zählen: {0}. Wechsle das Profil, um sie zu sehen.</value>
@@ -1140,9 +1142,10 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
     <value>Wirkt gegen das Profil {0}</value>
   </data>
   <data name="Rec_AgainstHint" xml:space="preserve">
-    <value>Diese Einstellungen sind an und kosten, worum es diesem Profil geht. „Rückgängig“ stellt her, was Tunero geändert hat; bei einer Einstellung von außerhalb sagt „Details“, wie du sie zurückstellst.</value>
+    <value>Diese Einstellungen sind an und wirken gegen das, wofür dieses Profil da ist. „Rückgängig“ nimmt eine Änderung von Tunero zurück; bei einer anderswo gesetzten Einstellung erklärt „Details“, wie du sie änderst.</value>
   </data>
-  <data name="Rec_AgainstOutside" xml:space="preserve"><value>Außerhalb dieser App gesetzt</value></data>
+  <data name="Rec_AgainstOutside" xml:space="preserve"><value>Außerhalb von Tunero gesetzt</value></data>
+  <data name="Rec_AgainstIgnore" xml:space="preserve"><value>Diese Einstellung ignorieren</value></data>
   <data name="Dash_ScoreHintGoal" xml:space="preserve">
     <value>Zählt die gefundenen Probleme, gewichtet nach ihrer Wirkung auf {0}. Der Wert steigt, wenn du sie behebst; eingeschaltete Tweaks bringen für sich keine Punkte.</value>
   </data>
@@ -1484,7 +1487,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Tweaks_GroupApplyTip" xml:space="preserve"><value>Schaltet die Tweaks dieser Gruppe ein, die aus sind und sich gefahrlos zusammen anwenden lassen: Risiko Sicher, vollständig umkehrbar, keine Vorschau. Alternativen, die sich ausschließen, etwa die Energiepläne, bleiben draußen, damit du wählst. Du siehst vorher jede Änderung.</value></data>
   <data name="Tweaks_GroupApplyTitle" xml:space="preserve"><value>Einschalten: {0}</value></data>
   <data name="Tweaks_GroupApplyIntro" xml:space="preserve"><value>Die Tweaks dieser Gruppe, die aus sind und sich gefahrlos zusammen anwenden lassen. Jeder lässt sich auf der Seite Änderungen rückgängig machen.</value></data>
-  <data name="Tweaks_ExpertLink" xml:space="preserve"><value>Expertenänderungen in den Einstellungen einschalten</value></data>
+  <data name="Tweaks_ExpertLink" xml:space="preserve"><value>Expertenmodus in den Einstellungen einschalten</value></data>
   <data name="Vt_AddKey" xml:space="preserve"><value>Mit VirusTotal prüfen: Schlüssel in den Einstellungen eintragen</value></data>
   <data name="Startup_Enabled" xml:space="preserve"><value>Aktiviert</value></data>
   <data name="Startup_Disabled" xml:space="preserve"><value>Deaktiviert</value></data>
@@ -1529,6 +1532,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Advisor_SummaryGood" xml:space="preserve"><value>Im BIOS und an der Hardware ist nichts zu ändern</value></data>
   <data name="Advisor_SummaryProblems" xml:space="preserve"><value>Im BIOS oder an der Hardware zu ändern: {0}</value></data>
   <data name="Advisor_SummaryCounts" xml:space="preserve"><value>{0} geprüft</value></data>
+  <data name="Advisor_SummaryShowPassed" xml:space="preserve"><value>Mit „Bestandene Prüfungen zeigen“ siehst du sie.</value></data>
   <data name="Meta_Affects" xml:space="preserve"><value>Wirkt auf: {0}</value></data>
   <data name="Result_ViewChanges" xml:space="preserve"><value>Änderungen ansehen</value></data>
   <data name="Tweak_SwitchOn" xml:space="preserve"><value>Angewendet</value></data>
@@ -1694,10 +1698,13 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Dash_VerdictPending" xml:space="preserve"><value>Der Scan liest diesen PC.</value></data>
   <data name="Dash_VerdictFailed" xml:space="preserve"><value>Der Scan konnte nicht abgeschlossen werden.</value></data>
   <data name="Details_NoPage" xml:space="preserve"><value>Zu dieser Prüfung gibt es in dieser Version keine Erklärungsseite.</value></data>
-  <data name="Dash_Readiness" xml:space="preserve"><value>Eignung für {0}: {1} von 100, gezählt aus den Problemen, die der Scan findet. {2} Prüfungen bestanden.</value></data>
+  <data name="Dash_Readiness" xml:space="preserve"><value>Eignung für {0}: {1} von 100. {2} Prüfungen bestanden.</value></data>
+  <data name="Dash_ReadinessUnknown" xml:space="preserve"><value>Eignung für {0}: {1} von 100. {2} Prüfungen bestanden, {3} unbekannt.</value></data>
   <data name="Dash_AdvisorLink" xml:space="preserve"><value>Von Hand im BIOS oder an der Hardware zu ändern: {0}</value></data>
   <data name="Dash_VerdictNoneOneChange" xml:space="preserve"><value>Keine Probleme gefunden. Eine empfohlene Änderung kann noch helfen.</value></data>
   <data name="Dash_VerdictNoneChanges" xml:space="preserve"><value>Keine Probleme gefunden. {0} empfohlene Änderungen können noch helfen.</value></data>
+  <data name="Dash_VerdictNoneOneAgainst" xml:space="preserve"><value>Keine Probleme gefunden. Eine Einstellung wirkt gegen das Profil {0}.</value></data>
+  <data name="Dash_VerdictNoneAgainst" xml:space="preserve"><value>Keine Probleme gefunden. {1} Einstellungen wirken gegen das Profil {0}.</value></data>
   <data name="Work_Count" xml:space="preserve"><value>{0} von {1}</value></data>
   <data name="Work_Stopping" xml:space="preserve"><value>Stoppt nach dem laufenden Schritt</value></data>
   <data name="Work_RestorePoint" xml:space="preserve"><value>Wiederherstellungspunkt wird erstellt</value></data>

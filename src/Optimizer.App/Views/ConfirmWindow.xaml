@@ -105,9 +105,9 @@
                 Background="{DynamicResource SolidBackgroundFillColorBaseBrush}" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}">
             <DockPanel LastChildFill="False">
                 <!-- Windows 11 content dialog order: the primary button first, Cancel last (on the right) -->
-                <ui:Button DockPanel.Dock="Right" Content="{l:Tr Confirm_Cancel}" MinWidth="100" IsCancel="True" />
+                <ui:Button x:Name="CancelButton" DockPanel.Dock="Right" Content="{l:Tr Confirm_Cancel}" MinWidth="100" IsCancel="True" />
                 <ui:Button x:Name="ApplyButton" DockPanel.Dock="Right" Appearance="Primary" MinWidth="120" Margin="0,0,8,0" Click="Apply_Click" IsDefault="True" />
-                <ui:TextBlock x:Name="FooterText" DockPanel.Dock="Left" FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="380" />
+                <ui:TextBlock x:Name="FooterText" DockPanel.Dock="Left" FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,16,0" />
             </DockPanel>
         </Border>
     </Grid>

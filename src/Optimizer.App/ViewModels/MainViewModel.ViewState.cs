@@ -97,7 +97,12 @@ public sealed partial class MainViewModel
         // The verdict counts the problems listed right under it (BIOS and hardware have their own page and the link); it
         // is set once the recommendations are known (UpdateVerdict). The line under it says what the score counts.
         _findingProblems = findingProblems;
-        ReadinessLine = Loc.Instance.Format("Dash_Readiness", ProfileName(_usage), Score, _profiledFindings.Count(f => f.Status == FindingStatus.Ok));
+        // Checks that could not be answered are named: "100 of 100" next to a "?" card needs the count to make sense.
+        var passedChecks = _profiledFindings.Count(f => f.Status == FindingStatus.Ok);
+        var unknownChecks = _profiledFindings.Count(f => f.Status == FindingStatus.Unknown);
+        ReadinessLine = unknownChecks > 0
+            ? Loc.Instance.Format("Dash_ReadinessUnknown", ProfileName(_usage), Score, passedChecks, unknownChecks)
+            : Loc.Instance.Format("Dash_Readiness", ProfileName(_usage), Score, passedChecks);
         AdvisorLinkText = advisorProblems > 0 ? Loc.Instance.Format("Dash_AdvisorLink", advisorProblems) : null;
         // The navigation shows where something waits: problems on the overview, things to change by hand.
         OverviewBadge = findingProblems > 0 ? findingProblems.ToString() : null;
@@ -142,8 +147,14 @@ public sealed partial class MainViewModel
 
     private readonly List<TweakGroupRow> _tweakGroups = [];
 
-    /// <summary>Groups open on the Tweaks page this session: recommended and against the profile start open, the sections closed.</summary>
+    /// <summary>Groups open on the Tweaks page this session: recommended and against the profile start open, the sections closed (all open in a short list).</summary>
     private readonly HashSet<string> _openGroups = [RecommendedGroup, AgainstGroup];
+
+    /// <summary>Groups the user closed this session: a short list opens every group, except these.</summary>
+    private readonly HashSet<string> _closedGroups = [];
+
+    /// <summary>Up to this many tweaks in the list, every group starts open: a few closed cards showed nothing to act on.</summary>
+    private const int OpenAllUpTo = 15;
 
     /// <summary>The sections of the Tweaks page (<see cref="Optimizer.Core.Tweaks.TweakSections"/>) with their icons.</summary>
     private static readonly (string Key, SymbolRegular Icon, string[] Categories)[] TweakSections =
@@ -198,7 +209,9 @@ public sealed partial class MainViewModel
             .Where(p => !p.Tweak.Id.StartsWith("network.dns.", StringComparison.Ordinal))
             .Where(Matches)
             .GroupBy(p => p.Ignored ? IgnoredGroup : p.Recommended ? RecommendedGroup : p.Flagged ? AgainstGroup : TweakSections[SectionIndex(p.Tweak.Category)].Key)
-            .OrderBy(g => Order(g.Key));
+            .OrderBy(g => Order(g.Key))
+            .ToList();
+        var fewTweaks = groups.Sum(g => g.Count()) <= OpenAllUpTo;
         var inPlan = PlanTweakIds();
         foreach (var g in groups)
         {
@@ -217,7 +230,7 @@ public sealed partial class MainViewModel
                 + (byApp > 0 ? ", " + Loc.Instance.Format("Tweaks_CountByApp", byApp) : "");
             _tweakGroups.Add(new TweakGroupRow(g.Key, GroupTitle(g.Key), GroupIcon(g.Key), summary, items)
             {
-                IsExpanded = q.Length > 0 || _openGroups.Contains(g.Key),
+                IsExpanded = q.Length > 0 || _openGroups.Contains(g.Key) || (fewTweaks && !_closedGroups.Contains(g.Key)),
             });
         }
         ShowTweakRows();
@@ -284,8 +297,7 @@ public sealed partial class MainViewModel
     {
         if (row is not TweakGroupRow group) return;
         group.IsExpanded = !group.IsExpanded;
-        if (group.IsExpanded) _openGroups.Add(group.Key);
-        else _openGroups.Remove(group.Key);
+        RememberGroup(group.Key, group.IsExpanded);
         var at = TweakRows.IndexOf(group) + 1;
         if (at == 0) return;
         if (group.IsExpanded)
@@ -295,16 +307,14 @@ public sealed partial class MainViewModel
     }
 
     /// <summary>
-    /// Shows a file selected in Explorer, or opens a folder (Settings, Diagnostics). Explorer runs as the signed-in user;
-    /// nothing in the folder is started.
+    /// Shows a file selected in Explorer, or opens a folder (Settings, Diagnostics, the install media result). Explorer runs
+    /// as the signed-in user; nothing in the folder is started. A missing path or an Explorer that did not start is named.
     /// </summary>
     [RelayCommand]
     private void ShowInExplorer(string? path)
     {
         if (string.IsNullOrEmpty(path)) return;
-        var explorer = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "explorer.exe");
-        if (System.IO.File.Exists(path)) DeElevatedLauncher.Open(explorer, $"/select,\"{path}\"", _services.Elevation);
-        else if (System.IO.Directory.Exists(path)) DeElevatedLauncher.Open(explorer, $"\"{path}\"", _services.Elevation);
+        ExplorerShell.ShowInExplorer(this, path, _services.Elevation, openFolder: true);
     }
 
     [RelayCommand]
@@ -339,10 +349,23 @@ public sealed partial class MainViewModel
         foreach (var g in _tweakGroups)
         {
             g.IsExpanded = open;
-            if (open) _openGroups.Add(g.Key);
-            else _openGroups.Remove(g.Key);
+            RememberGroup(g.Key, open);
         }
         ShowTweakRows();
+    }
+
+    private void RememberGroup(string key, bool open)
+    {
+        if (open)
+        {
+            _openGroups.Add(key);
+            _closedGroups.Remove(key);
+        }
+        else
+        {
+            _openGroups.Remove(key);
+            _closedGroups.Add(key);
+        }
     }
 
     /// <summary>Developer switch --category: opens that group on the Tweaks page (a section key or a catalog category).</summary>
@@ -397,7 +420,6 @@ public sealed partial class MainViewModel
         // Nothing to apply in one click, but fixes that need something first: say so instead of "nothing to recommend".
         RecommendationsEmptyText = _plan.Excluded.Count > 0 ? Loc.Instance["Rec_EmptyButExcluded"] : Loc.Instance["Rec_Empty"];
         UpdateRecommendedButton();
-        UpdateVerdict();
         RecommendationsIntro = Loc.Instance.Format("Rec_IntroProfile", ProfileName(_usage));
 
         // Changes on this PC that lower the profile's goal (for example a battery drain in the Battery profile).
@@ -406,17 +428,37 @@ public sealed partial class MainViewModel
             AgainstProfile.Add(new AgainstLine(p.Tweak.Id, Runner.Title(p.Tweak), p.ReasonKey is { } k ? Labels.Current.Get(lang, k) : "", p.Status.HasBackup));
         HasAgainst = AgainstProfile.Count > 0;
         AgainstTitle = Loc.Instance.Format("Rec_AgainstTitle", ProfileName(_usage));
+        // After the lines against the profile: the verdict names them when no problem is found.
+        UpdateVerdict();
     }
 
     /// <summary>Opens a tweak in the details pane on the Tweaks page, as the search does.</summary>
     [RelayCommand]
-    private void ShowTweak(string? tweakId)
+    private void ShowTweak(string? tweakId) => RevealTweak(tweakId);
+
+    /// <summary>
+    /// Goes to a tweak on the Tweaks page and opens it in the details pane (the search, Details on the Overview). The
+    /// filters that could hide it are cleared first: the impact filter (a tweak that works against the profile has no
+    /// rating), the narrow views and the search, and a tweak that does not apply here gets the view that lists it. A tweak
+    /// the Expert filter leaves out of the list still opens in the pane, so the click is never lost.
+    /// </summary>
+    private void RevealTweak(string? tweakId)
     {
-        if (Tweaks.FirstOrDefault(t => t.Tweak.Id == tweakId) is not { } tweak) return;
-        TweakViewMode = TweakView.Applicable;
-        TweakSearch = tweak.Title;
+        if (_profiled.FirstOrDefault(p => p.Tweak.Id == tweakId) is not { } p) return;
+        if (p.Tweak.Id.StartsWith("network.dns.", StringComparison.Ordinal))
+        {
+            // DNS servers are chosen on Graphics & DNS, not listed on the Tweaks page.
+            CurrentPage = Page.Network;
+            return;
+        }
+        TweakImpactMin = 0;
+        if (p.Status.State == TweakState.NotApplicable) TweakViewMode = TweakView.Everything;
+        else if (TweakViewMode != TweakView.Everything) TweakViewMode = TweakView.Applicable;
+        var title = Runner.Title(p.Tweak);
+        TweakSearch = title;
         CurrentPage = Page.Tweaks;
-        SelectedItem = tweak;
+        SelectedItem = Tweaks.FirstOrDefault(t => t.Tweak.Id == p.Tweak.Id)
+            ?? new TweakItemViewModel(p.Status, Loc.Instance.Language, _services.Engine, this, profiled: p, profile: _usage) { OffersIgnore = OffersIgnore(p, PlanTweakIds()) };
     }
 
     public void BuildChanges()
@@ -489,7 +531,8 @@ public sealed partial class MainViewModel
         if (_drift.Count > 0)
         {
             var names = _drift.Take(4).Select(d => Runner.Title(d.Tweak)).ToList();
-            var list = string.Join(", ", names) + (_drift.Count > names.Count ? " " + Loc.Instance.Format("Drift_More", _drift.Count - names.Count) : "");
+            // "; " keeps titles with quotes, commas or parentheses apart.
+            var list = string.Join("; ", names) + (_drift.Count > names.Count ? " " + Loc.Instance.Format("Drift_More", _drift.Count - names.Count) : "");
             var update = _drift.FirstOrDefault(d => d.WindowsUpdatedSince);
             var text = update is not null ? Loc.Instance.Format("Drift_BannerUpdate", update.Current, list) : Loc.Instance.Format("Drift_BannerOther", list);
             Banners.Add(new Banner(text, true) { ActionText = Loc.Instance["Drift_ApplyAgain"], Action = ReapplyDriftCommand });

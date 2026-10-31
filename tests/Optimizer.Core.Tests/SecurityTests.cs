@@ -96,6 +96,19 @@ public class SecurityTests
         Assert.True(DeElevatedLauncher.HasRunSince(runAt.AddSeconds(-1).ToOADate(), 1, runAt));
     }
 
+    /// <summary>"Show in Explorer" hands Explorer only a quoted full path: selected, or a folder opened when asked.</summary>
+    [Theory]
+    [InlineData(@"C:\Users\me\file.txt", DeElevatedLauncher.ItemKind.File, false, "/select,\"C:\\Users\\me\\file.txt\"")]
+    [InlineData(@"C:\Users\me\file.txt", DeElevatedLauncher.ItemKind.File, true, "/select,\"C:\\Users\\me\\file.txt\"")]
+    [InlineData(@"C:\Users\me\Logs", DeElevatedLauncher.ItemKind.Folder, true, "\"C:\\Users\\me\\Logs\"")]
+    [InlineData(@"C:\Users\me\Logs", DeElevatedLauncher.ItemKind.Folder, false, "/select,\"C:\\Users\\me\\Logs\"")]
+    [InlineData(@"C:\Users\me\gone.txt", DeElevatedLauncher.ItemKind.Missing, false, null)]
+    [InlineData(@"file.txt", DeElevatedLauncher.ItemKind.File, false, null)]
+    [InlineData(@"\Users\me\file.txt", DeElevatedLauncher.ItemKind.File, false, null)]
+    [InlineData("", DeElevatedLauncher.ItemKind.File, false, null)]
+    public void ExplorerGetsOnlyAQuotedFullPath(string path, DeElevatedLauncher.ItemKind kind, bool openFolder, string? expected) =>
+        Assert.Equal(expected, DeElevatedLauncher.ExplorerArguments(path, kind, openFolder));
+
     [Fact]
     public void ElevatedToolsStartWithoutUserControlledCodePaths()
     {

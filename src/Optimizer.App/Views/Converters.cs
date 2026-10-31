@@ -38,7 +38,6 @@ public sealed class InverseBoolConverter : IValueConverter
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => value is not true;
 }
 
-/// <summary>Theme brush by resource key (status colors follow the Windows theme; items are rebuilt after a theme switch).</summary>
 /// <summary>
 /// Foreground from a theme brush, by resource key or by status ("Ok", "Problem", ...). It is set as a resource reference
 /// (like {DynamicResource}), so the color follows a theme switch without building the rows again. Icons, text and

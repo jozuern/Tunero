@@ -279,7 +279,9 @@ public sealed partial class MainViewModel
         var severity = ResultSeverity;
         _reuseSlowParts = true;
         await ScanAsync();
-        if (result is not null)
+        // Only while the change's result is still what the bar shows: a failed rescan's error stays, and a bar closed
+        // before or during the rescan is not opened again.
+        if (result is not null && !ScanFailed && ResultOpen && ResultText == result)
         {
             ShowResult(result, severity);
             ResultShowsChanges = true;

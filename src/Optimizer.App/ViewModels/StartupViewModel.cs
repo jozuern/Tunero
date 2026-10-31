@@ -669,7 +669,7 @@ public sealed partial class StartupViewModel(IPageHost owner, AppServices servic
             Owner.ShowResult(Loc.Instance["Startup_FileMissing"], Wpf.Ui.Controls.InfoBarSeverity.Warning);
             return;
         }
-        DeElevatedLauncher.Open(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "explorer.exe"), $"/select,\"{path}\"", services.Elevation);
+        Owner.ShowInExplorer(path, services.Elevation, missingText: Loc.Instance["Startup_FileMissing"]);
     }
 
     /// <summary>Deletes the registry value through the engine: it is backed up first, and the Changes page puts it back.</summary>

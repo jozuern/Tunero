@@ -46,11 +46,12 @@ public sealed class TweakItemViewModel : InspectorItem
         Impact = Math.Max(impact, 0);
         if (profiled is { WorksAgainst: true })
         {
-            // Lowers the profile's goal: say so in the detail line and, while it is on, as a warning under the title.
+            // Lowers the profile's goal: say so with the reason as a warning under the title, on or off. In the faint detail
+            // line, with the reason only in a tooltip, the row read as one more candidate for the profile.
             var why = profiled.ReasonKey is { } k ? labels.Get(lang, k) : "";
             ImpactText = Loc.Instance["Impact_Against"];
             ImpactTooltip = string.IsNullOrEmpty(why) ? ImpactText : $"{ImpactText}: {why}";
-            AgainstNote = profiled.Flagged ? ImpactTooltip : null;
+            AgainstNote = ImpactTooltip;
             EffectsText = "";
         }
         else
@@ -109,14 +110,14 @@ public sealed class TweakItemViewModel : InspectorItem
         var stateShown = IsSetOutside || status.State is TweakState.NotApplied or TweakState.Applied;
         CompactMeta = stateShown ? "" : StatusText;
         // The badges are drawn as tags next to the title, and the impact as the rating mark beside the switch: neither is
-        // repeated in this line, which keeps what the tweak affects. "Works against the profile" has no mark and stays
-        // here. A tweak without any effect on the profile's goal (most privacy and Explorer settings) leaves "No FPS
+        // repeated in this line, which keeps what the tweak affects. "Works against the profile" has no mark: the warning
+        // under the title says it, with the reason. A tweak without any effect on the profile's goal (most privacy and Explorer settings) leaves "No FPS
         // effect" out too: the details still name it.
         var against = profiled is { WorksAgainst: true };
         var noEffect = Impact == 0 && !against;
         IsDisputed = t.Impact.Basis == "disputed";
         Rating = against ? null : Impact;
-        MetaText = Meta(stateShown ? "" : StatusText, against ? ImpactText : null, noEffect ? "" : EffectsText);
+        MetaText = Meta(stateShown ? "" : StatusText, null, noEffect ? "" : EffectsText);
         Note = IsSetOutside ? Loc.Instance["Tweak_AlreadyOnTip"] : null;
         // Only real blocks are shown as a warning; "set outside this app" is part of the detail line.
         ToggleNote = canChange && !IsOn && hard.Count > 0 ? BlockText : null;
@@ -234,7 +235,7 @@ public sealed class TweakItemViewModel : InspectorItem
     public string CompactMeta { get; }
     public string? ToggleNote { get; }
 
-    /// <summary>Shown while the tweak is on and works against the active profile (for example costs battery life).</summary>
+    /// <summary>Shown when the tweak works against the active profile (for example costs battery life), with the reason.</summary>
     public string? AgainstNote { get; }
 
     public override string Key => "tweak:" + Tweak.Id;

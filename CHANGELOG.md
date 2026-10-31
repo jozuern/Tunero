@@ -5,6 +5,10 @@
 ### Changed
 
 - **.NET runtime 10.0.14:** the exe carries the .NET and Windows Desktop runtime of Microsoft's out-of-band security release of October 25, 2026, which fixes a Brotli decoder flaw ([release notes](https://github.com/dotnet/core/blob/main/release-notes/10.0/10.0.14/10.0.14.md)), instead of 10.0.13.
+- **Overview:** the verdict names settings that work against the profile instead of saying nothing holds the PC back, and the readiness line counts unknown checks.
+- **Tweaks:** every group opens when the list has 15 tweaks or fewer; a tweak that works against the profile says why under its title.
+- **Navigation:** group headings show whenever they fit, thin lines between groups when they do not.
+- **Wording:** profile and drift banners, the works-against hint, the Expert link, the Modern Standby block, the ignore button, the Manual checks summary; search results no longer repeat the title.
 - **Startup:** "Show Windows entries" (off by default) replaces "Hide Windows entries", as on Services & tasks, and also hides Windows tasks, Known DLLs and Active Setup stubs whose file is gone. Service switches say Automatic or Manual, the start types they set. The second tab is Other scheduled tasks, and the summary starts with the count the tab shows.
 - **Services & tasks:** task commands show once, on one line and only with Technical details; Windows tasks show "Listed only" instead of a grey switch; notes no longer repeat the service's name.
 - **Ratings follow the evidence:** the power mode check is rated 1 on desktops (3 on laptops), the Balanced plan rates for gaming only when coming from Power saver, and HAGS on RTX 40 and 50 no longer says it is needed to start games.
@@ -13,6 +17,9 @@
 
 ### Fixed
 
+- **Details and search** always open the tweak, also when filters, a not-applicable state or Expert mode would hide it.
+- **Dialogs and the window** fit the monitor they open on, not the primary one; a confirmation with nothing to apply only offers Close.
+- **Show in Explorer** says so when the file is gone or File Explorer did not start.
 - **Startup and Services:** services and drivers from driver packages show their real names instead of `@oem19.inf,%...%;` strings.
 - **Startup:** Startup folder files, shortcut targets, Explorer extensions and service DLLs are checked as the file itself, so a planted program in a folder with a space cannot pass as signed; rundll32 lines with a quoted DLL are flagged when they start something else. The CSV export names every signature and the current switch state.
 - **SysMain** is changed only by its tweak, so the Services page and the tweak never keep two different originals.

@@ -74,6 +74,12 @@ public partial class MainWindow : FluentWindow, IServiceProvider
             e.Cancel = true;
             vm.ShowResult(Loc.Instance["Close_WhileBusy"], InfoBarSeverity.Warning);
         };
+        // The headings and lines are all shown in the first layout, so their room is known before the first decision.
+        Loaded += (_, _) =>
+        {
+            _paneLaidOut = true;
+            ShowGroupHeaders();
+        };
         Nav.PaneOpened += (_, _) => ShowGroupHeaders();
         Nav.PaneClosed += (_, _) => ShowGroupHeaders();
         PreviewKeyDown += (_, e) =>
@@ -96,10 +102,6 @@ public partial class MainWindow : FluentWindow, IServiceProvider
         };
     }
 
-    /// <summary>
-    /// The title bar puts its center content right after the title: the box is moved to the middle of the window, as in
-    /// Windows 11 apps (never closer than 24 px to the title).
-    /// </summary>
     /// <summary>
     /// The pane button and the window buttons come from WPF-UI's templates with an icon only, so a screen reader said
     /// "button": they get names in the app language (bound, so a language switch renames them).
@@ -126,6 +128,10 @@ public partial class MainWindow : FluentWindow, IServiceProvider
 
     private void SearchBox_SizeChanged(object sender, SizeChangedEventArgs e) => CenterSearchBox();
 
+    /// <summary>
+    /// The title bar puts its center content right after the title: the box is moved to the middle of the window, as in
+    /// Windows 11 apps (never closer than 24 px to the title).
+    /// </summary>
     private void CenterSearchBox()
     {
         if (!SearchBox.IsLoaded || ActualWidth <= 0) return;
@@ -225,11 +231,12 @@ public partial class MainWindow : FluentWindow, IServiceProvider
     /// <summary>
     /// The window's size and minimum fit the screen's work area (without the taskbar): a 1080p laptop at 150 % has about
     /// 1280 x 672 DIP, less than the default size and the minimum height, so the footer and the result bar would sit
-    /// behind the taskbar. Where even the smaller window would not fit, it opens maximized.
+    /// behind the taskbar. Where even the smaller window would not fit, it opens maximized. The screen is the one the
+    /// window opens on, which need not be the primary one.
     /// </summary>
     private void FitToWorkArea()
     {
-        var area = SystemParameters.WorkArea;
+        var area = ScreenWorkArea.Of(this);
         if (area.Width <= 0 || area.Height <= 0) return;
         MinWidth = Math.Min(MinWidth, area.Width);
         MinHeight = Math.Min(MinHeight, area.Height);
@@ -261,12 +268,19 @@ public partial class MainWindow : FluentWindow, IServiceProvider
         }
         else if (!crowded && _paneCollapsedForDetails)
         {
-            Nav.IsPaneOpen = true;
+            // The details no longer need the room. A window that got too short for the open pane meanwhile keeps the
+            // rail, and the pane opens when it is tall enough again (FitHeight).
             _paneCollapsedForDetails = false;
+            if (ActualHeight >= RailHeight) Nav.IsPaneOpen = true;
+            else _paneCollapsedForHeight = true;
+            ShowGroupHeaders();
         }
     }
 
-    /// <summary>Below this height the open pane cannot show the group headings and every page; it drops the headings.</summary>
+    /// <summary>
+    /// Until the pane has been laid out once: below this height the open pane cannot show the group headings and every
+    /// page. After that the room is measured (<see cref="ShowGroupHeaders"/>).
+    /// </summary>
     private const double HeadingsHeight = 940;
 
     /// <summary>
@@ -279,7 +293,8 @@ public partial class MainWindow : FluentWindow, IServiceProvider
 
     /// <summary>
     /// The pane does not scroll: on a short window (a 768 px screen) its last pages would slide under the footer. First the
-    /// group headings go, then the pane folds to the rail; both come back when the window is tall enough again.
+    /// group headings give way to lines, then the pane folds to the rail; both come back when the window is tall enough
+    /// again.
     /// </summary>
     private void FitHeight()
     {
@@ -292,31 +307,87 @@ public partial class MainWindow : FluentWindow, IServiceProvider
         }
         else if (!tooShort && _paneCollapsedForHeight)
         {
-            Nav.IsPaneOpen = true;
             _paneCollapsedForHeight = false;
+            // Details in a narrow window still need the room: FitPanes opens the pane when they close.
+            if (!_paneCollapsedForDetails) Nav.IsPaneOpen = true;
         }
-        ShowGroupHeaders();
         // Below this even the rail cut off its last page under the footer (1920 x 1080 at 150 %, VM): the items take a
         // compact height. 32 rather than the 36 of Windows Settings: with sixteen pages, 34 left the last one 37 px above
         // the footer at 720 px, and a maximized window at 150 % (672 px) moves the footer up 48 px more.
         var compact = ActualHeight < CompactHeight;
-        if (compact == _compactNav) return;
-        _compactNav = compact;
-        foreach (var item in Nav.MenuItems.OfType<NavigationViewItem>().Concat(Nav.FooterMenuItems.OfType<NavigationViewItem>()))
-            item.Height = compact ? CompactItemHeight : double.NaN;
+        if (compact != _compactNav)
+        {
+            _compactNav = compact;
+            foreach (var item in Nav.MenuItems.OfType<NavigationViewItem>().Concat(Nav.FooterMenuItems.OfType<NavigationViewItem>()))
+                item.Height = compact ? CompactItemHeight : double.NaN;
+        }
+        ShowGroupHeaders();
     }
 
-    /// <summary>Window height below which the pages in the rail get the compact item height.</summary>
-    private const double CompactHeight = 750;
+    /// <summary>
+    /// Window height below which the pages in the rail get the compact item height: wherever the pane folds to the rail
+    /// for lack of height. At 750 a 760 px window still put the last page (Manual checks) under the footer.
+    /// </summary>
+    private const double CompactHeight = RailHeight;
 
     private const double CompactItemHeight = 32;
 
     private bool _compactNav;
 
+    /// <summary>
+    /// Room the three headings (in the open pane) and the three lines take, read from the layout while they are shown:
+    /// all are in the first layout, before <see cref="ShowGroupHeaders"/> first decides.
+    /// </summary>
+    private double _headingsRoom, _linesRoom;
+
+    /// <summary>Set once the window is loaded: the pane has been laid out with every heading and line.</summary>
+    private bool _paneLaidOut;
+
+    /// <summary>Space kept between the last page and the footer, so the two never touch.</summary>
+    private const double FooterGap = 8;
+
+    /// <summary>
+    /// The groups stay visible whenever there is room: the headings in the open pane when they fit above the footer,
+    /// otherwise a thin line between the groups (also in the rail), and neither when even the lines would push the last
+    /// page under the footer. The room is measured, not guessed from the window height: a fixed 940 px limit hid the
+    /// headings in a 1440 x 912 window that had nearly enough room for them.
+    /// </summary>
     private void ShowGroupHeaders()
     {
-        var show = Nav.IsPaneOpen && ActualHeight >= HeadingsHeight ? Visibility.Visible : Visibility.Collapsed;
-        HeaderOptimize.Visibility = HeaderCleanUp.Visibility = HeaderMaintain.Visibility = show;
+        FrameworkElement[] headings = [HeaderOptimize, HeaderCleanUp, HeaderMaintain];
+        FrameworkElement[] lines = [LineOptimize, LineCleanUp, LineMaintain];
+        if (Nav.IsPaneOpen) Learn(headings, ref _headingsRoom);
+        Learn(lines, ref _linesRoom);
+        if (!_paneLaidOut) return;
+        var free = FreePaneHeight(headings, lines);
+        var showHeadings = Nav.IsPaneOpen && (free is { } f && _headingsRoom > 0 ? f >= _headingsRoom : ActualHeight >= HeadingsHeight);
+        var showLines = !showHeadings && free is { } g && _linesRoom > 0 && g >= _linesRoom;
+        foreach (var h in headings) h.Visibility = showHeadings ? Visibility.Visible : Visibility.Collapsed;
+        foreach (var l in lines) l.Visibility = showLines ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private static double Room(FrameworkElement[] elements) =>
+        elements.Where(e => e.IsVisible).Sum(e => e.ActualHeight + e.Margin.Top + e.Margin.Bottom);
+
+    private static void Learn(FrameworkElement[] elements, ref double room)
+    {
+        if (elements.All(e => e.IsVisible && e.ActualHeight > 0)) room = Room(elements);
+    }
+
+    /// <summary>
+    /// The height between the last page and the first footer item as it would be without headings and lines, less the
+    /// gap; null before the pane is laid out.
+    /// </summary>
+    private double? FreePaneHeight(FrameworkElement[] headings, FrameworkElement[] lines)
+    {
+        if (Nav.MenuItems.OfType<NavigationViewItem>().LastOrDefault() is not { IsVisible: true } last
+            || Nav.FooterMenuItems.OfType<NavigationViewItem>().FirstOrDefault() is not { IsVisible: true } footer)
+            return null;
+        Nav.UpdateLayout();
+        if (last.ActualHeight <= 0 || footer.ActualHeight <= 0) return null;
+        var bottom = last.TranslatePoint(new Point(0, last.ActualHeight), Nav).Y;
+        var top = footer.TranslatePoint(new Point(0, 0), Nav).Y;
+        return top - bottom + Room(headings) + Room(lines) - FooterGap;
     }
 
     private const double DetailsMin = 340;

@@ -31,7 +31,7 @@ is ignored: whoever starts the exe names the paths, and the app writes with admi
 | `--technical on\|off` | the technical or the simple view of the lists for this run (paths, commands and registry locations shown or hidden); the saved setting stays as it is |
 | `--more-options` | with `--screenshot --page Startup`: opens the More options menu of the first row and saves it to `<file>-menu.png` |
 | `--width <pixels>` | window width for the screenshot (for example 1040, the minimum, with `--select`) |
-| `--height <pixels>` | window height for the screenshot (below 940 the pane drops its group headings, below 830 it folds to the rail, below 750 the pages in the rail get the compact height; the window is at least 720 high) |
+| `--height <pixels>` | window height for the screenshot (where the group headings do not fit above the footer the pane shows thin lines between the groups instead, below 830 it folds to the rail and its pages get the compact height; the window is at least 720 high) |
 | `--search <text>` | types into the search box (Ctrl+F) before the screenshot; the results popup is saved to `<file>-search.png` |
 | `--scroll end` or `--scroll <pixels>` | scrolls the page to the end, or down by that many pixels, before the screenshot (for example Settings > About) |
 | `--select <id>` | opens a finding or tweak in the details pane (e.g. `A.rebar`) |

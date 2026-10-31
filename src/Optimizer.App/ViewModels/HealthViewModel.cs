@@ -494,11 +494,7 @@ public sealed partial class HealthViewModel(IPageHost owner, IDialogs dialogs, A
     private ActivityActions ActivityActions() => new(dialogs, Owner, Optimizer.Core.Activity.ProcessControl.End,
         p => ProgramDetails.Build(p, Optimizer.Core.Activity.ProcessSnapshotReader.IsCritical, Optimizer.Core.Startup.SignatureVerifier.Verify, Environment.ProcessId,
             canEnd: Optimizer.Core.Activity.ProcessControl.CanEnd),
-        path =>
-        {
-            var explorer = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "explorer.exe");
-            if (File.Exists(path)) DeElevatedLauncher.Open(explorer, $"/select,\"{path}\"", Owner.Services.Elevation);
-        },
+        path => Owner.ShowInExplorer(path, Owner.Services.Elevation),
         exe => addPriorityRule?.Invoke(exe));
 
     private static Optimizer.Core.Activity.ProgramNames ActivityNames() => new(
