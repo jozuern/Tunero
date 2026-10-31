@@ -16,7 +16,7 @@ The effect is situational; in demanding games the card already runs at full cloc
 Higher power draw, heat and fan noise, also with browsers or launchers that use 3D acceleration.
 
 ## When not to use it
-Prefer the per-game version on the graphics page, which only affects the games you choose.
+Prefer the per-game version on the Graphics & DNS page, which only affects the games you choose.
 
 ## Sources
 1. https://www.nvidia.com/content/Control-Panel-Help/vLatest/en-us/mergedProjects/nv3d/Manage_3D_Settings_(reference).htm

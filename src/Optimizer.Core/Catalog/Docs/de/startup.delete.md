@@ -1,7 +1,7 @@
 # Autostart-Eintrag löschen
 
 ## Zusammenfassung
-Löscht diesen Autostart-Eintrag (Registry-Wert, Datei im Autostart-Ordner oder Aufgabe eines Programms) wie Autoruns. Tunero sichert ihn vorher, Änderungen stellt ihn wieder her.
+Löscht diesen Autostart-Eintrag (Registry-Wert, Datei im Autostart-Ordner oder Aufgabe eines Programms) wie Autoruns. Tunero sichert ihn vorher, die Seite Änderungen stellt ihn wieder her.
 
 ## So funktioniert es
 Windows führt die Befehlszeilen in den Run-Schlüsseln bei jeder Anmeldung aus, die in den RunOnce-Schlüsseln einmal [1]. Ein Run-Schlüssel aus einer Gruppenrichtlinie und der Wert AutoRun des Command Processor (läuft bei jedem Start von cmd.exe) funktionieren genauso, ebenso die Dateien in den Autostart-Ordnern und die geplanten Aufgaben, die andere Programme anlegen [2]. Ausschalten behält den Eintrag und markiert ihn als deaktiviert; Löschen entfernt ihn, so wie Autoruns [2]. Vorher speichert Tunero, was es löscht: einen Registry-Wert mit seinem Typ, eine Datei im Autostart-Ordner mit ihrem Inhalt, eine Aufgabe als das XML, das die Aufgabenplanung exportiert. Rückgängig schreibt den Wert oder die Datei zurück oder legt die Aufgabe aus ihrem XML unter demselben Namen und Konto wieder an [3]. Eine Aufgabe mit gespeichertem Kennwort wird nicht angeboten, weil sie sich nur mit diesem Kennwort wieder anlegen ließe [3].

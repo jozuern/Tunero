@@ -23,7 +23,7 @@
           },
           "gaming": 3,
           "effect": [
-            "prerequisite"
+            "fps"
           ],
           "reasonKey": "impact.hagsFrameGen"
         }

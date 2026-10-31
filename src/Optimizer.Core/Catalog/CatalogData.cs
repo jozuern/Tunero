@@ -181,10 +181,8 @@ public sealed class AntiCheatSignature
     /// <summary>Platform features the anti-cheat requires: uefi, secureBoot, tpm2, hvci, iommu.</summary>
     public List<string> Required { get; init; } = [];
 
-    /// <summary>Features required only in some modes or rollout waves (see SometimesNoteKey).</summary>
+    /// <summary>Features required only in some modes or rollout waves.</summary>
     public List<string> Sometimes { get; init; } = [];
-
-    public string? SometimesNoteKey { get; init; }
     public List<string> Sources { get; init; } = [];
 }
 

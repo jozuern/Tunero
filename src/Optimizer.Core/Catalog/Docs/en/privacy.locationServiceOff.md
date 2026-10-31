@@ -1,13 +1,13 @@
 # Location service off for everything
 
 ## Summary
-Turns the Windows location service off for all apps, Search and Windows itself, and locks the location settings. Stronger than denying apps access. Pro, Enterprise and Education.
+Turns the Windows location service off for all apps, Search and Windows, and locks the settings. Older entry with the same policy as "Location access off". Pro, Enterprise and Education.
 
 ## How it works
 The policy "Turn off location" (DisableLocation = 1) is Force Location Off: all location privacy settings are turned off and grayed out, and no app may use the location service, including Search [1][2]. Switching back to user control restores each app's earlier setting [1].
 
 ## Why it can help
-No app or Windows feature can read where the PC is. The tweak "Location access for apps off" only changes the default for apps; this policy also covers Windows features and cannot be overridden in Settings.
+No app or Windows feature can read where the PC is, and Settings cannot override it. The tweak "Location access off" now sets the same policy; this entry stays so that changes made with it earlier can be undone.
 
 ## Evidence
 A documented Windows policy [1][2]. A privacy setting without effect on frame rate or latency.

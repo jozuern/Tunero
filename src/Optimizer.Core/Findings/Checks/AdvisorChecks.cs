@@ -110,17 +110,22 @@ public sealed class NvidiaGlobalCheck : IFindingCheck
         var nvidiaDisplays = p.Displays?.Where(d => d.AdapterVendor == Vendor.Nvidia).ToList() ?? [];
         var refresh = (nvidiaDisplays.Count > 0 ? nvidiaDisplays : p.Displays ?? []).Select(d => d.CurrentRefresh.Hz).DefaultIfEmpty(0).Max();
         var frl = nv.FrameRateLimit is > 0 ? nv.FrameRateLimit : null;
+        var vrrOn = nv.Vrr.Values.Any(v => v.Enabled);
+        // The G-SYNC cap follows the fastest G-SYNC display, not a faster fixed refresh display next to it.
+        var gsyncRefresh = nvidiaDisplays.Where(d => nv.Vrr.TryGetValue(d.GdiName, out var v) && v.Enabled)
+            .Select(d => d.CurrentRefresh.Hz).DefaultIfEmpty(refresh).Max();
         // A cap a few FPS below the refresh rate is the recommended G-SYNC setup; only a cap well below it is a problem.
         // Reflex caps lower on very high refresh displays (refresh - refresh² / 3600: 416 FPS at 480 Hz), so that cap counts as fine too.
-        var lowest = refresh > 0 ? Math.Min(refresh * 0.9, refresh - refresh * refresh / 3600) - 2 : 0;
-        var lowCap = frl is { } cap && refresh > 0 && cap < lowest;
+        // A cap that fits the G-SYNC display is fine even when a faster fixed refresh display sits on the same card.
+        static double Lowest(double hz) => hz > 0 ? Math.Min(hz * 0.9, hz - hz * hz / 3600) - 2 : 0;
+        var lowCap = frl is { } cap && refresh > 0 && cap < Lowest(refresh) && !(vrrOn && gsyncRefresh > 0 && cap >= Lowest(gsyncRefresh));
         var powerMin = nv.PowerMode == Nvapi.PStatePreferMin;
-        var vrrOn = nv.Vrr.Values.Any(v => v.Enabled);
         var vsyncForced = nv.VSyncMode == Nvapi.VSyncForceOn && !vrrOn;
         // G-SYNC with V-Sync forced on and no cap: once a game runs faster than the refresh rate, G-SYNC falls back to
-        // V-Sync and buffers 2 to 6 frames (Blur Busters); a cap 3 FPS below the refresh rate avoids that.
-        var capTarget = refresh >= 60 ? (int)Math.Floor(refresh) - 3 : 0;
-        var gsyncNoCap = vrrOn && nv.VSyncMode == Nvapi.VSyncForceOn && frl is null && capTarget > 0;
+        // V-Sync and buffers 2 to 6 frames (Blur Busters); a cap 3 FPS below the refresh rate avoids that. A limit at or
+        // above the G-SYNC display's refresh rate does not keep games below it either.
+        var capTarget = gsyncRefresh >= 60 ? (int)Math.Floor(gsyncRefresh) - 3 : 0;
+        var gsyncNoCap = vrrOn && nv.VSyncMode == Nvapi.VSyncForceOn && capTarget > 0 && (frl is null || frl >= Math.Floor(gsyncRefresh));
 
         var reset = new List<uint>();
         if (lowCap) reset.Add(Nvapi.SettingFrameRateLimiter);
@@ -170,6 +175,7 @@ public sealed class NvidiaGlobalCheck : IFindingCheck
                 ["vsyncForced"] = vsyncForced ? "yes" : "",
                 ["cap"] = frl?.ToString(CultureInfo.InvariantCulture) ?? "",
                 ["refresh"] = refresh > 0 ? refresh.ToString("0", CultureInfo.InvariantCulture) : "",
+                ["gsyncRefresh"] = gsyncRefresh > 0 ? gsyncRefresh.ToString("0", CultureInfo.InvariantCulture) : "",
             },
         };
     }
@@ -198,7 +204,9 @@ public sealed class PowerModeCheck : IFindingCheck
             Id = Id,
             Kind = FindingKind.Finding,
             Status = problem ? FindingStatus.Problem : FindingStatus.Ok,
-            Impact = 3,
+            // Windows has its own values for the modes only on PCs with a battery; on a desktop they come from the PC
+            // maker, if at all, so the mode may change little there (customize-power-slider, "AC only devices").
+            Impact = p.IsLaptop ? 3 : 1,
             Effects = [Effect.Fps, Effect.Lows],
             Facts =
             [

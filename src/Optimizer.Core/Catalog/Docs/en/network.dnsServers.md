@@ -7,7 +7,7 @@ Sets the IPv4 DNS servers of your connected physical network adapters to a publi
 Every connection starts by looking up a name (for example a game's login server). Usually the router's or provider's DNS server answers. The app sets the IPv4 DNS servers of each connected physical adapter to the chosen provider through Windows' network configuration [1], using the addresses the providers publish [2][3][4][5][6]. Virtual adapters, for example those of VPNs or virtual machines, are not changed, so a VPN keeps its own DNS. IPv6 DNS servers that your router hands out stay configured, so Windows can still use them. Undo restores the previous setting, including "automatic" (DHCP). Adapters connected after the app started are not changed.
 
 ## Why it can help
-A slow or unreliable DNS server delays every new connection: launchers, store pages, matchmaking. The DNS benchmark on the network page measures which server answers fastest from your connection.
+A slow or unreliable DNS server delays every new connection: launchers, store pages, matchmaking. The DNS benchmark on the Graphics & DNS page measures which server answers fastest from your connection.
 
 ## Evidence
 DNS is only used to find a server. Once the game is connected, DNS plays no role, so ping and frame rate do not change. That is why the impact is 0.

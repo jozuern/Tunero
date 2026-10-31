@@ -13,7 +13,7 @@ No sync traffic or OneDrive processes in the background, also during games, whil
 A documented Windows policy [1]. How much it saves depends on how much you sync.
 
 ## Trade-offs & risks
-Files that are only in the cloud cannot be opened from this PC, and changes are not synced. If OneDrive backs up your Desktop, Documents or Pictures folders, those folders stay in the OneDrive folder: new files there are no longer backed up, and online-only files in them cannot be opened. The setting applies to every account on this PC. Undo turns sync back on. To remove OneDrive completely, use the Debloat page instead.
+Files that are only in the cloud cannot be opened from this PC, and changes are not synced. If OneDrive backs up your Desktop, Documents or Pictures folders, those folders stay in the OneDrive folder: new files there are no longer backed up, and online-only files in them cannot be opened. The setting applies to every account on this PC. Undo turns sync back on. To remove OneDrive completely, use the Remove apps page instead.
 
 ## When not to use it
 If you use OneDrive, or files you need are online-only.

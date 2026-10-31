@@ -13,7 +13,7 @@ Fewer apps you did not ask for, and no downloads for them in the background.
 Not proven yet. No effect on frame rate or latency.
 
 ## Trade-offs & risks
-Apps that are already installed stay; remove them on the Debloat page. On Enterprise and Education, "Consumer features off" is the documented way.
+Apps that are already installed stay; remove them on the Remove apps page. On Enterprise and Education, "Consumer features off" is the documented way.
 
 ## When not to use it
 If you want Windows to install suggested apps.

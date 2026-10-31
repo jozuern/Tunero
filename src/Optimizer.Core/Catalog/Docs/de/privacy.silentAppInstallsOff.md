@@ -13,7 +13,7 @@ Weniger Apps, um die du nicht gebeten hast, und keine Downloads dafür im Hinter
 Noch nicht nachgewiesen. Kein Einfluss auf Framerate oder Latenz.
 
 ## Nachteile & Risiken
-Bereits installierte Apps bleiben; entferne sie auf der Seite Debloat. Auf Enterprise und Education ist „Verbraucherfunktionen aus“ der dokumentierte Weg.
+Bereits installierte Apps bleiben; entferne sie auf der Seite Apps entfernen. Auf Enterprise und Education ist „Verbraucherfunktionen aus“ der dokumentierte Weg.
 
 ## Wann du es nicht nutzen solltest
 Wenn Windows vorgeschlagene Apps installieren soll.

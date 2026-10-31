@@ -720,7 +720,7 @@ public class EngineTests
         Assert.Equal(0, TweakEngine.ImpactFor(T("gpu.hags"), Facts()).Impact);
         var (impact, effects, _) = TweakEngine.ImpactFor(T("gpu.hags"), Facts(f => f.Set("gpu.supportsFrameGeneration", true)));
         Assert.Equal(3, impact);
-        Assert.Contains("prerequisite", effects);
+        Assert.Equal(new[] { "fps" }, effects); // "Needed to start games" would be untrue: HAGS is needed for Frame Generation only
     }
 
     [Fact]

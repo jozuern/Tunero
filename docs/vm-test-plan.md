@@ -181,7 +181,7 @@ Preconditions, or there is nothing to change on a clean install: turn on memory 
 | `privacy.tailoredExperiencesOff` | Tailored experiences off | safe |  | registry |
 | `privacy.feedbackNotificationsOff` | Feedback requests off | safe |  | registry |
 | `privacy.diagnosticLogsLimited` | Limit diagnostic logs and memory dumps | safe |  | registry |
-| `privacy.inkingTypingOff` | Inking and typing personalization off | safe |  | registry |
+| `privacy.inkingTypingOff` | Inking and typing personalization off | moderate |  | registry |
 | `privacy.onlineSpeechOff` | Online speech recognition off | safe |  | registry |
 | `privacy.webSearchOff` | Web results in Start search off | safe |  | registry |
 | `privacy.searchHighlightsOff` | Search highlights off | safe |  | registry |

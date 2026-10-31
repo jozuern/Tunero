@@ -12,7 +12,7 @@ Ein Spiel auf einer CPU, die der Energiesparmodus bremst, bekommt weniger Bilder
 In den Profilen „Leise und kühl“ und „Akku“ ist es umgekehrt: Ein Höchstleistungsplan verbraucht bei wenig Last mehr Strom als nötig, also mehr Wärme, mehr Lüfterlärm und weniger Akkulaufzeit. „Ausbalanciert“ senkt den Verbrauch, wenn wenig zu tun ist, und erreicht unter Last trotzdem den vollen Takt [1].
 
 ## Belege
-Vom Energiesparmodus aus hängt der Effekt vom Prozessor und von der Einrichtung des Plans ab, daher bewertet die App ihn als situationsabhängig. Von „Höchstleistung“ aus geht es um Verbrauch und Wärme, nicht um FPS: Im Netzbetrieb lässt „Ausbalanciert“ den Takt bei wenig Last weit sinken, „Höchstleistung“ hält ihn oben [2].
+Vom Energiesparmodus aus hängt der Effekt vom Prozessor und von der Einrichtung des Plans ab, daher bewertet die App ihn als situationsabhängig. Von „Höchstleistung“ aus geht es um Verbrauch und Wärme, nicht um FPS: Im Netzbetrieb lässt „Ausbalanciert“ den Takt bei wenig Last weit sinken, „Höchstleistung“ hält ihn oben [2]. Deshalb bekommt der Wechsel nur eine Bewertung fürs Spielen, solange der PC den Energiesparmodus nutzt.
 
 ## Nachteile & Risiken
 Unter Last höherer Verbrauch als im Energiesparmodus. Gegenüber „Höchstleistung“ taktet der Prozessor bei wenig Last herunter und muss bei neuer Last erst wieder hochtakten.

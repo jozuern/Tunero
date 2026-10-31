@@ -440,7 +440,7 @@ public class CheckEdgeCaseTests
     [Fact]
     public void HardwareAdviceIsSkippedInAVirtualMachine()
     {
-        string[] physical = ["A.dualChannel", "A.xmp", "A.biosAge", "A.systemHdd"];
+        string[] physical = ["A.dualChannel", "A.xmp", "A.biosAge", "A.systemHdd", "A.mixedRam"];
         var real = P(p => p with { System = new SystemInfo("ASUS", "System Product Name", [3], false, false, HypervisorPresent: true) });
         var vm = P(p => p with { System = new SystemInfo("Microsoft Corporation", "Virtual Machine", [3], false, false, HypervisorPresent: true) });
         Assert.False(real.System!.IsVirtualMachine); // memory integrity on a real PC: a hypervisor, but no VM
@@ -780,6 +780,14 @@ public class CheckEdgeCaseTests
         // A Z390 board can use XMP; a speed below the processor's specification is a missing setting anyway.
         Assert.Equal(FindingStatus.Problem, One(new XmpCheck(), On("ROG STRIX Z390-F GAMING", 2666)).Status);
         Assert.Equal(FindingStatus.Problem, One(new XmpCheck(), On("B365M DS3H", 2133)).Status);
+        // Micro-ATX Z boards put the M right after the number, and Z590 takes 10th gen processors too.
+        HardwareProfile Tenth(string board) => Mem(cpu with { Name = "Intel(R) Core(TM) i7-10700K CPU @ 3.80GHz" },
+                Module(2933, "CMW32GX4M2E3600C18", 26), Module(2933, "CMW32GX4M2E3600C18", 26, locator: "DIMM_B1"))
+            with { Firmware = TestData.Firmware() with { BoardProduct = board } };
+        Assert.Equal(FindingStatus.Problem, One(new XmpCheck(), On("Z390M Pro4", 2666)).Status);
+        Assert.Equal(FindingStatus.Problem, One(new XmpCheck(), Tenth("ROG STRIX Z590-E GAMING WIFI")).Status);
+        Assert.Equal(FindingStatus.Problem, One(new XmpCheck(), Tenth("PRIME Z490M-PLUS")).Status);
+        Assert.Equal("intelLocked", One(new XmpCheck(), Tenth("B460M DS3H")).Variant);
         // A current Intel processor is not covered by the rule.
         var current = Mem(TestData.Cpu13700K(), Module(4800, "CMK32GX5M2B6000C36", 34), Module(4800, "CMK32GX5M2B6000C36", 34, locator: "DIMM_B1"))
             with { Firmware = TestData.Firmware() with { BoardProduct = "PRO B760M-A" } };

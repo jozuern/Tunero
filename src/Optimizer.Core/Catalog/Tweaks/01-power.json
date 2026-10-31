@@ -4,13 +4,26 @@
       "id": "power.balancedPlan",
       "category": "Power",
       "impact": {
-        "gaming": 2,
+        "gaming": 0,
         "basis": "situational",
         "effect": [
-          "fps",
-          "lows"
+          "none"
         ]
       },
+      "impactOverrides": [
+        {
+          "when": {
+            "fact": "power.personality",
+            "eq": "powersaver"
+          },
+          "gaming": 2,
+          "effect": [
+            "fps",
+            "lows"
+          ],
+          "reasonKey": "impact.fromPowerSaver"
+        }
+      ],
       "risk": "safe",
       "actions": [
         {

@@ -16,7 +16,7 @@ Die Wirkung hängt von der Situation ab; in anspruchsvollen Spielen läuft die K
 Mehr Stromverbrauch, Wärme und Lüftergeräusch, auch bei Browsern oder Launchern mit 3D-Beschleunigung.
 
 ## Wann du es nicht nutzen solltest
-Nutze lieber die Variante pro Spiel auf der Grafikseite, die nur die Spiele betrifft, die du auswählst.
+Nutze lieber die Variante pro Spiel auf der Seite Grafik & DNS, die nur die Spiele betrifft, die du auswählst.
 
 ## Quellen
 1. https://www.nvidia.com/content/Control-Panel-Help/vLatest/en-us/mergedProjects/nv3d/Manage_3D_Settings_(reference).htm

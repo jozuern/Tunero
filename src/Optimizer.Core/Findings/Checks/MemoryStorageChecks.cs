@@ -157,7 +157,7 @@ public sealed class XmpCheck : IPhysicalHardwareCheck
     }
 
     /// <summary>
-    /// An Intel 8th to 10th generation processor, a board not named as a Z370, Z390 or Z490 model (OEM boards often carry
+    /// An Intel 8th to 10th generation processor, a board not named as a Z370, Z390, Z490 or Z590 model (OEM boards often carry
     /// only a part code), and memory at one of the speeds Intel specifies for these processors.
     /// </summary>
     private static bool IntelLocked(HardwareProfile p, int? configured, CatalogData c)

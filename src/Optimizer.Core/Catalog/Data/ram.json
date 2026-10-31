@@ -16,9 +16,9 @@
   ],
   "ratedAliases": { "2130": 2133, "2600": 2666, "2660": 2666, "2900": 2933, "2930": 2933 },
   "intelLocked": {
-    "_comment": "A.xmp variant intelLocked. Intel ARK: B360, H370 (300 series), B460, H470 (400 series) 'Supports Memory Overclocking: No', Z490 'Yes'. Memory speed of the processor: i5-9400F DDR4-2666, i7-10700 DDR4-2933 (ARK). Checked 2026-10-11.",
+    "_comment": "A.xmp variant intelLocked. Intel ARK: B360, H370 (300 series), B460, H470 (400 series) 'Supports Memory Overclocking: No', Z490 'Yes'; Z590 (500 series, also takes 10th gen processors in LGA1200) 'Yes', checked 2026-10-31. Micro-ATX names like Z390M count as Z boards. Memory speed of the processor: i5-9400F DDR4-2666, i7-10700 DDR4-2933 (ARK). Checked 2026-10-11.",
     "cpuPatterns": [ "\\bi[3579]-(?:[89]\\d{3}|10\\d{3})", "\\bPentium\\b.*\\bG(?:5[4-6]|6[4-6])\\d{2}\\b", "\\bCeleron\\b.*\\bG(?:49|59)\\d{2}\\b" ],
-    "unlockedBoardPattern": "\\bZ(?:37|39|49)0\\b",
+    "unlockedBoardPattern": "\\bZ(?:37|39|49|59)0(?![0-9])",
     "specSpeeds": [ 2400, 2666, 2933 ]
   }
 }

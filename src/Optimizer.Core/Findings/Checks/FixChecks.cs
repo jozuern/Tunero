@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Optimizer.Core.Actions;
 using Optimizer.Core.Catalog;
 using Optimizer.Core.Hardware;
@@ -96,7 +97,9 @@ public static class RuntimeFixes
         Id = "fix.powerMode",
         Docs = PowerModeDoc,
         Category = "Fixes",
-        Impact = new ImpactInfo { Gaming = 3, Basis = "situational", Effect = ["fps"] },
+        // Lower on desktops: Windows ships values for the power modes only on PCs with a battery (see PowerModeCheck).
+        Impact = new ImpactInfo { Gaming = 1, Basis = "situational", Effect = ["fps"] },
+        ImpactOverrides = [new ImpactOverride { When = new Condition { Fact = "system.laptop", Eq = JsonSerializer.SerializeToElement(true) }, Gaming = 3, ReasonKey = "impact.laptopPowerMode" }],
         Risk = Risk.Safe,
         Hidden = true,
         Actions = [new PowerModeAction { Overlay = FirmwareExtras.OverlayBestPerformance }],

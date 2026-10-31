@@ -40,18 +40,18 @@ Mit vier DDR5-Modulen gibt AMD für Ryzen 7000 und 9000 DDR5-3600 an [4][5]. Ein
 Mit zwei DDR5-Modulen pro Kanal (vier Modulen) geben Intels Datenblätter bei Core-Prozessoren der 13. und 14. Generation 4000 MT/s für Single-Rank- und 3600 MT/s für Dual-Rank-Module an [16], bei Core Ultra 200S 4800 und 4400 MT/s [17]. Eine niedrigere Geschwindigkeit als auf dem Kit ist also zu erwarten; XMP würde die Module über Intels Spezifikation betreiben.
 :::
 ::: variant intelLocked
-Für Intel-Core-Prozessoren der 8. bis 10. Generation führt Intel Chipsätze wie B360, H370, B460 und H470 ohne Unterstützung für Speicherübertaktung, den Z490 dagegen mit [9][10][11][12][13]. Auf so einem Mainboard läuft der Speicher mit der Geschwindigkeit, die für den Prozessor angegeben ist, zum Beispiel DDR4-2666 bei einem Core i5-9400F und DDR4-2933 bei einem Core i7-10700 [14][15], egal was das XMP-Profil des Kits sagt. Dein Mainboard ({{board}}) wurde nicht als Z370-, Z390- oder Z490-Modell erkannt.
+Für Intel-Core-Prozessoren der 8. bis 10. Generation führt Intel Chipsätze wie B360, H370, B460 und H470 ohne Unterstützung für Speicherübertaktung, den Z490 dagegen mit, ebenso den Z590, der auch Prozessoren der 10. Generation aufnimmt [9][10][11][12][13][19][20]. Auf so einem Mainboard läuft der Speicher mit der Geschwindigkeit, die für den Prozessor angegeben ist, zum Beispiel DDR4-2666 bei einem Core i5-9400F und DDR4-2933 bei einem Core i7-10700 [14][15], egal was das XMP-Profil des Kits sagt. Dein Mainboard ({{board}}) wurde nicht als Z370-, Z390-, Z490- oder Z590-Modell erkannt.
 :::
 
 ## Wie wir es erkennen
-Wir lesen jedes Speichermodul aus Windows (WMI): die Teilenummer und die Geschwindigkeit, mit der es gerade läuft (`ConfiguredClockSpeed`). Die Nenngeschwindigkeit ermitteln wir aus der Teilenummer, mit den Katalogtabellen für Corsair, G.Skill, Kingston, Crucial, TeamGroup und Patriot. `Win32_PhysicalMemory.Speed` nutzen wir dafür nicht, weil es meist nur die Standardgeschwindigkeit meldet. Unbekannte Teilenummern ergeben „Unbekannt“ und keinen Rat. Laufen vier DDR5-Module an einem Ryzen unter der Kit-Angabe, gibt es wegen AMDs Spezifikation eine Information statt eines Problems; ebenso an einem Intel Core der 13. oder 14. Generation oder einem Core Ultra 200S, für die Intel mit vier Modulen eine niedrigere Geschwindigkeit angibt. Ebenso bei Speicher mit 2400, 2666 oder 2933 MT/s an einem Intel-Prozessor der 8. bis 10. Generation, wenn der Name des Mainboards keinen Z370-, Z390- oder Z490-Chipsatz zeigt (Fertig-PCs melden oft nur eine Teilenummer).
+Wir lesen jedes Speichermodul aus Windows (WMI): die Teilenummer und die Geschwindigkeit, mit der es gerade läuft (`ConfiguredClockSpeed`). Die Nenngeschwindigkeit ermitteln wir aus der Teilenummer, mit den Katalogtabellen für Corsair, G.Skill, Kingston, Crucial, TeamGroup und Patriot. `Win32_PhysicalMemory.Speed` nutzen wir dafür nicht, weil es meist nur die Standardgeschwindigkeit meldet. Unbekannte Teilenummern ergeben „Unbekannt“ und keinen Rat. Laufen vier DDR5-Module an einem Ryzen unter der Kit-Angabe, gibt es wegen AMDs Spezifikation eine Information statt eines Problems; ebenso an einem Intel Core der 13. oder 14. Generation oder einem Core Ultra 200S, für die Intel mit vier Modulen eine niedrigere Geschwindigkeit angibt. Ebenso bei Speicher mit 2400, 2666 oder 2933 MT/s an einem Intel-Prozessor der 8. bis 10. Generation, wenn der Name des Mainboards keinen Z370-, Z390-, Z490- oder Z590-Chipsatz zeigt (Fertig-PCs melden oft nur eine Teilenummer).
 
 ## So behebst du es
 ::: variant fourDimms,fourDimmsIntel
 Nichts zu tun. Für die volle Geschwindigkeit des Kits bräuchtest du zwei statt vier Module.
 :::
 ::: variant intelLocked
-Auf einem Mainboard mit B- oder H-Chipsatz ist nichts zu tun. Hat dein Mainboard doch einen Z370-, Z390- oder Z490-Chipsatz, suche im BIOS auf der Übertaktungs- oder „Tweaker“-Seite nach **XMP**, wähle das erste Profil und speichere. Ein schnelleres Kit lohnt sich nur zusammen mit einem Z-Mainboard.
+Auf einem Mainboard mit B- oder H-Chipsatz ist nichts zu tun. Hat dein Mainboard doch einen Z370-, Z390-, Z490- oder Z590-Chipsatz, suche im BIOS auf der Übertaktungs- oder „Tweaker“-Seite nach **XMP**, wähle das erste Profil und speichere. Ein schnelleres Kit lohnt sich nur zusammen mit einem Z-Mainboard.
 :::
 ::: variant default,laptop
 1. **BitLocker:** Prüfe, bevor du BIOS-Einstellungen änderst, ob BitLocker oder die Geräteverschlüsselung an ist. Wenn ja, setze den Schutz vorher aus (Start > **BitLocker verwalten** > **Schutz anhalten**) oder halte den Wiederherstellungsschlüssel bereit. Oft ist er in deinem Microsoft-Konto gespeichert. Nach einem BIOS-Update oder einer Änderung am TPM oder an der Startkonfiguration kann Windows beim nächsten Start danach fragen [7][8].
@@ -91,3 +91,5 @@ Starte den Scan erneut. Die aktuelle Geschwindigkeit sollte der Nenngeschwindigk
 16. https://edc.intel.com/content/www/us/en/design/products/platforms/details/raptor-lake-s/13th-generation-core-processors-datasheet-volume-1-of-2/005/processor-sku-support-matrix/
 17. https://edc.intel.com/content/www/us/en/design/products/platforms/details/arrow-lake-s/core-ultra-200s-series-processors-datasheet-volume-1-of-2/processor-sku-support-matrix/
 18. https://www.techspot.com/review/2866-ddr5-ram-stock-vs-xmp-expo/
+19. https://www.intel.com/content/www/us/en/products/sku/196612/intel-z590-chipset/specifications.html
+20. https://www.intel.com/content/www/us/en/products/sku/196612/intel-z590-chipset/compatible.html

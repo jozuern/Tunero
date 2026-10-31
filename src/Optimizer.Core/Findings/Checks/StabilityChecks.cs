@@ -55,7 +55,7 @@ public sealed class VirtualizationCheck : IFindingCheck
 }
 
 /// <summary>A.mixedRam: memory modules with different part numbers or sizes (not one matched kit).</summary>
-public sealed class MixedMemoryCheck : IFindingCheck
+public sealed class MixedMemoryCheck : IPhysicalHardwareCheck
 {
     public const string Id = "A.mixedRam";
     public IReadOnlyList<string> DocIds => [Id];

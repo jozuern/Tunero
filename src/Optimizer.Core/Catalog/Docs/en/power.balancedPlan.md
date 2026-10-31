@@ -12,7 +12,7 @@ A game on a CPU held back by Power saver gets fewer frames and less even frame t
 In the Quiet and cool and Battery profiles it is the other way round: a High performance plan uses more power than needed at light load, which means more heat, more fan noise and less battery time. Balanced lowers power when there is little to do and still reaches the full clock under load [1].
 
 ## Evidence
-Coming from Power saver, the effect depends on the processor and on how the plan was set up, so the app rates it as situational. Coming from High performance, the difference is power and heat, not frame rate: on mains power, Balanced lets the clock drop to a low minimum at light load, High performance keeps it at the top [2].
+Coming from Power saver, the effect depends on the processor and on how the plan was set up, so the app rates it as situational. Coming from High performance, the difference is power and heat, not frame rate: on mains power, Balanced lets the clock drop to a low minimum at light load, High performance keeps it at the top [2]. That is why the app gives it a gaming rating only while the PC uses Power saver.
 
 ## Trade-offs & risks
 Higher power draw under load than Power saver. Compared with High performance, the processor clocks down at light load and has to clock up again when load arrives.

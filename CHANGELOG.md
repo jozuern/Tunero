@@ -5,10 +5,15 @@
 ### Changed
 
 - **.NET runtime 10.0.14:** the exe carries the .NET and Windows Desktop runtime of Microsoft's out-of-band security release of October 25, 2026, which fixes a Brotli decoder flaw ([release notes](https://github.com/dotnet/core/blob/main/release-notes/10.0/10.0.14/10.0.14.md)), instead of 10.0.13.
+- **Ratings follow the evidence:** the power mode check is rated 1 on desktops (3 on laptops), the Balanced plan rates for gaming only when coming from Power saver, and HAGS on RTX 40 and 50 no longer says it is needed to start games.
+- **Inking and typing personalization off** is rated Moderate and says up front that it deletes the personal dictionary, which Undo does not bring back.
 - **Markdig 1.4.2** for the explanation pages.
 
 ### Fixed
 
+- **Memory speed advice** recognizes Z590 and micro-ATX Z boards (Z390M and similar), so their 8th to 10th gen Intel PCs get the XMP advice again; memory module mix advice no longer shows in virtual machines.
+- **NVIDIA global settings:** the G-SYNC frame cap follows the G-SYNC display's refresh rate, not a faster second monitor.
+- **Explanation pages:** the recovery command for the platform clock, the editions of the web search policy, current page names and German wording.
 - **`--apply-recommended`** picks the profile as the window does: a saved profile this PC does not offer (a laptop profile on a desktop) falls back to Gaming, as on the Overview.
 - **Conflicts:** two changes that write the same setting (a registry value, an NVIDIA driver setting, one side of a power setting) now conflict even without a declared conflict, so batch applies, Undo all and the "changes reset" notice stay right.
 - **NVIDIA global settings:** with G-SYNC and V-Sync forced on, the quick fix sets the frame rate limit 3 FPS below the refresh rate instead of removing it.

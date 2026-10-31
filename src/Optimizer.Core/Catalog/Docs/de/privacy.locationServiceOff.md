@@ -1,13 +1,13 @@
 # Ortungsdienst für alles aus
 
 ## Zusammenfassung
-Schaltet den Windows-Ortungsdienst für alle Apps, die Suche und Windows selbst aus und sperrt die Standorteinstellungen. Strenger als nur Apps den Zugriff zu verweigern. Pro, Enterprise und Education.
+Schaltet den Ortungsdienst für alle Apps, die Suche und Windows aus und sperrt die Einstellungen. Älterer Eintrag mit derselben Richtlinie wie „Standortzugriff aus“. Pro, Enterprise und Education.
 
 ## So funktioniert es
 Die Richtlinie „Standort deaktivieren“ (DisableLocation = 1) schaltet den Standort fest aus: Alle Standort-Datenschutzeinstellungen sind aus und ausgegraut, und keine App darf den Ortungsdienst nutzen, auch die Suche nicht [1][2]. Gibt die Richtlinie die Steuerung an die Benutzer zurück, bekommt jede App ihre frühere Einstellung wieder [1].
 
 ## Warum es helfen kann
-Keine App und keine Windows-Funktion kann lesen, wo der PC steht. Die Option „Standortzugriff für Apps aus“ ändert nur den Standard für Apps; diese Richtlinie gilt auch für Windows-Funktionen und lässt sich in den Einstellungen nicht übergehen.
+Keine App und keine Windows-Funktion kann lesen, wo der PC steht, und die Einstellungen können das nicht übergehen. Die Option „Standortzugriff aus“ setzt inzwischen dieselbe Richtlinie; dieser Eintrag bleibt, damit du früher damit gemachte Änderungen rückgängig machen kannst.
 
 ## Belege
 Eine von Microsoft beschriebene Windows-Richtlinie [1][2]. Eine Datenschutzeinstellung ohne Einfluss auf Framerate oder Latenz.

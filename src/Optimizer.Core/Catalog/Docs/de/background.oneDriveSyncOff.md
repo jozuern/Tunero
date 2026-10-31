@@ -13,7 +13,7 @@ Kein Synchronisierungsverkehr und keine OneDrive-Prozesse im Hintergrund, auch b
 Eine von Microsoft beschriebene Windows-Richtlinie [1]. Wie viel es spart, hängt davon ab, wie viel du synchronisierst.
 
 ## Nachteile & Risiken
-Dateien, die nur in der Cloud liegen, lassen sich auf diesem PC nicht öffnen, und Änderungen werden nicht synchronisiert. Sichert OneDrive deine Ordner Desktop, Dokumente oder Bilder, bleiben diese Ordner im OneDrive-Ordner: Neue Dateien darin werden nicht mehr gesichert, und Dateien darin, die nur online liegen, lassen sich nicht öffnen. Die Einstellung gilt für alle Konten auf diesem PC. Rückgängig schaltet die Synchronisierung wieder ein. Um OneDrive ganz zu entfernen, nutze die Seite Debloat.
+Dateien, die nur in der Cloud liegen, lassen sich auf diesem PC nicht öffnen, und Änderungen werden nicht synchronisiert. Sichert OneDrive deine Ordner Desktop, Dokumente oder Bilder, bleiben diese Ordner im OneDrive-Ordner: Neue Dateien darin werden nicht mehr gesichert, und Dateien darin, die nur online liegen, lassen sich nicht öffnen. Die Einstellung gilt für alle Konten auf diesem PC. Rückgängig schaltet die Synchronisierung wieder ein. Um OneDrive ganz zu entfernen, nutze die Seite Apps entfernen.
 
 ## Wann du es nicht nutzen solltest
 Wenn du OneDrive nutzt oder Dateien brauchst, die nur online liegen.

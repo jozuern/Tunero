@@ -1,13 +1,13 @@
 # Windows-Suche: keine Webergebnisse und kein Standort
 
 ## Zusammenfassung
-Die Windows-Suche sucht nicht mehr im Web, zeigt keine Webergebnisse und darf deinen Standort nicht nutzen. Pro, Enterprise und Education.
+Setzt drei Richtlinien der Windows-Suche gegen Websuche und Standortnutzung. Die gegen Webergebnisse ist nur für Enterprise und Education dokumentiert. Pro, Enterprise und Education.
 
 ## So funktioniert es
-Drei Richtlinien der Windows-Suche, die Microsoft zum Begrenzen von Verbindungen nennt: „Websuche nicht zulassen“ (DisableWebSearch = 1), „Keine Websuche durchführen und keine Webergebnisse anzeigen“ (ConnectedSearchUseWeb = 0) und „Suche darf Standort verwenden“ auf 0 [1][2]. Sie ergänzen die Option „Keine Webergebnisse in der Windows-Suche“, die die neuere Suchfeld-Richtlinie nutzt.
+Drei Richtlinien der Windows-Suche, die Microsoft zum Begrenzen von Verbindungen nennt: „Websuche nicht zulassen“ (DisableWebSearch = 1), „Keine Websuche durchführen und keine Webergebnisse anzeigen“ (ConnectedSearchUseWeb = 0) und „Suche darf Standort verwenden“ auf 0 [1][2]. „Keine Websuche durchführen und keine Webergebnisse anzeigen“ führt Microsoft nur für Enterprise und Education, nicht für Pro [2]; unter Pro sind nur die anderen beiden als wirksam dokumentiert. Um Webergebnisse auch unter Pro aus der Startsuche zu entfernen, nutze die Option „Webergebnisse in der Startsuche aus“.
 
 ## Warum es helfen kann
-Was du in die Suche tippst, bleibt auf dem PC, und die Suche kann deinen Standort nicht für Ergebnisse nutzen.
+Unter Enterprise und Education bleibt, was du in die Suche tippst, auf dem PC. In allen drei Editionen kann die Suche deinen Standort nicht für Ergebnisse nutzen.
 
 ## Belege
 Von Microsoft beschriebene Windows-Richtlinien [1][2]. Eine Datenschutzeinstellung ohne Einfluss auf Framerate oder Latenz.
