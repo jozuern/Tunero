@@ -52,7 +52,7 @@ internal sealed class FakePageHost : IPageHost
     public Task ToggleAsync(TweakItemViewModel item, bool on) => throw new NotSupportedException();
     public Task ScanInProgress => Task.CompletedTask;
     public IAsyncRelayCommand ScanCommand => throw new NotSupportedException();
-    public Page CurrentPage => Page.Storage;
+    public Page CurrentPage { get; set; } = Page.Storage;
     public InspectorItem? SelectedItem { get; set; }
     public string? VirusTotalKey => null;
     public string? PickSaveFile(string defaultName, string filterName, string extension) => null;

@@ -221,6 +221,8 @@ public sealed partial class StartupTabItem(StartupTab tab) : ObservableObject
 
 public sealed partial class StartupViewModel(IPageHost owner, AppServices services, ChangeRunner runner) : PageViewModel(owner)
 {
+    protected override IReadOnlyList<Page> ShownOn => [Page.Startup];
+
     private List<StartupRow> _all = [];
     private CancellationTokenSource? _vtCancel;
 

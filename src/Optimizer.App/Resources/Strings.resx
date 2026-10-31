@@ -1222,6 +1222,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Change_OtherInstance" xml:space="preserve"><value>Another Tunero window or command line run is changing this PC. Try again when it has finished.</value></data>
   <data name="Close_WhileBusy" xml:space="preserve"><value>A change is running. Close Tunero when it has finished, so it does not stop halfway.</value></data>
   <data name="Result_Error" xml:space="preserve"><value>Did not work: {0}</value></data>
+  <data name="Page_LoadFailed" xml:space="preserve"><value>{0} could not be read. Opening the page again tries again. Reason: {1}</value></data>
   <data name="Result_UndoIncomplete" xml:space="preserve"><value>Undo incomplete: {0}. Not restored: {1}. What is left stays on the Changes page.</value></data>
   <data name="Result_UndoAllIncomplete" xml:space="preserve"><value>Changes undone: {0}. Not fully undone: {1}. They stay on the Changes page with the reason.</value></data>
   <data name="Result_FailedPartly" xml:space="preserve"><value>Not applied: {0}. Part of it could not be put back and is still changed, so it is listed on the Changes page; use Undo there. Reason: {1}</value></data>

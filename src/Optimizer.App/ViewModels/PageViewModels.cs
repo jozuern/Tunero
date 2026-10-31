@@ -25,13 +25,23 @@ public abstract partial class PageViewModel : ObservableObject
 
     protected IPageHost Owner { get; }
 
+    /// <summary>
+    /// The pages that show this view model's lists. Pages are read ahead in the background: a load that fails there says
+    /// nothing on another page and reads again when one of these opens.
+    /// </summary>
+    protected abstract IReadOnlyList<Page> ShownOn { get; }
+
     /// <summary>A change was made since the last full load: a language switch reads the page again instead of relabeling.</summary>
     private bool _dataStale;
 
     [ObservableProperty] private bool _isLoading;
     [ObservableProperty] private bool _isWorking;
 
-    public Task EnsureLoadedAsync() => _load ??= ReloadAsync();
+    /// <summary>Opening the page: the first time it reads, and again after a full load failed.</summary>
+    public Task EnsureLoadedAsync() => _load is null || _loadFailed ? _load = ReloadAsync() : _load;
+
+    /// <summary>The last full load ended in an error (see <see cref="ShownOn"/>).</summary>
+    private bool _loadFailed;
 
     /// <summary>The page builds rows from the scan result (<see cref="MainViewModel.Profile"/>).</summary>
     protected virtual bool UsesProfile => false;
@@ -162,7 +172,11 @@ public abstract partial class PageViewModel : ObservableObject
     {
         if (_dataStale) fullLoad = true;
         // A change during this load marks the data stale again.
-        if (fullLoad) _dataStale = false;
+        if (fullLoad)
+        {
+            _dataStale = false;
+            _loadFailed = false;
+        }
         // Relabeling reads nothing: no loading state, the rows only change their text.
         if (fullLoad) IsLoading = true;
         try
@@ -186,7 +200,10 @@ public abstract partial class PageViewModel : ObservableObject
         catch (Exception ex)
         {
             Log.Error("ui", $"{GetType().Name} load failed", ex);
-            Owner.ShowResult(Loc.Instance.Format("Result_Error", ex.Message), Wpf.Ui.Controls.InfoBarSeverity.Error);
+            // Opening the page (EnsureLoadedAsync) reads again; WMI, for one, cancels a query now and then.
+            if (fullLoad) _loadFailed = true;
+            if (ShownOn.Contains(Owner.CurrentPage))
+                Owner.ShowResult(Loc.Instance.Format("Page_LoadFailed", Loc.Instance[$"Nav_{ShownOn[0]}"], ex.Message), Wpf.Ui.Controls.InfoBarSeverity.Error);
         }
         finally
         {
@@ -269,6 +286,8 @@ public sealed record DnsResultRow(string Name, string Server, string Median, str
 
 public sealed partial class NetworkViewModel(IPageHost owner, AppServices services) : PageViewModel(owner)
 {
+    protected override IReadOnlyList<Page> ShownOn => [Page.Network];
+
     public ObservableCollection<TweakItemViewModel> GameProfiles { get; } = [];
     public ObservableCollection<TweakItemViewModel> DeviceTweaks { get; } = [];
     public ObservableCollection<TweakItemViewModel> DnsOptions { get; } = [];
@@ -591,6 +610,8 @@ public sealed record RemovedRow(string Name, string When, string? StoreLink)
 
 public sealed partial class DebloatViewModel(IPageHost owner, AppServices services, IDialogs dialogs) : PageViewModel(owner)
 {
+    protected override IReadOnlyList<Page> ShownOn => [Page.Debloat];
+
     /// <summary>Offers and guards depend on the scan result (games, platform).</summary>
     protected override bool UsesProfile => true;
     private Optimizer.Core.Debloat.DebloatService Service => new(services.Context.Processes, AppServices.DataFolder);
@@ -939,6 +960,8 @@ public sealed partial class CleanupRow(Optimizer.Core.Cleanup.CleanupCategory ca
 
 public sealed partial class CleanupViewModel(IPageHost owner, AppServices services, IDialogs dialogs) : PageViewModel(owner)
 {
+    protected override IReadOnlyList<Page> ShownOn => [Page.Cleanup];
+
     public ObservableCollection<CleanupRow> Rows { get; } = [];
 
     [ObservableProperty] private string _totalText = "";

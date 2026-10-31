@@ -95,6 +95,8 @@ public sealed record RunRow(string Label, string AvgFps, string Low, string Fram
 public sealed partial class HealthViewModel(IPageHost owner, IDialogs dialogs, Action<string>? addPriorityRule = null,
     Optimizer.Core.Actions.IProcessRunner? processes = null) : PageViewModel(owner)
 {
+    protected override IReadOnlyList<Page> ShownOn => [Page.Health];
+
     private Optimizer.Core.Actions.IProcessRunner ToolRunner => processes ?? Owner.Services.Context.Processes;
 
     /// <summary>The disk rows come from the scan result: built again after every scan.</summary>

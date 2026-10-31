@@ -144,6 +144,8 @@ public sealed partial class ServiceRowVm : ObservableObject
 
 public sealed partial class ServicesViewModel(IPageHost owner, AppServices services, ChangeRunner runner) : PageViewModel(owner)
 {
+    protected override IReadOnlyList<Page> ShownOn => [Page.Services];
+
     private List<ServiceRowVm> _all = [];
 
     public ObservableCollection<ServiceRowVm> Rows { get; } = [];

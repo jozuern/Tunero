@@ -261,6 +261,9 @@ public sealed partial class LeftoverRow(Leftover leftover, string program) : Obs
 
 public sealed partial class AppsViewModel(IPageHost owner, AppServices services, IDialogs dialogs, PackageUpdates? packageRuns = null) : PageViewModel(owner)
 {
+    // Remove apps lists the installed programs from here too.
+    protected override IReadOnlyList<Page> ShownOn => [Page.Apps, Page.Debloat];
+
     /// <summary>The installed state of the catalog apps comes from the scan result (installed programs).</summary>
     protected override bool UsesProfile => true;
     private List<ProgramRow> _allPrograms = [];

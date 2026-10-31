@@ -42,6 +42,19 @@ public static class Wmi
 
     public static List<Dictionary<string, object?>> Query(string wql, string scope = @"root\cimv2")
     {
+        try
+        {
+            return QueryOnce(wql, scope);
+        }
+        catch (ManagementException ex) when (ex.ErrorCode == ManagementStatus.CallCanceled)
+        {
+            // The WMI service cancels a call now and then (seen while another program queried it at the same time).
+            return QueryOnce(wql, scope);
+        }
+    }
+
+    private static List<Dictionary<string, object?>> QueryOnce(string wql, string scope)
+    {
         var rows = new List<Dictionary<string, object?>>();
         // Connecting can hang as well as the query when the WMI service is stuck: both have a time limit.
         var managementScope = new ManagementScope(scope, new ConnectionOptions { Timeout = TimeSpan.FromSeconds(20) });

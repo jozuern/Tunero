@@ -51,6 +51,8 @@ public sealed record StepRow(string Text, bool Ok, string? Detail)
 
 public sealed partial class ToolsViewModel(IPageHost owner, AppServices services, ChangeRunner runner, IDialogs dialogs) : PageViewModel(owner)
 {
+    protected override IReadOnlyList<Page> ShownOn => [Page.Tools];
+
     public ObservableCollection<FeatureRow> Features { get; } = [];
     public ObservableCollection<StepRow> RepairSteps { get; } = [];
 

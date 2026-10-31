@@ -34,6 +34,7 @@
 
 ### Fixed
 
+- **Pages read in the background:** a list that cannot be read (Windows cancels a WMI query now and then) no longer shows "Did not work" on the page you are on; it reads again when you open its page, names the page if it fails there, and a cancelled WMI query is tried once more.
 - **Startup:** Windows' leftover shell service object WebCheck counts as a Windows entry; **Services & tasks** notes no longer repeat the name when only hyphens or spaces differ; the priority form's check boxes line up.
 - **Ignore:** a result ignored while a scan runs no longer leaves a change recommended for it until the next scan; the note that all changes survived a Windows update follows a language switch.
 - **German:** a few sentences that could read as formal address now say what they mean (the storage protection notice, three explanation pages).

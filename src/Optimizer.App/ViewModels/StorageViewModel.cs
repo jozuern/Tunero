@@ -28,6 +28,8 @@ public sealed partial class StorageViewModel(IPageHost owner, AppServices servic
     Func<string, IProgress<ScanProgress>?, CancellationToken, Task<DiskTree>>? scanner = null,
     Func<IReadOnlyList<(string Path, bool Folder)>, IReadOnlyList<string>>? recycle = null, bool appData = true) : PageViewModel(owner)
 {
+    protected override IReadOnlyList<Page> ShownOn => [Page.Storage];
+
     public const int TabFolders = 0, TabTypes = 1, TabLargest = 2, TabDuplicates = 3;
 
     private readonly Func<string, IProgress<ScanProgress>?, CancellationToken, Task<DiskTree>> _scan =

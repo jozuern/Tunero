@@ -254,6 +254,8 @@ public sealed partial class MediaAppGroup : ObservableObject
 /// </summary>
 public sealed partial class InstallMediaViewModel : PageViewModel
 {
+    protected override IReadOnlyList<Page> ShownOn => [Page.InstallMedia];
+
     private const string Architecture = MediaChoices.Architecture;
     private const string CatalogArchitecture = MediaChoices.CatalogArchitecture;
     private const int FirstWindows11Build = 22000;

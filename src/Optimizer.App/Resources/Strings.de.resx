@@ -1222,6 +1222,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Change_OtherInstance" xml:space="preserve"><value>Ein anderes Tunero-Fenster oder ein Befehlszeilenlauf ändert gerade diesen PC. Versuche es erneut, wenn er fertig ist.</value></data>
   <data name="Close_WhileBusy" xml:space="preserve"><value>Eine Änderung läuft. Schließe Tunero, wenn sie fertig ist, damit sie nicht mittendrin abbricht.</value></data>
   <data name="Result_Error" xml:space="preserve"><value>Hat nicht funktioniert: {0}</value></data>
+  <data name="Page_LoadFailed" xml:space="preserve"><value>{0} konnte nicht gelesen werden. Wenn du die Seite wieder öffnest, versucht Tunero es erneut. Grund: {1}</value></data>
   <data name="Result_UndoIncomplete" xml:space="preserve"><value>Rückgängig machen unvollständig: {0}. Nicht wiederhergestellt: {1}. Der Rest bleibt auf der Seite Änderungen.</value></data>
   <data name="Result_UndoAllIncomplete" xml:space="preserve"><value>Rückgängig gemacht: {0}. Nicht vollständig rückgängig gemacht: {1}. Sie bleiben mit dem Grund auf der Seite Änderungen.</value></data>
   <data name="Result_FailedPartly" xml:space="preserve"><value>Nicht angewendet: {0}. Ein Teil ließ sich nicht zurücksetzen und ist noch geändert, deshalb steht er auf der Seite Änderungen. Nutze dort Rückgängig. Grund: {1}</value></data>
