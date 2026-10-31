@@ -89,15 +89,21 @@ public sealed class FirstSignInTests : IDisposable
     private sealed record PlanIds(string Profile, IReadOnlyList<string> Items, IReadOnlyList<string> Excluded);
 
     /// <summary>
-    /// The Overview's plan, through the window's own path: the profile EnsureProfile picks (with --profile
-    /// <paramref name="forced"/> and the saved one), then <see cref="ViewModels.MainViewModel.PlanFor"/> with the ignore
-    /// lists of <paramref name="settings"/>.
+    /// The Overview's plan, through the window's own code: a scan of the window's state (<see cref="ViewModels.ScanState"/>)
+    /// that reads this snapshot, with --profile <paramref name="forced"/> and the saved profile and ignore lists of
+    /// <paramref name="settings"/> (a copy: the window saves the profile its first scan picks).
     /// </summary>
     private static PlanIds WindowPlan(PcSnapshot pc, string? forced, AppSettings settings)
     {
-        var choice = ViewModels.MainViewModel.ChooseProfile(Optimizer.Core.Catalog.CatalogData.Current.Profiles, forced, settings.Profile, pc.Facts);
-        var plan = ViewModels.MainViewModel.PlanFor(choice.Profile, settings, pc.Facts, pc.States, pc.Findings).Plan;
-        return new(choice.Profile.Id, plan.Items.Select(i => i.Tweak.Id).ToList(), plan.Excluded.Select(i => i.Tweak.Id).ToList());
+        var copy = new AppSettings
+        {
+            Profile = settings.Profile, IgnoredFindings = [.. settings.IgnoredFindings], IgnoredTweaks = [.. settings.IgnoredTweaks],
+        };
+        var source = new FakeScanSource { BaseFacts = pc.Facts, FindingFacts = false, States = pc.States, Findings = _ => pc.Findings };
+        var state = new ViewModels.ScanState(Optimizer.Core.Catalog.CatalogData.Current, copy, () => { }, source, () => false) { ProfileOverride = forced };
+        SingleThread.Run(() => state.ScanAsync());
+        Assert.False(state.ScanFailed);
+        return new(state.Usage.Id, state.Plan.Items.Select(i => i.Tweak.Id).ToList(), state.Plan.Excluded.Select(i => i.Tweak.Id).ToList());
     }
 
     /// <summary>--apply-recommended's plan for the same scan and settings (CommandLineVerbs passes them so); null when it stops.</summary>

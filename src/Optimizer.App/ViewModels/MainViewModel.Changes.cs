@@ -57,7 +57,7 @@ public sealed partial class MainViewModel
     [RelayCommand(CanExecute = nameof(CanChange))]
     private async Task ApplyRecommendedAsync()
     {
-        if (_plan.IsEmpty)
+        if (_state.Plan.IsEmpty)
         {
             ShowResult(Loc.Instance["Rec_None"]);
             return;
@@ -104,7 +104,7 @@ public sealed partial class MainViewModel
             try
             {
                 work.Indeterminate(Loc.Instance["Scan_Running"]);
-                (var pc, plan) = await CommandLineApply.RecommendedPlanAsync(_services, profileId, null, IgnoredKeys(), IgnoredTweakIds());
+                (var pc, plan) = await CommandLineApply.RecommendedPlanAsync(_services, profileId, null, _state.IgnoredKeys(), _state.IgnoredTweakIds());
                 if (plan is null) return;
                 foreach (var t in plan.Together) ChangeLogText.Remember(t);
                 // No Stop: each change applies whole; the banner counts them.
@@ -221,7 +221,7 @@ public sealed partial class MainViewModel
 
     /// <summary>Catalog entry, runtime fix of this scan, or the definition stored with the backup.</summary>
     public TweakDefinition? ResolveTweak(string id) =>
-        _services.Catalog.Get(id) ?? _findings.Select(f => f.Fix).FirstOrDefault(f => f?.Id == id) ?? _services.Engine.Resolve(id);
+        _services.Catalog.Get(id) ?? _state.Findings.Select(f => f.Fix).FirstOrDefault(f => f?.Id == id) ?? _services.Engine.Resolve(id);
 
     /// <summary>The runner refreshes the pages after it (also when some changes could not be undone).</summary>
     [RelayCommand(CanExecute = nameof(CanChange))]
@@ -271,14 +271,11 @@ public sealed partial class MainViewModel
         }
     }
 
-    private bool _reuseSlowParts;
-
     private async Task AfterChangeAsync()
     {
         var result = ResultText;
         var severity = ResultSeverity;
-        _reuseSlowParts = true;
-        await ScanAsync();
+        await _state.ScanAsync(reuseSlowParts: true);
         // Only while the change's result is still what the bar shows: a failed rescan's error stays, and a bar closed
         // before or during the rescan is not opened again.
         if (result is not null && !ScanFailed && ResultOpen && ResultText == result)
@@ -305,8 +302,8 @@ public sealed partial class MainViewModel
     {
         var store = _services.Store;
         var engine = _services.Engine;
-        var facts = _facts;
-        var known = _tweakStates.Concat(_deviceStates).Select(s => s.Tweak.Id).ToHashSet(StringComparer.Ordinal);
+        var facts = _state.Facts;
+        var known = _state.TweakStates.Concat(_state.DeviceStates).Select(s => s.Tweak.Id).ToHashSet(StringComparer.Ordinal);
         (_backups, _restoreEnabled, _otherChangeStates, _backupTweaks) = await Task.Run(() =>
         {
             var backups = store.All();
@@ -338,5 +335,5 @@ public sealed partial class MainViewModel
     }
 
     public HashSet<string> AppliedIds() =>
-        _tweakStates.Concat(_deviceStates).Where(s => s.State is TweakState.Applied or TweakState.PendingRestart).Select(s => s.Tweak.Id).ToHashSet();
+        _state.TweakStates.Concat(_state.DeviceStates).Where(s => s.State is TweakState.Applied or TweakState.PendingRestart).Select(s => s.Tweak.Id).ToHashSet();
 }

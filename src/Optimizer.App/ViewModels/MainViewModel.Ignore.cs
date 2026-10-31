@@ -16,9 +16,6 @@ namespace Optimizer.App.ViewModels;
 /// </summary>
 public sealed partial class MainViewModel
 {
-    /// <summary>The ignored results the active profile would show, with its impact (set with the plan, <see cref="ApplyProfile"/>).</summary>
-    private IReadOnlyList<Finding> _ignoredFindings = [];
-
     public ObservableCollection<FindingItemViewModel> IgnoredItems { get; } = [];
 
     [ObservableProperty] private string? _ignoredText;
@@ -27,16 +24,10 @@ public sealed partial class MainViewModel
     /// <summary>"Ignored recommendations: 2. Show them" in the Overview's plan card; null when none.</summary>
     [ObservableProperty] private string? _ignoredTweaksText;
 
-    /// <summary>The ignored results' keys, as a copy a background read can use while the list changes.</summary>
-    private IReadOnlySet<string> IgnoredKeys() => _settings.IgnoredFindings.ToHashSet(StringComparer.Ordinal);
-
-    /// <summary>The ids of the tweaks whose recommendation the user ignores.</summary>
-    private IReadOnlySet<string> IgnoredTweakIds() => _settings.IgnoredTweaks.ToHashSet(StringComparer.Ordinal);
-
     private void BuildIgnored(string lang)
     {
         IgnoredItems.Clear();
-        foreach (var f in _ignoredFindings) IgnoredItems.Add(new FindingItemViewModel(f, lang, null, _usage.Goal) { IsIgnored = true });
+        foreach (var f in _state.IgnoredFindings) IgnoredItems.Add(new FindingItemViewModel(f, lang, null, _state.Usage.Goal) { IsIgnored = true });
         IgnoredText = IgnoredItems.Count > 0 ? Loc.Instance.Format("Findings_IgnoredCount", IgnoredItems.Count) : null;
         if (IgnoredItems.Count == 0) ShowIgnored = false;
     }
@@ -56,10 +47,7 @@ public sealed partial class MainViewModel
             return;
         }
         if (row is not FindingItemViewModel item || !item.CanIgnore) return;
-        var key = IgnoredResults.Key(item.Finding);
-        if (!_settings.IgnoredFindings.Contains(key, StringComparer.Ordinal)) _settings.IgnoredFindings.Add(key);
-        _settings.Save();
-        await AfterIgnoreChangedAsync();
+        await AfterIgnoreChangedAsync(item.Finding, true);
         ShowResult(Loc.Instance.Format("Findings_IgnoredResult", item.Title));
     }
 
@@ -73,9 +61,7 @@ public sealed partial class MainViewModel
             return;
         }
         if (row is not FindingItemViewModel item) return;
-        _settings.IgnoredFindings.RemoveAll(k => k == IgnoredResults.Key(item.Finding));
-        _settings.Save();
-        await AfterIgnoreChangedAsync();
+        await AfterIgnoreChangedAsync(item.Finding, false);
         ShowResult(Loc.Instance.Format("Findings_UnignoredResult", item.Title));
     }
 
@@ -83,7 +69,7 @@ public sealed partial class MainViewModel
     [RelayCommand]
     private void IgnoreTweak(string? tweakId)
     {
-        if (_profiled.FirstOrDefault(p => p.Tweak.Id == tweakId) is not { } p) return;
+        if (_state.Profiled.FirstOrDefault(p => p.Tweak.Id == tweakId) is not { } p) return;
         SetTweakIgnored(p.Tweak.Id, true);
         ShowResult(Loc.Instance.Format("Tweaks_IgnoredResult", Runner.Title(p.Tweak)));
     }
@@ -103,17 +89,14 @@ public sealed partial class MainViewModel
     /// <summary>The facts do not depend on ignored tweaks: the profile view and every list are built again, nothing is read.</summary>
     private void SetTweakIgnored(string tweakId, bool ignored)
     {
-        _settings.IgnoredTweaks.RemoveAll(id => id == tweakId);
-        if (ignored) _settings.IgnoredTweaks.Add(tweakId);
-        _settings.Save();
-        ApplyProfile();
+        _state.SetTweakIgnored(tweakId, ignored);
         Rebuild();
     }
 
     /// <summary>The facts change with the ignored results (what is recommended for them): read them again, then every list.</summary>
-    private async Task AfterIgnoreChangedAsync()
+    private async Task AfterIgnoreChangedAsync(Finding finding, bool ignored)
     {
-        await RefreshTweaksAsync();
+        await _state.SetResultIgnoredAsync(finding, ignored);
         Rebuild();
     }
 }

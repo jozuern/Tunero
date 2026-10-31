@@ -76,38 +76,38 @@ public sealed partial class MainViewModel
     private void BuildFindingLists()
     {
         var lang = Loc.Instance.Language;
-        Fill(Findings, _profiledFindings.Where(f => f.Kind == FindingKind.Finding), lang);
-        Fill(AdvisorItems, _profiledFindings.Where(f => f.Kind == FindingKind.Advisor), lang);
+        Fill(Findings, _state.ProfiledFindings.Where(f => f.Kind == FindingKind.Finding), lang);
+        Fill(AdvisorItems, _state.ProfiledFindings.Where(f => f.Kind == FindingKind.Advisor), lang);
         OnPropertyChanged(nameof(FindingsEmpty));
         OnPropertyChanged(nameof(AdvisorEmpty));
-        var access = _profiledFindings.FirstOrDefault(f => f.Kind == FindingKind.GameAccess);
+        var access = _state.ProfiledFindings.FirstOrDefault(f => f.Kind == FindingKind.GameAccess);
         GameAccess = access is null ? null : new FindingItemViewModel(access, lang);
         BuildIgnored(lang);
-        var hidden = ProfileView.HiddenProblems(_usage, IgnoredResults.Without(_findings, IgnoredKeys()));
+        var hidden = ProfileView.HiddenProblems(_state.Usage, IgnoredResults.Without(_state.Findings, _state.IgnoredKeys()));
         HiddenFindingsText = hidden > 0 ? Loc.Instance.Format("Findings_HiddenByProfile", hidden) : null;
-        var passed = ShowPassed ? 0 : _profiledFindings.Count(f => f.Kind == FindingKind.Advisor && f.Status is FindingStatus.Ok or FindingStatus.Unsupported);
+        var passed = ShowPassed ? 0 : _state.ProfiledFindings.Count(f => f.Kind == FindingKind.Advisor && f.Status is FindingStatus.Ok or FindingStatus.Unsupported);
         AdvisorPassedText = passed > 0 ? Loc.Instance.Format("Advisor_PassedHidden", passed) : null;
         BuildAdvisorSummary();
 
         // The score counts what matters for the profile, weighted by the profile's impact.
-        Score = ReadinessScore.Compute(_profiledFindings);
-        ScoreHint = Loc.Instance.Format("Dash_ScoreHintGoal", Labels.Current.Get(lang, $"effect.{_usage.Goal}"));
-        var findingProblems = _profiledFindings.Count(f => f.IsProblem && f.Kind == FindingKind.Finding);
-        var advisorProblems = _profiledFindings.Count(f => f.IsProblem && f.Kind == FindingKind.Advisor);
+        Score = ReadinessScore.Compute(_state.ProfiledFindings);
+        ScoreHint = Loc.Instance.Format("Dash_ScoreHintGoal", Labels.Current.Get(lang, $"effect.{_state.Usage.Goal}"));
+        var findingProblems = _state.ProfiledFindings.Count(f => f.IsProblem && f.Kind == FindingKind.Finding);
+        var advisorProblems = _state.ProfiledFindings.Count(f => f.IsProblem && f.Kind == FindingKind.Advisor);
         // The verdict counts the problems listed right under it (BIOS and hardware have their own page and the link); it
         // is set once the recommendations are known (UpdateVerdict). The line under it says what the score counts.
         _findingProblems = findingProblems;
         // Checks that could not be answered are named: "100 of 100" next to a "?" card needs the count to make sense.
-        var passedChecks = _profiledFindings.Count(f => f.Status == FindingStatus.Ok);
-        var unknownChecks = _profiledFindings.Count(f => f.Status == FindingStatus.Unknown);
+        var passedChecks = _state.ProfiledFindings.Count(f => f.Status == FindingStatus.Ok);
+        var unknownChecks = _state.ProfiledFindings.Count(f => f.Status == FindingStatus.Unknown);
         ReadinessLine = unknownChecks > 0
-            ? Loc.Instance.Format("Dash_ReadinessUnknown", ProfileName(_usage), Score, passedChecks, unknownChecks)
-            : Loc.Instance.Format("Dash_Readiness", ProfileName(_usage), Score, passedChecks);
+            ? Loc.Instance.Format("Dash_ReadinessUnknown", ProfileName(_state.Usage), Score, passedChecks, unknownChecks)
+            : Loc.Instance.Format("Dash_Readiness", ProfileName(_state.Usage), Score, passedChecks);
         AdvisorLinkText = advisorProblems > 0 ? Loc.Instance.Format("Dash_AdvisorLink", advisorProblems) : null;
         // The navigation shows where something waits: problems on the overview, things to change by hand.
         OverviewBadge = findingProblems > 0 ? findingProblems.ToString() : null;
         AdvisorBadge = advisorProblems > 0 ? advisorProblems.ToString() : null;
-        LastScanText = _lastScanTime is { } t ? Loc.Instance.Format("LastScan", t.ToString("HH:mm")) : "";
+        LastScanText = _state.LastScanTime is { } t ? Loc.Instance.Format("LastScan", t.ToString("HH:mm")) : "";
         if (Profile is { } prof)
             Headline = string.Join(", ", new[] { prof.Cpu?.ShortName, prof.Gpus?.FirstOrDefault(g => g.Kind == GpuKind.Discrete)?.Name ?? prof.Gpus?.FirstOrDefault()?.Name,
                 $"Windows 11 {prof.Os.DisplayVersion}" }.Where(x => !string.IsNullOrEmpty(x)));
@@ -126,18 +126,18 @@ public sealed partial class MainViewModel
             _ => 4,
         };
         foreach (var f in source.Where(f => ShowPassed || f.Status is not (FindingStatus.Ok or FindingStatus.Unsupported)).OrderBy(f => Rank(f.Status)))
-            target.Add(new FindingItemViewModel(f, lang, FixFor(f), _usage.Goal));
+            target.Add(new FindingItemViewModel(f, lang, FixFor(f), _state.Usage.Goal));
     }
 
     /// <summary>Runtime fix of the finding, or the first catalog tweak that fixes it and is not on yet.</summary>
     private TweakDefinition? FixFor(Finding f) =>
         f.Fix is { } fix
-            ? ProfileView.RuntimeFixAllowed(fix, _profiled) ? fix : null
-            : _profiled.FirstOrDefault(p => p.CanFix(f.Id) && (ExpertMode || p.Tweak.EffectiveRisk != Risk.Expert))?.Tweak;
+            ? ProfileView.RuntimeFixAllowed(fix, _state.Profiled) ? fix : null
+            : _state.Profiled.FirstOrDefault(p => p.CanFix(f.Id) && (ExpertMode || p.Tweak.EffectiveRisk != Risk.Expert))?.Tweak;
 
     /// <param name="profileFilter">Tweaks page: only what the active profile rates (unless "Only this profile" is off).</param>
     private IEnumerable<ProfiledTweak> VisibleTweaks(bool profileFilter = true) =>
-        _profiled.Where(p => ExpertMode || p.Tweak.EffectiveRisk != Risk.Expert || p.Status.HasBackup)
+        _state.Profiled.Where(p => ExpertMode || p.Tweak.EffectiveRisk != Risk.Expert || p.Status.HasBackup)
                  .Where(p => p.Status.State != TweakState.NotApplicable || ShowPassed)
                  .Where(p => !profileFilter || !OnlyProfile || p.Relevant);
 
@@ -217,7 +217,7 @@ public sealed partial class MainViewModel
         {
             var items = g.OrderByDescending(p => p.Impact)
                 .ThenBy(p => CategoryOrder(p.Tweak.Category))
-                .Select(p => new TweakItemViewModel(p.Status, lang, _services.Engine, this, profiled: p, profile: _usage) { OffersIgnore = OffersIgnore(p, inPlan) })
+                .Select(p => new TweakItemViewModel(p.Status, lang, _services.Engine, this, profiled: p, profile: _state.Usage) { OffersIgnore = OffersIgnore(p, inPlan) })
                 .ToList();
             foreach (var item in items)
             {
@@ -249,7 +249,7 @@ public sealed partial class MainViewModel
     }
 
     /// <summary>The tweaks of the Overview's plan, fixes and what it leaves out included.</summary>
-    private HashSet<string> PlanTweakIds() => _plan.Items.Concat(_plan.Excluded).Select(i => i.Tweak.Id).ToHashSet(StringComparer.Ordinal);
+    private HashSet<string> PlanTweakIds() => _state.Plan.Items.Concat(_state.Plan.Excluded).Select(i => i.Tweak.Id).ToHashSet(StringComparer.Ordinal);
 
     /// <summary>What the app urges for this PC (recommended, in the plan, flagged against the profile) can be ignored.</summary>
     private static bool OffersIgnore(ProfiledTweak p, HashSet<string> inPlan) =>
@@ -381,7 +381,7 @@ public sealed partial class MainViewModel
     {
         var inPlan = PlanTweakIds();
         return VisibleTweaks(profileFilter: false).Where(p => filter(p.Tweak) && p.Status.State != TweakState.NotApplicable)
-            .Select(p => new TweakItemViewModel(p.Status, Loc.Instance.Language, _services.Engine, this, profiled: p, profile: _usage) { OffersIgnore = OffersIgnore(p, inPlan) })
+            .Select(p => new TweakItemViewModel(p.Status, Loc.Instance.Language, _services.Engine, this, profiled: p, profile: _state.Usage) { OffersIgnore = OffersIgnore(p, inPlan) })
             .ToList();
     }
 
@@ -404,30 +404,30 @@ public sealed partial class MainViewModel
         // ignore it). A fix built for this PC has no button: it is no catalog tweak the Tweaks page could list again.
         RecommendationLine WithIgnore(RecommendationLine line, RecommendedItem i)
         {
-            if (_profiled.Any(p => p.Tweak.Id == i.Tweak.Id)) line.IgnoreTweakId = i.Tweak.Id;
+            if (_state.Profiled.Any(p => p.Tweak.Id == i.Tweak.Id)) line.IgnoreTweakId = i.Tweak.Id;
             return line;
         }
         Recommendations.Clear();
-        foreach (var i in _plan.Items)
+        foreach (var i in _state.Plan.Items)
             Recommendations.Add(WithIgnore(new RecommendationLine(Runner.Title(i.Tweak), Reason(i), i.Impact, i.Tweak, UpdateRecommendedButton), i));
         RecommendationsExcluded.Clear();
-        foreach (var i in _plan.Excluded)
+        foreach (var i in _state.Plan.Excluded)
             RecommendationsExcluded.Add(WithIgnore(new RecommendationLine(Runner.Title(i.Tweak), Excluded(i), i.Impact, i.Tweak), i));
         // As many as the Tweaks page lists in the view the link opens.
         var ignoredTweaks = VisibleTweaks(profileFilter: false).Count(p => p.Ignored);
         IgnoredTweaksText = ignoredTweaks > 0 ? Loc.Instance.Format("Tweaks_IgnoredCount", ignoredTweaks) : null;
-        HasRecommendations = _plan.Items.Count > 0;
+        HasRecommendations = _state.Plan.Items.Count > 0;
         // Nothing to apply in one click, but fixes that need something first: say so instead of "nothing to recommend".
-        RecommendationsEmptyText = _plan.Excluded.Count > 0 ? Loc.Instance["Rec_EmptyButExcluded"] : Loc.Instance["Rec_Empty"];
+        RecommendationsEmptyText = _state.Plan.Excluded.Count > 0 ? Loc.Instance["Rec_EmptyButExcluded"] : Loc.Instance["Rec_Empty"];
         UpdateRecommendedButton();
-        RecommendationsIntro = Loc.Instance.Format("Rec_IntroProfile", ProfileName(_usage));
+        RecommendationsIntro = Loc.Instance.Format("Rec_IntroProfile", ProfileName(_state.Usage));
 
         // Changes on this PC that lower the profile's goal (for example a battery drain in the Battery profile).
         AgainstProfile.Clear();
-        foreach (var p in _profiled.Where(p => p.Flagged).OrderBy(p => p.Impact))
+        foreach (var p in _state.Profiled.Where(p => p.Flagged).OrderBy(p => p.Impact))
             AgainstProfile.Add(new AgainstLine(p.Tweak.Id, Runner.Title(p.Tweak), p.ReasonKey is { } k ? Labels.Current.Get(lang, k) : "", p.Status.HasBackup));
         HasAgainst = AgainstProfile.Count > 0;
-        AgainstTitle = Loc.Instance.Format("Rec_AgainstTitle", ProfileName(_usage));
+        AgainstTitle = Loc.Instance.Format("Rec_AgainstTitle", ProfileName(_state.Usage));
         // After the lines against the profile: the verdict names them when no problem is found.
         UpdateVerdict();
     }
@@ -444,7 +444,7 @@ public sealed partial class MainViewModel
     /// </summary>
     private void RevealTweak(string? tweakId)
     {
-        if (_profiled.FirstOrDefault(p => p.Tweak.Id == tweakId) is not { } p) return;
+        if (_state.Profiled.FirstOrDefault(p => p.Tweak.Id == tweakId) is not { } p) return;
         if (p.Tweak.Id.StartsWith("network.dns.", StringComparison.Ordinal))
         {
             // DNS servers are chosen on Graphics & DNS, not listed on the Tweaks page.
@@ -458,7 +458,7 @@ public sealed partial class MainViewModel
         TweakSearch = title;
         CurrentPage = Page.Tweaks;
         SelectedItem = Tweaks.FirstOrDefault(t => t.Tweak.Id == p.Tweak.Id)
-            ?? new TweakItemViewModel(p.Status, Loc.Instance.Language, _services.Engine, this, profiled: p, profile: _usage) { OffersIgnore = OffersIgnore(p, PlanTweakIds()) };
+            ?? new TweakItemViewModel(p.Status, Loc.Instance.Language, _services.Engine, this, profiled: p, profile: _state.Usage) { OffersIgnore = OffersIgnore(p, PlanTweakIds()) };
     }
 
     public void BuildChanges()
@@ -467,12 +467,12 @@ public sealed partial class MainViewModel
         ChangeRecords.Clear();
         foreach (var b in _backups.OrderByDescending(b => b.LastApplied))
         {
-            var t = _services.Catalog.Get(b.TweakId) ?? _findings.Select(f => f.Fix).FirstOrDefault(f => f?.Id == b.TweakId) ?? _backupTweaks.GetValueOrDefault(b.TweakId);
+            var t = _services.Catalog.Get(b.TweakId) ?? _state.Findings.Select(f => f.Fix).FirstOrDefault(f => f?.Id == b.TweakId) ?? _backupTweaks.GetValueOrDefault(b.TweakId);
             var title = t is null ? b.TweakId : Runner.Title(t);
             if (t is not null) ChangeLogText.Remember(t);
-            var state = _tweakStates.Concat(_deviceStates).FirstOrDefault(s => s.Tweak.Id == b.TweakId)?.State
+            var state = _state.TweakStates.Concat(_state.DeviceStates).FirstOrDefault(s => s.Tweak.Id == b.TweakId)?.State
                 ?? (_otherChangeStates.TryGetValue(b.TweakId, out var other) ? other : null);
-            var drift = _drift.FirstOrDefault(d => d.Tweak.Id == b.TweakId);
+            var drift = _state.Drift.FirstOrDefault(d => d.Tweak.Id == b.TweakId);
             if (drift is not null) state = TweakState.RevertedByWindows;
             ChangeRecords.Add(new ChangeRecordItem(
                 b.TweakId,
@@ -515,9 +515,9 @@ public sealed partial class MainViewModel
     /// <summary>Developer aid for screenshots: shows the drift banner for three catalog tweaks without touching anything.</summary>
     public void PreviewDrift()
     {
-        _drift = _services.Catalog.Tweaks.Where(t => t.IsBatchSafe).Take(3)
+        _state.PreviewDrift(_services.Catalog.Tweaks.Where(t => t.IsBatchSafe).Take(3)
             .Select(t => new DriftItem(t, new Optimizer.Core.Backup.TweakBackup { TweakId = t.Id }, "26300.9000", _services.Os.BuildString))
-            .ToList();
+            .ToList());
         BuildBanners();
     }
 
@@ -528,25 +528,25 @@ public sealed partial class MainViewModel
         // First start: how the app works, until the user dismisses it.
         if (!_settings.IntroSeen)
             Banners.Add(new Banner(Loc.Instance["Intro_Text"], false) { ActionText = Loc.Instance["Intro_Dismiss"], Action = DismissIntroCommand, ActionIcon = SymbolRegular.Checkmark20 });
-        if (_drift.Count > 0)
+        if (_state.Drift.Count > 0)
         {
-            var names = _drift.Take(4).Select(d => Runner.Title(d.Tweak)).ToList();
+            var names = _state.Drift.Take(4).Select(d => Runner.Title(d.Tweak)).ToList();
             // "; " keeps titles with quotes, commas or parentheses apart.
-            var list = string.Join("; ", names) + (_drift.Count > names.Count ? " " + Loc.Instance.Format("Drift_More", _drift.Count - names.Count) : "");
-            var update = _drift.FirstOrDefault(d => d.WindowsUpdatedSince);
+            var list = string.Join("; ", names) + (_state.Drift.Count > names.Count ? " " + Loc.Instance.Format("Drift_More", _state.Drift.Count - names.Count) : "");
+            var update = _state.Drift.FirstOrDefault(d => d.WindowsUpdatedSince);
             var text = update is not null ? Loc.Instance.Format("Drift_BannerUpdate", update.Current, list) : Loc.Instance.Format("Drift_BannerOther", list);
             Banners.Add(new Banner(text, true) { ActionText = Loc.Instance["Drift_ApplyAgain"], Action = ReapplyDriftCommand });
         }
-        else if (_updateNotice is not null)
+        else if (_state.UpdateNotice is { } notice)
         {
-            Banners.Add(new Banner(_updateNotice, false));
+            Banners.Add(new Banner(Loc.Instance.Format("WinUpdated_AllGood", notice.Last, notice.Current, notice.Backups), false));
         }
         if (UpdateAvailable)
             Banners.Add(CanUpdateInApp
                 ? new Banner(UpdateStatus!, false) { ActionText = Loc.Instance["Update_Install"], Action = UpdateNowCommand, ActionIcon = SymbolRegular.ArrowDownload20 }
                 : new Banner(UpdateStatus!, false) { ActionText = Loc.Instance["Update_Open"], Action = OpenReleasePageCommand, ActionIcon = SymbolRegular.Open20 });
-        if (_profileAutoSet) Banners.Add(new Banner(Loc.Instance.Format("Profile_AutoSet", ProfileName(_usage)), false));
-        var pending = _tweakStates.Concat(_deviceStates).Count(s => s.State is TweakState.PendingRestart or TweakState.UndoPendingRestart);
+        if (_state.ProfileAutoSet) Banners.Add(new Banner(Loc.Instance.Format("Profile_AutoSet", ProfileName(_state.Usage)), false));
+        var pending = _state.TweakStates.Concat(_state.DeviceStates).Count(s => s.State is TweakState.PendingRestart or TweakState.UndoPendingRestart);
         if (pending > 0) Banners.Add(new Banner(Loc.Instance.Format("Banner_Restart", pending), true));
         var os = Profile.Os;
         var gate = OsGate.Evaluate(os.Build, os.NativeArchitecture);

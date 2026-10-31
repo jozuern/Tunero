@@ -27,6 +27,9 @@ public partial class ArchitectureTests
             if (name is "ReadOnlyContext.cs" or "ArchitectureTests.cs") continue;
             var text = File.ReadAllText(file);
             if (text.Contains("SystemNotify.CreateContext(", StringComparison.Ordinal)) problems.Add($"{name}: SystemNotify.CreateContext (use ReadOnlyContext.Create)");
+            // The app's services build the real adapters (and unload Default profile hives when elevated); the window needs them.
+            if (text.Contains("new AppServices(", StringComparison.Ordinal)) problems.Add($"{name}: new AppServices (test the page or ScanState with fakes)");
+            if (text.Contains("new MainViewModel(", StringComparison.Ordinal)) problems.Add($"{name}: new MainViewModel (test ScanState with a fake scan source)");
             foreach (Match m in RealAdapter().Matches(text)) problems.Add($"{name}: {m.Value} (use ReadOnlyContext.Create)");
             if (LauncherStart().Match(text) is { Success: true } start && !AllowedToolRuns.ContainsKey(name))
                 problems.Add($"{name}: {start.Value.TrimEnd('(')} (review it and list it in AllowedToolRuns)");
@@ -35,6 +38,25 @@ public partial class ArchitectureTests
         }
         Assert.Empty(problems);
     }
+
+    /// <summary>
+    /// The window's scan and plan state is tested without the window (ScanStateTests): it names no WPF type, no UI text and
+    /// no process-wide gate, and it never leaves its thread (ConfigureAwait(false) would bring a result back on another one).
+    /// </summary>
+    [Fact]
+    public void TheWindowsScanStateNeedsNoWpf()
+    {
+        var problems = new List<string>();
+        foreach (var name in new[] { "ScanState.cs", "IScanSource.cs" })
+        {
+            var text = File.ReadAllText(Path.Combine(RepoPaths.Root, "src", "Optimizer.App", "ViewModels", name));
+            foreach (Match m in WindowOnly().Matches(text)) problems.Add($"{name}: {m.Value}");
+        }
+        Assert.Empty(problems);
+    }
+
+    [GeneratedRegex(@"System\.Windows|Wpf\.Ui|\bLoc\.|\bChangeGate\b|\bDispatcher\b|ConfigureAwait\(false\)")]
+    private static partial Regex WindowOnly();
 
     /// <summary>App code that builds a start info itself, each reviewed: everything else goes through ProcessLauncher.</summary>
     private static readonly Dictionary<string, string> OwnStartInfo = new(StringComparer.OrdinalIgnoreCase)

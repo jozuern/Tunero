@@ -27,6 +27,7 @@
 
 ### Fixed
 
+- **Ignore:** a result ignored while a scan runs no longer leaves a change recommended for it until the next scan; the note that all changes survived a Windows update follows a language switch.
 - **German:** a few sentences that could read as formal address now say what they mean (the storage protection notice, three explanation pages).
 - **Windows install media:** Build and Resume stay off while another change or an update runs, and a saved build is no longer deleted when a build could not start. A partly ticked app group ticks the whole group on click; choices loaded while your ISO is read keep their edition; German text uses "du" throughout.
 - **Install & update:** the app list follows installs and removals since the last scan; one unreadable uninstall entry no longer hides the whole program list; Signal no longer shows as installed when only SignalRGB is; Update all says when winget cannot open its window for per-user programs.

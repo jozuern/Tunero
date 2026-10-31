@@ -20,21 +20,8 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
     private readonly AppSettings _settings;
     private readonly AppServices _services;
     private readonly IDialogs _dialogs;
-    private IReadOnlyList<Finding> _findings = [];
-    private IReadOnlyList<TweakStatus> _tweakStates = [];
-    private IReadOnlyList<TweakStatus> _deviceStates = [];
-    private RecommendationPlan _plan = new([], []);
-    private IReadOnlyList<DriftItem> _drift = [];
-    private string? _updateNotice;
-    private Facts _facts = new();
-    private DateTime? _lastScanTime;
-
-    // Usage profile: decides recommendations, impact, "works against" and which findings count (no setting by itself).
-    private UsageProfile _usage = CatalogData.Current.Profiles.Default;
-    private IReadOnlyList<ProfiledTweak> _profiled = [];
-    private IReadOnlyList<Finding> _profiledFindings = [];
-    private UsageProfile? _suggested;
-    private bool _profileAutoSet;
+    /// <summary>The scan and plan state: the last scan's results, the profile in use and the plan (<see cref="ScanState"/>).</summary>
+    private readonly ScanState _state;
 
     private readonly SetupDecision _setup;
 
@@ -45,9 +32,15 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
         _settings = settings;
         _services = services;
         _dialogs = dialogs;
+        _state = new ScanState(_catalog, settings, settings.Save, new AppScanSource(services, _catalog), () => ChangeGate.Instance.Busy)
+        {
+            AfterScan = RefreshChangesStateAsync,
+        };
+        _state.Updated += OnScanUpdated;
+        _state.Probed += probe => ScanStatus = Loc.Instance.Format("Scan_Probe", probe);
         _expertMode = settings.ExpertMode;
         _checkForUpdates = settings.CheckForUpdates;
-        Runner = new ChangeRunner(services, dialogs, () => _facts, () => ExpertMode) { ScanInProgress = () => ScanInProgress };
+        Runner = new ChangeRunner(services, dialogs, () => _state.Facts, () => ExpertMode) { ScanInProgress = () => ScanInProgress };
         Install = InstallFacts.ForThisProcess(services);
         Updates = new UpdateService(Install, dialogs, this, steps: updateSteps);
         _setup = new SetupDecision(Install, settings, setupChecks ?? SetupChecks.ForThisPc(MachineRegistry));
@@ -79,7 +72,7 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
         Apps = new AppsViewModel(this, services, dialogs);
         Tools = new ToolsViewModel(this, services, Runner, dialogs);
         InstallMedia = new InstallMediaViewModel(this, dialogs, InstallMediaSystem.CatalogSource(services), InstallMediaSystem.BuildAsync,
-            InstallMediaSystem.ForThisPc(services, () => _usage.Id, () => _settings.Theme, path => ShowInExplorerCommand.Execute(path), Install.IsPublishedExe),
+            InstallMediaSystem.ForThisPc(services, () => _state.Usage.Id, () => _settings.Theme, path => ShowInExplorerCommand.Execute(path), Install.IsPublishedExe),
             ct => InstallMediaSystem.CleanLeftoversAsync(ct));
         Health = new HealthViewModel(this, dialogs, exe =>
         {
@@ -155,10 +148,10 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
     /// </summary>
     private void UpdateVerdict() => Verdict = _findingProblems switch
     {
-        0 when AgainstProfile.Count == 1 => Loc.Instance.Format("Dash_VerdictNoneOneAgainst", ProfileName(_usage)),
-        0 when AgainstProfile.Count > 1 => Loc.Instance.Format("Dash_VerdictNoneAgainst", ProfileName(_usage), AgainstProfile.Count),
-        0 when _plan.Items.Count == 1 => Loc.Instance["Dash_VerdictNoneOneChange"],
-        0 when _plan.Items.Count > 1 => Loc.Instance.Format("Dash_VerdictNoneChanges", _plan.Items.Count),
+        0 when AgainstProfile.Count == 1 => Loc.Instance.Format("Dash_VerdictNoneOneAgainst", ProfileName(_state.Usage)),
+        0 when AgainstProfile.Count > 1 => Loc.Instance.Format("Dash_VerdictNoneAgainst", ProfileName(_state.Usage), AgainstProfile.Count),
+        0 when _state.Plan.Items.Count == 1 => Loc.Instance["Dash_VerdictNoneOneChange"],
+        0 when _state.Plan.Items.Count > 1 => Loc.Instance.Format("Dash_VerdictNoneChanges", _state.Plan.Items.Count),
         0 => Loc.Instance["Dash_VerdictNone"],
         1 => Loc.Instance["Dash_VerdictOne"],
         _ => Loc.Instance.Format("Dash_VerdictMany", _findingProblems),
@@ -226,7 +219,11 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
     public ObservableCollection<AgainstLine> AgainstProfile { get; } = [];
 
     /// <summary>Developer switch --profile: use this profile for the session without saving it.</summary>
-    public string? ProfileOverride { get; set; }
+    public string? ProfileOverride
+    {
+        get => _state.ProfileOverride;
+        set => _state.ProfileOverride = value;
+    }
 
     public ObservableCollection<FindingItemViewModel> Findings { get; } = [];
     public ObservableCollection<FindingItemViewModel> AdvisorItems { get; } = [];
@@ -244,8 +241,8 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
     public ObservableCollection<RecommendationLine> Recommendations { get; } = [];
     public ObservableCollection<RecommendationLine> RecommendationsExcluded { get; } = [];
 
-    public Facts Facts => _facts;
-    public IReadOnlyList<TweakStatus> DeviceStates => _deviceStates;
+    public Facts Facts => _state.Facts;
+    public IReadOnlyList<TweakStatus> DeviceStates => _state.DeviceStates;
 
     public bool FindingsEmpty => Profile is not null && Findings.Count == 0;
     /// <summary>The list is empty and no summary card says why (the card names the passed checks and the switch).</summary>
@@ -261,7 +258,7 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
     private void BuildAdvisorSummary()
     {
         // Checks that do not apply to this PC (no such hardware) are not counted as checked.
-        var all = _profiledFindings.Where(f => f.Kind == FindingKind.Advisor && f.Status != FindingStatus.Unsupported).ToList();
+        var all = _state.ProfiledFindings.Where(f => f.Kind == FindingKind.Advisor && f.Status != FindingStatus.Unsupported).ToList();
         if (Profile is null || all.Count == 0)
         {
             AdvisorSummaryTitle = null;
@@ -333,13 +330,8 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
     /// <summary>The user picked another profile: re-rate everything (nothing on the PC changes).</summary>
     partial void OnSelectedProfileChanged(ProfileOption? value)
     {
-        if (value is null || value.Id == _usage.Id) return;
-        _usage = _catalog.Profiles.Get(value.Id);
-        _profileAutoSet = false;
-        _settings.Profile = _usage.Id;
-        _settings.Save();
-        Log.Info("profile", "profile changed", new { profile = _usage.Id });
-        ApplyProfile();
+        if (value is null || value.Id == _state.Usage.Id) return;
+        _state.SetProfile(value.Id, save: true);
         Rebuild();
         Network.Rebuild();
     }
@@ -347,13 +339,12 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
     /// <summary>Developer aid (--perf): switches the profile as the picker does, without saving it.</summary>
     public void SetProfileForSession(ProfileOption option)
     {
-        if (option.Id == _usage.Id) return;
+        if (option.Id == _state.Usage.Id) return;
 #pragma warning disable MVVMTK0034
         _selectedProfile = option;
 #pragma warning restore MVVMTK0034
         OnPropertyChanged(nameof(SelectedProfile));
-        _usage = _catalog.Profiles.Get(option.Id);
-        ApplyProfile();
+        _state.SetProfile(option.Id, save: false);
         Rebuild();
         Network.Rebuild();
     }
@@ -361,7 +352,7 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
     [RelayCommand]
     private void UseSuggestedProfile()
     {
-        if (_suggested is not null && ProfileOptions.FirstOrDefault(o => o.Id == _suggested.Id) is { } option) SelectedProfile = option;
+        if (_state.Suggested is not null && ProfileOptions.FirstOrDefault(o => o.Id == _state.Suggested.Id) is { } option) SelectedProfile = option;
     }
 
     public static string ProfileName(UsageProfile p) => Loc.Instance[$"Profile_{p.Id}"];

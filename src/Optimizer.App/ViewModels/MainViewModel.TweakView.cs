@@ -36,7 +36,7 @@ public sealed record TweakImpactOption(int Min, string Text)
 public sealed partial class MainViewModel
 {
     /// <summary>"Profile: Gaming (change on the overview)": the profile is set in one place.</summary>
-    public string TweaksProfileLink => Loc.Instance.Format("Tweaks_ProfileLink", ProfileName(_usage));
+    public string TweaksProfileLink => Loc.Instance.Format("Tweaks_ProfileLink", ProfileName(_state.Usage));
 
     [CommunityToolkit.Mvvm.Input.RelayCommand]
     private void OpenOverview() => CurrentPage = Page.Overview;

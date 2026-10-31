@@ -83,7 +83,7 @@ public sealed partial class MainViewModel
     /// </summary>
     private string? LiveSnippet(SearchResult r)
     {
-        if (r.Kind != SearchKind.Finding || _profiledFindings.FirstOrDefault(f => f.Id == r.ItemId) is not { } finding) return null;
+        if (r.Kind != SearchKind.Finding || _state.ProfiledFindings.FirstOrDefault(f => f.Id == r.ItemId) is not { } finding) return null;
         return Optimizer.Core.Docs.DocStore.GetOrEnglish(finding.Id, Loc.Instance.Language) is { } page
                && Optimizer.Core.Docs.DocStore.Summary(page, finding) is { Length: > 0 } summary
             ? string.Join(' ', summary.Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
@@ -123,7 +123,7 @@ public sealed partial class MainViewModel
                 // DNS servers are chosen on Graphics & DNS.
                 CurrentPage = Page.Network;
                 return;
-            case SearchKind.Tweak when page == Page.Tweaks && _profiled.Any(p => p.Tweak.Id == r.ItemId):
+            case SearchKind.Tweak when page == Page.Tweaks && _state.Profiled.Any(p => p.Tweak.Id == r.ItemId):
                 // The search filter opens the groups and shows the tweak even outside the profile.
                 RevealTweak(r.ItemId);
                 return;

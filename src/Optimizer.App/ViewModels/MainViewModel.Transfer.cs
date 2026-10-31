@@ -40,7 +40,7 @@ public sealed partial class MainViewModel
     {
         try
         {
-            var facts = _facts;
+            var facts = _state.Facts;
             var (apps, serviceTypes, startup) = (ExportApps, ExportServices, ExportStartup);
             var (file, pcSpecific) = await Task.Run(() => ChangeTransfer.Create(
                 _services.Store.All().Select(b => b.TweakId), AppliedIds(), _services.Catalog,
@@ -87,7 +87,7 @@ public sealed partial class MainViewModel
         }
         var profile = Profile;
         var targets = await Task.Run(() => TransferData.Targets(_services, file, profile));
-        var plan = ChangeTransfer.Plan(file, _services.Catalog, _facts, AppliedIds(), targets);
+        var plan = ChangeTransfer.Plan(file, _services.Catalog, _state.Facts, AppliedIds(), targets);
         Log.Info("transfer", "import", new { together = plan.Together.Count, oneByOne = plan.OneByOne.Count, apps = plan.Apps.Count, plan.AlreadyOn, plan.NotForThisPc, plan.Unknown });
         var skipped = Loc.Instance.Format("Transfer_Skipped", plan.AlreadyOn, plan.NotForThisPc, plan.Unknown);
         if (plan.IsEmpty)
@@ -128,7 +128,7 @@ public sealed partial class MainViewModel
     private async Task CopyToNewAccountsAsync()
     {
         // Only what Tunero turned on (it has a backup): a tweak that reads as on because Windows' default matches stays out.
-        var on = _tweakStates.Where(s => s.State is TweakState.Applied or TweakState.PendingRestart && HasBackup(s.Tweak.Id)).Select(s => s.Tweak).ToList();
+        var on = _state.TweakStates.Where(s => s.State is TweakState.Applied or TweakState.PendingRestart && HasBackup(s.Tweak.Id)).Select(s => s.Tweak).ToList();
         var engine = _services.Engine;
         var tweak = await Task.Run(() => NewUserDefaults.Build(on.Select(t => (t, engine.Expand(t)))));
         if (tweak is null)
