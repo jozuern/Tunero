@@ -42,5 +42,6 @@ A tweak with `"undocumented": true` says on both pages that Microsoft (or the ve
 - Open every source before citing it, and cite only pages that support the claim.
 - Give numbers (%, ms) only with a source, or as plain arithmetic (60 Hz = 16.7 ms).
 - Explain the mechanism in three steps: what Windows normally does, what this setting changes, and when that matters in games.
-- German: write natural German, using "du", not a word-for-word translation. A native speaker reviews it before a release.
+- German: write natural German, using "du", not a word-for-word translation. A native speaker reviews it before a release. The docs lint fails on formal "Sie" inside a sentence and on "Ihnen" and the "Ihr" forms anywhere, also at a sentence start, where "Ihre" reads as "your": name the noun instead ("Die Dienstnamen", not "Ihre Namen").
+- Name an app page as the navigation rail does in that language: "the Remove apps page", "die Seite Apps entfernen" (the `Nav_` strings). The docs lint checks every "the X page" and "die Seite X".
 - No middle dots, en or em dashes, bullet characters (Markdown lists are fine) or ellipsis characters in user-visible text, and no "(s)" or "(e)" plurals. Menu paths use > (Settings > System).

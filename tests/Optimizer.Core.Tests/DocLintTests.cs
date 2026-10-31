@@ -233,6 +233,197 @@ public partial class DocLintTests(ITestOutputHelper output)
                    && !relative.Equals("CLAUDE.md", StringComparison.Ordinal);
         });
 
+    /// <summary>
+    /// An explanation page that sends the reader to an app page names it as the navigation rail does in that language:
+    /// "the Health page", "the **Startup** page" (EN), "die Seite Zustand", "auf der Seite **Autostart**" (DE). A rename
+    /// in the UI (Home to Overview, Debloat to Remove apps) otherwise leaves pages pointing at a page that does not exist.
+    /// </summary>
+    [Fact]
+    public void ExplanationPagesNameCurrentAppPages()
+    {
+        var problems = new List<string>();
+        var allowed = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var lang in DocStore.Languages)
+        {
+            var titles = NavigationTitles(lang == "en" ? "Strings.resx" : "Strings.de.resx");
+            foreach (var name in Catalog.CatalogData.ResourceNames($"Catalog.Docs.{lang}."))
+            {
+                var id = name[$"Catalog.Docs.{lang}.".Length..^".md".Length];
+                foreach (var named in PageNames(lang, Catalog.CatalogData.ReadResourceText(name), titles).Where(n => !titles.Contains(n)))
+                {
+                    var key = $"{lang}/{id}: {named}";
+                    if (OtherPrograms.ContainsKey(key)) allowed.Add(key);
+                    else problems.Add($"{lang}/{id}.md: \"{named}\" is not a page of the app (navigation: {string.Join(", ", titles)})");
+                }
+            }
+        }
+        // An entry nobody needs any more would let a stale name back in on that page.
+        problems.AddRange(OtherPrograms.Keys.Where(k => !allowed.Contains(k)).Select(k => $"OtherPrograms: \"{k}\" no longer matches; remove it"));
+        foreach (var p in problems) output.WriteLine(p);
+        Assert.Empty(problems);
+    }
+
+    /// <summary>The patterns catch the stale names an audit found by hand and leave ordinary words alone.</summary>
+    [Theory]
+    [InlineData("en", "To remove OneDrive completely, use the Debloat page instead.", "Debloat")]
+    [InlineData("en", "Use the benchmark on the Home page before and after.", "Home")]
+    [InlineData("en", "Open the **Startup** page in this app.", "Startup")]
+    [InlineData("en", "a tweak and the Services & tasks page on one service", "Services & tasks")]
+    [InlineData("en", "Download it from the board vendor's support page.", "")]
+    [InlineData("en", "Open the support page for your board.", "")]
+    [InlineData("de", "Um OneDrive ganz zu entfernen, nutze die Seite Debloat.", "Debloat")]
+    [InlineData("de", "Öffne in dieser App die Seite **Netzwerk**.", "Netzwerk")]
+    [InlineData("de", "Entferne sie auf der Seite Apps entfernen.", "Apps entfernen")]
+    [InlineData("de", "Der Benchmark auf der Seite Zustand misst die Wirkung.", "Zustand")]
+    [InlineData("de", "Windows zeigt seine Seite mit Datenschutzeinstellungen.", "")]
+    public void PageNamePatternsFindTheNamedPage(string lang, string text, string expected)
+    {
+        var titles = NavigationTitles(lang == "en" ? "Strings.resx" : "Strings.de.resx");
+        Assert.Equal(expected == "" ? [] : new[] { expected }, PageNames(lang, text, titles));
+    }
+
+    private static IEnumerable<string> PageNames(string lang, string text, HashSet<string> titles) =>
+        lang == "en" ? EnglishPageNames(text) : GermanPageNames(text, titles);
+
+    /// <summary>
+    /// Pages of other programs that the page name patterns also match. Keyed by "language/doc id: name", so a stale
+    /// app page name (like "Home") is still caught everywhere else.
+    /// </summary>
+    private static readonly Dictionary<string, string> OtherPrograms = new(StringComparer.Ordinal)
+    {
+        ["en/personalize.settingsHomeHidden: Home"] = "the Home page of the Windows Settings app, which the tweak hides",
+        ["en/privacy.recentFilesOff: File Explorer home"] = "the home page of File Explorer",
+        ["en/edge.newTabQuiet: Edge new tab"] = "Edge's new tab page",
+        ["en/startup.runkey: Startup apps"] = "the Startup apps page of Task Manager and Settings",
+        ["en/A.virtualization: CPU or Advanced"] = "pages of the BIOS setup",
+        ["en/G.access: BIOS boot or security"] = "pages of the BIOS setup",
+        ["de/startup.runkey: Autostart-Apps"] = "die Seite Autostart-Apps im Task-Manager und in den Einstellungen",
+    };
+
+    /// <summary>The navigation rail's page titles of one language: the Nav_ strings minus the toggle and the group headers.</summary>
+    private static HashSet<string> NavigationTitles(string file) =>
+        XDocument.Load(Path.Combine(RepoPaths.App, "Resources", file)).Descendants("data")
+            .Where(d => NavTitleKey().IsMatch((string)d.Attribute("name")!))
+            .Select(d => ((string?)d.Element("value") ?? "").Trim())
+            .ToHashSet(StringComparer.Ordinal);
+
+    /// <summary>"the X page" with X starting in a capital letter, one to four words, optionally in bold.</summary>
+    private static IEnumerable<string> EnglishPageNames(string text) =>
+        EnglishPageName().Matches(text).Select(m => m.Groups["name"].Value);
+
+    /// <summary>
+    /// "die Seite X" / "der Seite X" with X starting in a capital letter or in bold. German titles have lowercase
+    /// words ("Apps entfernen"), so a plain X counts as a title when one starts the text; otherwise its first word is
+    /// reported.
+    /// </summary>
+    private static IEnumerable<string> GermanPageNames(string text, HashSet<string> titles)
+    {
+        foreach (Match m in GermanPageName().Matches(text))
+        {
+            if (m.Groups["bold"].Success) { yield return m.Groups["bold"].Value; continue; }
+            var rest = m.Groups["rest"].Value;
+            var title = titles.FirstOrDefault(t => rest.StartsWith(t, StringComparison.Ordinal)
+                                                   && (rest.Length == t.Length || !(char.IsLetterOrDigit(rest[t.Length]) || rest[t.Length] == '-')));
+            yield return title ?? GermanWord().Match(rest).Value;
+        }
+    }
+
+    [GeneratedRegex(@"^Nav_(?!Toggle$|Group)\w+$")]
+    private static partial Regex NavTitleKey();
+
+    [GeneratedRegex(@"\b[Tt]he (?:\*\*(?<name>[^*\n]+)\*\*|(?<name>\p{Lu}[\p{L}\d]*(?: (?:&|[\p{L}\d]+)){0,3})) page\b")]
+    private static partial Regex EnglishPageName();
+
+    [GeneratedRegex(@"\b(?:[Dd]ie|[Dd]er|[Dd]ieser|[Ee]ine|[Ee]iner) Seite (?:\*\*(?<bold>[^*\n]+)\*\*|(?<rest>\p{Lu}[^\n]*))")]
+    private static partial Regex GermanPageName();
+
+    [GeneratedRegex(@"^[\p{L}\d-]+")]
+    private static partial Regex GermanWord();
+
+    /// <summary>
+    /// German text says "du": no formal "Sie", "Ihnen" or "Ihr", "Ihre", "Ihrem", "Ihren", "Ihrer", "Ihres", in the app's
+    /// strings, the German explanation pages and the German catalog text. "Ihnen" and the "Ihr" forms count everywhere:
+    /// at the start of a sentence "Ihre Sicherungen" reads as "your backups" even when "their" was meant (U47 of the
+    /// 2026-10-31 audit), so such a sentence names the noun instead. "Sie" counts inside a sentence ("solange Sie",
+    /// "Klicken Sie"); at the start of one it is the usual "it" or "they" ("Sie braucht Windows 11 24H2"), and on
+    /// 2026-10-31 all 59 of them meant that. Text in German quotes („...“) is a quoted Windows or Microsoft name and is
+    /// left alone (the policy „Verbessern Sie die Freihand- und Tipperkennung“).
+    /// </summary>
+    [Fact]
+    public void GermanTextHasNoFormalAddress()
+    {
+        var problems = new List<string>();
+        void Check(string name, string text) =>
+            problems.AddRange(FormalAddress(text).Select(hit => $"{name}: \"{hit}\""));
+
+        foreach (var data in XDocument.Load(Path.Combine(RepoPaths.App, "Resources", "Strings.de.resx")).Descendants("data"))
+            Check($"Strings.de.resx {(string)data.Attribute("name")!}", (string?)data.Element("value") ?? "");
+        foreach (var name in Catalog.CatalogData.ResourceNames("Catalog.Docs.de."))
+            Check(name, Catalog.CatalogData.ReadResourceText(name));
+        foreach (var name in Catalog.CatalogData.ResourceNames("Catalog.").Where(n => n.EndsWith(".json", StringComparison.Ordinal)))
+            foreach (var value in GermanJsonValues(System.Text.Json.JsonDocument.Parse(Catalog.CatalogData.ReadResourceText(name),
+                         new System.Text.Json.JsonDocumentOptions { CommentHandling = System.Text.Json.JsonCommentHandling.Skip, AllowTrailingCommas = true }).RootElement))
+                Check(name, value);
+
+        foreach (var p in problems) output.WriteLine(p);
+        Assert.Empty(problems);
+    }
+
+    [Theory]
+    [InlineData("Das gilt, solange Sie BitLocker nicht selbst einschalten.", true)]
+    [InlineData("Klicken Sie auf Weiter.", true)]
+    [InlineData("Ihre Sicherungen werden mit der App gelöscht.", true)]
+    [InlineData("Bleibt erhalten. Ihr Inhalt darf weg.", true)]
+    [InlineData("Die App speichert Ihre Daten.", true)]
+    [InlineData("Die Richtlinie wirkt sofort. Sie braucht Windows 11 24H2.", false)]
+    [InlineData("1. Sie startet bei der Anmeldung.", false)]
+    [InlineData("Die Behebung: Sie stellt den Wert zurück.", false)]
+    [InlineData("Die Richtlinie „Verbessern Sie die Freihand- und Tipperkennung“ wird abgeschaltet.", false)]
+    [InlineData("Programme, die sie brauchen, und ihre Daten.", false)]
+    public void FormalAddressPatternFindsFormalForms(string text, bool formal) =>
+        Assert.Equal(formal, FormalAddress(text).Any());
+
+    /// <summary>The string values of every "de" property, at any depth.</summary>
+    private static IEnumerable<string> GermanJsonValues(System.Text.Json.JsonElement element)
+    {
+        switch (element.ValueKind)
+        {
+            case System.Text.Json.JsonValueKind.Object:
+                foreach (var p in element.EnumerateObject())
+                    if (p.Name == "de" && p.Value.ValueKind == System.Text.Json.JsonValueKind.String) yield return p.Value.GetString()!;
+                    else foreach (var v in GermanJsonValues(p.Value)) yield return v;
+                break;
+            case System.Text.Json.JsonValueKind.Array:
+                foreach (var item in element.EnumerateArray())
+                    foreach (var v in GermanJsonValues(item)) yield return v;
+                break;
+        }
+    }
+
+    /// <summary>Formal forms, with a few words of context; see <see cref="GermanTextHasNoFormalAddress"/>.</summary>
+    private static IEnumerable<string> FormalAddress(string text)
+    {
+        foreach (var line in text.Split('\n'))
+            foreach (Match m in FormalWord().Matches(line))
+            {
+                var before = line[..m.Index];
+                if (before.LastIndexOf('„') > before.LastIndexOf('“')) continue;
+                // "Sie" at a sentence start: the line's start, after a list marker, heading or bold mark, or after
+                // . ! ? : or an opening bracket or quote.
+                var lead = SentenceLead().Replace(before, "");
+                if (m.Value == "Sie" && (lead.Length == 0 || ".!?:([‚„\"".Contains(lead[^1]))) continue;
+                var start = Math.Max(0, m.Index - 30);
+                yield return line[start..Math.Min(line.Length, m.Index + m.Length + 30)].Trim();
+            }
+    }
+
+    [GeneratedRegex(@"(?<![\p{L}\d])(?:Sie|Ihnen|Ihr|Ihre|Ihrem|Ihren|Ihrer|Ihres)(?![\p{L}\d])")]
+    private static partial Regex FormalWord();
+
+    /// <summary>Trailing whitespace and markup before a word: spaces, bold or italic marks, list numbers, dashes and heading marks at the line start.</summary>
+    [GeneratedRegex(@"(?:^\s*(?:#+|[-*]|\d+\.)?)?[\s*_]*$")]
+    private static partial Regex SentenceLead();
+
     /// <summary>"value(s)", "Wert(e)", "Änderung(en)" and similar.</summary>
     [GeneratedRegex(@"\p{L}\((?:s|e|en|n|es)\)")]
     private static partial Regex ParenPlural();

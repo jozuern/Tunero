@@ -31,7 +31,7 @@ Prüft, ob der RAM mit der Geschwindigkeit aus seiner Teilenummer läuft. Dafür
 ## Warum das wichtig ist
 Speichermodule starten zuerst mit einer sicheren Standardgeschwindigkeit (JEDEC) [1]. Die höhere Geschwindigkeit von der Verpackung ist als Profil gespeichert (Intel XMP, AMD EXPO) und muss im BIOS eingeschaltet werden [1][2]. ASUS-Mainboards zeigen **DOCP**, wenn das Kit das Profil des jeweils anderen Herstellers trägt, zum Beispiel ein XMP-Kit auf einem AMD-Mainboard [3]. Intel und AMD bezeichnen diese Profile als Speicherübertaktung, und laut Intel kann eine Änderung von Takt oder Spannung die Garantie gefährden und die Stabilität verringern [1][2]. Ohne Profil läuft der Speicher langsamer als angegeben, und Spiele, die von Speicherbandbreite und -latenz abhängen, verlieren FPS. TechSpot hat 13 Spiele mit DDR5 in Grundgeschwindigkeit und mit Profil gemessen: im Schnitt 12 % mehr mit einem Ryzen 7 7700X und 11 % mit einem Core i7-12700K, in Hogwarts Legacy bis zu 17 % und 20 % mit 29 % und 31 % besseren 1-%-Lows, aber nur 4 % mit einem Ryzen 7 7800X3D, dessen großer Cache die Speichergeschwindigkeit verdeckt, und mit einem Core i7-14700K [18].
 ::: variant laptop
-Die meisten Laptops bieten kein XMP an. Ihre Speichergeschwindigkeit legt der Hersteller fest.
+Die meisten Laptops bieten kein XMP an; bei ihnen legt der Hersteller die Speichergeschwindigkeit fest.
 :::
 ::: variant fourDimms
 Mit vier DDR5-Modulen gibt AMD für Ryzen 7000 und 9000 DDR5-3600 an [4][5]. Eine niedrigere Geschwindigkeit als auf dem Kit ist also zu erwarten und keine vergessene Einstellung.

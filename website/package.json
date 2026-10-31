@@ -20,6 +20,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "0.9.12",
+    "@axe-core/playwright": "4.14.0",
     "@fluentui/svg-icons": "1.1.344",
     "@playwright/test": "1.64.1",
     "@types/node": "26.6.5",

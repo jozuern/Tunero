@@ -650,7 +650,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Storage_SelectHint" xml:space="preserve"><value>Wähle einen Eintrag aus, um ihn im Explorer zu öffnen, seinen Pfad zu kopieren oder ihn in den Papierkorb zu verschieben.</value></data>
   <data name="Storage_BlockProtected" xml:space="preserve"><value>Geschützt: Windows-, Programm-, Spiel- und AppData-Orte bleiben, wo sie sind.</value></data>
   <data name="Storage_BlockContainsProtected" xml:space="preserve"><value>Geschützt: Dieser Ordner enthält einen Windows-, Programm-, Spiel- oder Benutzerordner (etwa AppData oder Dokumente).</value></data>
-  <data name="Storage_BlockKept" xml:space="preserve"><value>Bleibt: Laufwerke, Benutzerprofile und Ordner wie Desktop oder Downloads bleiben erhalten. Ihr Inhalt darf weg.</value></data>
+  <data name="Storage_BlockKept" xml:space="preserve"><value>Bleibt: Laufwerke, Benutzerprofile und Ordner wie Desktop oder Downloads bleiben erhalten. Was darin liegt, darf weg.</value></data>
   <data name="Storage_BlockSystem" xml:space="preserve"><value>Geschützt: Windows kennzeichnet dies als Systemdatei.</value></data>
   <data name="Storage_BlockSystemFolder" xml:space="preserve"><value>Geschützt: Windows kennzeichnet diesen Ordner oder einen darüber als versteckten Systemordner.</value></data>
   <data name="Storage_BlockWindowsSetup" xml:space="preserve"><value>Geschützt: Setup-Dateien von Windows, etwa die vorherige Installation in Windows.old. Entferne sie unter Einstellungen &gt; System &gt; Speicher &gt; Temporäre Dateien.</value></data>

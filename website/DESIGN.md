@@ -149,6 +149,9 @@ sheets.
   screen, the focus on open, minimize and Esc, the session after a reload and a language switch, the boot once per
   visit, a session from an older deploy, no flash of the untouched PC, the visitor taking over the guided fix, a
   notification that comes back visible, a comparison that changes nothing, and the wallpaper's stills and pixel cap.
+  `accessibility.spec.ts` runs axe-core's WCAG 2 A and AA rules (`@axe-core/playwright`) on every kind of page in light
+  and dark: the desktop, each window and Tunero page, the compact layout, the classic, legal and 404 pages. axe cannot
+  judge the contrast of text over the wallpaper, so that stays a check by eye.
 - Deploy: `pages.yml` tests and builds `website/`, runs the browser tests and publishes it to tunero.dev;
   `website-check.yml` runs the same on pull requests.
 
