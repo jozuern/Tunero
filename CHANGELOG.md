@@ -5,6 +5,8 @@
 ### Changed
 
 - **.NET runtime 10.0.14:** the exe carries the .NET and Windows Desktop runtime of Microsoft's out-of-band security release of October 25, 2026, which fixes a Brotli decoder flaw ([release notes](https://github.com/dotnet/core/blob/main/release-notes/10.0/10.0.14/10.0.14.md)), instead of 10.0.13.
+- **System info:** unnamed displays show as Built-in display or Display 2; the processor card says L3 cache and names its core types; its Technical details switch is the one from Settings.
+- **Settings** switches show On and Off; **Health** duration boxes have labels; **Changes** keeps the extra export options in the Move to another PC card.
 - **Overview:** the verdict names settings that work against the profile instead of saying nothing holds the PC back, and the readiness line counts unknown checks.
 - **Tweaks:** every group opens when the list has 15 tweaks or fewer; a tweak that works against the profile says why under its title.
 - **Navigation:** group headings show whenever they fit, thin lines between groups when they do not.
@@ -17,6 +19,10 @@
 
 ### Fixed
 
+- **System info:** HDR shows as on only when Windows runs the display in HDR, not for Auto Color Management on an SDR display.
+- **Live readings:** a svchost's name and services follow what it runs now; two Tunero copies in different sessions no longer stop each other's disk trace, and a trace that stops on its own says so.
+- **Setup screen** says why Install is refused while other work runs; the VirusTotal Save button waits for a key.
+- **Wording:** counts read right for one item, the restore point dialog says "Continue without a restore point", and the uninstall dialog explains that the PawnIO driver can stay.
 - **Details and search** always open the tweak, also when filters, a not-applicable state or Expert mode would hide it.
 - **Dialogs and the window** fit the monitor they open on, not the primary one; a confirmation with nothing to apply only offers Close.
 - **Show in Explorer** says so when the file is gone or File Explorer did not start.

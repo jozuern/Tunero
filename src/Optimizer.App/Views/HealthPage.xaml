@@ -17,6 +17,8 @@
             <ui:Card Padding="16,12">
                 <StackPanel>
                     <WrapPanel>
+                        <!-- A visible label: a bare "120 s" could be a delay as well as the length of the check -->
+                        <ui:TextBlock FontTypography="Body" Text="{l:Tr Bench_Duration}" VerticalAlignment="Center" Margin="0,0,8,0" />
                         <ComboBox ItemsSource="{Binding Health.DurationOptions}" SelectedItem="{Binding Health.ThrottleSeconds}" ItemStringFormat="{}{0} s" MinWidth="100" Margin="0,0,8,0" AutomationProperties.Name="{l:Tr Bench_Duration}" />
                         <ui:Button Appearance="Primary" Content="{l:Tr Throttle_Start}" Icon="{ui:SymbolIcon Play20}" Command="{Binding Health.StartThrottleCommand}"
                                    IsEnabled="{Binding Health.IsThrottleRunning, Converter={StaticResource InverseBool}}" Margin="0,0,8,0" />
@@ -92,7 +94,8 @@
                     </UniformGrid>
                     <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding Health.BenchmarkStepLabel}" />
                     <ui:TextBlock FontTypography="BodyStrong" Text="{Binding Health.BenchmarkStep}" TextWrapping="Wrap" Margin="0,2,0,12" />
-                    <WrapPanel>
+                    <!-- The bottom margin cancels the last row's 8 px, so the card's padding is even -->
+                    <WrapPanel Margin="0,0,0,-8">
                         <!-- A combo box has no placeholder: the hint lies over it until a game is picked -->
                         <Grid Margin="0,0,8,8">
                             <ComboBox ItemsSource="{Binding Health.Processes}" SelectedItem="{Binding Health.SelectedProcess}" MinWidth="220" AutomationProperties.Name="{l:Tr Bench_Game}" />
@@ -101,16 +104,22 @@
                                           Visibility="{Binding Health.SelectedProcess, Converter={StaticResource VisibleWhenNull}}" />
                         </Grid>
                         <ui:Button Icon="{ui:SymbolIcon ArrowSync20}" Command="{Binding Health.RefreshProcessesCommand}" ToolTip="{l:Tr Common_Refresh}" AutomationProperties.Name="{l:Tr Common_Refresh}" Margin="0,0,8,8" />
-                        <ComboBox ItemsSource="{Binding Health.CaptureOptions}" SelectedItem="{Binding Health.CaptureSeconds}" ItemStringFormat="{}{0} s" MinWidth="100" Margin="0,0,16,8" AutomationProperties.Name="{l:Tr Bench_Duration}" />
-                        <ui:Button Content="{l:Tr Bench_Before}" Command="{Binding Health.CaptureBeforeCommand}" IsEnabled="{Binding Health.CanCaptureBefore}" Margin="0,0,8,8" />
-                        <ui:Button Content="{l:Tr Bench_After}" Command="{Binding Health.CaptureAfterCommand}" IsEnabled="{Binding Health.CanCaptureAfter}" Margin="0,0,8,8" />
-                        <ui:Button Content="{l:Tr Common_Stop}" Command="{Binding Health.StopCaptureCommand}" Margin="0,0,8,8"
-                                   Visibility="{Binding Health.IsCapturing, Converter={StaticResource BoolToVisibility}}" />
-                        <ui:Button Content="{l:Tr Bench_Clear}" Appearance="Transparent" Command="{Binding Health.ClearRunsCommand}" Margin="0,0,0,8"
-                                   Visibility="{Binding Health.HasRuns, Converter={StaticResource BoolToVisibility}}" />
+                        <StackPanel Orientation="Horizontal" Margin="0,0,16,8">
+                            <ui:TextBlock FontTypography="Body" Text="{l:Tr Bench_PerRun}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <ComboBox ItemsSource="{Binding Health.CaptureOptions}" SelectedItem="{Binding Health.CaptureSeconds}" ItemStringFormat="{}{0} s" MinWidth="100" AutomationProperties.Name="{l:Tr Bench_PerRun}" />
+                        </StackPanel>
+                        <!-- One unit: A and B wrap together instead of B alone on the next line -->
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <ui:Button Content="{l:Tr Bench_Before}" Command="{Binding Health.CaptureBeforeCommand}" IsEnabled="{Binding Health.CanCaptureBefore}" Margin="0,0,8,0" />
+                            <ui:Button Content="{l:Tr Bench_After}" Command="{Binding Health.CaptureAfterCommand}" IsEnabled="{Binding Health.CanCaptureAfter}" Margin="0,0,8,0" />
+                            <ui:Button Content="{l:Tr Common_Stop}" Command="{Binding Health.StopCaptureCommand}" Margin="0,0,8,0"
+                                       Visibility="{Binding Health.IsCapturing, Converter={StaticResource BoolToVisibility}}" />
+                            <ui:Button Content="{l:Tr Bench_Clear}" Appearance="Transparent" Command="{Binding Health.ClearRunsCommand}"
+                                       Visibility="{Binding Health.HasRuns, Converter={StaticResource BoolToVisibility}}" />
+                        </StackPanel>
                     </WrapPanel>
                     <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding Health.BenchmarkStatus}" Margin="0,8,0,0" Visibility="{Binding Health.BenchmarkStatus, Converter={StaticResource NullToVisibility}}" />
-                    <v:ItemList ItemsSource="{Binding Health.Runs}" Margin="0,8,0,0">
+                    <v:ItemList ItemsSource="{Binding Health.Runs}" Margin="0,8,0,0" Visibility="{Binding Health.HasRuns, Converter={StaticResource BoolToVisibility}}">
                         <v:ItemList.ItemTemplate>
                             <DataTemplate>
                                 <Grid Margin="0,2">

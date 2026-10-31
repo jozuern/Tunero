@@ -56,6 +56,20 @@ public class ActivityRowsTests
         Assert.Equal(0, calls);
     }
 
+    /// <summary>The row keeps its place but takes the program's new name (a svchost whose services changed).</summary>
+    [Fact]
+    public void RowNameFollowsTheProgram()
+    {
+        var list = new ActivityList(DeviceKind.Processor);
+        var first = Program("svchost.exe", "Service host: DNS Client", 30);
+        list.Update(new DeviceActivity(new DeviceKey(DeviceKind.Processor, 0), [first], 0, 0), null);
+        var row = list.Rows[0];
+        list.Update(new DeviceActivity(new DeviceKey(DeviceKind.Processor, 0),
+            [first with { Program = first.Program with { Name = "Service host: DNS Client, Windows Update" } }], 0, 0), null);
+        Assert.Same(row, list.Rows[0]);
+        Assert.Equal("Service host: DNS Client, Windows Update", row.Name);
+    }
+
     /// <summary>Opening while an open still runs (page left and shown again): one set of sources, never two.</summary>
     [Fact]
     public async Task OverlappingOpensShareOneSession()

@@ -33,6 +33,9 @@
                 <ui:ProgressRing IsIndeterminate="True" Width="20" Height="20" Margin="16,0,0,0" VerticalAlignment="Center"
                                  Visibility="{Binding SetupBusy, Converter={StaticResource BoolToVisibility}}" />
             </StackPanel>
+            <!-- Install refused while a change, scan or update runs: the window's result bar is under this screen -->
+            <ui:InfoBar Title="" Message="{Binding SetupNote}" Severity="Warning" IsClosable="False" Margin="0,16,0,0"
+                        IsOpen="{Binding SetupNote, Converter={StaticResource NullToBool}}" />
         </StackPanel>
     </ScrollViewer>
 </UserControl>

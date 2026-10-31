@@ -37,6 +37,14 @@ public sealed partial class MainViewModel
 
     private bool SetupIdle => !SetupBusy;
 
+    /// <summary>
+    /// Why Install did not go ahead, shown on the screen itself: the window's result bar is drawn under the screen, so a
+    /// note there would be hidden while the screen stays open for a second try.
+    /// </summary>
+    [ObservableProperty] private string? _setupNote;
+
+    partial void OnSetupShownChanged(bool value) => SetupNote = null;
+
     /// <summary>The folder the exe runs from now, for the screen's text.</summary>
     public string SetupFolder => Path.GetDirectoryName(Install.ExePath) ?? "";
 
@@ -102,6 +110,7 @@ public sealed partial class MainViewModel
     private async Task SetupInstallAsync()
     {
         SetupBusy = true;
+        SetupNote = null;
         try
         {
             if (await Installs.InstallAsync(SetupToProgramFiles, SetupStartMenu)) return;
@@ -111,7 +120,11 @@ public sealed partial class MainViewModel
             SetupBusy = false;
         }
         // Refused because a change, scan or update runs: the screen stays for a second try once it has finished.
-        if (SetupToProgramFiles && !ChangeGate.Instance.CanChange) return;
+        if (SetupToProgramFiles && !ChangeGate.Instance.CanChange)
+        {
+            SetupNote = Loc.Instance["Setup_Busy"];
+            return;
+        }
         SetupShown = false;
         OnPropertyChanged(nameof(StartMenuEntry));
     }

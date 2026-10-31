@@ -164,7 +164,8 @@ internal static partial class Native
         public uint id;
     }
 
-    internal const uint DeviceInfoGetSourceName = 1, DeviceInfoGetTargetName = 2, DeviceInfoGetAdapterName = 4, DeviceInfoGetAdvancedColorInfo = 9;
+    internal const uint DeviceInfoGetSourceName = 1, DeviceInfoGetTargetName = 2, DeviceInfoGetAdapterName = 4, DeviceInfoGetAdvancedColorInfo = 9,
+        DeviceInfoGetAdvancedColorInfo2 = 15;
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     internal struct DISPLAYCONFIG_SOURCE_DEVICE_NAME
@@ -202,10 +203,28 @@ internal static partial class Native
         public uint bitsPerColorChannel;
     }
 
+    /// <summary>
+    /// Windows 11 24H2 and later (wingdi.h 10.0.26100): tells HDR apart from wide color gamut (Auto Color Management), which
+    /// the first version's "advanced color" bits both cover.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO_2
+    {
+        public DISPLAYCONFIG_DEVICE_INFO_HEADER header;
+        public uint value;
+        public uint colorEncoding;
+        public uint bitsPerColorChannel;
+        public uint activeColorMode;
+    }
+
+    /// <summary>DISPLAYCONFIG_ADVANCED_COLOR_MODE_HDR (SDR is 0, WCG is 1).</summary>
+    internal const uint AdvancedColorModeHdr = 2;
+
     [DllImport("user32.dll")] internal static extern int DisplayConfigGetDeviceInfo(ref DISPLAYCONFIG_SOURCE_DEVICE_NAME requestPacket);
     [DllImport("user32.dll")] internal static extern int DisplayConfigGetDeviceInfo(ref DISPLAYCONFIG_TARGET_DEVICE_NAME requestPacket);
     [DllImport("user32.dll")] internal static extern int DisplayConfigGetDeviceInfo(ref DISPLAYCONFIG_ADAPTER_NAME requestPacket);
     [DllImport("user32.dll")] internal static extern int DisplayConfigGetDeviceInfo(ref DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO requestPacket);
+    [DllImport("user32.dll")] internal static extern int DisplayConfigGetDeviceInfo(ref DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO_2 requestPacket);
 
     internal const uint OutputTechnologyInternal = 0x80000000;
 

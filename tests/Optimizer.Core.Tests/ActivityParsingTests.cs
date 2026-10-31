@@ -120,6 +120,21 @@ public class ActivityParsingTests
         Assert.Equal([new DiskIoTotal(3, 99, 0, 0, 4097), new DiskIoTotal(3, 99, 1234, 0, 8192), new DiskIoTotal(3, 99, 4321, 100, 0)], totals);
     }
 
+    /// <summary>
+    /// Only a session whose process is gone is stopped before a new one starts: a copy of Tunero in another user's
+    /// session keeps its trace, and so does an older version's session under the plain name.
+    /// </summary>
+    [Theory]
+    [InlineData("Tunero disk activity 200", false)] // its copy runs
+    [InlineData("Tunero disk activity 300", true)]  // left behind by a crash
+    [InlineData("Tunero disk activity 100", false)] // this process's own name is stopped on its own, by name
+    [InlineData("Tunero disk activity", false)]
+    [InlineData("Tunero disk activity x1", false)]
+    [InlineData("Tunero disk activity -300", false)]
+    [InlineData("NT Kernel Logger", false)]
+    public void OnlyLeftoverSessionsAreStopped(string session, bool stopped) =>
+        Assert.Equal(stopped, DiskTrace.IsLeftover(session, "Tunero disk activity 100", pid => pid is 100 or 200));
+
     [Fact]
     public async Task AccumulatorManyEvents()
     {

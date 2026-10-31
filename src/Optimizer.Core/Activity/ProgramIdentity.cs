@@ -94,8 +94,8 @@ public static class ProgramRules
 
     /// <summary>A Strings key saying why End task is not offered, or null when it is.</summary>
     /// <remarks>
-    /// A service host is refused too: it can hold a service whose failure restarts the PC (RpcSs, DcomLaunch); services
-    /// are stopped on the Services page instead.
+    /// A service host is refused too: it can hold a service whose failure restarts the PC (RpcSs, DcomLaunch). Tunero has
+    /// no way to stop a single service; the Services &amp; tasks page changes start types only.
     /// </remarks>
     public static string? EndRefusalKey(string imageName, bool critical, int pid, int ownPid) =>
         pid == ownPid ? "Activity_EndSelf"

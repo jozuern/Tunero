@@ -24,6 +24,9 @@
   <data name="Hw_Gpu" xml:space="preserve"><value>Graphics</value></data>
   <data name="Hw_Memory" xml:space="preserve"><value>Memory</value></data>
   <data name="Hw_Displays" xml:space="preserve"><value>Displays</value></data>
+  <data name="Hw_Display" xml:space="preserve"><value>Display</value></data>
+  <data name="Hw_BuiltInDisplay" xml:space="preserve"><value>Built-in display</value></data>
+  <data name="Hw_DisplayNumber" xml:space="preserve"><value>Display {0}</value></data>
   <data name="Hw_Firmware" xml:space="preserve"><value>Firmware &amp; security</value></data>
   <data name="Hw_Board" xml:space="preserve"><value>Mainboard</value></data>
   <data name="Hw_Power" xml:space="preserve"><value>Power</value></data>
@@ -73,6 +76,7 @@
   <data name="Tweaks_Title" xml:space="preserve"><value>Tweaks</value></data>
   <data name="Tweaks_Hint" xml:space="preserve"><value>Every change shows exactly what it does and can be undone. Recommended items fit this PC.</value></data>
   <data name="Tweaks_Summary" xml:space="preserve"><value>{0} tweaks</value></data>
+  <data name="Tweaks_SummaryOne" xml:space="preserve"><value>1 tweak</value></data>
   <data name="Tweak_TurnOn" xml:space="preserve"><value>Turn on</value></data>
   <data name="Tweak_Undo" xml:space="preserve"><value>Undo</value></data>
   <data name="Tweak_Reapply" xml:space="preserve"><value>Apply again</value></data>
@@ -87,6 +91,7 @@
   <data name="Result_Failed" xml:space="preserve"><value>Not applied. Nothing was left half-changed. Reason: {0}</value></data>
   <data name="Result_Undone" xml:space="preserve"><value>Undone: {0}</value></data>
   <data name="Result_UndoneSkipped" xml:space="preserve"><value>Undone: {0}. Windows had already changed {1} of its values, so those were left as they are.</value></data>
+  <data name="Result_UndoneSkippedOne" xml:space="preserve"><value>Undone: {0}. Windows had already changed one of its values, so that one was left as it is.</value></data>
   <data name="Result_UndoAll" xml:space="preserve"><value>Changes undone: {0}.</value></data>
   <data name="Changes_Title" xml:space="preserve"><value>Changes</value></data>
   <data name="Changes_Hint" xml:space="preserve"><value>Everything this app changed, with the original values it keeps. Undo restores them.</value></data>
@@ -98,7 +103,6 @@
   <data name="Changes_EnableRp" xml:space="preserve"><value>Turn on (5 % of the drive)</value></data>
   <data name="Changes_Backups" xml:space="preserve"><value>Changes you can undo</value></data>
   <data name="Changes_Log" xml:space="preserve"><value>Change log (this session)</value></data>
-  <data name="Changes_LogEmpty" xml:space="preserve"><value>No changes in this session.</value></data>
   <data name="Rp_On" xml:space="preserve"><value>On. A restore point is created before the first change of each session.</value></data>
   <data name="Rp_Off" xml:space="preserve"><value>Off. Without it, no restore point can be created. The app's own backup still works.</value></data>
   <data name="Rp_Unknown" xml:space="preserve"><value>Unknown (needs administrator rights).</value></data>
@@ -132,7 +136,7 @@
   <data name="Rp_AskTitle" xml:space="preserve"><value>System Protection is off</value></data>
   <data name="Rp_AskText" xml:space="preserve"><value>Windows cannot create a restore point because System Protection is off for the system drive. The app's own backup still restores every value it changes. Turn System Protection on now?</value></data>
   <data name="Rp_Enable" xml:space="preserve"><value>Turn on and continue</value></data>
-  <data name="Rp_Continue" xml:space="preserve"><value>Continue without</value></data>
+  <data name="Rp_Continue" xml:space="preserve"><value>Continue without a restore point</value></data>
   <data name="UndoAll_Title" xml:space="preserve"><value>Undo all changes?</value></data>
   <data name="UndoAll_Text" xml:space="preserve"><value>Changes to undo: {0}. Values Windows has changed since are left as they are.</value></data>
   <data name="Busy" xml:space="preserve"><value>Working</value></data>
@@ -588,6 +592,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Storage_Analyze" xml:space="preserve"><value>Analyze</value></data>
   <data name="Storage_CloseResult" xml:space="preserve"><value>Close result</value></data>
   <data name="Storage_Result" xml:space="preserve"><value>{0} in {1:N0} files, read {2} in {3:0.0} s</value></data>
+  <data name="Storage_ResultOneFile" xml:space="preserve"><value>{0} in 1 file, read {2} in {3:0.0} s</value></data>
   <data name="Storage_ReaderFileTable" xml:space="preserve"><value>from the file table</value></data>
   <data name="Storage_ReaderFolders" xml:space="preserve"><value>folder by folder</value></data>
   <data name="Storage_ResultLost" xml:space="preserve"><value>{0}. {1:N0} folders or entries could not be read</value></data>
@@ -602,6 +607,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Storage_NoExtension" xml:space="preserve"><value>No extension</value></data>
   <data name="Storage_TypesHint" xml:space="preserve"><value>Open a group and select a file type to see its largest files.</value></data>
   <data name="Storage_MoreTypes" xml:space="preserve"><value>{0} more types</value></data>
+  <data name="Storage_MoreTypesOne" xml:space="preserve"><value>1 more type</value></data>
   <data name="Storage_TypeFiles" xml:space="preserve"><value>Largest files: {0}</value></data>
   <data name="Storage_TypeGroupList" xml:space="preserve"><value>File types</value></data>
   <data name="Storage_DuplicatesHint" xml:space="preserve"><value>Compares files of the same size (1 MB or more) by their content. Windows, program, game and AppData folders are left out.</value></data>
@@ -826,13 +832,13 @@ The files are deleted permanently. Files in use are skipped.</value>
     <value>Live readings</value>
   </data>
   <data name="Sensors_Hint" xml:space="preserve">
-    <value>Live temperatures, load, clocks, power and fans (LibreHardwareMonitor), every two seconds, and which programs use the processor, memory, graphics card and each drive. Off until you switch it on. Peak is the highest value since you switched the readings on. Processor and mainboard sensors need the signed PawnIO driver.</value>
+    <value>Temperatures, load, clocks, power and fans every two seconds (LibreHardwareMonitor), and which programs use the processor, memory, graphics card and each drive. Peak is the highest value since you switched this on.</value>
   </data>
   <data name="Sensors_PawnIoOn" xml:space="preserve">
-    <value>PawnIO driver is installed.</value>
+    <value>PawnIO driver installed: processor and mainboard sensors are available.</value>
   </data>
   <data name="Sensors_PawnIoOff" xml:space="preserve">
-    <value>PawnIO driver is not installed: processor and mainboard sensors are not available. Install it with the button here or on the Install &amp; update page.</value>
+    <value>Processor and mainboard sensors need the signed PawnIO driver, which is not installed. Install it with the button here or on the Install &amp; update page.</value>
   </data>
   <data name="Sensors_InstallPawnIo" xml:space="preserve">
     <value>Install PawnIO</value>
@@ -942,6 +948,9 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Activity_TraceFailed" xml:space="preserve">
     <value>The disk trace could not start.</value>
   </data>
+  <data name="Activity_TraceEnded" xml:space="preserve">
+    <value>The disk trace has stopped, for example because another program ended it. Switch the readings off and on again to start it again.</value>
+  </data>
   <data name="Activity_ServiceHost" xml:space="preserve">
     <value>Service host: {0}</value>
   </data>
@@ -988,7 +997,7 @@ The files are deleted permanently. Files in use are skipped.</value>
     <value>This is Tunero itself.</value>
   </data>
   <data name="Activity_EndServiceHost" xml:space="preserve">
-    <value>This process runs Windows services; stop a service on the Services page instead.</value>
+    <value>This process runs Windows services, and ending it can restart the PC, so Tunero does not end it. Service start types are on the Services &amp; tasks page.</value>
   </data>
   <data name="Activity_EndProtected" xml:space="preserve">
     <value>Windows does not let Tunero end this process.</value>
@@ -1060,7 +1069,7 @@ The files are deleted permanently. Files in use are skipped.</value>
     <value>Starts a script host (PowerShell, cmd, mshta or similar). The program itself is signed by Microsoft, but the command line decides what runs: malware often starts this way, some legitimate tools do too. Check the command.</value>
   </data>
   <data name="Result_NoRestorePoint" xml:space="preserve">
-    <value>No restore point could be created, so nothing was changed. Try again in a moment, or choose "Continue without" (the backup of the original values is made either way).</value>
+    <value>No restore point could be created, so nothing was changed. Try again in a moment, or choose "Continue without a restore point" (the backup of the original values is made either way).</value>
   </data>
   <data name="Storage_RecycleOtherAccount" xml:space="preserve">
     <value>This app runs as a different account ({0}). Files and folders go to that account's Recycle Bin, which you may not be able to open from your own account. Treat this as a permanent delete.</value>
@@ -1255,9 +1264,9 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Startup_ExportHeaders" xml:space="preserve"><value>Name|Kind|State|Publisher|Signature|Command|File|Location</value></data>
   <data name="Startup_ExportOn" xml:space="preserve"><value>On</value></data>
   <data name="Startup_ExportOff" xml:space="preserve"><value>Off</value></data>
-  <data name="Startup_Exported" xml:space="preserve"><value>Saved {0} entries to {1}.</value></data>
+  <data name="Startup_Exported" xml:space="preserve"><value>Saved to {1}. Entries: {0}.</value></data>
   <data name="Startup_OnlyNew" xml:space="preserve"><value>Only new since the snapshot</value></data>
-  <data name="Startup_SnapshotSaved" xml:space="preserve"><value>Snapshot saved with {0} entries. Install or update something, then compare to see what it added.</value></data>
+  <data name="Startup_SnapshotSaved" xml:space="preserve"><value>Snapshot saved. Entries: {0}. Install or update something, then compare to see what it added.</value></data>
   <data name="Startup_NoSnapshot" xml:space="preserve"><value>No snapshot saved yet. Save one first.</value></data>
   <data name="Startup_SnapshotDiff" xml:space="preserve"><value>Compared with the snapshot from {0}: {1} new or changed, {2} removed.</value></data>
   <data name="Startup_SnapshotRemoved" xml:space="preserve"><value>Removed: {0}</value></data>
@@ -1271,14 +1280,14 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Programs_Title" xml:space="preserve"><value>Installed programs</value></data>
   <data name="Programs_Hint" xml:space="preserve"><value>Desktop programs from the Windows uninstall list. Uninstall runs the program's own uninstaller with its window. Tick several to uninstall them one after the other, quietly where the program offers it, and to see what they left behind. Before the first uninstall in a session the app creates a restore point when System Protection is on.</value></data>
   <data name="Programs_Search" xml:space="preserve"><value>Search programs</value></data>
-  <data name="Programs_Count" xml:space="preserve"><value>{0} programs</value></data>
+  <data name="Programs_Count" xml:space="preserve"><value>Programs: {0}</value></data>
   <data name="Programs_Sort" xml:space="preserve"><value>Sort programs</value></data>
   <data name="Programs_SortName" xml:space="preserve"><value>By name</value></data>
   <data name="Programs_SortSize" xml:space="preserve"><value>Largest first</value></data>
   <data name="Programs_SortDate" xml:space="preserve"><value>Newest first</value></data>
   <data name="List_NoMatch" xml:space="preserve"><value>Nothing matches the search or the filters.</value></data>
   <data name="Task_Search" xml:space="preserve"><value>Search tasks</value></data>
-  <data name="Programs_CountFiltered" xml:space="preserve"><value>{0} of {1} programs</value></data>
+  <data name="Programs_CountFiltered" xml:space="preserve"><value>Programs: {0} of {1}</value></data>
   <data name="Programs_Uninstall" xml:space="preserve"><value>Uninstall</value></data>
   <data name="Programs_ConfirmTitle" xml:space="preserve"><value>Uninstall program?</value></data>
   <data name="Programs_ConfirmText" xml:space="preserve"><value>Starts the uninstaller of {0}. Follow its window; it decides what is removed, including your settings for this program.</value></data>
@@ -1367,16 +1376,16 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Changes_Transfer" xml:space="preserve"><value>Move to another PC</value></data>
   <data name="Changes_TransferText" xml:space="preserve"><value>Export saves the tweaks you turned on and your program priorities to a file. Import applies such a file here, for example after reinstalling Windows. Device settings stay with this PC; removed apps, service start types and startup entries go along only when you choose them below.</value></data>
   <data name="NewUsers_Title" xml:space="preserve"><value>New accounts on this PC</value></data>
-  <data name="NewUsers_Text" xml:space="preserve"><value>Copies the tweaks for your account that are on (Explorer, taskbar, privacy and others made only of registry values) to the Default profile, so accounts created later start with them. Accounts that exist already keep their settings. Undo it on this page.</value></data>
+  <data name="NewUsers_Text" xml:space="preserve"><value>Copies your account's tweaks that are on and only set registry values (Explorer, taskbar, privacy and others) to the Default profile, so accounts created later start with them. Existing accounts keep their settings. You can undo it on this page.</value></data>
   <data name="NewUsers_Copy" xml:space="preserve"><value>Copy to new accounts</value></data>
   <data name="NewUsers_Nothing" xml:space="preserve"><value>None of the tweaks that are on can go to new accounts: turn on tweaks for your account first (Explorer, taskbar, privacy).</value></data>
-  <data name="Changes_ExportAlso" xml:space="preserve"><value>Also export</value></data>
+  <data name="Changes_ExportAlso" xml:space="preserve"><value>Also include in the export</value></data>
   <data name="Changes_ExportApps" xml:space="preserve"><value>Removed apps</value></data>
   <data name="Changes_ExportServices" xml:space="preserve"><value>Service start types</value></data>
   <data name="Changes_ExportStartup" xml:space="preserve"><value>Startup entries turned off</value></data>
   <data name="Changes_ExportAlsoHint" xml:space="preserve"><value>On import, apps are removed only after their own question (removing cannot be undone), a service changes only where its rules on that PC allow it, and a startup entry is turned off only where it exists.</value></data>
   <data name="Transfer_AppsTitle" xml:space="preserve"><value>Remove the apps from the file?</value></data>
-  <data name="Transfer_AppsText" xml:space="preserve"><value>The file lists {0} removed apps that are on this PC: {1}. Removing cannot be undone in Tunero; apps the Microsoft Store still offers can be installed from there again.</value></data>
+  <data name="Transfer_AppsText" xml:space="preserve"><value>Apps the file lists as removed that are on this PC ({0}): {1}. Removing cannot be undone in Tunero; apps the Microsoft Store still offers can be installed from there again.</value></data>
   <data name="Transfer_AppsRemoved" xml:space="preserve"><value>Apps removed: {0}.</value></data>
   <data name="Changes_Export" xml:space="preserve"><value>Export</value></data>
   <data name="Changes_Import" xml:space="preserve"><value>Import</value></data>
@@ -1400,7 +1409,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Uninstall_Text" xml:space="preserve"><value>Tunero closes and deletes its exe, its backups, logs and settings, and its Start menu entry.</value></data>
   <data name="Uninstall_WarningTitle" xml:space="preserve"><value>Changes still active: {0}</value></data>
   <data name="Uninstall_Warning" xml:space="preserve"><value>Their backups are deleted with the app, so changes you keep can no longer be undone.</value></data>
-  <data name="Uninstall_Details" xml:space="preserve"><value>Stays on the PC: restore points, apps you installed through Tunero and the PawnIO driver (remove them under Settings &gt; Apps &gt; Installed apps).</value></data>
+  <data name="Uninstall_Details" xml:space="preserve"><value>Stays on the PC: restore points, apps you installed through Tunero (remove them under Settings &gt; Apps &gt; Installed apps) and the PawnIO driver (uninstalling it there can leave the driver in Windows: pnputil /delete-driver with its oem file removes it too).</value></data>
   <data name="Uninstall_DataFolder" xml:space="preserve"><value>Data folder: {0}</value></data>
   <data name="Uninstall_UndoFirst" xml:space="preserve"><value>Undo and uninstall</value></data>
   <data name="Uninstall_Keep" xml:space="preserve"><value>Uninstall</value></data>
@@ -1502,8 +1511,8 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Search_NotIncluded" xml:space="preserve"><value>Not included in Tunero</value></data>
   <data name="Intro_Text" xml:space="preserve"><value>The scan only reads: nothing changes until you confirm it, and changed settings can be undone on the Changes page.</value></data>
   <data name="Intro_Dismiss" xml:space="preserve"><value>Got it</value></data>
-  <data name="Settings_Technical" xml:space="preserve"><value>Technical details in lists</value></data>
-  <data name="Settings_TechnicalHint" xml:space="preserve"><value>Paths, registry locations and package names on Startup, Cleanup, Services and Remove apps. Off gives a simpler view; the details pane and every confirmation still show them.</value></data>
+  <data name="Settings_Technical" xml:space="preserve"><value>Technical details</value></data>
+  <data name="Settings_TechnicalHint" xml:space="preserve"><value>Paths, registry locations and package names on Startup, Cleanup, Services and Remove apps, and IDs and raw values on System info. Off gives a simpler view; the details pane and every confirmation still show them.</value></data>
   <data name="TweakView_Label" xml:space="preserve"><value>Show</value></data>
   <data name="TweakView_Profile" xml:space="preserve"><value>For this profile</value></data>
   <data name="TweakView_Recommended" xml:space="preserve"><value>Recommended for this PC</value></data>
@@ -1547,7 +1556,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Programs_Quiet" xml:space="preserve"><value>Quietly where possible</value></data>
   <data name="Programs_QuietHint" xml:space="preserve"><value>Uses the quiet uninstall the program offers (Windows Installer, or the vendor's own quiet command), which answers the uninstaller's questions with its defaults. Programs without one show their window.</value></data>
   <data name="Programs_BulkConfirmTitle" xml:space="preserve"><value>Uninstall programs?</value></data>
-  <data name="Programs_BulkConfirmText" xml:space="preserve"><value>Uninstalls {0} programs one after the other. Each uninstaller decides what is removed, including your settings for that program.</value></data>
+  <data name="Programs_BulkConfirmText" xml:space="preserve"><value>Programs to uninstall one after the other: {0}. Each uninstaller decides what is removed, including your settings for that program.</value></data>
   <data name="Programs_BulkQuiet" xml:space="preserve"><value>Quietly, without questions: {0}</value></data>
   <data name="Programs_BulkWindow" xml:space="preserve"><value>With the uninstaller's window: {0}</value></data>
   <data name="Programs_QueueProgress" xml:space="preserve"><value>Uninstalling {0} of {1}: {2}</value></data>
@@ -1556,7 +1565,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Programs_QueueContinueHint" xml:space="preserve"><value>Starts the next uninstaller without waiting for this one.</value></data>
   <data name="Programs_QueueStop" xml:space="preserve"><value>Stop</value></data>
   <data name="Programs_QueueStopHint" xml:space="preserve"><value>Starts no further uninstaller. One that is already running finishes in its own window.</value></data>
-  <data name="Programs_BulkDone" xml:space="preserve"><value>Uninstalled {0} of {1} programs.</value></data>
+  <data name="Programs_BulkDone" xml:space="preserve"><value>Programs uninstalled: {0} of {1}.</value></data>
   <data name="Leftovers_Title" xml:space="preserve"><value>Left behind</value></data>
   <data name="Leftovers_Hint" xml:space="preserve"><value>Folders and shortcuts of the uninstalled programs that are still there. Only folders no installed program or service uses are listed. Check the list: everything goes to the Recycle Bin, where you can restore it.</value></data>
   <data name="Leftovers_FolderMeta" xml:space="preserve"><value>Folder, {0}, from {1}</value></data>
@@ -1566,7 +1575,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Leftovers_Failed" xml:space="preserve"><value>Not moved: it is in use, has changed or Windows refused.</value></data>
   <data name="Leftovers_Recycled" xml:space="preserve"><value>Moved to the Recycle Bin: {0}</value></data>
   <data name="Leftovers_ConfirmTitle" xml:space="preserve"><value>Move to the Recycle Bin?</value></data>
-  <data name="Leftovers_ConfirmText" xml:space="preserve"><value>Moves {0} ticked items to the Recycle Bin, where you can restore them. Each folder is checked again first: one that an installed program, service, autostart entry or running program uses now stays.</value></data>
+  <data name="Leftovers_ConfirmText" xml:space="preserve"><value>Ticked items to move to the Recycle Bin, where you can restore them: {0}. Each folder is checked again first: one that an installed program, service, autostart entry or running program uses now stays.</value></data>
   <data name="Leftovers_NowInUse" xml:space="preserve"><value>Not moved: an installed program, service, autostart entry or running program uses it now.</value></data>
   <data name="Orphans_Find" xml:space="preserve"><value>Find unused program folders</value></data>
   <data name="Orphans_FindHint" xml:space="preserve"><value>Looks in Program Files for folders of programs that are no longer installed: Tunero finds no installed program, service, autostart entry, running program, shortcut or taskbar pin that uses them, and nothing in them changed for 30 days. Something Tunero cannot see may still need a folder (another program's settings), so they are listed under Left behind without a tick: check each one.</value></data>
@@ -1591,6 +1600,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Bench_StepDone" xml:space="preserve"><value>The result is below. More runs on both sides make it surer.</value></data>
   <data name="Bench_Game" xml:space="preserve"><value>Game</value></data>
   <data name="Bench_Duration" xml:space="preserve"><value>Duration</value></data>
+  <data name="Bench_PerRun" xml:space="preserve"><value>Per run</value></data>
   <data name="Settings_ReportShort" xml:space="preserve"><value>Report a problem opens a prefilled bug report on GitHub; nothing is sent until you submit it there.</value></data>
   <data name="About_Shortcuts" xml:space="preserve"><value>Keyboard: Ctrl+F searches the app, F5 reads the page or the PC again, Esc closes the details.</value></data>
   <data name="Startup_TagUnsigned" xml:space="preserve"><value>Not signed</value></data>
@@ -1624,7 +1634,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Cli_Profile" xml:space="preserve"><value>Profile: {0}</value></data>
   <data name="Cli_RecommendedSummary" xml:space="preserve"><value>Applied: {0}. Failed: {1}. Left for the app: {2}.</value></data>
   <data name="Cli_FileUnwritable" xml:space="preserve"><value>Cannot write {0}: {1}</value></data>
-  <data name="Cli_Exported" xml:space="preserve"><value>Exported {0} changes to {1}. Left out because they belong to this PC only: {2}.</value></data>
+  <data name="Cli_Exported" xml:space="preserve"><value>Changes exported to {1}: {0}. Left out because they belong to this PC only: {2}.</value></data>
   <data name="Cli_UndoSummary" xml:space="preserve"><value>Undone: {0}. Not fully undone: {1}.</value></data>
   <data name="Cli_NothingReset" xml:space="preserve"><value>Nothing was reset: no change needs to be applied again.</value></data>
   <data name="Cli_ReapplySummary" xml:space="preserve"><value>Applied again: {0}. Failed: {1}.</value></data>
@@ -1698,8 +1708,8 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Dash_VerdictPending" xml:space="preserve"><value>The scan is reading this PC.</value></data>
   <data name="Dash_VerdictFailed" xml:space="preserve"><value>The scan could not finish.</value></data>
   <data name="Details_NoPage" xml:space="preserve"><value>This check has no explanation page in this version.</value></data>
-  <data name="Dash_Readiness" xml:space="preserve"><value>Readiness for {0}: {1} of 100. {2} checks passed.</value></data>
-  <data name="Dash_ReadinessUnknown" xml:space="preserve"><value>Readiness for {0}: {1} of 100. {2} checks passed, {3} unknown.</value></data>
+  <data name="Dash_Readiness" xml:space="preserve"><value>Readiness for {0}: {1} of 100. Checks passed: {2}.</value></data>
+  <data name="Dash_ReadinessUnknown" xml:space="preserve"><value>Readiness for {0}: {1} of 100. Checks passed: {2}, unknown: {3}.</value></data>
   <data name="Dash_AdvisorLink" xml:space="preserve"><value>To change by hand in the BIOS or on the hardware: {0}</value></data>
   <data name="Dash_VerdictNoneOneChange" xml:space="preserve"><value>No problems found. One recommended change can still help.</value></data>
   <data name="Dash_VerdictNoneChanges" xml:space="preserve"><value>No problems found. {0} recommended changes can still help.</value></data>

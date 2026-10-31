@@ -64,6 +64,12 @@ public sealed class NativeActivitySources : IActivitySources
 
     public IReadOnlyList<DiskIoTotal>? Disk(out string? unavailableKey)
     {
+        // A trace that stopped on its own says so instead of showing no program at all
+        if (_disk is { Ended: true })
+        {
+            unavailableKey = "Activity_TraceEnded";
+            return null;
+        }
         unavailableKey = _diskUnavailable;
         return _disk?.Drain();
     }

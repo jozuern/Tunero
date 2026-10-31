@@ -185,6 +185,26 @@ public class ActivityModelTests
         Assert.DoesNotContain(devices[Cpu].Programs, p => p.Now < 0 || p.SinceOn < 0);
     }
 
+    /// <summary>
+    /// A service that starts later inside a running svchost (a trigger-start one like Windows Update) shows up in the
+    /// program's name and services on the next read, instead of the list the process had when it was first seen.
+    /// </summary>
+    [Fact]
+    public void SvchostIdentityFollowsItsServices()
+    {
+        const string svchost = @"C:\Windows\System32\svchost.exe";
+        var services = new Dictionary<int, IReadOnlyList<string>> { [30] = ["DNS Client"] };
+        var model = new ActivityModel(new ProgramNames(_ => svchost, _ => null, () => services, n => "Service host: " + string.Join(", ", n)),
+            logicalProcessors: 4, TimeSpan.FromSeconds(30));
+        model.Update(Tick(0, [P(30, "svchost.exe", cpuSeconds: 1)]));
+        Assert.Equal(["DNS Client"], Assert.Single(model.Update(Tick(2, [P(30, "svchost.exe", cpuSeconds: 2)]))[Cpu].Programs).Program.Services);
+
+        services = new() { [30] = ["DNS Client", "Windows Update"] };
+        var row = Assert.Single(model.Update(Tick(4, [P(30, "svchost.exe", cpuSeconds: 3)]))[Cpu].Programs);
+        Assert.Equal("Service host: DNS Client, Windows Update", row.Program.Name);
+        Assert.Equal(["DNS Client", "Windows Update"], row.Program.Services);
+    }
+
     [Fact]
     public void PidReuseStartsFresh()
     {

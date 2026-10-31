@@ -24,6 +24,9 @@
   <data name="Hw_Gpu" xml:space="preserve"><value>Grafik</value></data>
   <data name="Hw_Memory" xml:space="preserve"><value>RAM</value></data>
   <data name="Hw_Displays" xml:space="preserve"><value>Bildschirme</value></data>
+  <data name="Hw_Display" xml:space="preserve"><value>Bildschirm</value></data>
+  <data name="Hw_BuiltInDisplay" xml:space="preserve"><value>Interner Bildschirm</value></data>
+  <data name="Hw_DisplayNumber" xml:space="preserve"><value>Bildschirm {0}</value></data>
   <data name="Hw_Firmware" xml:space="preserve"><value>Firmware &amp; Sicherheit</value></data>
   <data name="Hw_Board" xml:space="preserve"><value>Mainboard</value></data>
   <data name="Hw_Power" xml:space="preserve"><value>Energie</value></data>
@@ -73,6 +76,7 @@
   <data name="Tweaks_Title" xml:space="preserve"><value>Tweaks</value></data>
   <data name="Tweaks_Hint" xml:space="preserve"><value>Jede Änderung zeigt genau, was sie tut, und lässt sich rückgängig machen. Empfohlene Punkte passen zu diesem PC.</value></data>
   <data name="Tweaks_Summary" xml:space="preserve"><value>{0} Tweaks</value></data>
+  <data name="Tweaks_SummaryOne" xml:space="preserve"><value>1 Tweak</value></data>
   <data name="Tweak_TurnOn" xml:space="preserve"><value>Einschalten</value></data>
   <data name="Tweak_Undo" xml:space="preserve"><value>Rückgängig</value></data>
   <data name="Tweak_Reapply" xml:space="preserve"><value>Erneut anwenden</value></data>
@@ -87,6 +91,7 @@
   <data name="Result_Failed" xml:space="preserve"><value>Nicht angewendet. Es bleibt nichts halb geändert zurück. Grund: {0}</value></data>
   <data name="Result_Undone" xml:space="preserve"><value>Rückgängig gemacht: {0}</value></data>
   <data name="Result_UndoneSkipped" xml:space="preserve"><value>Rückgängig gemacht: {0}. Windows hatte {1} der Werte bereits geändert, sie bleiben wie sie sind.</value></data>
+  <data name="Result_UndoneSkippedOne" xml:space="preserve"><value>Rückgängig gemacht: {0}. Windows hatte einen der Werte bereits geändert, er bleibt, wie er ist.</value></data>
   <data name="Result_UndoAll" xml:space="preserve"><value>Rückgängig gemachte Änderungen: {0}.</value></data>
   <data name="Changes_Title" xml:space="preserve"><value>Änderungen</value></data>
   <data name="Changes_Hint" xml:space="preserve"><value>Alles, was diese App geändert hat, mit den gespeicherten Originalwerten. Rückgängig stellt sie wieder her.</value></data>
@@ -98,7 +103,6 @@
   <data name="Changes_EnableRp" xml:space="preserve"><value>Einschalten (5 % des Laufwerks)</value></data>
   <data name="Changes_Backups" xml:space="preserve"><value>Änderungen, die du rückgängig machen kannst</value></data>
   <data name="Changes_Log" xml:space="preserve"><value>Änderungsprotokoll (diese Sitzung)</value></data>
-  <data name="Changes_LogEmpty" xml:space="preserve"><value>In dieser Sitzung keine Änderungen.</value></data>
   <data name="Rp_On" xml:space="preserve"><value>An. Vor der ersten Änderung jeder Sitzung wird ein Wiederherstellungspunkt erstellt.</value></data>
   <data name="Rp_Off" xml:space="preserve"><value>Aus. Ohne ihn kann kein Wiederherstellungspunkt erstellt werden. Die eigene Sicherung der App funktioniert trotzdem.</value></data>
   <data name="Rp_Unknown" xml:space="preserve"><value>Unbekannt (braucht Administratorrechte).</value></data>
@@ -132,7 +136,7 @@
   <data name="Rp_AskTitle" xml:space="preserve"><value>Computerschutz ist aus</value></data>
   <data name="Rp_AskText" xml:space="preserve"><value>Windows kann keinen Wiederherstellungspunkt erstellen, weil der Computerschutz für das Systemlaufwerk aus ist. Die eigene Sicherung der App stellt trotzdem jeden geänderten Wert wieder her. Computerschutz jetzt einschalten?</value></data>
   <data name="Rp_Enable" xml:space="preserve"><value>Einschalten und fortfahren</value></data>
-  <data name="Rp_Continue" xml:space="preserve"><value>Ohne fortfahren</value></data>
+  <data name="Rp_Continue" xml:space="preserve"><value>Ohne Wiederherstellungspunkt weiter</value></data>
   <data name="UndoAll_Title" xml:space="preserve"><value>Alle Änderungen rückgängig machen?</value></data>
   <data name="UndoAll_Text" xml:space="preserve"><value>Änderungen, die rückgängig gemacht werden: {0}. Werte, die Windows seitdem geändert hat, bleiben wie sie sind.</value></data>
   <data name="Busy" xml:space="preserve"><value>Wird ausgeführt</value></data>
@@ -588,6 +592,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Storage_Analyze" xml:space="preserve"><value>Analysieren</value></data>
   <data name="Storage_CloseResult" xml:space="preserve"><value>Ergebnis schließen</value></data>
   <data name="Storage_Result" xml:space="preserve"><value>{0} in {1:N0} Dateien, in {3:0.0} s {2} gelesen</value></data>
+  <data name="Storage_ResultOneFile" xml:space="preserve"><value>{0} in 1 Datei, in {3:0.0} s {2} gelesen</value></data>
   <data name="Storage_ReaderFileTable" xml:space="preserve"><value>aus der Dateitabelle</value></data>
   <data name="Storage_ReaderFolders" xml:space="preserve"><value>Ordner für Ordner</value></data>
   <data name="Storage_ResultLost" xml:space="preserve"><value>{0}. {1:N0} Ordner oder Einträge konnten nicht gelesen werden</value></data>
@@ -602,6 +607,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Storage_NoExtension" xml:space="preserve"><value>Ohne Endung</value></data>
   <data name="Storage_TypesHint" xml:space="preserve"><value>Öffne eine Gruppe und wähle einen Dateityp, um seine größten Dateien zu sehen.</value></data>
   <data name="Storage_MoreTypes" xml:space="preserve"><value>{0} weitere Typen</value></data>
+  <data name="Storage_MoreTypesOne" xml:space="preserve"><value>1 weiterer Typ</value></data>
   <data name="Storage_TypeFiles" xml:space="preserve"><value>Größte Dateien: {0}</value></data>
   <data name="Storage_TypeGroupList" xml:space="preserve"><value>Dateitypen</value></data>
   <data name="Storage_DuplicatesHint" xml:space="preserve"><value>Vergleicht Dateien gleicher Größe (ab 1 MB) nach ihrem Inhalt. Windows-, Programm-, Spiele- und AppData-Ordner bleiben außen vor.</value></data>
@@ -706,7 +712,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
     <value>Netzwerk-Sockets zurücksetzen (Winsock)</value>
   </data>
   <data name="Quick_WinsockHint" xml:space="preserve">
-    <value>Repariert gestörte Netzwerkverbindungen durch fehlerhafte Netzwerk-Erweiterungen.</value>
+    <value>Repariert Netzwerkverbindungen, die durch fehlerhafte Netzwerk-Erweiterungen gestört sind.</value>
   </data>
   <data name="Quick_WinsockConfirm" xml:space="preserve">
     <value>Setzt den Netzwerk-Socket-Katalog von Windows zurück. Manche VPN- oder Sicherheitsprogramme müssen danach eventuell neu installiert werden. Ein Neustart ist nötig.</value>
@@ -826,13 +832,13 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
     <value>Live-Messwerte</value>
   </data>
   <data name="Sensors_Hint" xml:space="preserve">
-    <value>Live-Temperaturen, Auslastung, Takte, Leistung und Lüfter (LibreHardwareMonitor), alle zwei Sekunden, dazu, welche Programme Prozessor, Arbeitsspeicher, Grafikkarte und jedes Laufwerk nutzen. Aus, bis du es einschaltest. Höchstwert ist der höchste Wert, seit du die Messwerte eingeschaltet hast. CPU- und Mainboard-Sensoren brauchen den signierten PawnIO-Treiber.</value>
+    <value>Temperaturen, Auslastung, Takte, Leistung und Lüfter alle zwei Sekunden (LibreHardwareMonitor), dazu, welche Programme Prozessor, Arbeitsspeicher, Grafikkarte und jedes Laufwerk nutzen. Höchstwert ist der höchste Wert seit dem Einschalten.</value>
   </data>
   <data name="Sensors_PawnIoOn" xml:space="preserve">
-    <value>Der PawnIO-Treiber ist installiert.</value>
+    <value>PawnIO-Treiber installiert: CPU- und Mainboard-Sensoren sind verfügbar.</value>
   </data>
   <data name="Sensors_PawnIoOff" xml:space="preserve">
-    <value>Der PawnIO-Treiber ist nicht installiert: CPU- und Mainboard-Sensoren sind nicht verfügbar. Installiere ihn mit der Schaltfläche hier oder unter Installieren &amp; aktualisieren.</value>
+    <value>CPU- und Mainboard-Sensoren brauchen den signierten PawnIO-Treiber, der nicht installiert ist. Installiere ihn mit der Schaltfläche hier oder unter Installieren &amp; aktualisieren.</value>
   </data>
   <data name="Sensors_InstallPawnIo" xml:space="preserve">
     <value>PawnIO installieren</value>
@@ -942,6 +948,9 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Activity_TraceFailed" xml:space="preserve">
     <value>Die Laufwerksaufzeichnung konnte nicht starten.</value>
   </data>
+  <data name="Activity_TraceEnded" xml:space="preserve">
+    <value>Die Laufwerksaufzeichnung wurde beendet, zum Beispiel von einem anderen Programm. Schalte die Messwerte aus und wieder ein, um sie neu zu starten.</value>
+  </data>
   <data name="Activity_ServiceHost" xml:space="preserve">
     <value>Diensthost: {0}</value>
   </data>
@@ -988,7 +997,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
     <value>Das ist Tunero selbst.</value>
   </data>
   <data name="Activity_EndServiceHost" xml:space="preserve">
-    <value>Dieser Prozess führt Windows-Dienste aus; beende einen Dienst stattdessen auf der Seite Dienste.</value>
+    <value>Dieser Prozess führt Windows-Dienste aus, und ihn zu beenden kann den PC neu starten, deshalb beendet Tunero ihn nicht. Die Starttypen der Dienste stehen auf der Seite Dienste &amp; Aufgaben.</value>
   </data>
   <data name="Activity_EndProtected" xml:space="preserve">
     <value>Windows lässt Tunero diesen Prozess nicht beenden.</value>
@@ -1060,7 +1069,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
     <value>Startet einen Skript-Host (PowerShell, cmd, mshta oder ähnlich). Das Programm selbst ist von Microsoft signiert, aber die Befehlszeile bestimmt, was ausgeführt wird: Schadsoftware startet oft so, manche seriösen Tools auch. Prüfe den Befehl.</value>
   </data>
   <data name="Result_NoRestorePoint" xml:space="preserve">
-    <value>Es konnte kein Wiederherstellungspunkt erstellt werden, daher wurde nichts geändert. Versuche es gleich noch einmal oder wähle „Ohne fortfahren“ (die Sicherung der Originalwerte wird in jedem Fall angelegt).</value>
+    <value>Es konnte kein Wiederherstellungspunkt erstellt werden, daher wurde nichts geändert. Versuche es gleich noch einmal oder wähle „Ohne Wiederherstellungspunkt weiter“ (die Sicherung der Originalwerte wird in jedem Fall angelegt).</value>
   </data>
   <data name="Storage_RecycleOtherAccount" xml:space="preserve">
     <value>Diese App läuft unter einem anderen Konto ({0}). Dateien und Ordner landen im Papierkorb dieses Kontos, den du von deinem eigenen Konto aus eventuell nicht öffnen kannst. Geh davon aus, dass sie endgültig gelöscht sind.</value>
@@ -1255,9 +1264,9 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Startup_ExportHeaders" xml:space="preserve"><value>Name|Art|Zustand|Herausgeber|Signatur|Befehl|Datei|Ort</value></data>
   <data name="Startup_ExportOn" xml:space="preserve"><value>An</value></data>
   <data name="Startup_ExportOff" xml:space="preserve"><value>Aus</value></data>
-  <data name="Startup_Exported" xml:space="preserve"><value>{0} Einträge in {1} gespeichert.</value></data>
+  <data name="Startup_Exported" xml:space="preserve"><value>In {1} gespeichert. Einträge: {0}.</value></data>
   <data name="Startup_OnlyNew" xml:space="preserve"><value>Nur Neues seit dem Stand</value></data>
-  <data name="Startup_SnapshotSaved" xml:space="preserve"><value>Stand mit {0} Einträgen gespeichert. Installiere oder aktualisiere etwas und vergleiche dann, um zu sehen, was hinzukam.</value></data>
+  <data name="Startup_SnapshotSaved" xml:space="preserve"><value>Stand gespeichert. Einträge: {0}. Installiere oder aktualisiere etwas und vergleiche dann, um zu sehen, was hinzukam.</value></data>
   <data name="Startup_NoSnapshot" xml:space="preserve"><value>Noch kein Stand gespeichert. Speichere zuerst einen.</value></data>
   <data name="Startup_SnapshotDiff" xml:space="preserve"><value>Verglichen mit dem Stand vom {0}: {1} neu oder geändert, {2} entfernt.</value></data>
   <data name="Startup_SnapshotRemoved" xml:space="preserve"><value>Entfernt: {0}</value></data>
@@ -1271,14 +1280,14 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Programs_Title" xml:space="preserve"><value>Installierte Programme</value></data>
   <data name="Programs_Hint" xml:space="preserve"><value>Desktopprogramme aus der Deinstallationsliste von Windows. Deinstallieren startet das eigene Deinstallationsprogramm mit seinem Fenster. Hake mehrere an, um sie nacheinander zu deinstallieren, ohne Rückfragen, wo das Programm es anbietet, und zu sehen, was sie zurücklassen. Vor der ersten Deinstallation einer Sitzung legt die App einen Wiederherstellungspunkt an, wenn der Computerschutz an ist.</value></data>
   <data name="Programs_Search" xml:space="preserve"><value>Programme suchen</value></data>
-  <data name="Programs_Count" xml:space="preserve"><value>{0} Programme</value></data>
+  <data name="Programs_Count" xml:space="preserve"><value>Programme: {0}</value></data>
   <data name="Programs_Sort" xml:space="preserve"><value>Programme sortieren</value></data>
   <data name="Programs_SortName" xml:space="preserve"><value>Nach Name</value></data>
   <data name="Programs_SortSize" xml:space="preserve"><value>Größte zuerst</value></data>
   <data name="Programs_SortDate" xml:space="preserve"><value>Neueste zuerst</value></data>
   <data name="List_NoMatch" xml:space="preserve"><value>Nichts passt zur Suche oder zu den Filtern.</value></data>
   <data name="Task_Search" xml:space="preserve"><value>Aufgaben suchen</value></data>
-  <data name="Programs_CountFiltered" xml:space="preserve"><value>{0} von {1} Programmen</value></data>
+  <data name="Programs_CountFiltered" xml:space="preserve"><value>Programme: {0} von {1}</value></data>
   <data name="Programs_Uninstall" xml:space="preserve"><value>Deinstallieren</value></data>
   <data name="Programs_ConfirmTitle" xml:space="preserve"><value>Programm deinstallieren?</value></data>
   <data name="Programs_ConfirmText" xml:space="preserve"><value>Startet das Deinstallationsprogramm von {0}. Folge seinem Fenster; es entscheidet, was entfernt wird, auch deine Einstellungen für dieses Programm.</value></data>
@@ -1370,13 +1379,13 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="NewUsers_Text" xml:space="preserve"><value>Übernimmt die eingeschalteten Tweaks für dein Konto (Explorer, Taskleiste, Datenschutz und andere, die nur aus Registrierungswerten bestehen) ins Standardprofil, damit später angelegte Konten mit ihnen starten. Bestehende Konten behalten ihre Einstellungen. Rückgängig machen kannst du es auf dieser Seite.</value></data>
   <data name="NewUsers_Copy" xml:space="preserve"><value>Für neue Konten übernehmen</value></data>
   <data name="NewUsers_Nothing" xml:space="preserve"><value>Keiner der eingeschalteten Tweaks kann zu neuen Konten: Schalte zuerst Tweaks für dein Konto ein (Explorer, Taskleiste, Datenschutz).</value></data>
-  <data name="Changes_ExportAlso" xml:space="preserve"><value>Außerdem exportieren</value></data>
+  <data name="Changes_ExportAlso" xml:space="preserve"><value>Zusätzlich in den Export aufnehmen</value></data>
   <data name="Changes_ExportApps" xml:space="preserve"><value>Entfernte Apps</value></data>
   <data name="Changes_ExportServices" xml:space="preserve"><value>Dienst-Starttypen</value></data>
   <data name="Changes_ExportStartup" xml:space="preserve"><value>Ausgeschaltete Autostart-Einträge</value></data>
   <data name="Changes_ExportAlsoHint" xml:space="preserve"><value>Beim Import werden Apps erst nach einer eigenen Frage entfernt (Entfernen lässt sich nicht rückgängig machen), ein Dienst ändert sich nur, wo seine Regeln auf dem PC das erlauben, und ein Autostart-Eintrag wird nur ausgeschaltet, wo es ihn gibt.</value></data>
   <data name="Transfer_AppsTitle" xml:space="preserve"><value>Die Apps aus der Datei entfernen?</value></data>
-  <data name="Transfer_AppsText" xml:space="preserve"><value>Die Datei nennt {0} entfernte Apps, die auf diesem PC sind: {1}. Entfernen lässt sich in Tunero nicht rückgängig machen; Apps, die der Microsoft Store noch anbietet, lassen sich dort wieder installieren.</value></data>
+  <data name="Transfer_AppsText" xml:space="preserve"><value>Apps, die die Datei als entfernt nennt und die auf diesem PC sind ({0}): {1}. Entfernen lässt sich in Tunero nicht rückgängig machen; Apps, die der Microsoft Store noch anbietet, lassen sich dort wieder installieren.</value></data>
   <data name="Transfer_AppsRemoved" xml:space="preserve"><value>Entfernte Apps: {0}.</value></data>
   <data name="Changes_Export" xml:space="preserve"><value>Exportieren</value></data>
   <data name="Changes_Import" xml:space="preserve"><value>Importieren</value></data>
@@ -1399,10 +1408,10 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Uninstall_Title" xml:space="preserve"><value>Tunero deinstallieren?</value></data>
   <data name="Uninstall_Text" xml:space="preserve"><value>Tunero schließt sich und löscht seine exe, seine Sicherungen, Protokolle und Einstellungen und seinen Eintrag im Startmenü.</value></data>
   <data name="Uninstall_WarningTitle" xml:space="preserve"><value>Noch aktive Änderungen: {0}</value></data>
-  <data name="Uninstall_Warning" xml:space="preserve"><value>Ihre Sicherungen werden mit der App gelöscht. Behaltene Änderungen lassen sich danach nicht mehr rückgängig machen.</value></data>
-  <data name="Uninstall_Details" xml:space="preserve"><value>Bleibt auf dem PC: Wiederherstellungspunkte, Apps, die du über Tunero installiert hast, und der PawnIO-Treiber (entfernen unter Einstellungen &gt; Apps &gt; Installierte Apps).</value></data>
+  <data name="Uninstall_Warning" xml:space="preserve"><value>Die Sicherungen dieser Änderungen werden mit der App gelöscht. Behaltene Änderungen lassen sich danach nicht mehr rückgängig machen.</value></data>
+  <data name="Uninstall_Details" xml:space="preserve"><value>Bleibt auf dem PC: Wiederherstellungspunkte, Apps, die du über Tunero installiert hast (entfernen unter Einstellungen &gt; Apps &gt; Installierte Apps), und der PawnIO-Treiber (deinstallierst du ihn dort, kann der Treiber in Windows bleiben: pnputil /delete-driver mit seiner oem-Datei entfernt auch ihn).</value></data>
   <data name="Uninstall_DataFolder" xml:space="preserve"><value>Datenordner: {0}</value></data>
-  <data name="Uninstall_UndoFirst" xml:space="preserve"><value>Zurücksetzen und deinstallieren</value></data>
+  <data name="Uninstall_UndoFirst" xml:space="preserve"><value>Rückgängig machen und deinstallieren</value></data>
   <data name="Uninstall_Keep" xml:space="preserve"><value>Deinstallieren</value></data>
   <data name="Uninstall_Busy" xml:space="preserve"><value>Warte, bis die laufende Änderung fertig ist, und deinstalliere dann.</value></data>
   <data name="Uninstall_UndoFailed" xml:space="preserve"><value>Tunero wurde nicht entfernt.</value></data>
@@ -1502,8 +1511,8 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Search_NotIncluded" xml:space="preserve"><value>Nicht in Tunero enthalten</value></data>
   <data name="Intro_Text" xml:space="preserve"><value>Der Scan liest nur: Nichts ändert sich, bevor du es bestätigst, und geänderte Einstellungen lassen sich auf der Seite Änderungen rückgängig machen.</value></data>
   <data name="Intro_Dismiss" xml:space="preserve"><value>Verstanden</value></data>
-  <data name="Settings_Technical" xml:space="preserve"><value>Technische Details in Listen</value></data>
-  <data name="Settings_TechnicalHint" xml:space="preserve"><value>Pfade, Registry-Orte und Paketnamen auf Autostart, Bereinigen, Dienste und Apps entfernen. Aus ergibt eine einfachere Ansicht; der Detailbereich und jede Bestätigung zeigen sie weiterhin.</value></data>
+  <data name="Settings_Technical" xml:space="preserve"><value>Technische Details</value></data>
+  <data name="Settings_TechnicalHint" xml:space="preserve"><value>Pfade, Registry-Orte und Paketnamen auf Autostart, Bereinigen, Dienste und Apps entfernen, dazu IDs und Rohwerte unter Systeminfo. Aus ergibt eine einfachere Ansicht; der Detailbereich und jede Bestätigung zeigen sie weiterhin.</value></data>
   <data name="TweakView_Label" xml:space="preserve"><value>Zeigen</value></data>
   <data name="TweakView_Profile" xml:space="preserve"><value>Für dieses Profil</value></data>
   <data name="TweakView_Recommended" xml:space="preserve"><value>Für diesen PC empfohlen</value></data>
@@ -1547,7 +1556,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Programs_Quiet" xml:space="preserve"><value>Ohne Rückfragen, wo möglich</value></data>
   <data name="Programs_QuietHint" xml:space="preserve"><value>Nutzt die stille Deinstallation, die das Programm anbietet (Windows Installer oder den eigenen stillen Befehl des Herstellers). Sie beantwortet die Fragen des Deinstallationsprogramms mit dessen Vorgaben. Programme ohne sie zeigen ihr Fenster.</value></data>
   <data name="Programs_BulkConfirmTitle" xml:space="preserve"><value>Programme deinstallieren?</value></data>
-  <data name="Programs_BulkConfirmText" xml:space="preserve"><value>Deinstalliert {0} Programme nacheinander. Jedes Deinstallationsprogramm entscheidet selbst, was entfernt wird, auch deine Einstellungen für das Programm.</value></data>
+  <data name="Programs_BulkConfirmText" xml:space="preserve"><value>Programme, die nacheinander deinstalliert werden: {0}. Jedes Deinstallationsprogramm entscheidet selbst, was entfernt wird, auch deine Einstellungen für das Programm.</value></data>
   <data name="Programs_BulkQuiet" xml:space="preserve"><value>Ohne Rückfragen: {0}</value></data>
   <data name="Programs_BulkWindow" xml:space="preserve"><value>Mit dem Fenster des Deinstallationsprogramms: {0}</value></data>
   <data name="Programs_QueueProgress" xml:space="preserve"><value>Deinstalliere {0} von {1}: {2}</value></data>
@@ -1556,7 +1565,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Programs_QueueContinueHint" xml:space="preserve"><value>Startet das nächste Deinstallationsprogramm, ohne auf dieses zu warten.</value></data>
   <data name="Programs_QueueStop" xml:space="preserve"><value>Anhalten</value></data>
   <data name="Programs_QueueStopHint" xml:space="preserve"><value>Startet kein weiteres Deinstallationsprogramm. Ein laufendes wird in seinem eigenen Fenster fertig.</value></data>
-  <data name="Programs_BulkDone" xml:space="preserve"><value>{0} von {1} Programmen deinstalliert.</value></data>
+  <data name="Programs_BulkDone" xml:space="preserve"><value>Deinstallierte Programme: {0} von {1}.</value></data>
   <data name="Leftovers_Title" xml:space="preserve"><value>Zurückgeblieben</value></data>
   <data name="Leftovers_Hint" xml:space="preserve"><value>Ordner und Verknüpfungen der deinstallierten Programme, die noch da sind. Aufgeführt sind nur Ordner, die kein installiertes Programm und kein Dienst nutzt. Prüfe die Liste: alles kommt in den Papierkorb, aus dem du es wiederherstellen kannst.</value></data>
   <data name="Leftovers_FolderMeta" xml:space="preserve"><value>Ordner, {0}, von {1}</value></data>
@@ -1566,7 +1575,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Leftovers_Failed" xml:space="preserve"><value>Nicht verschoben: wird verwendet, hat sich geändert oder Windows hat es abgelehnt.</value></data>
   <data name="Leftovers_Recycled" xml:space="preserve"><value>In den Papierkorb verschoben: {0}</value></data>
   <data name="Leftovers_ConfirmTitle" xml:space="preserve"><value>In den Papierkorb verschieben?</value></data>
-  <data name="Leftovers_ConfirmText" xml:space="preserve"><value>Verschiebt {0} angehakte Einträge in den Papierkorb, aus dem du sie wiederherstellen kannst. Jeder Ordner wird vorher noch einmal geprüft: einer, den jetzt ein installiertes Programm, ein Dienst, ein Autostart-Eintrag oder ein laufendes Programm nutzt, bleibt.</value></data>
+  <data name="Leftovers_ConfirmText" xml:space="preserve"><value>Angehakte Einträge, die in den Papierkorb kommen, aus dem du sie wiederherstellen kannst: {0}. Jeder Ordner wird vorher noch einmal geprüft: einer, den jetzt ein installiertes Programm, ein Dienst, ein Autostart-Eintrag oder ein laufendes Programm nutzt, bleibt.</value></data>
   <data name="Leftovers_NowInUse" xml:space="preserve"><value>Nicht verschoben: ein installiertes Programm, ein Dienst, ein Autostart-Eintrag oder ein laufendes Programm nutzt ihn jetzt.</value></data>
   <data name="Orphans_Find" xml:space="preserve"><value>Ungenutzte Programmordner suchen</value></data>
   <data name="Orphans_FindHint" xml:space="preserve"><value>Sucht in Programme (Program Files) nach Ordnern von Programmen, die nicht mehr installiert sind: Tunero findet kein installiertes Programm, keinen Dienst, keinen Autostart-Eintrag, kein laufendes Programm, keine Verknüpfung und kein an die Taskleiste angeheftetes Programm, das sie nutzt, und seit 30 Tagen hat sich darin nichts geändert. Etwas, das Tunero nicht sieht, kann einen Ordner trotzdem brauchen (die Einstellungen eines anderen Programms), deshalb erscheinen sie unter Zurückgeblieben ohne Haken: Prüfe jeden einzeln.</value></data>
@@ -1576,7 +1585,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Apps_InstallName" xml:space="preserve"><value>{0} installieren</value></data>
   <data name="Storage_Drive" xml:space="preserve"><value>Laufwerk</value></data>
   <data name="Prio_Priority" xml:space="preserve"><value>CPU-Priorität</value></data>
-  <data name="Feature_On" xml:space="preserve"><value>An</value></data>
+  <data name="Feature_On" xml:space="preserve"><value>Ein</value></data>
   <data name="Feature_Off" xml:space="preserve"><value>Aus</value></data>
   <data name="Cleanup_EmptyList" xml:space="preserve"><value>Nichts zu bereinigen in: {0}</value></data>
   <data name="Startup_OnlyAttention" xml:space="preserve"><value>Nur Einträge, die Aufmerksamkeit brauchen</value></data>
@@ -1591,6 +1600,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Bench_StepDone" xml:space="preserve"><value>Das Ergebnis steht darunter. Mehr Durchläufe auf beiden Seiten machen es sicherer.</value></data>
   <data name="Bench_Game" xml:space="preserve"><value>Spiel</value></data>
   <data name="Bench_Duration" xml:space="preserve"><value>Dauer</value></data>
+  <data name="Bench_PerRun" xml:space="preserve"><value>Pro Durchlauf</value></data>
   <data name="Settings_ReportShort" xml:space="preserve"><value>Problem melden öffnet einen vorausgefüllten Fehlerbericht auf GitHub; gesendet wird erst, wenn du ihn dort abschickst.</value></data>
   <data name="About_Shortcuts" xml:space="preserve"><value>Tastatur: Strg+F sucht in der App, F5 liest die Seite oder den PC neu ein, Esc schließt die Details.</value></data>
   <data name="Startup_TagUnsigned" xml:space="preserve"><value>Nicht signiert</value></data>
@@ -1624,7 +1634,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Cli_Profile" xml:space="preserve"><value>Profil: {0}</value></data>
   <data name="Cli_RecommendedSummary" xml:space="preserve"><value>Angewendet: {0}. Fehlgeschlagen: {1}. Für die App übrig: {2}.</value></data>
   <data name="Cli_FileUnwritable" xml:space="preserve"><value>{0} lässt sich nicht schreiben: {1}</value></data>
-  <data name="Cli_Exported" xml:space="preserve"><value>{0} Änderungen nach {1} exportiert. Weggelassen, weil sie nur zu diesem PC gehören: {2}.</value></data>
+  <data name="Cli_Exported" xml:space="preserve"><value>Nach {1} exportierte Änderungen: {0}. Weggelassen, weil sie nur zu diesem PC gehören: {2}.</value></data>
   <data name="Cli_UndoSummary" xml:space="preserve"><value>Rückgängig gemacht: {0}. Nicht vollständig rückgängig gemacht: {1}.</value></data>
   <data name="Cli_NothingReset" xml:space="preserve"><value>Nichts wurde zurückgesetzt: Keine Änderung muss erneut angewendet werden.</value></data>
   <data name="Cli_ReapplySummary" xml:space="preserve"><value>Erneut angewendet: {0}. Fehlgeschlagen: {1}.</value></data>
@@ -1698,8 +1708,8 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Dash_VerdictPending" xml:space="preserve"><value>Der Scan liest diesen PC.</value></data>
   <data name="Dash_VerdictFailed" xml:space="preserve"><value>Der Scan konnte nicht abgeschlossen werden.</value></data>
   <data name="Details_NoPage" xml:space="preserve"><value>Zu dieser Prüfung gibt es in dieser Version keine Erklärungsseite.</value></data>
-  <data name="Dash_Readiness" xml:space="preserve"><value>Eignung für {0}: {1} von 100. {2} Prüfungen bestanden.</value></data>
-  <data name="Dash_ReadinessUnknown" xml:space="preserve"><value>Eignung für {0}: {1} von 100. {2} Prüfungen bestanden, {3} unbekannt.</value></data>
+  <data name="Dash_Readiness" xml:space="preserve"><value>Eignung für {0}: {1} von 100. Bestandene Prüfungen: {2}.</value></data>
+  <data name="Dash_ReadinessUnknown" xml:space="preserve"><value>Eignung für {0}: {1} von 100. Bestandene Prüfungen: {2}, unbekannt: {3}.</value></data>
   <data name="Dash_AdvisorLink" xml:space="preserve"><value>Von Hand im BIOS oder an der Hardware zu ändern: {0}</value></data>
   <data name="Dash_VerdictNoneOneChange" xml:space="preserve"><value>Keine Probleme gefunden. Eine empfohlene Änderung kann noch helfen.</value></data>
   <data name="Dash_VerdictNoneChanges" xml:space="preserve"><value>Keine Probleme gefunden. {0} empfohlene Änderungen können noch helfen.</value></data>

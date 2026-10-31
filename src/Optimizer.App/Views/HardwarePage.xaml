@@ -44,7 +44,8 @@
         <StackPanel Style="{StaticResource PageRoot}">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
-                    <ui:ToggleSwitch Content="{l:Tr Hw_ShowDetails}" IsChecked="{Binding ShowHardwareDetails}" Margin="0,0,16,0" />
+                    <!-- The same saved setting as Settings > Technical details: one switch for every page's IDs and raw values -->
+                    <ui:ToggleSwitch Content="{l:Tr Hw_ShowDetails}" IsChecked="{Binding ShowTechnical}" Margin="0,0,16,0" />
                     <ui:Button Content="{l:Tr Hw_Copy}" Icon="{ui:SymbolIcon Copy20}" Command="{Binding CopyHardwareCommand}" />
                 </StackPanel>
                 <StackPanel>
@@ -91,7 +92,7 @@
                                 </StackPanel>
                                 <v:ItemList ItemsSource="{Binding Items}" ItemTemplate="{StaticResource HwRow}" Margin="32,0,0,0" />
                                 <!-- Technical rows: only with the switch on; the divider continues the list above. -->
-                                <Grid Visibility="{Binding DataContext.ShowHardwareDetails, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}">
+                                <Grid Visibility="{Binding DataContext.ShowTechnical, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}">
                                     <Border BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Margin="32,0,0,0"
                                             Visibility="{Binding Technical.Count, Converter={StaticResource CountToVisibility}}">
                                         <v:ItemList ItemsSource="{Binding Technical}" ItemTemplate="{StaticResource HwRow}" />

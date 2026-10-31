@@ -496,7 +496,7 @@ public sealed class StorageViewModelTests : IDisposable
         await storage.AnalyzeFolderAsync(_root);
 
         var text = Assert.IsType<string>(storage.ResultText);
-        var plain = Loc.Instance.Format("Storage_Result", CleanupViewModel.Size(100), 1, Loc.Instance["Storage_ReaderFileTable"], 1.0);
+        var plain = Loc.Instance.Format("Storage_ResultOneFile", CleanupViewModel.Size(100), 1, Loc.Instance["Storage_ReaderFileTable"], 1.0);
         Assert.Equal(lost switch
         {
             0 => plain,

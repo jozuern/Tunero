@@ -46,8 +46,8 @@
                 </v:ItemList.ItemTemplate>
             </v:ItemList>
 
-            <ui:TextBlock Style="{StaticResource SectionHeader}" Text="{l:Tr Changes_Log}" />
-            <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Changes_LogEmpty}" Visibility="{Binding ChangeLogEmpty, Converter={StaticResource BoolToVisibility}}" />
+            <!-- Only once something ran: an empty log would only repeat the empty list above -->
+            <ui:TextBlock Style="{StaticResource SectionHeader}" Text="{l:Tr Changes_Log}" Visibility="{Binding ChangeLogEmpty, Converter={StaticResource InverseBoolToVisibility}}" />
             <ui:Card Padding="16,12" Visibility="{Binding ChangeLogEmpty, Converter={StaticResource InverseBoolToVisibility}}">
                 <v:ItemList ItemsSource="{Binding ChangeLog}">
                     <v:ItemList.ItemTemplate>
@@ -91,25 +91,23 @@
                     <StackPanel>
                         <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Changes_Transfer}" />
                         <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Changes_TransferText}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                        <!-- Opt-in parts of the export, in the card of the Export button they change: they belong to this PC's
+                             apps and programs, so they are left out unless chosen -->
+                        <ui:TextBlock FontTypography="Body" Text="{l:Tr Changes_ExportAlso}" Margin="0,12,0,0" />
+                        <!-- The check box template insets its box: the negative margin lines the boxes up with the text above -->
+                        <WrapPanel Margin="-10,4,0,0">
+                            <CheckBox Content="{l:Tr Changes_ExportApps}" IsChecked="{Binding ExportApps}" Margin="0,0,24,0" />
+                            <CheckBox Content="{l:Tr Changes_ExportServices}" IsChecked="{Binding ExportServices}" Margin="0,0,24,0" />
+                            <CheckBox Content="{l:Tr Changes_ExportStartup}" IsChecked="{Binding ExportStartup}" />
+                        </WrapPanel>
+                        <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Changes_ExportAlsoHint}" TextWrapping="Wrap" Margin="0,4,0,0" />
                     </StackPanel>
                 </ui:CardControl.Header>
-                <StackPanel Orientation="Horizontal">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Top">
                     <ui:Button Content="{l:Tr Changes_Export}" Icon="{ui:SymbolIcon ArrowExportUp20}" Command="{Binding ExportChangesCommand}" Margin="0,0,8,0" />
                     <ui:Button Content="{l:Tr Changes_Import}" Icon="{ui:SymbolIcon ArrowImport20}" Command="{Binding ImportChangesCommand}" />
                 </StackPanel>
             </ui:CardControl>
-            <!-- Opt-in parts of the export: they belong to this PC's apps and programs, so they are left out unless chosen -->
-            <ui:Card Padding="16,12" Margin="0,4,0,0">
-                <StackPanel>
-                    <ui:TextBlock FontTypography="Body" Text="{l:Tr Changes_ExportAlso}" />
-                    <WrapPanel Margin="0,8,0,0">
-                        <CheckBox Content="{l:Tr Changes_ExportApps}" IsChecked="{Binding ExportApps}" Margin="0,0,24,0" />
-                        <CheckBox Content="{l:Tr Changes_ExportServices}" IsChecked="{Binding ExportServices}" Margin="0,0,24,0" />
-                        <CheckBox Content="{l:Tr Changes_ExportStartup}" IsChecked="{Binding ExportStartup}" />
-                    </WrapPanel>
-                    <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Changes_ExportAlsoHint}" TextWrapping="Wrap" Margin="0,8,0,0" />
-                </StackPanel>
-            </ui:Card>
             <!-- The per-user tweaks that are on, for accounts created later (NewUserDefaults) -->
             <ui:CardControl Padding="{StaticResource CardPadding}" Margin="0,4,0,0">
                 <ui:CardControl.Icon>

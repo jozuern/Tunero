@@ -4,7 +4,8 @@ namespace Optimizer.Core.Interop;
 
 /// <summary>
 /// Event Tracing for Windows, for the Live readings disk trace. This file starts and stops one temporary real-time trace
-/// session (<see cref="Activity.DiskTrace"/>) and reads its events; it writes nothing else. Layouts are the 64 bit ones.
+/// session (<see cref="Activity.DiskTrace"/>), lists the running sessions to find its own leftovers and reads its events;
+/// it writes nothing else. Layouts are the 64 bit ones.
 /// </summary>
 internal static unsafe partial class Etw
 {
@@ -14,7 +15,7 @@ internal static unsafe partial class Etw
     internal const uint EventTraceControlStop = 1;
     internal const uint ProcessTraceModeRealTime = 0x00000100, ProcessTraceModeEventRecord = 0x10000000;
     internal const ushort EventHeaderFlag32BitHeader = 0x0020, EventHeaderFlag64BitHeader = 0x0040;
-    internal const int ErrorAccessDenied = 5, ErrorAlreadyExists = 183, ErrorNoSystemResources = 1450, ErrorWmiInstanceNotFound = 4201;
+    internal const int ErrorAccessDenied = 5, ErrorAlreadyExists = 183, ErrorMoreData = 234, ErrorNoSystemResources = 1450, ErrorWmiInstanceNotFound = 4201;
     internal const ulong InvalidProcessTraceHandle = ulong.MaxValue;
 
     /// <summary>EVENT_TRACE_PROPERTIES is 120 bytes; the session name follows it in the same buffer.</summary>
@@ -31,6 +32,10 @@ internal static unsafe partial class Etw
 
     [LibraryImport("advapi32.dll", EntryPoint = "ControlTraceW", StringMarshalling = StringMarshalling.Utf16)]
     internal static partial int ControlTrace(ulong sessionHandle, string? sessionName, byte* properties, uint controlCode);
+
+    /// <summary>Lists the running sessions into the given EVENT_TRACE_PROPERTIES buffers (read only).</summary>
+    [LibraryImport("advapi32.dll", EntryPoint = "QueryAllTracesW")]
+    internal static partial int QueryAllTraces(byte** propertyArray, uint propertyArrayCount, out uint loggerCount);
 
     [LibraryImport("advapi32.dll", EntryPoint = "OpenTraceW", SetLastError = true)]
     internal static partial ulong OpenTrace(EVENT_TRACE_LOGFILEW* logfile);

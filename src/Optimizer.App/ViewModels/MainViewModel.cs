@@ -241,8 +241,6 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
     public ObservableCollection<HwSection> HardwareSections { get; } = [];
     public ObservableCollection<HwTile> HardwareTiles { get; } = [];
 
-    /// <summary>System info: also show IDs and raw values (PnP IDs, GUIDs, microcode). Not saved.</summary>
-    [ObservableProperty] private bool _showHardwareDetails;
     public ObservableCollection<RecommendationLine> Recommendations { get; } = [];
     public ObservableCollection<RecommendationLine> RecommendationsExcluded { get; } = [];
 

@@ -32,12 +32,16 @@ public partial class MessageWindow : FluentWindow
         var equal = buttons.Length * widths.Max() <= FooterWidth || widths.Sum() > FooterWidth;
         var wrap = widths.Sum() > FooterWidth;
         if (!equal) Buttons.HorizontalAlignment = System.Windows.HorizontalAlignment.Right;
+        foreach (var _ in buttons)
+            Buttons.ColumnDefinitions.Add(new ColumnDefinition { Width = equal ? new GridLength(1, GridUnitType.Star) : GridLength.Auto });
         for (var i = 0; i < buttons.Length; i++)
         {
             var index = i;
-            Buttons.ColumnDefinitions.Add(new ColumnDefinition { Width = equal ? new GridLength(1, GridUnitType.Star) : GridLength.Auto });
             var primary = i == buttons.Length - 1;
             var column = buttons.Length - 1 - i;
+            // A wrapping label breaks between words only: its column is at least as wide as its longest word
+            // ("Wiederherstellungspunkt"), and the other columns share the rest.
+            if (wrap) Buttons.ColumnDefinitions[column].MinWidth = buttons[i].Split(' ').Max(LabelWidth) + ButtonChrome;
             var b = new Wpf.Ui.Controls.Button
             {
                 Content = wrap ? new System.Windows.Controls.TextBlock { Text = buttons[i], TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center } : buttons[i],

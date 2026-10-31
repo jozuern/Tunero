@@ -43,9 +43,8 @@ public static class HardwareReport
                 f.I("name", c.Name), f.I("vendor", VendorName(c.Vendor)), f.I("coresThreads", f.F("coresThreadsValue", c.Cores, c.Threads)),
                 f.I("socket", c.Socket),
                 f.I("l3", c.L3Domains.Count == 0 ? null : string.Join(" + ", c.L3Domains.Select(d => $"{d.SizeBytes >> 20} MB"))),
-                .. c.IsHybrid
-                    ? (SummaryItem[])[f.I("hybrid", string.Join(", ", c.CoresByEfficiencyClass.Select(kv => f.F("efficiencyClass", kv.Key, kv.Value)))), f.I("performanceCores", c.PerformanceCores)]
-                    : [],
+                // Performance cores are the ones in the highest efficiency class, every other class counts as efficiency cores.
+                .. c.IsHybrid ? (SummaryItem[])[f.I("coreTypes", f.F("coreTypesValue", c.PerformanceCores, c.CoresByEfficiencyClass.Values.Sum() - c.PerformanceCores))] : [],
             ])
             {
                 Icon = SymbolRegular.DeveloperBoard24,
@@ -55,7 +54,7 @@ public static class HardwareReport
                     f.I("familyModel", $"{c.Family} / {c.Model} (0x{c.Model:X}) / {c.Stepping}"),
                     f.I("microcodeRunning", c.MicrocodeCurrent is { } m1 ? $"0x{m1:X}" : null),
                     f.I("microcodeBios", c.MicrocodeBios is { } m2 ? $"0x{m2:X} ({c.MicrocodeSource})" : null),
-                    .. c.IsHybrid ? (SummaryItem[])[] : [f.I("hybrid", false)],
+                    f.I("hybrid", c.IsHybrid ? (object)string.Join(", ", c.CoresByEfficiencyClass.Select(kv => f.F("efficiencyClass", kv.Key, kv.Value))) : false),
                 ],
             });
         }
@@ -102,7 +101,8 @@ public static class HardwareReport
             sections.Add(new HwSection(l["Hw_Memory"], items) { Icon = SymbolRegular.Ram20 });
         }
 
-        foreach (var d in p.Displays ?? [])
+        var displays = p.Displays ?? [];
+        foreach (var d in displays)
         {
             var items = new List<SummaryItem>
             {
@@ -116,7 +116,7 @@ public static class HardwareReport
                 items.Add(f.I("gsyncState", f.V(!vs.Possible ? "value.notPossible" : vs.Enabled ? "value.on" : "value.off")));
             items.Add(f.I("connectedTo", d.AdapterName));
             items.Add(f.I("internal", d.IsInternal));
-            sections.Add(new HwSection($"{l["Hw_Displays"]}: {d.FriendlyName}", items)
+            sections.Add(new HwSection(d.HasOwnName ? $"{l["Hw_Display"]}: {d.FriendlyName}" : DisplayName(d, displays, l), items)
             {
                 Icon = SymbolRegular.Desktop24,
                 Technical =
@@ -216,7 +216,6 @@ public static class HardwareReport
         return sections;
     }
 
-    /// <summary>The tiles at the top of the System info page: what a user looks up most, one line each plus a detail line.</summary>
     /// <summary>As Windows writes it (System > About): "x64", "Arm64"; the enum's own names start with a capital X.</summary>
     private static string ArchitectureName(Optimizer.Core.Platform.CpuArchitecture a) => a switch
     {
@@ -225,6 +224,20 @@ public static class HardwareReport
         _ => a.ToString(),
     };
 
+    /// <summary>
+    /// A display's name: the monitor's own one, else "Built-in display" for the laptop panel and "Display 2" for others
+    /// (numbered in the order Windows lists them), instead of a generic "Display" that tells the displays apart from nothing.
+    /// </summary>
+    private static string DisplayName(DisplayInfo d, IReadOnlyList<DisplayInfo> all, Loc l)
+    {
+        if (d.HasOwnName) return d.FriendlyName;
+        if (d.IsInternal) return l["Hw_BuiltInDisplay"];
+        var index = 0;
+        while (index < all.Count && !ReferenceEquals(all[index], d)) index++;
+        return l.Format("Hw_DisplayNumber", index + 1);
+    }
+
+    /// <summary>The tiles at the top of the System info page: what a user looks up most, one line each plus a detail line.</summary>
     public static List<HwTile> Tiles(HardwareProfile p, Loc l)
     {
         var f = new Fmt(l.Language);
@@ -247,7 +260,7 @@ public static class HardwareReport
             tiles.Add(new HwTile(l["Hw_Memory"], f.Gb(m.TotalBytes), detail, SymbolRegular.Ram20));
         }
         if (p.Displays is { Count: > 0 } d)
-            tiles.Add(new HwTile(l["Hw_Displays"], string.Join("\n", d.Select(x => x.FriendlyName)),
+            tiles.Add(new HwTile(d.Count == 1 ? l["Hw_Display"] : l["Hw_Displays"], string.Join("\n", d.Select(x => DisplayName(x, d, l))),
                 string.Join("\n", d.Select(x => $"{x.Width}×{x.Height}, {x.CurrentRefresh.Hz:0} Hz")), SymbolRegular.Desktop24));
         if (p.Firmware is { } fw)
             tiles.Add(new HwTile(l["Hw_Board"], $"{fw.BoardManufacturer} {fw.BoardProduct}".Trim(), $"BIOS {fw.BiosVersion}".Trim(), SymbolRegular.DeveloperBoardLightning20));

@@ -39,7 +39,10 @@ public partial class SettingsPage : UserControl
         if (DataContext is not MainViewModel vm || string.IsNullOrWhiteSpace(VtKey.Password)) return;
         vm.SaveVirusTotalKey(VtKey.Password);
         VtKey.Password = "";
+        SaveKeyButton.IsEnabled = false;
     }
+
+    private void VtKey_PasswordChanged(object sender, RoutedEventArgs e) => SaveKeyButton.IsEnabled = !string.IsNullOrWhiteSpace(VtKey.Password);
 
     private void Licenses_Click(object sender, RoutedEventArgs e)
     {
@@ -51,5 +54,6 @@ public partial class SettingsPage : UserControl
     {
         if (DataContext is MainViewModel vm) vm.SaveVirusTotalKey(null);
         VtKey.Password = "";
+        SaveKeyButton.IsEnabled = false;
     }
 }

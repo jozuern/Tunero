@@ -360,7 +360,8 @@ public sealed partial class StorageViewModel(IPageHost owner, AppServices servic
     /// <summary>The result line; entries the reader could not see (<see cref="DiskTree.Lost"/>) are counted in it.</summary>
     private static string Summary(DiskTree tree)
     {
-        var text = Loc.Instance.Format("Storage_Result", CleanupViewModel.Size(tree.Size(tree.Root)), tree.Files(tree.Root),
+        var files = tree.Files(tree.Root);
+        var text = Loc.Instance.Format(files == 1 ? "Storage_ResultOneFile" : "Storage_Result", CleanupViewModel.Size(tree.Size(tree.Root)), files,
             Loc.Instance[tree.Reader == ScanReader.FileTable ? "Storage_ReaderFileTable" : "Storage_ReaderFolders"], tree.Elapsed.TotalSeconds);
         return tree.Lost switch
         {

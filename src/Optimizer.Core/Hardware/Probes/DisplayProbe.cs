@@ -14,6 +14,9 @@ public static class DisplayProbe
 {
     private const int ErrorInsufficientBuffer = 122;
 
+    /// <summary>The name of a display that reports none (often a laptop panel); the System info page writes its own then.</summary>
+    public const string UnnamedDisplay = "Display";
+
     public static List<DisplayInfo> Read(CatalogData catalog)
     {
         var result = new List<DisplayInfo>();
@@ -55,11 +58,7 @@ public static class DisplayProbe
             };
             Native.DisplayConfigGetDeviceInfo(ref adapterName);
 
-            var color = new Native.DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO
-            {
-                header = Header(Native.DeviceInfoGetAdvancedColorInfo, Marshal.SizeOf<Native.DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO>(), tgt.adapterId, tgt.id),
-            };
-            var hasColor = Native.DisplayConfigGetDeviceInfo(ref color) == 0;
+            var (hdrSupported, hdrEnabled) = ReadHdr(tgt.adapterId, tgt.id);
 
             int width = 0, height = 0;
             var primary = false;
@@ -81,7 +80,9 @@ public static class DisplayProbe
 
             result.Add(new DisplayInfo(
                 gdi,
-                string.IsNullOrWhiteSpace(targetName.monitorFriendlyDeviceName) ? edid?.Name ?? "Display" : targetName.monitorFriendlyDeviceName,
+                string.IsNullOrWhiteSpace(targetName.monitorFriendlyDeviceName)
+                    ? edid?.Name is { } edidName && !string.IsNullOrWhiteSpace(edidName) ? edidName : UnnamedDisplay
+                    : targetName.monitorFriendlyDeviceName,
                 targetName.monitorDevicePath ?? "",
                 IsInternalOutput(tgt.outputTechnology),
                 tgt.outputTechnology,
@@ -93,12 +94,40 @@ public static class DisplayProbe
                 adapterPath,
                 vendor,
                 null,
-                hasColor && (color.value & 0x1) != 0,
-                hasColor && (color.value & 0x2) != 0,
+                hdrSupported,
+                hdrEnabled,
                 edid) { IsPrimary = primary });
         }
         return result;
     }
+
+    /// <summary>
+    /// HDR supported and on. The second version of the query (24H2 and later) names HDR itself; the first one only knows
+    /// "advanced color", which also covers an SDR display with Auto Color Management (wide color gamut) on, so there an
+    /// active advanced color counts as HDR only when wide color is not what is enforced (bit 2), and "supported" stays approximate.
+    /// </summary>
+    private static (bool Supported, bool Enabled) ReadHdr(Native.LUID adapter, uint target)
+    {
+        var info2 = new Native.DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO_2
+        {
+            header = Header(Native.DeviceInfoGetAdvancedColorInfo2, Marshal.SizeOf<Native.DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO_2>(), adapter, target),
+        };
+        if (Native.DisplayConfigGetDeviceInfo(ref info2) == 0)
+            return HdrFromInfo2(info2.value, info2.activeColorMode);
+        var info = new Native.DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO
+        {
+            header = Header(Native.DeviceInfoGetAdvancedColorInfo, Marshal.SizeOf<Native.DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO>(), adapter, target),
+        };
+        return Native.DisplayConfigGetDeviceInfo(ref info) == 0 ? HdrFromInfo1(info.value) : (false, false);
+    }
+
+    /// <summary>DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO_2: bit 4 highDynamicRangeSupported, and the active color mode is HDR.</summary>
+    public static (bool Supported, bool Enabled) HdrFromInfo2(uint value, uint activeColorMode) =>
+        ((value & 0x10) != 0, activeColorMode == Native.AdvancedColorModeHdr);
+
+    /// <summary>DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO: bit 0 supported, bit 1 enabled, bit 2 wide color enforced (not HDR).</summary>
+    public static (bool Supported, bool Enabled) HdrFromInfo1(uint value) =>
+        ((value & 0x1) != 0, (value & 0x2) != 0 && (value & 0x4) == 0);
 
     /// <summary>DISPLAYCONFIG_VIDEO_OUTPUT_TECHNOLOGY values for embedded DisplayPort and embedded UDI.</summary>
     public const uint OutputDisplayPortEmbedded = 11, OutputUdiEmbedded = 13;

@@ -125,11 +125,19 @@ public sealed class DiskTraceUnavailableException(string reasonKey) : Exception(
 /// write requests, so each disk's activity can be put down to the programs that cause it, including the cached writes and
 /// read-ahead Windows does later from its own threads (matched through the file). A system logger session (Windows 8 and later) does not take the single
 /// "NT Kernel Logger" slot that Process Monitor and the Windows Performance Recorder use. It runs only while Live
-/// readings are on; a session left behind by a crash has the same name and is stopped before a new one starts.
+/// readings are on. Each copy of the app names its session after its process ("Tunero disk activity 1234"), so a copy
+/// in another user's session never stops this one; a session left behind by a crash carries a process ID that no
+/// longer runs and is stopped before a new one starts.
 /// </summary>
 public sealed unsafe class DiskTrace : IDisposable
 {
     public const string SessionName = "Tunero disk activity";
+
+    /// <summary>This process's session name: the shared prefix and the process ID.</summary>
+    public static string OwnSessionName => $"{SessionName} {Environment.ProcessId}";
+
+    /// <summary>Sessions listed at most when leftovers are looked for (Windows runs at most 64 at a time).</summary>
+    private const int MaxSessions = 64;
 
     private static readonly Guid SessionGuid = new("5b1f3c52-2d0e-4c8a-9f4e-7d3a1c6b8e21");
 
@@ -140,19 +148,24 @@ public sealed unsafe class DiskTrace : IDisposable
     /// <summary>This copy's session: Dispose stops it by handle, so it can never stop another copy's session.</summary>
     private ulong _sessionHandle;
     private Thread? _thread;
-    private int _disposed;
+    private int _disposed, _ended;
+    private string _name = "";
+
+    /// <summary>The trace stopped on its own (another tool stopped the session, for example): it delivers nothing any more.</summary>
+    public bool Ended => Volatile.Read(ref _ended) != 0;
 
     private DiskTrace() { }
 
     public static DiskTrace Start()
     {
         if (!Environment.Is64BitProcess) throw new DiskTraceUnavailableException("Activity_TraceFailed");
-        Stop(0); // a session a crash left behind (by name; callers open one copy at a time)
+        var name = OwnSessionName;
+        StopLeftovers(name);
         var buffer = Properties(withFlags: true);
         ulong session;
         fixed (byte* p = buffer)
         {
-            var error = Etw.StartTrace(out session, SessionName, p);
+            var error = Etw.StartTrace(out session, name, p);
             if (error != 0)
             {
                 Log.Warn("activity", $"disk trace not started: {error}");
@@ -164,7 +177,7 @@ public sealed unsafe class DiskTrace : IDisposable
                 });
             }
         }
-        var trace = new DiskTrace { _sessionHandle = session };
+        var trace = new DiskTrace { _sessionHandle = session, _name = name };
         try
         {
             trace.Open();
@@ -180,7 +193,7 @@ public sealed unsafe class DiskTrace : IDisposable
     private void Open()
     {
         _self = GCHandle.Alloc(this);
-        fixed (char* name = SessionName)
+        fixed (char* name = _name)
         {
             var logfile = new Etw.EVENT_TRACE_LOGFILEW
             {
@@ -201,7 +214,9 @@ public sealed unsafe class DiskTrace : IDisposable
         {
             var h = handle;
             var error = Etw.ProcessTrace(&h, 1, IntPtr.Zero, IntPtr.Zero);
-            if (error != 0 && Volatile.Read(ref _disposed) == 0) Log.Warn("activity", $"disk trace ended: {error}");
+            if (Volatile.Read(ref _disposed) != 0) return;
+            Volatile.Write(ref _ended, 1);
+            Log.Warn("activity", $"disk trace ended: {error}");
         }) { IsBackground = true, Name = "Disk trace" };
         _thread.Start();
     }
@@ -228,14 +243,90 @@ public sealed unsafe class DiskTrace : IDisposable
     public IReadOnlyList<DiskIoTotal> Drain() => _accumulator.Drain();
 
     /// <summary>Stops a session by its handle, or by name when the handle is 0; no error when there is none.</summary>
-    private static void Stop(ulong session)
+    private static void Stop(ulong session, string? name = null)
     {
         var buffer = Properties(withFlags: false);
         fixed (byte* p = buffer)
         {
-            var error = Etw.ControlTrace(session, session == 0 ? SessionName : null, p, Etw.EventTraceControlStop);
+            var error = Etw.ControlTrace(session, session == 0 ? name : null, p, Etw.EventTraceControlStop);
             if (error is not (0 or Etw.ErrorWmiInstanceNotFound)) Log.Warn("activity", $"disk trace not stopped: {error}");
         }
+    }
+
+    /// <summary>
+    /// Stops what crashes left behind: this process's own name (a reused process ID) and every "Tunero disk activity
+    /// &lt;pid&gt;" session whose process no longer runs. A running copy's session is never touched.
+    /// </summary>
+    private static void StopLeftovers(string own)
+    {
+        Stop(0, own);
+        foreach (var name in SessionNames().Where(n => IsLeftover(n, own, ProcessRuns)))
+            Stop(0, name);
+    }
+
+    /// <summary>
+    /// A session of this app that no running process owns. The plain name older versions used is left alone: a running
+    /// older copy could own it.
+    /// </summary>
+    internal static bool IsLeftover(string session, string own, Func<int, bool> runs) =>
+        session != own
+        && session.StartsWith(SessionName + " ", StringComparison.Ordinal)
+        && int.TryParse(session.AsSpan(SessionName.Length + 1), System.Globalization.NumberStyles.None,
+            System.Globalization.CultureInfo.InvariantCulture, out var pid)
+        && !runs(pid);
+
+    private static bool ProcessRuns(int pid)
+    {
+        try
+        {
+            using var p = System.Diagnostics.Process.GetProcessById(pid);
+            return !p.HasExited;
+        }
+        catch (ArgumentException)
+        {
+            return false; // no process with that ID
+        }
+        catch (Exception)
+        {
+            return true; // cannot tell: the session stays
+        }
+    }
+
+    /// <summary>The names of the trace sessions that run now (QueryAllTracesW); empty when they cannot be listed.</summary>
+    private static List<string> SessionNames()
+    {
+        const int nameBytes = 2048;
+        const int entry = Etw.PropertiesSize + 2 * nameBytes;
+        var buffer = new byte[entry * MaxSessions];
+        for (var i = 0; i < MaxSessions; i++)
+        {
+            var span = buffer.AsSpan(i * entry, entry);
+            BitConverter.TryWriteBytes(span[0..], entry);                                   // Wnode.BufferSize
+            BitConverter.TryWriteBytes(span[112..], (uint)(Etw.PropertiesSize + nameBytes)); // LogFileNameOffset
+            BitConverter.TryWriteBytes(span[116..], (uint)Etw.PropertiesSize);               // LoggerNameOffset
+        }
+        var names = new List<string>();
+        fixed (byte* start = buffer)
+        {
+            var pointers = stackalloc byte*[MaxSessions];
+            for (var i = 0; i < MaxSessions; i++) pointers[i] = start + i * entry;
+            var error = Etw.QueryAllTraces(pointers, MaxSessions, out var count);
+            if (error is not (0 or Etw.ErrorMoreData))
+            {
+                Log.Warn("activity", $"trace sessions not listed: {error}");
+                return names;
+            }
+            for (var i = 0; i < Math.Min(count, (uint)MaxSessions); i++)
+            {
+                var offset = *(uint*)(pointers[i] + 116);
+                if (offset is 0 or >= entry - 2) continue;
+                // Bounded read: the name ends at its terminating zero or at the end of its room.
+                var room = new ReadOnlySpan<char>(pointers[i] + offset, (int)((entry - offset) / 2));
+                var end = room.IndexOf('\0');
+                names.Add(new string(end < 0 ? room : room[..end]));
+            }
+        }
+        return names;
     }
 
     /// <summary>EVENT_TRACE_PROPERTIES followed by room for the session name (offsets in the comments).</summary>

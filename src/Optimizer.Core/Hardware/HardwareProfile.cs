@@ -191,6 +191,12 @@ public sealed record DisplayInfo(
 {
     /// <summary>Primary display (desktop origin at 0,0). False when the position could not be read.</summary>
     public bool IsPrimary { get; init; }
+
+    /// <summary>
+    /// The monitor reports a name of its own (Windows' friendly name or the EDID name). Laptop panels often report none,
+    /// and then <see cref="FriendlyName"/> is only the generic "Display" (<see cref="Probes.DisplayProbe.UnnamedDisplay"/>).
+    /// </summary>
+    public bool HasOwnName => !string.IsNullOrWhiteSpace(FriendlyName) && FriendlyName != Probes.DisplayProbe.UnnamedDisplay;
 }
 
 public sealed record EdidInfo(string ManufacturerId, ushort ProductCode, string? Name, int? MinVHz, int? MaxVHz, int? PreferredWidth, int? PreferredHeight, double? PreferredRefreshHz)

@@ -16,7 +16,9 @@ namespace Optimizer.App.ViewModels;
 public sealed partial class ActivityRow(ProgramKey key, string name) : ObservableObject
 {
     public ProgramKey Key { get; } = key;
-    public string Name { get; } = name;
+
+    /// <summary>Follows the program on every read: a svchost is named after the services it hosts now.</summary>
+    [ObservableProperty] private string _name = name;
     [ObservableProperty] private ImageSource? _icon;
     [ObservableProperty] private string _now = "";
     [ObservableProperty] private string _read = "";
@@ -249,6 +251,7 @@ public sealed partial class ActivityList(DeviceKind kind, ActivityActions? actio
     private void Fill(ActivityRow row, ProgramActivity p)
     {
         row.Activity = p;
+        row.Name = p.Program.Name;
         row.Ended = p.Ended;
         row.Fill = Math.Clamp(p.Share, 0, 1);
         row.Engine = p.Engine is { } engine ? EngineName(engine) : "";

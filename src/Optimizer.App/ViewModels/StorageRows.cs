@@ -131,7 +131,7 @@ public sealed partial class TypeGroupRow(FileGroup group, long bytes, int count,
         var row = new TypeRow(total, all > 0 ? total.Bytes / all : 0);
         Extensions.Add(row);
         var hidden = totals.Count - Extensions.Count;
-        MoreText = hidden > 0 ? Loc.Instance.Format("Storage_MoreTypes", hidden) : null;
+        MoreText = hidden > 0 ? MoreTypes(hidden) : null;
         return row;
     }
 
@@ -143,8 +143,11 @@ public sealed partial class TypeGroupRow(FileGroup group, long bytes, int count,
         MoreText = null;
         if (!value) return;
         foreach (var t in totals.Take(MaxExtensions)) Extensions.Add(new TypeRow(t, all > 0 ? t.Bytes / all : 0));
-        if (totals.Count > MaxExtensions) MoreText = Loc.Instance.Format("Storage_MoreTypes", totals.Count - MaxExtensions);
+        if (totals.Count > MaxExtensions) MoreText = MoreTypes(totals.Count - MaxExtensions);
     }
+
+    /// <summary>"3 more types", in the singular for one.</summary>
+    private static string MoreTypes(int hidden) => hidden == 1 ? Loc.Instance["Storage_MoreTypesOne"] : Loc.Instance.Format("Storage_MoreTypes", hidden);
 
     // What screen readers announce for this item in a list.
     public override string ToString() => $"{Name}, {SizeText}";

@@ -253,7 +253,8 @@ public sealed class ChangeRunner(AppServices services, IDialogs dialogs, Func<Fa
         {
             var result = await Session.UndoAsync(t);
             if (!result.Success) Report(Loc.Instance.Format("Result_UndoIncomplete", title, string.Join("; ", result.Errors)), InfoBarSeverity.Error);
-            else if (result.AlreadyRevertedByWindows.Count > 0) Report(Loc.Instance.Format("Result_UndoneSkipped", title, result.AlreadyRevertedByWindows.Count));
+            else if (result.AlreadyRevertedByWindows.Count > 0)
+                Report(Loc.Instance.Format(result.AlreadyRevertedByWindows.Count == 1 ? "Result_UndoneSkippedOne" : "Result_UndoneSkipped", title, result.AlreadyRevertedByWindows.Count));
             else Report(Loc.Instance.Format("Result_Undone", title), InfoBarSeverity.Success);
             return result.Success;
         }

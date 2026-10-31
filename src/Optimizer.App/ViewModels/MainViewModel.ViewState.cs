@@ -244,7 +244,7 @@ public sealed partial class MainViewModel
             (Count: visible.Count(p => p.Status.IsOn && !p.Status.HasBackup), Key: "Tweaks_CountAlreadySet"),
             (Count: visible.Count(p => p.Recommended), Key: "Tweaks_CountRecommended"),
         }.Where(x => x.Count > 0).Select(x => Loc.Instance.Format(x.Key, x.Count)).ToList();
-        var total = Loc.Instance.Format("Tweaks_Summary", visible.Count);
+        var total = visible.Count == 1 ? Loc.Instance["Tweaks_SummaryOne"] : Loc.Instance.Format("Tweaks_Summary", visible.Count);
         TweaksSummary = parts.Count == 0 ? total : $"{total}: {string.Join(", ", parts)}";
     }
 

@@ -74,8 +74,9 @@ public sealed class ActivityModel(IProgramNames names, int logicalProcessors, Ti
         foreach (var e in _entries.Values) (e.Now, e.ReadNow, e.WriteNow, e.Live) = (0, 0, 0, false);
         foreach (var k in _driveOther.Keys.ToList()) _driveOther[k] = (0, _driveOther[k].SinceOn);
 
-        // Who runs now: identities, threads, live processes per program
-        var live = new Dictionary<ProgramKey, List<ProcessRef>>();
+        // Who runs now: identities, threads, live processes per program. The identity is this tick's: a svchost's name and
+        // services follow the services it hosts now, so an entry takes it over below instead of keeping the first one seen.
+        var live = new Dictionary<ProgramKey, (ProgramIdentity Program, List<ProcessRef> Refs)>();
         var byPid = new Dictionary<int, (ProcessSample Process, ProgramIdentity Program)>();
         foreach (var p in tick.Snapshot.Processes)
         {
@@ -83,8 +84,8 @@ public sealed class ActivityModel(IProgramNames names, int logicalProcessors, Ti
             byPid[p.Pid] = (p, program);
             _recent[p.Pid] = new Known(p, program, now);
             foreach (var t in p.ThreadIds) _threads[t] = (p.Pid, now);
-            if (!live.TryGetValue(program.Key, out var refs)) live[program.Key] = refs = [];
-            refs.Add(new ProcessRef(p.Pid, p.CreateTime));
+            if (!live.TryGetValue(program.Key, out var current)) live[program.Key] = current = (program, []);
+            current.Refs.Add(new ProcessRef(p.Pid, p.CreateTime));
         }
 
         // Processor and memory
@@ -148,11 +149,12 @@ public sealed class ActivityModel(IProgramNames names, int logicalProcessors, Ti
         // Live or ended; ended programs are kept for a while, then dropped
         foreach (var (key, e) in _entries.ToList())
         {
-            if (live.TryGetValue(key.Program, out var refs))
+            if (live.TryGetValue(key.Program, out var current))
             {
                 e.Live = true;
                 e.LastLiveTicks = now;
-                e.Processes = refs;
+                e.Program = current.Program;
+                e.Processes = current.Refs;
             }
             else if (now - e.LastLiveTicks > keep) _entries.Remove(key);
         }
