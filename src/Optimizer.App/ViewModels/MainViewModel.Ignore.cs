@@ -76,15 +76,7 @@ public sealed partial class MainViewModel
 
     /// <summary>From the Overview to the Tweaks page with the ignored recommendations open (search and filters cleared).</summary>
     [RelayCommand]
-    private void ShowIgnoredTweaks()
-    {
-        TweakImpactMin = 0;
-        TweakSearch = "";
-        // An ignored tweak can be one the active profile does not rate: the view that lists every tweak for this PC.
-        if (TweakViewMode != TweakView.Everything) TweakViewMode = TweakView.Applicable;
-        CurrentPage = Page.Tweaks;
-        if (_tweakGroups.Any(g => g.Key == IgnoredGroup)) OpenTweakGroup(IgnoredGroup);
-    }
+    private void ShowIgnoredTweaks() => RevealTweakGroup(IgnoredGroup);
 
     /// <summary>The facts do not depend on ignored tweaks: the profile view and every list are built again, nothing is read.</summary>
     private void SetTweakIgnored(string tweakId, bool ignored)

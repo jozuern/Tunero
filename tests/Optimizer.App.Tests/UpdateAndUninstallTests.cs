@@ -268,9 +268,13 @@ internal sealed class FakeDialogs : IDialogs
     /// <summary>Runs when a question is asked, before it is answered (another change that starts meanwhile).</summary>
     public Action? Asking { get; set; }
 
+    /// <summary>The texts of the questions asked, in the order of <see cref="Asked"/>.</summary>
+    public List<string> AskedTexts { get; } = [];
+
     public bool Ask(string title, string text, string primary)
     {
         Asked.Add(title);
+        AskedTexts.Add(text);
         Asking?.Invoke();
         return Answer;
     }

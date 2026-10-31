@@ -461,6 +461,20 @@ public sealed partial class MainViewModel
             ?? new TweakItemViewModel(p.Status, Loc.Instance.Language, _services.Engine, this, profiled: p, profile: _state.Usage) { OffersIgnore = OffersIgnore(p, PlanTweakIds()) };
     }
 
+    /// <summary>
+    /// Goes to a group of the Tweaks page and opens it (ignored recommendations, Network). The search, the impact filter
+    /// and the narrow views could hide the group, so they are cleared first; the view that lists every tweak for this PC
+    /// stays, since an ignored tweak can be one the active profile does not rate. A group that is not shown opens nothing.
+    /// </summary>
+    private void RevealTweakGroup(string group)
+    {
+        TweakImpactMin = 0;
+        TweakSearch = "";
+        if (TweakViewMode != TweakView.Everything) TweakViewMode = TweakView.Applicable;
+        CurrentPage = Page.Tweaks;
+        OpenTweakGroup(group);
+    }
+
     public void BuildChanges()
     {
         var lang = Loc.Instance.Language;

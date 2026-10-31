@@ -27,8 +27,9 @@ public partial class ArchitectureTests
             if (name is "ReadOnlyContext.cs" or "ArchitectureTests.cs") continue;
             var text = File.ReadAllText(file);
             if (text.Contains("SystemNotify.CreateContext(", StringComparison.Ordinal)) problems.Add($"{name}: SystemNotify.CreateContext (use ReadOnlyContext.Create)");
-            // The app's services build the real adapters (and unload Default profile hives when elevated); the window needs them.
-            if (text.Contains("new AppServices(", StringComparison.Ordinal)) problems.Add($"{name}: new AppServices (test the page or ScanState with fakes)");
+            // The app's own services build the real adapters (and unload Default profile hives when elevated); the window needs
+            // them. Tests use the constructor that takes the fakes (AppFixture in Optimizer.App.Tests).
+            if (RealAppServices().Match(text) is { Success: true } services) problems.Add($"{name}: {services.Value} (use AppFixture, the services on fakes)");
             if (text.Contains("new MainViewModel(", StringComparison.Ordinal)) problems.Add($"{name}: new MainViewModel (test ScanState with a fake scan source)");
             foreach (Match m in RealAdapter().Matches(text)) problems.Add($"{name}: {m.Value} (use ReadOnlyContext.Create)");
             if (LauncherStart().Match(text) is { Success: true } start && !AllowedToolRuns.ContainsKey(name))
@@ -38,6 +39,14 @@ public partial class ArchitectureTests
         }
         Assert.Empty(problems);
     }
+
+    /// <summary>The guard above stops the services with the real adapters, not the constructor that takes the fakes.</summary>
+    [Theory]
+    [InlineData("var services = new AppServices();", true)]
+    [InlineData("private readonly AppServices _services = new ( );", true)]
+    [InlineData("AppServices services = new();", true)]
+    [InlineData("Services = new AppServices(Engine.Context, Engine.Store, elevation, Engine.RestorePoints, Engine.ChangeLock, os);", false)]
+    public void TheServicesGuardStopsOnlyTheRealConstructor(string code, bool real) => Assert.Equal(real, RealAppServices().IsMatch(code));
 
     /// <summary>
     /// The window's scan and plan state is tested without the window (ScanStateTests): it names no WPF type, no UI text and
@@ -215,6 +224,10 @@ public partial class ArchitectureTests
     /// <summary>The ProcessLauncher methods that start a real process.</summary>
     [GeneratedRegex(@"ProcessLauncher\.(RunStreamingAsync|Run|Start|StartDetached)\(")]
     private static partial Regex LauncherStart();
+
+    /// <summary>The app's services with the real adapters: "new AppServices()" or "AppServices services = new()".</summary>
+    [GeneratedRegex(@"new\s+AppServices\s*\(\s*\)|\bAppServices\s+\w+\s*=\s*new\s*\(\s*\)")]
+    private static partial Regex RealAppServices();
 
     /// <summary>The real adapter classes (SystemPowerManager, SystemBcdStore, SystemRegistryRoots and the others).</summary>
     [GeneratedRegex(@"new System[A-Z][A-Za-z]*(Manager|Store|Scheduler|Roots|Runner|Settings)\(")]

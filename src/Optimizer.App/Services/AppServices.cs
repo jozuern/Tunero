@@ -34,11 +34,29 @@ public sealed class AppServices
         Log.Info("app", "services ready", new { Elevation.IsElevated, Elevation.AdministratorProtection, user = Elevation.SessionUser });
     }
 
+    /// <summary>
+    /// For tests: the services on the adapters, store, restore points and change lock given (fakes and a registry sandbox).
+    /// Unlike the app's constructor it reads nothing from this PC (no Windows build, no network adapters, no elevation)
+    /// and unloads no leftover Default profile hive; everything else, <see cref="ProfilePath"/> too, reads through
+    /// <paramref name="context"/> as in the app.
+    /// </summary>
+    internal AppServices(ActionContext context, BackupStore store, ElevationInfo elevation, IRestorePoints restorePoints, IChangeLock changeLock, BuildInfo os)
+    {
+        Elevation = elevation;
+        Os = os;
+        Store = store;
+        Context = context;
+        RestorePoints = restorePoints;
+        Engine = new TweakEngine(Context, Store, RestorePoints, Optimizer.Core.Platform.AppInfo.Text, Os.Build, Os.BuildString);
+        Session = new ChangeSession(Engine, RestorePoints, changeLock);
+        BcdValues = Elevation.IsElevated ? () => Context.Bcd.CurrentValues() : () => null;
+    }
+
     public ElevationInfo Elevation { get; }
     public BuildInfo Os { get; }
     public BackupStore Store { get; }
     public ActionContext Context { get; }
-    public RestorePointService RestorePoints { get; }
+    public IRestorePoints RestorePoints { get; }
     public TweakEngine Engine { get; }
 
     /// <summary>The steps of every change, shared by the window (<see cref="ChangeRunner"/>) and the command line.</summary>
@@ -89,10 +107,24 @@ public sealed class AppServices
     /// <summary>SID of the signed-in user (not the elevated account), for per-user paths and registry.</summary>
     public string? UserSid => Elevation.SessionUserSid ?? Elevation.ProcessUserSid;
 
-    /// <summary>Profile folder of the signed-in user, from the profile list.</summary>
-    public string? ProfilePath => UserSid is { } sid
-        ? Reg.HklmString($@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList\{sid}", "ProfileImagePath")
-        : null;
+    /// <summary>Profile folder of the signed-in user, from the profile list (through <see cref="Context"/>, so tests read their sandbox).</summary>
+    public string? ProfilePath
+    {
+        get
+        {
+            if (UserSid is not { } sid) return null;
+            try
+            {
+                using var key = Context.Registry.Open(Hive.Machine, $@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList\{sid}", writable: false);
+                return key?.GetValue("ProfileImagePath")?.ToString();
+            }
+            catch (Exception)
+            {
+                // As Reg.HklmString read it before: an unreadable profile list means no known profile folder.
+                return null;
+            }
+        }
+    }
 
     /// <summary>
     /// Expands per-user paths and command lines for the signed-in user (<see cref="UserSid"/>, <see cref="ProfilePath"/>),

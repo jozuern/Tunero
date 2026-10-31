@@ -174,14 +174,20 @@ public sealed partial class ServicesViewModel(IPageHost owner, AppServices servi
 
     private IReadOnlyList<ServiceRow>? _serviceRows;
 
+    /// <summary>
+    /// This PC's services (WMI for state and paths, the start types through the context) with the signatures of their
+    /// files; tests give their own list.
+    /// </summary>
+    internal Func<IReadOnlyList<ServiceRow>> ReadServices { get; init; } = () =>
+    {
+        var list = ServiceManager.List(services.Context.Services, CatalogData.Current.Services);
+        // Signature decides "Microsoft" for services the catalog does not explain.
+        return list.AsParallel().WithDegreeOfParallelism(4).Select(r => r.Note is null ? r with { Signature = SignatureVerifier.Verify(r.File) } : r).ToList();
+    };
+
     protected override async Task LoadAsync()
     {
-        _serviceRows = await Task.Run(() =>
-        {
-            var list = ServiceManager.List(services.Context.Services, CatalogData.Current.Services);
-            // Signature decides "Microsoft" for services the catalog does not explain.
-            return list.AsParallel().WithDegreeOfParallelism(4).Select(r => r.Note is null ? r with { Signature = SignatureVerifier.Verify(r.File) } : r).ToList();
-        });
+        _serviceRows = await Task.Run(ReadServices);
         ShowServices(_serviceRows);
 
         _taskList = await Task.Run(() => services.Context.Tasks.List());

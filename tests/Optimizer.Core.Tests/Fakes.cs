@@ -1,7 +1,10 @@
+using System.IO;
 using Microsoft.Win32;
 using Optimizer.Core.Actions;
 using Optimizer.Core.Backup;
 
+// Also compiled into Optimizer.App.Tests (a linked file), so it uses only Core's public types and names System.IO itself
+// (a WPF project has no implicit using for it).
 namespace Optimizer.Core.Tests;
 
 /// <summary>Registry sandbox under HKCU\Software\TuneroTest\&lt;guid&gt; with HKLM and HKU subtrees. Deleted on dispose.</summary>

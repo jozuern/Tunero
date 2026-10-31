@@ -213,15 +213,7 @@ public sealed partial class MainViewModel
 
     /// <summary>Graphics & DNS: the other network settings are tweaks, in the Network group of the Tweaks page.</summary>
     [RelayCommand]
-    private void OpenTweaksNetwork()
-    {
-        // Search, impact filter and the narrow views could hide the Network group (as ShowIgnoredTweaks clears them).
-        TweakImpactMin = 0;
-        TweakSearch = "";
-        if (TweakViewMode != TweakView.Everything) TweakViewMode = TweakView.Applicable;
-        CurrentPage = Page.Tweaks;
-        OpenTweakGroup("network");
-    }
+    private void OpenTweaksNetwork() => RevealTweakGroup("network");
 
     /// <summary>F5: reads the current page again (pages that load their own lists), else scans the PC again.</summary>
     [RelayCommand]

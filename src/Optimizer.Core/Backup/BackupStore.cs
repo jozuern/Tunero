@@ -98,6 +98,12 @@ public sealed class PendingUndo
     public List<BackupEntry> Entries { get; init; } = [];
 }
 
+/// <summary>A backup file whose originals cannot be read now, and why.</summary>
+public sealed record UnreadableBackup(string File, string Reason);
+
+/// <summary>What one read of the backup folders found (<see cref="BackupStore.ReadAll"/>).</summary>
+public sealed record BackupFolderRead(IReadOnlyList<TweakBackup> Own, IReadOnlySet<string> OtherAccounts, IReadOnlyList<UnreadableBackup> Unreadable);
+
 /// <summary>
 /// JSON backups in %ProgramData%\Tunero\backups. The folder is locked to Administrators + SYSTEM (no inheritance):
 /// an elevated app restoring values from user-writable files would be a privilege-escalation path. The data folder is
@@ -105,12 +111,6 @@ public sealed class PendingUndo
 /// lives in backups\users\&lt;SID&gt; and is seen only when the app runs for that account; otherwise a second account
 /// would take the first account's originals for its own.
 /// </summary>
-/// <summary>A backup file whose originals cannot be read now, and why.</summary>
-public sealed record UnreadableBackup(string File, string Reason);
-
-/// <summary>What one read of the backup folders found (<see cref="BackupStore.ReadAll"/>).</summary>
-public sealed record BackupFolderRead(IReadOnlyList<TweakBackup> Own, IReadOnlySet<string> OtherAccounts, IReadOnlyList<UnreadableBackup> Unreadable);
-
 public sealed class BackupStore
 {
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true };

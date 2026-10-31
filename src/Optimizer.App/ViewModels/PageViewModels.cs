@@ -474,7 +474,7 @@ public sealed partial class NetworkViewModel(IPageHost owner, AppServices servic
         IReadOnlyList<System.Net.IPAddress> servers;
         try
         {
-            servers = await Task.Run(DnsBenchmark.CurrentServers);
+            servers = await Task.Run(CurrentServers);
         }
         catch (Exception)
         {
@@ -489,6 +489,9 @@ public sealed partial class NetworkViewModel(IPageHost owner, AppServices servic
     }
 
     [ObservableProperty] private string? _currentDnsDetail;
+
+    /// <summary>The DNS servers of this PC's network adapters; tests give their own.</summary>
+    internal Func<IReadOnlyList<System.Net.IPAddress>> CurrentServers { get; init; } = DnsBenchmark.CurrentServers;
 
     /// <summary>An address in the home network: private IPv4 ranges, link-local or unique-local IPv6.</summary>
     private static bool IsLocal(System.Net.IPAddress a)
@@ -518,7 +521,7 @@ public sealed partial class NetworkViewModel(IPageHost owner, AppServices servic
         DnsResults.Clear();
         try
         {
-            var current = (await Task.Run(DnsBenchmark.CurrentServers)).Select((a, i) => (Loc.Instance.Format("Net_CurrentServer", i + 1), a));
+            var current = (await Task.Run(CurrentServers)).Select((a, i) => (Loc.Instance.Format("Net_CurrentServer", i + 1), a));
             var servers = current.Concat(DnsBenchmark.PublicServers).DistinctBy(s => s.Item2).ToList();
             var progress = new Progress<string>(name => BenchmarkStatus = Loc.Instance.Format("Net_Testing", name));
             var results = await Task.Run(() => DnsBenchmark.RunAsync(servers, 2, progress));
@@ -616,6 +619,12 @@ public sealed partial class DebloatViewModel(IPageHost owner, AppServices servic
     protected override bool UsesProfile => true;
     private Optimizer.Core.Debloat.DebloatService Service => new(services.Context.Processes, AppServices.DataFolder);
 
+    /// <summary>OneDrive's state (its files under Program Files and the profile, the account folders); tests give their own.</summary>
+    internal Func<Optimizer.Core.Debloat.OneDriveState> ReadOneDrive { get; init; } = () => Optimizer.Core.Debloat.OneDrive.Read(services.Context.Registry, services.ProfilePath);
+
+    /// <summary>Edge's state (its uninstall entry and Windows' region policy file in System32); tests give their own.</summary>
+    internal Func<Optimizer.Core.Debloat.EdgeState> ReadEdge { get; init; } = () => Optimizer.Core.Debloat.Edge.Read(services.Context.Registry);
+
     public ObservableCollection<DebloatItem> Items { get; } = [];
     public ObservableCollection<RemovedRow> Removed { get; } = [];
 
@@ -690,9 +699,9 @@ public sealed partial class DebloatViewModel(IPageHost owner, AppServices servic
             var service = Service;
             var installed = service.ListInstalled(allUsers: elevated);
             var offer = profile is null ? [] : Optimizer.Core.Debloat.DebloatService.Offer(Optimizer.Core.Catalog.CatalogData.Current.Appx, installed, profile, Optimizer.Core.Catalog.CatalogData.Current);
-            var state = Optimizer.Core.Debloat.OneDrive.Read(services.Context.Registry, services.ProfilePath);
+            var state = ReadOneDrive();
             var removedList = service.Removed();
-            var edge = Optimizer.Core.Debloat.Edge.Read(services.Context.Registry);
+            var edge = ReadEdge();
             return new DebloatData(offer, removedList, state, edge, Optimizer.Core.Debloat.DebloatService.CameBack(removedList, installed),
                 Optimizer.Core.Debloat.DebloatService.Unreviewed(Optimizer.Core.Catalog.CatalogData.Current.Appx, installed));
         });
@@ -845,7 +854,7 @@ public sealed partial class DebloatViewModel(IPageHost owner, AppServices servic
     [RelayCommand]
     private async Task UninstallOneDriveAsync()
     {
-        var state = await Task.Run(() => Optimizer.Core.Debloat.OneDrive.Read(services.Context.Registry, services.ProfilePath));
+        var state = await Task.Run(ReadOneDrive);
         if (state.BlockKey is { } block)
         {
             Owner.ShowResult(Labels.Current.Get(Lang, block));
@@ -876,7 +885,7 @@ public sealed partial class DebloatViewModel(IPageHost owner, AppServices servic
     [RelayCommand]
     private async Task RemoveEdgeAsync()
     {
-        var state = await Task.Run(() => Optimizer.Core.Debloat.Edge.Read(services.Context.Registry));
+        var state = await Task.Run(ReadEdge);
         if (state.BlockKey is { } block)
         {
             Owner.ShowResult(Labels.Current.Get(Lang, block));

@@ -21,6 +21,9 @@
   <ItemGroup>
     <!-- The record walker of the install media completeness guards, shared with Optimizer.Core.Tests. -->
     <Compile Include="..\Optimizer.Core.Tests\RecordLeaves.cs" Link="RecordLeaves.cs" />
+    <!-- The registry sandbox and the fake system adapters, for the page view models on AppServices built from them (AppFixture). -->
+    <Compile Include="..\Optimizer.Core.Tests\Fakes.cs" Link="Fakes.cs" />
+    <Compile Include="..\Optimizer.Core.Tests\TestFolders.cs" Link="TestFolders.cs" />
   </ItemGroup>
 
   <ItemGroup>
