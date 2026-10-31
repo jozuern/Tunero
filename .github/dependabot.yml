@@ -2,10 +2,11 @@
 # npm packages, one grouped pull request per ecosystem (security updates come at once and on their own). Versions of
 # actions and packages are proposed only once they are a week old: a hijacked release is usually found and pulled
 # within days. The SDK has no wait, since it comes from Microsoft and carries security fixes.
-# Merge them on GitHub once their checks pass: "Version raised" on main lets Dependabot's commits and GitHub's merge
-# commits keep the version, and the next local commit raises it (CONTRIBUTING, "Dependency updates").
-# A new SDK ships a new runtime and a NuGet package a new version: both fail EveryShippedPackageHasItsLicense until
-# licenses.json and THIRD-PARTY-NOTICES.md name the new version.
+# Actions and npm: merge them on GitHub once their checks pass. "Version raised" on main lets Dependabot's commits and
+# GitHub's merge commits keep the version, and the next local commit raises it (CONTRIBUTING, "Dependency updates").
+# NuGet and the SDK never pass as they come: CI restores in locked mode (NU1004 until the lock files are written again)
+# and EveryShippedPackageHasItsLicense wants the new version in licenses.json and THIRD-PARTY-NOTICES.md. Make those
+# updates locally and push; Dependabot then closes its pull request. dependabot-note.yml posts the steps on each one.
 version: 2
 updates:
   # Weekly: a new SDK carries the month's runtime security fixes, which the exe ships.

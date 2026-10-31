@@ -1,0 +1,44 @@
+# Dependabot's NuGet and .NET SDK pull requests cannot pass Build and test as they come: CI restores in locked mode
+# (NU1004 until every packages.lock.json is written again) and EveryShippedPackageHasItsLicense expects the new version in
+# the license files. Both need a local commit (CONTRIBUTING, "Dependency updates"). This posts those steps on the pull
+# request when it opens, so a red one is not merged on GitHub by mistake, as #6 was on 2026-10-31.
+# It checks out nothing and runs nothing from the pull request: it only comments, with the preinstalled gh.
+name: Dependabot note
+
+on:
+  pull_request:
+    types: [opened, reopened]
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  note:
+    if: >-
+      github.event.pull_request.user.login == 'dependabot[bot]' &&
+      (startsWith(github.head_ref, 'dependabot/nuget/') || startsWith(github.head_ref, 'dependabot/dotnet_sdk/'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      pull-requests: write
+    steps:
+    - name: Comment the local steps
+      env:
+        GH_TOKEN: ${{ github.token }}
+        GH_REPO: ${{ github.repository }}
+        PR: ${{ github.event.pull_request.number }}
+      run: |
+        gh pr comment "$PR" --body-file - <<'EOF'
+        **Do not merge this here: it cannot pass Build and test as it is.**
+
+        A NuGet or .NET SDK update needs a local commit: CI restores in locked mode, so every `packages.lock.json` has to be written again (NU1004 until then), and `EveryShippedPackageHasItsLicense` expects the new version in `src/Optimizer.App/Licenses/licenses.json` and `docs/THIRD-PARTY-NOTICES.md` (for the SDK: the runtime it bundles).
+
+        On `main`, with the hooks on:
+
+        1. `gh pr diff <this number> | git apply` (for the SDK, install that SDK too)
+        2. `dotnet restore --force-evaluate`
+        3. the new version in `licenses.json` and `THIRD-PARTY-NOTICES.md`; check that the license did not change
+        4. `dotnet build -c Release`, then `dotnet test -c Release --no-build --filter "Category!=Hardware"`
+        5. commit and push: Dependabot closes this pull request once `main` has the update
+        EOF
