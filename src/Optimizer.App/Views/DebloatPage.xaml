@@ -30,7 +30,7 @@
             </StackPanel>
         </DockPanel>
 
-        <TabControl Grid.Row="1" ItemContainerStyle="{StaticResource SelectorTab}" SelectedIndex="{Binding DebloatTab}">
+        <TabControl Grid.Row="1" Style="{StaticResource SelectorTabs}" SelectedIndex="{Binding DebloatTab}">
             <TabItem Header="{l:Tr Debloat_TabStore}">
                 <Grid>
                     <Grid.RowDefinitions>
@@ -41,7 +41,7 @@
                     <StackPanel Margin="0,8,0,0">
                         <!-- What is offered and that removing cannot be undone here: a plain note, the info bars below are for states -->
                         <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Debloat_TabNote}" TextWrapping="Wrap" />
-                        <ui:InfoBar Title="" Message="{l:Tr Banner_AdminToApply}" Severity="Warning" IsClosable="False"
+                        <ui:InfoBar Title="" Message="{l:Tr Debloat_AdminToRemove}" Severity="Warning" IsClosable="False"
                                     IsOpen="{Binding IsElevated, Converter={StaticResource InverseBool}}" Margin="0,8,0,0" />
                         <ui:InfoBar Title="" Message="{Binding Debloat.CameBackText}" Severity="Warning" IsClosable="False" Margin="0,8,0,0"
                                     IsOpen="{Binding Debloat.CameBackText, Converter={StaticResource NullToBool}}" />
@@ -161,7 +161,8 @@
                             <ui:CardControl.Header>
                                 <StackPanel>
                                     <ui:TextBlock FontTypography="BodyStrong" Text="OneDrive" />
-                                    <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding Debloat.OneDriveText}" Margin="0,4,0,0" />
+                                    <!-- Empty while the page reads: no blank line, as on the Edge card -->
+                                    <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding Debloat.OneDriveText}" Margin="0,4,0,0" Visibility="{Binding Debloat.OneDriveText, Converter={StaticResource NullToVisibility}}" />
                                     <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource SystemFillColorCautionBrush}" Text="{Binding Debloat.OneDriveBlock}" TextWrapping="Wrap"
                                                   Margin="0,4,0,0" Visibility="{Binding Debloat.OneDriveBlock, Converter={StaticResource NullToVisibility}}" />
                                 </StackPanel>

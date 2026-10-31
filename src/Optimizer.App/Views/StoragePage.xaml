@@ -138,7 +138,7 @@
             <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Storage_EmptyTitle}" TextAlignment="Center" TextWrapping="Wrap" Margin="0,16,0,0" />
             <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding Storage.EmptyHint}" TextAlignment="Center" TextWrapping="Wrap" Margin="0,4,0,0" />
         </StackPanel>
-        <TabControl Grid.Row="1" ItemContainerStyle="{StaticResource SelectorTab}" SelectedIndex="{Binding Storage.Tab}"
+        <TabControl Grid.Row="1" Style="{StaticResource SelectorTabs}" SelectedIndex="{Binding Storage.Tab}"
                     Visibility="{Binding Storage.HasResult, Converter={StaticResource BoolToVisibility}}">
             <TabItem Header="{l:Tr Storage_TabFolders}">
                 <!-- Wide: list and map side by side, as tall as the tab (the scroll viewer gives its height). Narrow: the map

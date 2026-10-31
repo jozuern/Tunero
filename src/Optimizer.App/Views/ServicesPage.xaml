@@ -19,7 +19,7 @@
             </StackPanel>
         </DockPanel>
 
-        <TabControl Grid.Row="1" ItemContainerStyle="{StaticResource SelectorTab}" SelectedIndex="{Binding ServicesTab}">
+        <TabControl Grid.Row="1" Style="{StaticResource SelectorTabs}" SelectedIndex="{Binding ServicesTab}">
             <TabItem Header="{l:Tr Svc_TabServices}">
                 <Grid Margin="0,8,0,0">
                     <Grid.RowDefinitions>

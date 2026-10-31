@@ -614,7 +614,7 @@
                 </Grid.ColumnDefinitions>
                 <StackPanel VerticalAlignment="Center">
                     <ui:TextBlock FontTypography="BodyStrong" Text="{Binding InstallMedia.SummaryText}" TextWrapping="Wrap" />
-                    <!-- Each part on its own, side by side: a line breaks between two parts, never inside one ("Zu installierende /
+                    <!-- Each part on its own, side by side: a line breaks between two parts, never inside one ("zu installierende /
                          Apps: 2"). Read as one text by screen readers (the name of the list). -->
                     <ItemsControl ItemsSource="{Binding InstallMedia.SummaryChangeParts}" Margin="0,2,0,0" Focusable="False"
                                   AutomationProperties.Name="{Binding InstallMedia.SummaryChangesText}"

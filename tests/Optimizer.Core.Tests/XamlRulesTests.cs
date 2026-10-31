@@ -32,6 +32,25 @@ public partial class XamlRulesTests
     }
 
     /// <summary>
+    /// Tab headers stand in one row that never wraps (SelectorTabs and SelectorTabHeaders in App.xaml): WPF's TabPanel, also
+    /// inside WPF-UI's TabControl template, broke a long row into two, stretched the tabs and moved the selected row down.
+    /// </summary>
+    [Fact]
+    public void TabRowsNeverWrap()
+    {
+        var offenders = new List<string>();
+        foreach (var (relative, doc) in AppXaml())
+        {
+            foreach (var panel in doc.Descendants(Presentation + "TabPanel"))
+                offenders.Add($"{relative}:{((IXmlLineInfo)panel).LineNumber}: a TabPanel (wraps; use the SelectorTabs style)");
+            foreach (var tabs in doc.Descendants(Presentation + "TabControl"))
+                if ((string?)tabs.Attribute("Style") != "{StaticResource SelectorTabs}" && (string?)tabs.Attribute("Template") != "{StaticResource SelectorTabHeaders}")
+                    offenders.Add($"{relative}:{((IXmlLineInfo)tabs).LineNumber}: a TabControl without the SelectorTabs style");
+        }
+        Assert.Empty(offenders);
+    }
+
+    /// <summary>
     /// The navigation rail uses NavItem and NavHeader (Views/NavItem.cs): WPF-UI's own item gives screen readers no way to
     /// open a page, and its heading is not read at all. Both need the switch that removes the ItemsControl's item wrapper.
     /// </summary>

@@ -26,12 +26,7 @@
         <!-- The selector bar of the other pages with tabs, headers only: every tab shows the card and the list below,
              filtered to its entries. Each header counts what it shows under the search and filters. -->
         <TabControl Grid.Row="1" ItemsSource="{Binding Startup.Tabs}" SelectedIndex="{Binding Startup.SelectedTab}" ItemContainerStyle="{StaticResource SelectorTab}"
-                    Margin="0,0,0,8" AutomationProperties.Name="{l:Tr Startup_Groups}">
-            <TabControl.Template>
-                <ControlTemplate TargetType="TabControl">
-                    <TabPanel IsItemsHost="True" Background="Transparent" />
-                </ControlTemplate>
-            </TabControl.Template>
+                    Template="{StaticResource SelectorTabHeaders}" Margin="0,0,0,8" AutomationProperties.Name="{l:Tr Startup_Groups}">
             <TabControl.ItemTemplate>
                 <DataTemplate>
                     <TextBlock Text="{Binding Header}" />

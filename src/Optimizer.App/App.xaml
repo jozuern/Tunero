@@ -275,7 +275,7 @@
                         <ControlTemplate TargetType="TabItem">
                             <!-- The hand only on the header: set on the TabItem, it reached the whole tab's content too (a tab's
                                  content routes its mouse events through the TabItem), so every text and card showed as clickable -->
-                            <Border x:Name="Bg" Background="Transparent" CornerRadius="4" Padding="12,6,12,4" Margin="0,0,4,0" Cursor="Hand">
+                            <Border x:Name="Bg" Background="Transparent" CornerRadius="4" Padding="10,6,10,4" Margin="0,0,4,0" Cursor="Hand">
                                 <StackPanel>
                                     <ContentPresenter ContentSource="Header" HorizontalAlignment="Center" TextElement.Foreground="{TemplateBinding Foreground}" />
                                     <Border x:Name="Pill" Height="3" Width="16" CornerRadius="1.5" Margin="0,4,0,0" HorizontalAlignment="Center"
@@ -292,6 +292,57 @@
                                     <Setter Property="FontWeight" Value="SemiBold" />
                                 </Trigger>
                             </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- The row of tab headers: one line that never wraps. TabPanel broke a long row into two, stretched the tabs and
+                 moved the selected row down (Startup in German at the narrowest window); a row wider than the page scrolls
+                 sideways instead, and a tab reached by keyboard scrolls into view. The arrow keys move along the row as in TabPanel. -->
+            <Style x:Key="SelectorTabScroll" TargetType="ScrollViewer" BasedOn="{StaticResource {x:Type ScrollViewer}}">
+                <Setter Property="HorizontalScrollBarVisibility" Value="Auto" />
+                <Setter Property="VerticalScrollBarVisibility" Value="Disabled" />
+                <Setter Property="CanContentScroll" Value="False" />
+                <Setter Property="Focusable" Value="False" />
+                <Setter Property="PanningMode" Value="HorizontalOnly" />
+            </Style>
+            <Style x:Key="SelectorTabRow" TargetType="StackPanel">
+                <Setter Property="Orientation" Value="Horizontal" />
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="KeyboardNavigation.TabNavigation" Value="Once" />
+                <Setter Property="KeyboardNavigation.DirectionalNavigation" Value="Cycle" />
+                <Style.Triggers>
+                    <!-- The scroll bar under the tabs, not over the selected tab's accent line -->
+                    <DataTrigger Binding="{Binding ComputedHorizontalScrollBarVisibility, RelativeSource={RelativeSource AncestorType=ScrollViewer}}" Value="Visible">
+                        <Setter Property="Margin" Value="0,0,0,12" />
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+            <ControlTemplate x:Key="SelectorTabHeaders" TargetType="TabControl">
+                <ScrollViewer Style="{StaticResource SelectorTabScroll}">
+                    <StackPanel Style="{StaticResource SelectorTabRow}" IsItemsHost="True" />
+                </ScrollViewer>
+            </ControlTemplate>
+            <!-- A tab control with that row above the selected tab's content (the rest as in WPF-UI's own template) -->
+            <Style x:Key="SelectorTabs" TargetType="TabControl" BasedOn="{StaticResource {x:Type TabControl}}">
+                <Setter Property="ItemContainerStyle" Value="{StaticResource SelectorTab}" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="TabControl">
+                            <Grid KeyboardNavigation.TabNavigation="Local">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+                                <ScrollViewer Style="{StaticResource SelectorTabScroll}" KeyboardNavigation.TabIndex="1">
+                                    <StackPanel Style="{StaticResource SelectorTabRow}" IsItemsHost="True" />
+                                </ScrollViewer>
+                                <Border Grid.Row="1" BorderThickness="0,1,0,0" CornerRadius="0,4,4,4" BorderBrush="{TemplateBinding BorderBrush}" Background="{TemplateBinding Background}"
+                                        KeyboardNavigation.TabIndex="2" KeyboardNavigation.TabNavigation="Local" KeyboardNavigation.DirectionalNavigation="Contained">
+                                    <ContentPresenter x:Name="PART_SelectedContentHost" ContentSource="SelectedContent" />
+                                </Border>
+                            </Grid>
                         </ControlTemplate>
                     </Setter.Value>
                 </Setter>

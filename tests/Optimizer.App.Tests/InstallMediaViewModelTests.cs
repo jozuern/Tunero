@@ -299,13 +299,13 @@ public sealed class InstallMediaViewModelTests : IDisposable
         Assert.Contains("Anna", before);
         var count = media.AppRows.Count(r => r.IsChecked);
         Assert.True(count > 0);
-        Assert.Contains(Loc.Instance.Format("Media_Summary_Apps", count), before);
-        Assert.DoesNotContain(Loc.Instance.Format("Media_Summary_Apps", count), media.SummaryText);
+        Assert.Contains(Loc.Instance.Format("Media_Summary_Apps", count), before, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(Loc.Instance.Format("Media_Summary_Apps", count), media.SummaryText, StringComparison.OrdinalIgnoreCase);
 
         foreach (var row in media.AppGroups.First(g => g.Rows.Any(r => r.IsChecked)).Rows) row.IsChecked = false;
         Assert.Contains(nameof(InstallMediaViewModel.SummaryChangesText), changed);
         Assert.NotEqual(before, media.SummaryChangesText);
-        Assert.DoesNotContain(Loc.Instance.Format("Media_Summary_Apps", count), media.SummaryChangesText);
+        Assert.DoesNotContain(Loc.Instance.Format("Media_Summary_Apps", count), media.SummaryChangesText, StringComparison.OrdinalIgnoreCase);
 
         changed.Clear();
         media.AccountNameText = "Berta";
@@ -1552,7 +1552,7 @@ public sealed class InstallMediaViewModelTests : IDisposable
         Assert.Contains(nameof(InstallMediaViewModel.SummaryChangesText), changed);
         Assert.Contains(nameof(InstallMediaViewModel.NeededText), changed);
         Assert.NotEqual(bytes, media.NeededText);
-        Assert.Contains(Loc.Instance["Media_CompressionSmaller"], media.SummaryChangesText);
+        Assert.Contains(Loc.Instance["Media_Summary_Smaller"], media.SummaryChangesText, StringComparison.OrdinalIgnoreCase);
         Assert.Contains(media.ReviewRequest()!.Changes, l => l.Target == Loc.Instance["Media_CompressionTitle"]);
 
         _dialogs.SaveFile = Path.Combine(_root, "smaller.json");
@@ -1561,7 +1561,7 @@ public sealed class InstallMediaViewModelTests : IDisposable
 
         media.FasterBuild = true;
         Assert.False(media.SmallerIso);
-        Assert.DoesNotContain(Loc.Instance["Media_CompressionSmaller"], media.SummaryChangesText ?? "");
+        Assert.DoesNotContain(Loc.Instance["Media_Summary_Smaller"], media.SummaryChangesText ?? "", StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -1593,8 +1593,8 @@ public sealed class InstallMediaViewModelTests : IDisposable
         media.PreventDeviceEncryption = true;
         media.NoReservedStorage = true;
         Assert.Contains(nameof(InstallMediaViewModel.SummaryChangesText), changed);
-        Assert.Contains(Loc.Instance["Media_EncryptionTitle"], media.SummaryChangesText);
-        Assert.Contains(Loc.Instance["Media_ReservedTitle"], media.SummaryChangesText);
+        Assert.Contains(Loc.Instance["Media_Summary_Encryption"], media.SummaryChangesText, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(Loc.Instance["Media_Summary_Reserved"], media.SummaryChangesText, StringComparison.OrdinalIgnoreCase);
         var review = media.ReviewRequest()!;
         Assert.Contains(review.Changes, l => l.Target == Loc.Instance["Media_EncryptionTitle"]);
         Assert.Contains(review.Changes, l => l.Target == Loc.Instance["Media_ReservedTitle"]);
@@ -1638,7 +1638,7 @@ public sealed class InstallMediaViewModelTests : IDisposable
         media.RemoveParts = true;
         media.PartRows.First(r => r.Key == "recall").IsChecked = true;
         media.PartRows.First(r => r.Key == "speech").IsChecked = true;
-        Assert.Contains(Loc.Instance.Format("Media_PartsSummary", 2), media.SummaryChangesText);
+        Assert.Contains(Loc.Instance.Format("Media_Summary_Parts", 2), media.SummaryChangesText, StringComparison.OrdinalIgnoreCase);
         Assert.Contains(media.ReviewRequest()!.Changes, l => l.Target == Loc.Instance["Media_PartsTitle"] && l.After.Contains("Recall"));
 
         _dialogs.SaveFile = Path.Combine(_root, "parts.json");
@@ -1711,7 +1711,7 @@ public sealed class InstallMediaViewModelTests : IDisposable
 
         media.AllowUnsupported = true;
         media.AllowUnsupportedUpgrades = true;
-        Assert.Contains(Loc.Instance["Media_UpgradesTitle"], media.SummaryChangesText);
+        Assert.Contains(Loc.Instance["Media_Summary_Upgrades"], media.SummaryChangesText, StringComparison.OrdinalIgnoreCase);
         Assert.Contains(media.ReviewRequest()!.Changes, l => l.Target == Loc.Instance["Media_UpgradesTitle"]);
         _dialogs.SaveFile = Path.Combine(_root, "upgrades.json");
         media.SaveChoicesCommand.Execute(null);

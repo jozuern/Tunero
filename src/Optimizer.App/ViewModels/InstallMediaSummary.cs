@@ -19,7 +19,7 @@ internal static class InstallMediaSummary
 {
     private static Loc T => Loc.Instance;
 
-    /// <summary>The image: "Windows 11 Pro 26300.9711, Language German (Germany)". The space it needs is the caption below it.</summary>
+    /// <summary>The image: "Windows 11 Pro 26300.9711, language German (Germany)". The space it needs is the caption below it.</summary>
     public static string Bar(MediaChoices c, string editionTitle, string? build)
     {
         var parts = new List<string> { EditionText(editionTitle, build) };
@@ -27,12 +27,14 @@ internal static class InstallMediaSummary
         return string.Join(", ", parts);
     }
 
-    /// <summary>What goes into the image: "Apps to remove: 18, Account Anna, Profile Office"; null when nothing does.</summary>
+    /// <summary>What goes into the image: "Apps to remove: 18, account Anna, profile Office"; null when nothing does.</summary>
     public static string? BarChanges(MediaChoices c) => BarChangeParts(c) is { Count: > 0 } parts ? string.Join(", ", parts) : null;
 
     /// <summary>
     /// The parts of <see cref="BarChanges"/> one by one: the page sets each on its own, so a line breaks between two parts
-    /// and never inside one ("Apps to install: 2").
+    /// and never inside one ("apps to install: 2"). The line reads as one sentence: the Media_Summary_ texts are written as
+    /// they continue it after a comma (lower case in English, and in German unless the part starts with a noun), and the
+    /// first part starts with a capital.
     /// </summary>
     public static IReadOnlyList<string> BarChangeParts(MediaChoices c)
     {
@@ -40,20 +42,25 @@ internal static class InstallMediaSummary
         if (c.RemoveApps.Count > 0) parts.Add(T.Format("Media_Summary_Apps", c.RemoveApps.Count));
         if (c.RemoveUnreviewed.Count > 0) parts.Add(T.Format("Media_Summary_Unreviewed", c.RemoveUnreviewed.Count));
         // Counted as the review names them: with the parts another chosen part takes along.
-        if (c.RemoveParts.Count > 0) parts.Add(T.Format("Media_PartsSummary", MediaParts.WithImplied(CatalogData.Current.MediaParts, c.RemoveParts).Count));
+        if (c.RemoveParts.Count > 0) parts.Add(T.Format("Media_Summary_Parts", MediaParts.WithImplied(CatalogData.Current.MediaParts, c.RemoveParts).Count));
         if (c.SkipSetup && c.AccountName?.Trim() is { Length: > 0 } account) parts.Add(T.Format("Media_Summary_Account", account));
         if (c.Tunero is { } copy)
         {
             parts.Add(T.Format("Media_Summary_Profile", ProfileTitle(copy)));
-            if (c.InstallApps.Count > 0) parts.Add(T.Format("Media_InstallSummary", c.InstallApps.Count));
+            if (c.InstallApps.Count > 0) parts.Add(T.Format("Media_Summary_Install", c.InstallApps.Count));
         }
-        if (c.Compression == MediaCompression.Recovery) parts.Add(T["Media_CompressionSmaller"]);
-        if (c.AllowUnsupported) parts.Add(T["Media_UnsupportedTitle"]);
-        if (c.Settings.AllowUnsupportedUpgrades) parts.Add(T["Media_UpgradesTitle"]);
-        if (c.Settings.PreventDeviceEncryption) parts.Add(T["Media_EncryptionTitle"]);
-        if (c.Settings.NoReservedStorage) parts.Add(T["Media_ReservedTitle"]);
+        if (c.Compression == MediaCompression.Recovery) parts.Add(T["Media_Summary_Smaller"]);
+        if (c.AllowUnsupported) parts.Add(T["Media_Summary_Unsupported"]);
+        if (c.Settings.AllowUnsupportedUpgrades) parts.Add(T["Media_Summary_Upgrades"]);
+        if (c.Settings.PreventDeviceEncryption) parts.Add(T["Media_Summary_Encryption"]);
+        if (c.Settings.NoReservedStorage) parts.Add(T["Media_Summary_Reserved"]);
+        if (parts.Count > 0) parts[0] = Capitalized(parts[0]);
         return parts;
     }
+
+    /// <summary>"apps to remove: 18" at the start of the line: "Apps to remove: 18".</summary>
+    private static string Capitalized(string text) =>
+        text.Length == 0 ? text : char.ToUpper(text[0], CultureInfo.GetCultureInfo(T.Language)) + text[1..];
 
     /// <summary>
     /// The question before the build: the source and the output file, one line for every choice that is on, and the texts of

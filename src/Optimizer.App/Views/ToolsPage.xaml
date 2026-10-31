@@ -45,7 +45,7 @@
             <ui:TextBlock Style="{StaticResource PageTitle}" Text="{l:Tr Tools_Title}" />
             <ui:TextBlock Style="{StaticResource PageIntro}" Text="{l:Tr Tools_Hint}" />
         </StackPanel>
-        <TabControl Grid.Row="1" ItemContainerStyle="{StaticResource SelectorTab}" SelectedIndex="{Binding ToolsTab}">
+        <TabControl Grid.Row="1" Style="{StaticResource SelectorTabs}" SelectedIndex="{Binding ToolsTab}">
             <TabItem Header="{l:Tr Quick_TabFixes}">
                 <ScrollViewer Style="{StaticResource EdgeTabScroll}">
                     <StackPanel Style="{StaticResource EdgeContent}">

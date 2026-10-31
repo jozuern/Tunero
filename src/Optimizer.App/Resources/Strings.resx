@@ -27,6 +27,7 @@
   <data name="Hw_Display" xml:space="preserve"><value>Display</value></data>
   <data name="Hw_BuiltInDisplay" xml:space="preserve"><value>Built-in display</value></data>
   <data name="Hw_DisplayNumber" xml:space="preserve"><value>Display {0}</value></data>
+  <data name="Hw_DisplayCount" xml:space="preserve"><value>{0} displays</value></data>
   <data name="Hw_Firmware" xml:space="preserve"><value>Firmware &amp; security</value></data>
   <data name="Hw_Board" xml:space="preserve"><value>Mainboard</value></data>
   <data name="Hw_Power" xml:space="preserve"><value>Power</value></data>
@@ -1564,6 +1565,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Tweaks_ProfileLink" xml:space="preserve"><value>Profile: {0} (change on the overview)</value></data>
   <data name="Rec_EmptyButExcluded" xml:space="preserve"><value>Nothing can be applied in one click right now. The changes that would help are listed below, with what they need first.</value></data>
   <data name="Debloat_TabNote" xml:space="preserve"><value>Only apps from a reviewed list are offered, never parts of Windows. Apps that installed games need stay locked. Removing cannot be undone here; for apps still in the Microsoft Store, Removed apps below keeps a link to install them again.</value></data>
+  <data name="Debloat_AdminToRemove" xml:space="preserve"><value>Removing apps needs administrator rights. Start Tunero as administrator.</value></data>
   <data name="Debloat_RemoveName" xml:space="preserve"><value>Remove {0}</value></data>
   <data name="Programs_UninstallName" xml:space="preserve"><value>Uninstall {0}</value></data>
   <data name="Programs_SelectName" xml:space="preserve"><value>Select {0}</value></data>
@@ -2105,11 +2107,18 @@ The files are deleted permanently. Files in use are skipped.</value>
     <value>Microsoft's image of this edition holds no apps beyond the reviewed list: this is for your own ISO, such as one from a PC maker.</value>
   </data>
   <data name="Media_Summary_Edition" xml:space="preserve"><value>{0} {1}</value></data>
-  <data name="Media_Summary_Language" xml:space="preserve"><value>Language {0}</value></data>
-  <data name="Media_Summary_Apps" xml:space="preserve"><value>Apps to remove: {0}</value></data>
-  <data name="Media_Summary_Unreviewed" xml:space="preserve"><value>Unreviewed apps to remove: {0}</value></data>
-  <data name="Media_Summary_Account" xml:space="preserve"><value>Account {0}</value></data>
-  <data name="Media_Summary_Profile" xml:space="preserve"><value>Profile {0}</value></data>
+  <data name="Media_Summary_Language" xml:space="preserve"><value>language {0}</value></data>
+  <data name="Media_Summary_Apps" xml:space="preserve"><value>apps to remove: {0}</value></data>
+  <data name="Media_Summary_Unreviewed" xml:space="preserve"><value>unreviewed apps to remove: {0}</value></data>
+  <data name="Media_Summary_Account" xml:space="preserve"><value>account {0}</value></data>
+  <data name="Media_Summary_Profile" xml:space="preserve"><value>profile {0}</value></data>
+  <data name="Media_Summary_Parts" xml:space="preserve"><value>Windows parts to remove: {0}</value></data>
+  <data name="Media_Summary_Install" xml:space="preserve"><value>apps to install: {0}</value></data>
+  <data name="Media_Summary_Smaller" xml:space="preserve"><value>smaller ISO</value></data>
+  <data name="Media_Summary_Unsupported" xml:space="preserve"><value>allow unsupported PCs</value></data>
+  <data name="Media_Summary_Upgrades" xml:space="preserve"><value>allow later upgrades on unsupported PCs</value></data>
+  <data name="Media_Summary_Encryption" xml:space="preserve"><value>keep device encryption off</value></data>
+  <data name="Media_Summary_Reserved" xml:space="preserve"><value>no reserved storage</value></data>
   <data name="Media_Review_Title" xml:space="preserve"><value>Build this ISO?</value></data>
   <data name="Media_Review_Summary" xml:space="preserve"><value>Source: {0}. Output file: {1}</value></data>
   <data name="Media_Review_SourceDownload" xml:space="preserve"><value>download from Microsoft</value></data>

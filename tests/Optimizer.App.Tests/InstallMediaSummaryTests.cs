@@ -8,6 +8,8 @@ using Optimizer.TestSupport;
 namespace Optimizer.App.Tests;
 
 /// <summary>The summary bar and the review before the build: pure text from the choices, nothing is read from this PC.</summary>
+// With the tests that switch the app's language: one test here does too.
+[Collection(nameof(ChangeGateCollection))]
 public sealed class InstallMediaSummaryTests
 {
     private static MediaChoices Choices(int apps = 0, string? account = null, bool allowUnsupported = false, string? profile = null, int unreviewed = 0, int install = 0, bool smaller = false)
@@ -36,11 +38,36 @@ public sealed class InstallMediaSummaryTests
         Assert.Contains(Loc.Instance.Format("Media_Summary_Language", new System.Globalization.CultureInfo("de-de").DisplayName), image);
         Assert.DoesNotContain(Loc.Instance.Format("Media_Summary_Apps", 18), image);
         var changes = Changes(choices);
-        Assert.StartsWith(Loc.Instance.Format("Media_Summary_Apps", 18), changes);
+        Assert.StartsWith(Loc.Instance.Format("Media_Summary_Apps", 18), changes, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("joshu", changes);
         Assert.Contains(Loc.Instance["Profile_gaming"], changes);
         // The space is the caption below the bar (NeededText), not a part of it.
         Assert.DoesNotContain(ByteSize.Format(21_400_000_000), image + changes);
+    }
+
+    /// <summary>
+    /// The changes line reads as one sentence in both languages: a capital only at its start and, in German, on the nouns
+    /// (not "Zu entfernende Apps: 8, Zu entfernende Windows-Bestandteile: 2").
+    /// </summary>
+    [Theory]
+    [InlineData("en", "Apps to remove: 3, Windows parts to remove: 2, account Anna, profile ", ", apps to install: 1, smaller ISO, allow unsupported PCs")]
+    [InlineData("de", "Zu entfernende Apps: 3, zu entfernende Windows-Bestandteile: 2, Konto Anna, Profil ", ", zu installierende Apps: 1, kleinere ISO-Datei, nicht unterstützte PCs zulassen")]
+    public void TheChangesLineReadsAsOneSentence(string language, string start, string end)
+    {
+        var before = Loc.Instance.Language;
+        Loc.Instance.SetLanguage(language);
+        try
+        {
+            var changes = Changes(Choices(apps: 3, account: "Anna", allowUnsupported: true, profile: "office", install: 1, smaller: true) with { RemoveParts = ["wordpad", "recall"] });
+            Assert.StartsWith(start, changes, StringComparison.Ordinal);
+            Assert.EndsWith(end, changes, StringComparison.Ordinal);
+            // The first part alone starts with a capital too.
+            Assert.StartsWith(language == "de" ? "Kleinere ISO-Datei" : "Smaller ISO", Changes(Choices(smaller: true)), StringComparison.Ordinal);
+        }
+        finally
+        {
+            Loc.Instance.SetLanguage(before);
+        }
     }
 
     [Fact]
@@ -54,26 +81,26 @@ public sealed class InstallMediaSummaryTests
     public void BarNamesUnsupportedPcsUnreviewedAppsAndAppsToInstall()
     {
         var off = Changes(Choices(apps: 1, profile: "office"));
-        Assert.DoesNotContain(Loc.Instance["Media_UnsupportedTitle"], off);
+        Assert.DoesNotContain(Loc.Instance["Media_Summary_Unsupported"], off, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(Loc.Instance.Format("Media_Summary_Unreviewed", 2), off);
-        Assert.DoesNotContain(Loc.Instance.Format("Media_InstallSummary", 3), off);
+        Assert.DoesNotContain(Loc.Instance.Format("Media_Summary_Install", 3), off, StringComparison.OrdinalIgnoreCase);
 
         var on = Changes(Choices(apps: 1, allowUnsupported: true, profile: "office", unreviewed: 2, install: 3));
-        Assert.Contains(Loc.Instance["Media_UnsupportedTitle"], on);
+        Assert.Contains(Loc.Instance["Media_Summary_Unsupported"], on, StringComparison.OrdinalIgnoreCase);
         Assert.Contains(Loc.Instance.Format("Media_Summary_Unreviewed", 2), on);
-        Assert.Contains(Loc.Instance.Format("Media_InstallSummary", 3), on);
+        Assert.Contains(Loc.Instance.Format("Media_Summary_Install", 3), on, StringComparison.OrdinalIgnoreCase);
         // Apps to install need the Tunero copy (the profile): without it nothing installs them.
-        Assert.DoesNotContain(Loc.Instance.Format("Media_InstallSummary", 3), Changes(Choices(apps: 1, install: 3)));
+        Assert.DoesNotContain(Loc.Instance.Format("Media_Summary_Install", 3), Changes(Choices(apps: 1, install: 3)), StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
     public void PartsAppearInTheBarAndTheReviewOnlyWhenChosen()
     {
-        Assert.DoesNotContain(Loc.Instance.Format("Media_PartsSummary", 0), Changes(Choices()));
+        Assert.DoesNotContain(Loc.Instance.Format("Media_Summary_Parts", 0), Changes(Choices()), StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(InstallMediaSummary.Review(Choices(), "Windows 11 Pro", null, 1).Changes, l => l.Target == Loc.Instance["Media_PartsTitle"]);
 
         var on = Choices() with { RemoveParts = ["wordpad", "recall"] };
-        Assert.Contains(Loc.Instance.Format("Media_PartsSummary", 2), Changes(on));
+        Assert.Contains(Loc.Instance.Format("Media_Summary_Parts", 2), Changes(on), StringComparison.OrdinalIgnoreCase);
         var review = InstallMediaSummary.Review(on, "Windows 11 Pro", null, 1);
         var line = Assert.Single(review.Changes, l => l.Target == Loc.Instance["Media_PartsTitle"]);
         Assert.Contains("WordPad", line.After);
@@ -86,7 +113,7 @@ public sealed class InstallMediaSummaryTests
     {
         var only = InstallMediaSummary.Review(Choices() with { RemoveParts = ["textToSpeech"] }, "Windows 11 Pro", null, 1);
         // The bar counts what the review names.
-        Assert.Contains(Loc.Instance.Format("Media_PartsSummary", 2), Changes(Choices() with { RemoveParts = ["textToSpeech"] }));
+        Assert.Contains(Loc.Instance.Format("Media_Summary_Parts", 2), Changes(Choices() with { RemoveParts = ["textToSpeech"] }), StringComparison.OrdinalIgnoreCase);
         var line = Assert.Single(only.Changes, l => l.Target == Loc.Instance["Media_PartsTitle"]).After;
         Assert.Contains(CatalogData.Current.MediaParts.Single(p => p.Id == "textToSpeech").Label("en"), line);
         Assert.Contains(CatalogData.Current.MediaParts.Single(p => p.Id == "speech").Label("en"), line);
@@ -99,8 +126,8 @@ public sealed class InstallMediaSummaryTests
     [Fact]
     public void BarSaysSmallerIsoOnlyWhenChosen()
     {
-        Assert.Contains(Loc.Instance["Media_CompressionSmaller"], Changes(Choices(smaller: true)));
-        Assert.DoesNotContain(Loc.Instance["Media_CompressionSmaller"], Changes(Choices()));
+        Assert.Contains(Loc.Instance["Media_Summary_Smaller"], Changes(Choices(smaller: true)), StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(Loc.Instance["Media_Summary_Smaller"], Changes(Choices()), StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -116,13 +143,13 @@ public sealed class InstallMediaSummaryTests
     public void TheImageSettingsAppearInTheBarTheReviewAndTheWarningsOnlyWhenOn()
     {
         var off = Choices();
-        Assert.DoesNotContain(Loc.Instance["Media_EncryptionTitle"], Changes(off));
+        Assert.DoesNotContain(Loc.Instance["Media_Summary_Encryption"], Changes(off), StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(InstallMediaSummary.Review(off, "Windows 11 Pro", null, 1).Changes, l => l.Target == Loc.Instance["Media_ReservedTitle"]);
 
         var on = off with { Settings = new(true, true, false) };
         var bar = Changes(on);
-        Assert.Contains(Loc.Instance["Media_EncryptionTitle"], bar);
-        Assert.Contains(Loc.Instance["Media_ReservedTitle"], bar);
+        Assert.Contains(Loc.Instance["Media_Summary_Encryption"], bar, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(Loc.Instance["Media_Summary_Reserved"], bar, StringComparison.OrdinalIgnoreCase);
         var review = InstallMediaSummary.Review(on, "Windows 11 Pro", null, 1);
         Assert.Contains(review.Changes, l => l.Target == Loc.Instance["Media_EncryptionTitle"] && l.After == Loc.Instance["Media_Review_On"]);
         Assert.Contains(review.Changes, l => l.Target == Loc.Instance["Media_ReservedTitle"] && l.After == Loc.Instance["Media_Review_On"]);
@@ -134,10 +161,10 @@ public sealed class InstallMediaSummaryTests
     public void LaterUpgradesAppearInTheBarTheReviewAndTheWarnings()
     {
         var off = Choices(allowUnsupported: true);
-        Assert.DoesNotContain(Loc.Instance["Media_UpgradesTitle"], Changes(off));
+        Assert.DoesNotContain(Loc.Instance["Media_Summary_Upgrades"], Changes(off), StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(InstallMediaSummary.Review(off, "Windows 11 Pro", null, 1).Changes, l => l.Target == Loc.Instance["Media_UpgradesTitle"]);
         var on = off with { Settings = new(false, false, true) };
-        Assert.Contains(Loc.Instance["Media_UpgradesTitle"], Changes(on));
+        Assert.Contains(Loc.Instance["Media_Summary_Upgrades"], Changes(on), StringComparison.OrdinalIgnoreCase);
         var review = InstallMediaSummary.Review(on, "Windows 11 Pro", null, 1);
         Assert.Contains(review.Changes, l => l.Target == Loc.Instance["Media_UpgradesTitle"] && l.After == Loc.Instance["Media_Review_On"]);
         Assert.Contains(review.Warnings, w => w.Contains(Loc.Instance["Media_UpgradesText"], StringComparison.Ordinal));
@@ -287,7 +314,7 @@ public sealed class InstallMediaSummaryTests
         var parts = InstallMediaSummary.BarChangeParts(c);
         Assert.True(parts.Count >= 4);
         Assert.Equal(InstallMediaSummary.BarChanges(c), string.Join(", ", parts));
-        Assert.Contains(Loc.Instance.Format("Media_InstallSummary", 2), parts);
+        Assert.Contains(Loc.Instance.Format("Media_Summary_Install", 2), parts);
         Assert.Empty(InstallMediaSummary.BarChangeParts(Choices()));
     }
 

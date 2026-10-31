@@ -27,6 +27,7 @@
   <data name="Hw_Display" xml:space="preserve"><value>Bildschirm</value></data>
   <data name="Hw_BuiltInDisplay" xml:space="preserve"><value>Interner Bildschirm</value></data>
   <data name="Hw_DisplayNumber" xml:space="preserve"><value>Bildschirm {0}</value></data>
+  <data name="Hw_DisplayCount" xml:space="preserve"><value>{0} Bildschirme</value></data>
   <data name="Hw_Firmware" xml:space="preserve"><value>Firmware &amp; Sicherheit</value></data>
   <data name="Hw_Board" xml:space="preserve"><value>Mainboard</value></data>
   <data name="Hw_Power" xml:space="preserve"><value>Energie</value></data>
@@ -1564,6 +1565,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Tweaks_ProfileLink" xml:space="preserve"><value>Profil: {0} (auf der Übersicht ändern)</value></data>
   <data name="Rec_EmptyButExcluded" xml:space="preserve"><value>Gerade lässt sich nichts mit einem Klick anwenden. Die Änderungen, die helfen würden, stehen unten, mit dem, was sie vorher brauchen.</value></data>
   <data name="Debloat_TabNote" xml:space="preserve"><value>Angeboten werden nur Apps aus einer geprüften Liste, nie Teile von Windows. Apps, die installierte Spiele brauchen, bleiben gesperrt. Das Entfernen lässt sich hier nicht rückgängig machen; für Apps, die es noch im Microsoft Store gibt, steht unter „Entfernte Apps“ ein Link zum Neuinstallieren.</value></data>
+  <data name="Debloat_AdminToRemove" xml:space="preserve"><value>Apps zu entfernen braucht Administratorrechte. Starte Tunero als Administrator.</value></data>
   <data name="Debloat_RemoveName" xml:space="preserve"><value>{0} entfernen</value></data>
   <data name="Programs_UninstallName" xml:space="preserve"><value>{0} deinstallieren</value></data>
   <data name="Programs_SelectName" xml:space="preserve"><value>{0} auswählen</value></data>
@@ -2106,10 +2108,17 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   </data>
   <data name="Media_Summary_Edition" xml:space="preserve"><value>{0} {1}</value></data>
   <data name="Media_Summary_Language" xml:space="preserve"><value>Sprache {0}</value></data>
-  <data name="Media_Summary_Apps" xml:space="preserve"><value>Zu entfernende Apps: {0}</value></data>
-  <data name="Media_Summary_Unreviewed" xml:space="preserve"><value>Zu entfernende ungeprüfte Apps: {0}</value></data>
+  <data name="Media_Summary_Apps" xml:space="preserve"><value>zu entfernende Apps: {0}</value></data>
+  <data name="Media_Summary_Unreviewed" xml:space="preserve"><value>zu entfernende ungeprüfte Apps: {0}</value></data>
   <data name="Media_Summary_Account" xml:space="preserve"><value>Konto {0}</value></data>
   <data name="Media_Summary_Profile" xml:space="preserve"><value>Profil {0}</value></data>
+  <data name="Media_Summary_Parts" xml:space="preserve"><value>zu entfernende Windows-Bestandteile: {0}</value></data>
+  <data name="Media_Summary_Install" xml:space="preserve"><value>zu installierende Apps: {0}</value></data>
+  <data name="Media_Summary_Smaller" xml:space="preserve"><value>kleinere ISO-Datei</value></data>
+  <data name="Media_Summary_Unsupported" xml:space="preserve"><value>nicht unterstützte PCs zulassen</value></data>
+  <data name="Media_Summary_Upgrades" xml:space="preserve"><value>spätere Upgrades auf nicht unterstützten PCs erlauben</value></data>
+  <data name="Media_Summary_Encryption" xml:space="preserve"><value>Geräteverschlüsselung ausgeschaltet lassen</value></data>
+  <data name="Media_Summary_Reserved" xml:space="preserve"><value>kein reservierter Speicher</value></data>
   <data name="Media_Review_Title" xml:space="preserve"><value>Diese ISO erstellen?</value></data>
   <data name="Media_Review_Summary" xml:space="preserve"><value>Quelle: {0}. Ausgabedatei: {1}</value></data>
   <data name="Media_Review_SourceDownload" xml:space="preserve"><value>Download von Microsoft</value></data>

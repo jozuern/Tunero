@@ -260,8 +260,16 @@ public static class HardwareReport
             tiles.Add(new HwTile(l["Hw_Memory"], f.Gb(m.TotalBytes), detail, SymbolRegular.Ram20));
         }
         if (p.Displays is { Count: > 0 } d)
-            tiles.Add(new HwTile(d.Count == 1 ? l["Hw_Display"] : l["Hw_Displays"], string.Join("\n", d.Select(x => DisplayName(x, d, l))),
-                string.Join("\n", d.Select(x => $"{x.Width}×{x.Height}, {x.CurrentRefresh.Hz:0} Hz")), SymbolRegular.Desktop24));
+        {
+            // No-break spaces: a narrow tile breaks a line after the display's name, never inside "60 Hz"
+            static string Mode(DisplayInfo x) => $"{x.Width}×{x.Height},\u00A0{x.CurrentRefresh.Hz:0}\u00A0Hz";
+            // Several displays: the count as the value and one detail line per display, the primary first, so each mode
+            // stands next to its display's name (two names, then two modes, did not say which was whose).
+            tiles.Add(d.Count == 1
+                ? new HwTile(l["Hw_Display"], DisplayName(d[0], d, l), Mode(d[0]), SymbolRegular.Desktop24)
+                : new HwTile(l["Hw_Displays"], l.Format("Hw_DisplayCount", d.Count),
+                    string.Join("\n", d.OrderByDescending(x => x.IsPrimary).Select(x => $"{DisplayName(x, d, l)}: {Mode(x)}")), SymbolRegular.Desktop24));
+        }
         if (p.Firmware is { } fw)
             tiles.Add(new HwTile(l["Hw_Board"], $"{fw.BoardManufacturer} {fw.BoardProduct}".Trim(), $"BIOS {fw.BiosVersion}".Trim(), SymbolRegular.DeveloperBoardLightning20));
         tiles.Add(new HwTile(l["Hw_Os"], $"Windows 11 {p.Os.DisplayVersion}", $"{p.Os.Edition}, Build {p.Os.BuildString}", SymbolRegular.Window24));

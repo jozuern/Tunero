@@ -18,7 +18,7 @@
             </StackPanel>
         </DockPanel>
 
-        <TabControl Grid.Row="1" ItemContainerStyle="{StaticResource SelectorTab}" SelectedIndex="{Binding AppsTab}">
+        <TabControl Grid.Row="1" Style="{StaticResource SelectorTabs}" SelectedIndex="{Binding AppsTab}">
             <TabItem Header="{l:Tr Apps_TabApps}">
                 <ScrollViewer Style="{StaticResource EdgeTabScroll}">
                     <StackPanel Style="{StaticResource EdgeContent}">

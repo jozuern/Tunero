@@ -5,6 +5,7 @@
 ### Changed
 
 - **.NET runtime 10.0.14:** the exe carries the .NET and Windows Desktop runtime of Microsoft's out-of-band security release of October 25, 2026, which fixes a Brotli decoder flaw ([release notes](https://github.com/dotnet/core/blob/main/release-notes/10.0/10.0.14/10.0.14.md)), instead of 10.0.13.
+- **Tabs** stay in one row at every window width (the German Startup tabs wrapped); **System info** shows each display's resolution and refresh rate next to its name; **Health** sensor cards keep the expand arrow beside the title; the install media summary reads as one sentence.
 - **Consistent pages:** empty lists say so the same way on every page, switches for settings show On or Off everywhere (also on Remove apps and in the install media's Expert options), and cards share one padding.
 - **Restore point question:** shorter buttons ("Turn on", "Continue without it") on one line at one height; dialog buttons always share their height.
 - **Details pane:** text keeps clear of the scroll bar, the impact shows its number once, registry paths keep the line spacing, and the "already set" note reads clearly.
@@ -34,6 +35,7 @@
 
 ### Fixed
 
+- **Remove apps:** the administrator note says that removing apps needs administrator rights, and the OneDrive and Edge cards match while the page loads.
 - **Pages read in the background:** a list that cannot be read (Windows cancels a WMI query now and then) no longer shows "Did not work" on the page you are on; it reads again when you open its page, names the page if it fails there, and a cancelled WMI query is tried once more.
 - **Startup:** Windows' leftover shell service object WebCheck counts as a Windows entry; **Services & tasks** notes no longer repeat the name when only hyphens or spaces differ; the priority form's check boxes line up.
 - **Ignore:** a result ignored while a scan runs no longer leaves a change recommended for it until the next scan; the note that all changes survived a Windows update follows a language switch.

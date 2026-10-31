@@ -187,13 +187,14 @@
             <v:ItemList ItemsSource="{Binding Health.SensorGroups}" Margin="0,8,0,0">
                 <v:ItemList.ItemTemplate>
                     <DataTemplate>
-                        <ui:CardExpander Margin="{StaticResource CardRowMargin}" IsExpanded="{Binding IsExpanded}" HorizontalContentAlignment="Stretch">
+                        <!-- The chevron beside the title row, not in the middle of the values below it -->
+                        <ui:CardExpander Margin="{StaticResource CardRowMargin}" IsExpanded="{Binding IsExpanded}" HorizontalContentAlignment="Stretch" v:ExpanderChevron.Top="6">
                             <ui:CardExpander.Header>
                                 <StackPanel Margin="0,4,0,4">
                                     <DockPanel>
                                         <ui:SymbolIcon Symbol="{Binding Icon}" FontSize="20" Margin="0,0,12,0" VerticalAlignment="Center"
                                                        Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
-                                        <ui:TextBlock DockPanel.Dock="Right" Style="{StaticResource Caption}" Text="{Binding Kind}" VerticalAlignment="Center" Margin="16,0,0,0" />
+                                        <ui:TextBlock DockPanel.Dock="Right" Style="{StaticResource Caption}" Text="{Binding Kind}" VerticalAlignment="Center" Margin="16,0,16,0" />
                                         <ui:TextBlock FontTypography="BodyStrong" Text="{Binding Name}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" VerticalAlignment="Center" />
                                     </DockPanel>
                                     <v:ItemList ItemsSource="{Binding Tiles}" Margin="32,12,0,0" Focusable="False">
