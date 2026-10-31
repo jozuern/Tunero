@@ -265,9 +265,13 @@ internal sealed class FakeDialogs : IDialogs
         return Uninstall;
     }
 
+    /// <summary>Runs when a question is asked, before it is answered (another change that starts meanwhile).</summary>
+    public Action? Asking { get; set; }
+
     public bool Ask(string title, string text, string primary)
     {
         Asked.Add(title);
+        Asking?.Invoke();
         return Answer;
     }
 

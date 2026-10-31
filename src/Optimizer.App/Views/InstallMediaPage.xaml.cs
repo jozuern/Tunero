@@ -22,15 +22,24 @@ public partial class InstallMediaPage : UserControl
         if (DataContext is not MainViewModel main) return;
         _media = main.InstallMedia;
         _media.StagesShown += ShowStages;
+        _media.ResultShown += ShowResult;
     }
 
     private void Unwatch()
     {
-        if (_media is not null) _media.StagesShown -= ShowStages;
+        if (_media is not null)
+        {
+            _media.StagesShown -= ShowStages;
+            _media.ResultShown -= ShowResult;
+        }
         _media = null;
     }
 
     /// <summary>Build was pressed: the list of stages scrolls into view (the card appears with the first build).</summary>
     private void ShowStages(object? sender, EventArgs e) =>
         Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () => StagesCard.BringIntoView());
+
+    /// <summary>A build failed or was stopped: the Build card with its info bar scrolls into view.</summary>
+    private void ShowResult(object? sender, EventArgs e) =>
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () => BuildCard.BringIntoView());
 }

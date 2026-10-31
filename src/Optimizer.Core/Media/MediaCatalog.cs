@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Xml;
@@ -122,12 +121,4 @@ public static class MediaCatalog
         && string.Equals(f.LanguageCode, languageCode, StringComparison.OrdinalIgnoreCase)
         && string.Equals(f.Architecture, architecture, StringComparison.OrdinalIgnoreCase)
         && string.Equals(f.Edition, edition, StringComparison.OrdinalIgnoreCase);
-
-    /// <summary>The catalog's spelling of a processor architecture.</summary>
-    public static string CatalogArchitecture(Architecture a) => a switch
-    {
-        Architecture.X64 => "x64",
-        Architecture.Arm64 => "ARM64",
-        _ => throw new NotSupportedException($"No Windows media for {a}."),
-    };
 }

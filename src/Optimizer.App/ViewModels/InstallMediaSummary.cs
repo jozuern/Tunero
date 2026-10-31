@@ -10,30 +10,43 @@ using Optimizer.Core.Platform;
 namespace Optimizer.App.ViewModels;
 
 /// <summary>
-/// What the install media page says about its choices in two places: the one-line bar that stays at the bottom of the page
-/// (<see cref="Bar"/>) and the review before the build (<see cref="Review"/>). Pure text from <see cref="MediaChoices"/>;
-/// nothing is read from this PC. A new choice adds one line to each of the two.
+/// What the install media page says about its choices in two places: the bar that stays at the bottom of the page (its
+/// image line <see cref="Bar"/> and its changes line <see cref="BarChanges"/>) and the review before the build
+/// (<see cref="Review"/>). Pure text from <see cref="MediaChoices"/>; nothing is read from this PC. A new choice adds one
+/// part to the changes line and one line to the review.
 /// </summary>
 internal static class InstallMediaSummary
 {
     private static Loc T => Loc.Instance;
 
-    /// <summary>"Windows 11 Pro 26300, German (Germany), Apps to remove: 18, Account Anna, Office, 19.9 GB needed".</summary>
-    public static string Bar(MediaChoices c, string editionTitle, string? build, long neededBytes)
+    /// <summary>The image: "Windows 11 Pro 26300.9711, Language German (Germany)". The space it needs is the caption below it.</summary>
+    public static string Bar(MediaChoices c, string editionTitle, string? build)
     {
         var parts = new List<string> { EditionText(editionTitle, build) };
         if (LanguageName(c) is { } language) parts.Add(T.Format("Media_Summary_Language", language));
+        return string.Join(", ", parts);
+    }
+
+    /// <summary>What goes into the image: "Apps to remove: 18, Account Anna, Profile Office"; null when nothing does.</summary>
+    public static string? BarChanges(MediaChoices c)
+    {
+        var parts = new List<string>();
         if (c.RemoveApps.Count > 0) parts.Add(T.Format("Media_Summary_Apps", c.RemoveApps.Count));
+        if (c.RemoveUnreviewed.Count > 0) parts.Add(T.Format("Media_Summary_Unreviewed", c.RemoveUnreviewed.Count));
         // Counted as the review names them: with the parts another chosen part takes along.
         if (c.RemoveParts.Count > 0) parts.Add(T.Format("Media_PartsSummary", MediaParts.WithImplied(CatalogData.Current.MediaParts, c.RemoveParts).Count));
+        if (c.SkipSetup && c.AccountName?.Trim() is { Length: > 0 } account) parts.Add(T.Format("Media_Summary_Account", account));
+        if (c.Tunero is { } copy)
+        {
+            parts.Add(T.Format("Media_Summary_Profile", ProfileTitle(copy)));
+            if (c.InstallApps.Count > 0) parts.Add(T.Format("Media_InstallSummary", c.InstallApps.Count));
+        }
         if (c.Compression == MediaCompression.Recovery) parts.Add(T["Media_CompressionSmaller"]);
+        if (c.AllowUnsupported) parts.Add(T["Media_UnsupportedTitle"]);
+        if (c.Settings.AllowUnsupportedUpgrades) parts.Add(T["Media_UpgradesTitle"]);
         if (c.Settings.PreventDeviceEncryption) parts.Add(T["Media_EncryptionTitle"]);
         if (c.Settings.NoReservedStorage) parts.Add(T["Media_ReservedTitle"]);
-        if (c.Settings.AllowUnsupportedUpgrades) parts.Add(T["Media_UpgradesTitle"]);
-        if (c.SkipSetup && c.AccountName?.Trim() is { Length: > 0 } account) parts.Add(T.Format("Media_Summary_Account", account));
-        if (c.Tunero is { } copy) parts.Add(T.Format("Media_Summary_Profile", ProfileTitle(copy)));
-        if (neededBytes > 0) parts.Add(T.Format("Media_Summary_Needed", ByteSize.Format(neededBytes)));
-        return string.Join(", ", parts);
+        return parts.Count == 0 ? null : string.Join(", ", parts);
     }
 
     /// <summary>

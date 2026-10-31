@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using Optimizer.Core.Media;
 
 namespace Optimizer.Core.Tests;
@@ -119,12 +118,5 @@ public class MediaCatalogTests
         Assert.Throws<FormatException>(() => MediaCatalog.ParseProducts("<MCT><Files>"));
         Assert.Throws<FormatException>(() => MediaCatalog.ParseProducts("<PublishedMedia><Files><File><FileName>a.esd</FileName></File></Files></PublishedMedia>"));
         Assert.Throws<FormatException>(() => MediaCatalog.ParseProducts("""<!DOCTYPE x [<!ENTITY a "b">]><x/>"""));
-    }
-
-    [Fact]
-    public void ArchitectureMapsToTheCatalogSpelling()
-    {
-        Assert.Equal("x64", MediaCatalog.CatalogArchitecture(Architecture.X64));
-        Assert.Equal("ARM64", MediaCatalog.CatalogArchitecture(Architecture.Arm64));
     }
 }

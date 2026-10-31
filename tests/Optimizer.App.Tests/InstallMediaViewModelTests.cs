@@ -292,23 +292,48 @@ public sealed class InstallMediaViewModelTests : IDisposable
         var media = await WithCatalog();
         var changed = new List<string?>();
         media.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
-        var before = media.SummaryText;
-        Assert.Contains("Windows 11 ", before);
-        Assert.Contains("26300.9711", before);
+        // The first line names the image, the second what goes into it.
+        Assert.Contains("Windows 11 ", media.SummaryText);
+        Assert.Contains("26300.9711", media.SummaryText);
+        var before = media.SummaryChangesText;
         Assert.Contains("Anna", before);
         var count = media.AppRows.Count(r => r.IsChecked);
         Assert.True(count > 0);
         Assert.Contains(Loc.Instance.Format("Media_Summary_Apps", count), before);
-
-        media.AppGroups.First(g => g.Rows.Any(r => r.IsChecked)).AllChecked = false;
-        Assert.Contains(nameof(InstallMediaViewModel.SummaryText), changed);
-        Assert.NotEqual(before, media.SummaryText);
         Assert.DoesNotContain(Loc.Instance.Format("Media_Summary_Apps", count), media.SummaryText);
+
+        foreach (var row in media.AppGroups.First(g => g.Rows.Any(r => r.IsChecked)).Rows) row.IsChecked = false;
+        Assert.Contains(nameof(InstallMediaViewModel.SummaryChangesText), changed);
+        Assert.NotEqual(before, media.SummaryChangesText);
+        Assert.DoesNotContain(Loc.Instance.Format("Media_Summary_Apps", count), media.SummaryChangesText);
 
         changed.Clear();
         media.AccountNameText = "Berta";
-        Assert.Contains(nameof(InstallMediaViewModel.SummaryText), changed);
-        Assert.Contains("Berta", media.SummaryText);
+        Assert.Contains(nameof(InstallMediaViewModel.SummaryChangesText), changed);
+        Assert.Contains("Berta", media.SummaryChangesText);
+    }
+
+    /// <summary>Before there is an image the bar's line says what keeps Build off, and the note beside it does not repeat it.</summary>
+    [Fact]
+    public async Task WithoutAnImageTheBarSaysWhatIsMissingOnce()
+    {
+        var media = await Loaded(Media());
+        Assert.Equal(Loc.Instance["Media_NeedsCatalog"], media.SummaryText);
+        Assert.Null(media.SummaryChangesText);
+        Assert.Null(media.BarNote);
+        Assert.Equal(Loc.Instance["Media_NeedsCatalog"], media.BuildNote);
+
+        media.UseDownload = false;
+        Assert.Equal(Loc.Instance["Media_NeedsIso"], media.SummaryText);
+        Assert.Null(media.BarNote);
+
+        var unelevated = await Loaded(Media(system: System() with { Elevated = false }));
+        Assert.Equal(Loc.Instance["Media_NeedsAdmin"], unelevated.SummaryText);
+        Assert.Null(unelevated.BarNote);
+        await unelevated.CheckCatalogCommand.ExecuteAsync(null);
+        // With an image the bar names it, and the note beside it says why Build is off.
+        Assert.Contains("26300.9711", unelevated.SummaryText);
+        Assert.Equal(Loc.Instance["Media_NeedsAdmin"], unelevated.BarNote);
     }
 
     [Fact]
@@ -359,14 +384,25 @@ public sealed class InstallMediaViewModelTests : IDisposable
         var log = Path.Combine(_root, "media.log");
         _build = (_, _) => throw new MediaBuildException(MediaStage.Unpack, "x", 87) { LogPath = log };
         var media = await WithCatalog();
+        var shown = 0;
+        media.ResultShown += (_, _) => shown++;
+        Assert.False(media.ShowFailedBar);
         await media.BuildCommand.ExecuteAsync(null);
 
+        // The reason is on the Build card at the page's end: it scrolls into view, and the bar says the build failed.
+        Assert.Equal(1, shown);
+        Assert.True(media.ShowFailedBar);
         Assert.Contains(Loc.Instance["Media_Stage_Unpack"], media.ResultText);
         Assert.Contains("87", media.ResultText);
         Assert.Contains(log, media.ResultText);
         Assert.Equal(log, media.ResultLogPath);
         Assert.Equal(InfoBarSeverity.Error, media.ResultSeverity);
         Assert.Contains(_host.Results, r => r.Severity == InfoBarSeverity.Error && r.Text.Contains(Loc.Instance["Media_Stage_Unpack"]));
+
+        _build = null;
+        await media.BuildCommand.ExecuteAsync(null);
+        Assert.False(media.ShowFailedBar);
+        Assert.Equal(1, shown);
     }
 
     [Fact]
@@ -470,6 +506,47 @@ public sealed class InstallMediaViewModelTests : IDisposable
         Assert.Equal(Loc.Instance.Format("Media_AppsChosen", 0, group.Rows.Count), group.Summary);
     }
 
+    /// <summary>
+    /// A two-state check box turns a click on the mixed state into false (WPF's ToggleButton): that ticks the rest of the
+    /// group instead of clearing the ticks it opened with.
+    /// </summary>
+    [Fact]
+    public async Task AClickOnAGroupWithSomeTickedTicksAll()
+    {
+        var media = await Loaded(Media());
+        var group = media.AppGroups.Single(g => g.Key == "microsoft");
+        group.Rows[0].IsChecked = true;
+        Assert.Null(group.AllChecked);
+        // The page's check box, bound as in the XAML, toggled the way a click or a screen reader toggles it.
+        bool? afterFirst = false, afterSecond = true, boxAfterFirst = false;
+        Exception? error = null;
+        var sta = new Thread(() =>
+        {
+            try
+            {
+                var box = new global::System.Windows.Controls.CheckBox { DataContext = group };
+                box.SetBinding(global::System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, nameof(MediaAppGroup.AllChecked));
+                var toggle = (global::System.Windows.Automation.Provider.IToggleProvider)new global::System.Windows.Automation.Peers.CheckBoxAutomationPeer(box);
+                toggle.Toggle();
+                afterFirst = group.AllChecked;
+                boxAfterFirst = box.IsChecked;
+                toggle.Toggle();
+                afterSecond = group.AllChecked;
+            }
+            catch (Exception ex)
+            {
+                error = ex;
+            }
+        });
+        sta.SetApartmentState(ApartmentState.STA);
+        sta.Start();
+        sta.Join();
+        Assert.Null(error);
+        Assert.True(afterFirst);
+        Assert.True(boxAfterFirst);
+        Assert.False(afterSecond);
+    }
+
     [Fact]
     public async Task ProfileNeedsTheSingleFileExe()
     {
@@ -539,6 +616,8 @@ public sealed class InstallMediaViewModelTests : IDisposable
         media.UseDownload = true;
         Assert.Equal(Loc.Instance["Media_UnreviewedDownload"], media.UnreviewedSourceText);
         Assert.Empty(media.UnreviewedRows);
+        // The folded card's header says why its switch is off.
+        Assert.Equal(Loc.Instance["Media_UnreviewedOnlyIso"], media.UnreviewedSummary);
     }
 
     [Fact]
@@ -552,6 +631,8 @@ public sealed class InstallMediaViewModelTests : IDisposable
             await Task.Delay(Timeout.Infinite, ct);
             return "";
         };
+        var shown = 0;
+        media.ResultShown += (_, _) => shown++;
         var build = media.BuildCommand.ExecuteAsync(null);
         await started.Task;
         Assert.True(media.IsBuilding);
@@ -559,6 +640,7 @@ public sealed class InstallMediaViewModelTests : IDisposable
         Assert.False(media.IsBuilding);
         await build;
         Assert.Equal(Loc.Instance["Media_Stopped"], media.ResultText);
+        Assert.Equal(1, shown);
     }
 
     private static MediaStageRow Row(InstallMediaViewModel media, MediaStage stage) => media.Stages.Single(s => s.Stage == stage);
@@ -771,6 +853,10 @@ public sealed class InstallMediaViewModelTests : IDisposable
         var build = media.BuildCommand.ExecuteAsync(null);
         await started.Task;
         Assert.False(media.CanEdit);
+        // The window's banner says that it builds, with its own Stop: the note beside the bar does not repeat it.
+        Assert.False(media.CanBuild);
+        Assert.Null(media.BuildNote);
+        Assert.Null(media.BarNote);
         await media.StopAndWaitAsync();
         await build;
         Assert.True(media.CanEdit);
@@ -1324,6 +1410,30 @@ public sealed class InstallMediaViewModelTests : IDisposable
         Assert.Contains(Loc.Instance["Media_Field_edition"], media.ChoicesNote);
     }
 
+    /// <summary>A file loaded while the same ISO is still read keeps its edition: the read applies it when it ends.</summary>
+    [Fact]
+    public async Task ALoadDuringTheReadOfTheSameIsoKeepsItsEdition()
+    {
+        var reading = new TaskCompletionSource<IsoInfo>();
+        var media = await Loaded(Media(system: System() with { ReadIso = (_, _) => reading.Task }));
+        var iso = Path.Combine(_root, "Win11.iso");
+        File.WriteAllText(iso, "iso");
+        media.UseDownload = false;
+        media.IsoPath = iso;
+        Assert.True(media.IsReadingIso);
+        var json = Saved();
+        json["source"] = iso;
+        json.Remove("language");
+        json["edition"] = "Core";
+        _dialogs.OpenFile = Write(json, "mine.json");
+        media.LoadChoicesCommand.Execute(null);
+
+        reading.SetResult(_iso);
+        await media.IsoLoading;
+        Assert.Equal("1", media.Edition?.Key);
+        Assert.DoesNotContain(Loc.Instance["Media_Field_edition"], media.ChoicesNote ?? "");
+    }
+
     [Fact]
     public async Task OnlyASuccessfulBuildRemembersItsChoices()
     {
@@ -1439,10 +1549,10 @@ public sealed class InstallMediaViewModelTests : IDisposable
         media.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
         var bytes = media.NeededText;
         media.SmallerIso = true;
-        Assert.Contains(nameof(InstallMediaViewModel.SummaryText), changed);
+        Assert.Contains(nameof(InstallMediaViewModel.SummaryChangesText), changed);
         Assert.Contains(nameof(InstallMediaViewModel.NeededText), changed);
         Assert.NotEqual(bytes, media.NeededText);
-        Assert.Contains(Loc.Instance["Media_CompressionSmaller"], media.SummaryText);
+        Assert.Contains(Loc.Instance["Media_CompressionSmaller"], media.SummaryChangesText);
         Assert.Contains(media.ReviewRequest()!.Changes, l => l.Target == Loc.Instance["Media_CompressionTitle"]);
 
         _dialogs.SaveFile = Path.Combine(_root, "smaller.json");
@@ -1451,7 +1561,7 @@ public sealed class InstallMediaViewModelTests : IDisposable
 
         media.FasterBuild = true;
         Assert.False(media.SmallerIso);
-        Assert.DoesNotContain(Loc.Instance["Media_CompressionSmaller"], media.SummaryText);
+        Assert.DoesNotContain(Loc.Instance["Media_CompressionSmaller"], media.SummaryChangesText ?? "");
     }
 
     [Fact]
@@ -1482,9 +1592,9 @@ public sealed class InstallMediaViewModelTests : IDisposable
         media.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
         media.PreventDeviceEncryption = true;
         media.NoReservedStorage = true;
-        Assert.Contains(nameof(InstallMediaViewModel.SummaryText), changed);
-        Assert.Contains(Loc.Instance["Media_EncryptionTitle"], media.SummaryText);
-        Assert.Contains(Loc.Instance["Media_ReservedTitle"], media.SummaryText);
+        Assert.Contains(nameof(InstallMediaViewModel.SummaryChangesText), changed);
+        Assert.Contains(Loc.Instance["Media_EncryptionTitle"], media.SummaryChangesText);
+        Assert.Contains(Loc.Instance["Media_ReservedTitle"], media.SummaryChangesText);
         var review = media.ReviewRequest()!;
         Assert.Contains(review.Changes, l => l.Target == Loc.Instance["Media_EncryptionTitle"]);
         Assert.Contains(review.Changes, l => l.Target == Loc.Instance["Media_ReservedTitle"]);
@@ -1528,7 +1638,7 @@ public sealed class InstallMediaViewModelTests : IDisposable
         media.RemoveParts = true;
         media.PartRows.First(r => r.Key == "recall").IsChecked = true;
         media.PartRows.First(r => r.Key == "speech").IsChecked = true;
-        Assert.Contains(Loc.Instance.Format("Media_PartsSummary", 2), media.SummaryText);
+        Assert.Contains(Loc.Instance.Format("Media_PartsSummary", 2), media.SummaryChangesText);
         Assert.Contains(media.ReviewRequest()!.Changes, l => l.Target == Loc.Instance["Media_PartsTitle"] && l.After.Contains("Recall"));
 
         _dialogs.SaveFile = Path.Combine(_root, "parts.json");
@@ -1601,7 +1711,7 @@ public sealed class InstallMediaViewModelTests : IDisposable
 
         media.AllowUnsupported = true;
         media.AllowUnsupportedUpgrades = true;
-        Assert.Contains(Loc.Instance["Media_UpgradesTitle"], media.SummaryText);
+        Assert.Contains(Loc.Instance["Media_UpgradesTitle"], media.SummaryChangesText);
         Assert.Contains(media.ReviewRequest()!.Changes, l => l.Target == Loc.Instance["Media_UpgradesTitle"]);
         _dialogs.SaveFile = Path.Combine(_root, "upgrades.json");
         media.SaveChoicesCommand.Execute(null);
@@ -1860,6 +1970,52 @@ public sealed class InstallMediaViewModelTests : IDisposable
         Assert.Equal([saved.WorkFolder], discarded);
         Assert.Single(_requests);
         Assert.Empty(resumed);
+    }
+
+    /// <summary>
+    /// Another change (on any page, or an update) keeps Build and Resume off; Discard stays. A click that arrives before the
+    /// button turned off is refused by the runner before the saved build is discarded or the stage list filled.
+    /// </summary>
+    [Fact]
+    public async Task AnotherChangeKeepsBuildAndResumeOffAndTheSavedBuild()
+    {
+        Loc.Instance.SetLanguage("en");
+        var saved = SavedBuild(await SavedChoices());
+        var (system, discarded, resumed) = WithSaved(() => saved);
+        var media = await WithCatalog(Media(system: system));
+        Assert.True(media.BuildCommand.CanExecute(null));
+        try
+        {
+            ChangeGate.Instance.Busy = true;
+            Assert.False(media.CanBuild);
+            Assert.False(media.BuildCommand.CanExecute(null));
+            Assert.False(media.ResumeCommand.CanExecute(null));
+            Assert.True(media.DiscardCommand.CanExecute(null));
+            Assert.Equal(Loc.Instance["Change_Busy"], media.BuildNote);
+            ChangeGate.Instance.Busy = false;
+            ChangeGate.Instance.Updating = true;
+            Assert.False(media.BuildCommand.CanExecute(null));
+            ChangeGate.Instance.Updating = false;
+            Assert.True(media.BuildCommand.CanExecute(null));
+            Assert.True(media.ResumeCommand.CanExecute(null));
+
+            _dialogs.Asking = () => ChangeGate.Instance.Busy = true;
+            await media.BuildCommand.ExecuteAsync(null);
+            Assert.Equal(Loc.Instance["Media_DiscardTitle"], _dialogs.Asked[^1]);
+            Assert.Empty(discarded);
+            Assert.Empty(_requests);
+            Assert.Empty(resumed);
+            Assert.Same(saved, media.Resumable);
+            Assert.Empty(media.Stages);
+            Assert.False(media.HasFailed);
+            Assert.False(media.IsBuilding);
+        }
+        finally
+        {
+            _dialogs.Asking = null;
+            ChangeGate.Instance.Busy = false;
+            ChangeGate.Instance.Updating = false;
+        }
     }
 
     /// <summary>The review comes first: cancelling it asks nothing more and keeps the saved build.</summary>

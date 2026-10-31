@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -225,13 +226,18 @@ public sealed partial class MediaAppGroup : ObservableObject
     /// <summary>"3 of 18 chosen".</summary>
     public string Summary => Loc.Instance.Format("Media_AppsChosen", Rows.Count(r => r.IsChecked), Rows.Count);
 
-    /// <summary>The group's check box: all ticked, none, or some (null); a click ticks all, the next one none.</summary>
+    /// <summary>
+    /// The group's check box: all ticked, none, or some (null); a click ticks all, the next one none. A two-state check box
+    /// turns a click (or a screen reader's toggle) on the mixed state into false, which ticks all here: a group that opens
+    /// with some ticked is not cleared. Code that means "none" with some ticked unticks the rows.
+    /// </summary>
     public bool? AllChecked
     {
         get => Rows.All(r => r.IsChecked) ? true : Rows.Any(r => r.IsChecked) ? null : false;
         set
         {
-            foreach (var row in Rows) row.IsChecked = value == true;
+            var tick = value == true || (value == false && AllChecked is null);
+            foreach (var row in Rows) row.IsChecked = tick;
         }
     }
 
@@ -301,6 +307,15 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         _cleanLeftovers = cleanLeftovers;
         _canApplyProfile = system.IsPublishedExe && system.ExePath is not null;
         _applyProfile = _canApplyProfile;
+        // Weak: the gate lives as long as the app, and a page model (one per test) must not be kept alive by it.
+        var page = new WeakReference<InstallMediaViewModel>(this);
+        PropertyChangedEventHandler? onGate = null;
+        onGate = (sender, e) =>
+        {
+            if (page.TryGetTarget(out var media)) media.OnGateChanged(sender, e);
+            else ChangeGate.Instance.PropertyChanged -= onGate;
+        };
+        ChangeGate.Instance.PropertyChanged += onGate;
     }
 
     // ---- source ----
@@ -518,7 +533,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
                 if (row.IsChecked) _installTicks.Add(row.Key);
                 else _installTicks.Remove(row.Key);
                 OnPropertyChanged(nameof(InstallSummary));
-                OnPropertyChanged(nameof(SummaryText));
+                NotifySummary();
             };
         OnPropertyChanged(nameof(InstallRows));
     }
@@ -581,7 +596,11 @@ public sealed partial class InstallMediaViewModel : PageViewModel
             : UnreviewedRows.Count == 0 ? Loc.Instance["Media_UnreviewedNone"] : Loc.Instance.Format("Media_UnreviewedFound", UnreviewedRows.Count)
         : Loc.Instance["Media_AppsIsoNotRead"];
 
-    public string UnreviewedSummary => RemoveUnreviewed && !UseDownload ? Loc.Instance.Format("Media_AppsSummary", UnreviewedRows.Count(r => r.IsChecked)) : Loc.Instance["Media_Off"];
+    /// <summary>What the folded card holds; with the download, why its switch is off (the reason is in the folded part too).</summary>
+    public string UnreviewedSummary =>
+        UseDownload ? Loc.Instance["Media_UnreviewedOnlyIso"]
+        : RemoveUnreviewed ? Loc.Instance.Format("Media_AppsSummary", UnreviewedRows.Count(r => r.IsChecked))
+        : Loc.Instance["Media_Off"];
 
     private void BuildUnreviewedRows()
     {
@@ -594,7 +613,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
                 if (row.IsChecked) _unreviewedTicks.Add(row.Key);
                 else _unreviewedTicks.Remove(row.Key);
                 OnPropertyChanged(nameof(UnreviewedSummary));
-                OnPropertyChanged(nameof(SummaryText));
+                NotifySummary();
             };
     }
 
@@ -624,7 +643,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
                 if (row.IsChecked) _partTicks.Add(row.Key);
                 else _partTicks.Remove(row.Key);
                 OnPropertyChanged(nameof(PartsSummary));
-                OnPropertyChanged(nameof(SummaryText));
+                NotifySummary();
             };
     }
 
@@ -646,7 +665,11 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     [NotifyPropertyChangedFor(nameof(CanEdit))]
     private bool _isBuilding;
 
-    partial void OnIsBuildingChanged(bool value) => Changed();
+    partial void OnIsBuildingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ShowFailedBar));
+        Changed();
+    }
 
     /// <summary>The choices stay as they are while a build runs: it uses the ones it started with (and may hold the own ISO).</summary>
     public bool CanEdit => !IsBuilding;
@@ -663,16 +686,32 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         }
     }
 
-    /// <summary>Why Build is off (the first choice that is missing or wrong), or null when it can start.</summary>
-    public string? BuildNote => Problem() is { } key ? Loc.Instance[key] : IsCleaning ? Loc.Instance["Media_CleanupRunning"] : null;
+    /// <summary>
+    /// Why Build is off (the first choice that is missing or wrong), or null when it can start. Null while this page's build
+    /// runs too: the window's banner says so, with its own Stop.
+    /// </summary>
+    public string? BuildNote => IsBuilding || IsWorking ? null
+        : Problem() is { } key ? Loc.Instance[key] : IsCleaning ? Loc.Instance["Media_CleanupRunning"] : null;
+
+    /// <summary>The note beside the summary bar: <see cref="BuildNote"/>, unless the bar's own line says it already (no image to build from yet).</summary>
+    public string? BarNote => Choices() is null ? null : BuildNote;
 
     /// <summary>
-    /// The bar at the bottom of the page: the image and what goes into it, in one line (<see cref="InstallMediaSummary.Bar"/>).
-    /// Before there is an image to build from it says what is missing.
+    /// The bar's first line at the bottom of the page: the image (<see cref="InstallMediaSummary.Bar"/>). Before there is an
+    /// image to build from it says what keeps Build off.
     /// </summary>
     public string SummaryText => Choices() is { } choices
-        ? InstallMediaSummary.Bar(choices, Edition!.Text, BuildLabel(), Needed() ?? 0)
-        : Loc.Instance["Media_NeedsCatalog"];
+        ? InstallMediaSummary.Bar(choices, Edition!.Text, BuildLabel())
+        : Problem() is { } key ? Loc.Instance[key] : Loc.Instance["Media_NeedsCatalog"];
+
+    /// <summary>The bar's second line: what goes into the image (<see cref="InstallMediaSummary.BarChanges"/>); null when nothing does.</summary>
+    public string? SummaryChangesText => Choices() is { } choices ? InstallMediaSummary.BarChanges(choices) : null;
+
+    private void NotifySummary()
+    {
+        OnPropertyChanged(nameof(SummaryText));
+        OnPropertyChanged(nameof(SummaryChangesText));
+    }
 
     /// <summary>The build of the chosen image as the page names it: the download's "26300.9711", or the own ISO's.</summary>
     private string? BuildLabel() =>
@@ -691,10 +730,27 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     {
         OnPropertyChanged(nameof(NeededText));
         OnPropertyChanged(nameof(BuildNote));
+        OnPropertyChanged(nameof(BarNote));
         OnPropertyChanged(nameof(CanBuild));
         BuildCommand.NotifyCanExecuteChanged();
         RefreshResume();
     }
+
+    /// <summary>
+    /// Another change, a scan or an update started or ended (on any page): Build and Resume follow
+    /// <see cref="ChangeGate"/>. The runner checks the gate again, because a click can arrive before the binding updates.
+    /// </summary>
+    private void OnGateChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(ChangeGate.CanChange)) return;
+        // Without the page shown once there is no bar to update.
+        if (!WasLoaded) return;
+        NotifySummary();
+        RefreshBuild();
+    }
+
+    /// <summary>Another change or an update holds the gate: a build would be refused (a scan only delays it, the runner waits for it).</summary>
+    private static bool GateBusy => ChangeGate.Instance.Busy || ChangeGate.Instance.Updating;
 
     public bool CanBuild => Problem() is null;
 
@@ -739,6 +795,12 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     /// <summary>The list was filled for a new build: the page scrolls it into view.</summary>
     public event EventHandler? StagesShown;
 
+    /// <summary>
+    /// A build failed or was stopped: the page scrolls the Build card with its info bar into view (a user who scrolled up
+    /// during the build would see nothing else change).
+    /// </summary>
+    public event EventHandler? ResultShown;
+
     private MediaStageRow? _currentStage;
     private bool _stagesRunning;
     private readonly Stopwatch _stageClock = new();
@@ -753,8 +815,9 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     {
         OnPropertyChanged(nameof(AccountProblem));
         OnPropertyChanged(nameof(NeededText));
-        OnPropertyChanged(nameof(SummaryText));
+        NotifySummary();
         OnPropertyChanged(nameof(BuildNote));
+        OnPropertyChanged(nameof(BarNote));
         OnPropertyChanged(nameof(CanBuild));
         OnPropertyChanged(nameof(AppsSummary));
         OnPropertyChanged(nameof(AppsSourceText));
@@ -795,6 +858,9 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     private string? Problem(bool space = true)
     {
         if (IsBuilding || IsWorking) return "Media_Building";
+        // Another change, an update or a change on another page holds the gate: the runner would refuse the build, after
+        // Build had discarded a saved build and filled the stage list.
+        if (GateBusy) return "Change_Busy";
         if (!_system.Elevated && !_demo) return "Media_NeedsAdmin";
         if (UseDownload)
         {
@@ -998,7 +1064,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
                 if (e.PropertyName != nameof(MediaAppRow.IsChecked)) return;
                 _ticks[row.Entry.Name] = row.IsChecked;
                 OnPropertyChanged(nameof(AppsSummary));
-                OnPropertyChanged(nameof(SummaryText));
+                NotifySummary();
             };
         OnPropertyChanged(nameof(AppRows));
         BuildUnreviewedRows();
@@ -1342,6 +1408,13 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     [RelayCommand]
     private void ShowStage() => StagesShown?.Invoke(this, EventArgs.Empty);
 
+    /// <summary>The summary bar's failure note: the Build card with the reason, the log and Resume scrolls into view.</summary>
+    [RelayCommand]
+    private void ShowFailedBuild() => ResultShown?.Invoke(this, EventArgs.Empty);
+
+    /// <summary>The summary bar says that the last build failed, while no build runs (the Build card at the page's end says why).</summary>
+    public bool ShowFailedBar => HasFailed && !IsBuilding;
+
     /// <summary>
     /// The request from the page's choices (the mapping --build-media shares, <see cref="MediaChoices.ToRequest"/>); null
     /// when they do not make one (Build is off then).
@@ -1384,43 +1457,51 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         if (Request() is not { } request || ReviewRequest() is not { } review) return;
         // The review shows every choice once more; cancelling it builds nothing.
         if (_dialogs.ConfirmApply(review) is null) return;
+        Func<Task<bool>>? discard = null;
         if (Resumable is { } saved)
         {
             if (!_dialogs.Ask(Loc.Instance["Media_DiscardTitle"], Loc.Instance.Format("Media_DiscardFirstText", ByteSize.Format(saved.Bytes), DriveOf(saved)),
                     Loc.Instance["Media_DiscardAndBuild"]))
                 return;
-            if (!await DiscardSavedAsync(saved)) return;
+            // Only once the build may run: a build that another change keeps from starting keeps the saved build.
+            discard = () => DiscardSavedAsync(saved);
         }
-        await (_running = RunBuildAsync(request, Choices()));
+        await (_running = RunBuildAsync(request, Choices(), before: discard));
     }
 
     /// <summary>
     /// Runs the build, or with <paramref name="resume"/> goes on with a saved build from <paramref name="resumesAt"/> (the
     /// stages before it show as done from the saved build). <paramref name="remember"/> are the choices it started with,
-    /// kept for the next visit when it succeeds. Afterwards the page looks for a saved build again: one the failure left.
+    /// kept for the next visit when it succeeds. <paramref name="before"/> runs first, once no other change runs (false:
+    /// nothing is built). Afterwards the page looks for a saved build again: one the failure left. When another change, a
+    /// scan, an update or another Tunero keeps the build from starting, the page stays as it was (the runner says why).
     /// </summary>
     private async Task RunBuildAsync(MediaRequest request, MediaChoices? remember = null,
-        Func<IProgress<MediaProgress>, CancellationToken, Task<MediaBuildResult>>? resume = null, MediaStage? resumesAt = null)
+        Func<IProgress<MediaProgress>, CancellationToken, Task<MediaBuildResult>>? resume = null, MediaStage? resumesAt = null,
+        Func<Task<bool>>? before = null)
     {
         using var stop = new CancellationTokenSource();
-        _stop = stop;
-        ChoicesNote = null;
-        IsBuilding = true;
-        ResultText = null;
-        ResultLogPath = null;
-        ResultIso = null;
-        ResultSha256 = null;
-        HasFinished = false;
-        HasFailed = false;
-        ResumeNote = null;
-        StartStages(MediaBuild.PlannedStages(request), resumesAt);
         MediaBuildResult? result = null;
         Exception? failure = null;
         var stopped = false;
+        var started = false;
         try
         {
             await RunWorkAsync("install media", Loc.Instance["Media_Building"], async scope =>
             {
+                if (before is not null && !await before()) return;
+                started = true;
+                _stop = stop;
+                ChoicesNote = null;
+                IsBuilding = true;
+                ResultText = null;
+                ResultLogPath = null;
+                ResultIso = null;
+                ResultSha256 = null;
+                HasFinished = false;
+                HasFailed = false;
+                ResumeNote = null;
+                StartStages(MediaBuild.PlannedStages(request), resumesAt);
                 // The banner: the stage, its percentage, and the time the build has taken so far (refreshed every second).
                 var clock = Stopwatch.StartNew();
                 (double? Percent, string Stage) last = (null, Loc.Instance["Media_Building"]);
@@ -1474,6 +1555,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
             IsBuilding = false;
         }
 
+        if (!started) return;
         FinishStages(result is not null, stopped, failure);
         if (result is not null)
         {
@@ -1482,6 +1564,8 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         }
         else if (failure is not null) ShowFailure(failure);
         else if (stopped) Show(Loc.Instance["Media_Stopped"], InfoBarSeverity.Informational);
+        // A failure or a stop is said on the Build card at the page's end: it scrolls into view (a success has its own card there).
+        if (result is null && (failure is not null || stopped)) ResultShown?.Invoke(this, EventArgs.Empty);
         await RefreshResumableAsync();
     }
 
@@ -1743,7 +1827,14 @@ public sealed partial class InstallMediaViewModel : PageViewModel
 
     private bool CanResumeOrDiscard => Resumable is not null && !IsBuilding && !IsWorking && !IsCleaning;
 
-    partial void OnHasFailedChanged(bool value) => RefreshResume();
+    /// <summary>Resume runs a build: not while another change or an update holds the gate (Discard only deletes the saved files).</summary>
+    private bool CanResume => CanResumeOrDiscard && !GateBusy;
+
+    partial void OnHasFailedChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ShowFailedBar));
+        RefreshResume();
+    }
 
     /// <summary>The drive letter of the saved build ("C"): the text says "on drive C", where "C:." would read oddly at a sentence end.</summary>
     private static string DriveOf(ResumableBuild saved) => Path.GetPathRoot(saved.WorkFolder)?.TrimEnd('\\', ':') ?? saved.WorkFolder;
@@ -1768,7 +1859,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     /// value that no longer fits named), and the build goes on from its checkpoint with the request the page then makes. The
     /// engine refuses a request or saved files that do not match (Media_ResumeInvalid). An own ISO is read first, as for Build.
     /// </summary>
-    [RelayCommand(CanExecute = nameof(CanResumeOrDiscard))]
+    [RelayCommand(CanExecute = nameof(CanResume))]
     private async Task ResumeAsync()
     {
         if (Resumable is not { } saved) return;
@@ -1941,8 +2032,9 @@ public sealed partial class InstallMediaViewModel : PageViewModel
                 _wantedIsoEdition = f.Edition;
                 UseDownload = false;
                 IsoPath = f.Source;
-                // The same file is not read again: its images are known already.
-                if (same) ApplyWantedIsoEdition();
+                // The same file is not read again: its images are known already. While its read still runs they are not:
+                // the read applies the edition (or names it as dropped) when it ends.
+                if (same && !IsReadingIso) ApplyWantedIsoEdition();
             }
         }
         if (UseDownload && f.IsDownload)

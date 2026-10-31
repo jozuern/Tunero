@@ -5,6 +5,7 @@
 ### Changed
 
 - **.NET runtime 10.0.14:** the exe carries the .NET and Windows Desktop runtime of Microsoft's out-of-band security release of October 25, 2026, which fixes a Brotli decoder flaw ([release notes](https://github.com/dotnet/core/blob/main/release-notes/10.0/10.0.14/10.0.14.md)), instead of 10.0.13.
+- **Windows install media:** a failed build scrolls to its reason, and the bottom bar says the last build failed. The bar shows the image and the changes on two lines, names Allow unsupported PCs, unreviewed apps and apps to install, and gives the real reason Build is off. Card headers are shorter, with the details in the expanded cards.
 - **Drivers:** each driver's age lines up on the right of its card; the DDU card moved below the list.
 - **Tools:** Restart to Advanced startup says it restarts the PC now; start priority rules show their tags, the warning in an info bar, a labeled form and an empty state; the German tab is Reparaturen.
 - **Install & update:** the reload button is Neu laden in German, so it no longer reads like an update.
@@ -26,6 +27,7 @@
 
 ### Fixed
 
+- **Windows install media:** Build and Resume stay off while another change or an update runs, and a saved build is no longer deleted when a build could not start. A partly ticked app group ticks the whole group on click; choices loaded while your ISO is read keep their edition; German text uses "du" throughout.
 - **Install & update:** the app list follows installs and removals since the last scan; one unreadable uninstall entry no longer hides the whole program list; Signal no longer shows as installed when only SignalRGB is; Update all says when winget cannot open its window for per-user programs.
 - **Rebuild the icon cache** also deletes the `iconcache_*.db` files Windows 10 and 11 use.
 - **Benchmark:** a stopped or timed-out capture no longer leaves its CSV file behind.

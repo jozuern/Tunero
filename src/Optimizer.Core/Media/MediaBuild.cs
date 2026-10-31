@@ -757,10 +757,10 @@ public sealed class MediaBuild(IMediaSteps steps)
         AppLog.Warn("media", message);
     }
 
-    /// <summary>Runs one DISM command and writes its command line and exit code to the build log.</summary>
     /// <summary>DISM error: the image has pending operations that only finish at its first start.</summary>
     internal const int PendingOperations = unchecked((int)0x800F0806);
 
+    /// <summary>Runs one DISM command and writes its command line and exit code to the build log.</summary>
     private static async Task<T> LoggedAsync<T>(IMediaSteps steps, string arguments, Func<Task<T>> call)
     {
         steps.Log("dism " + arguments);

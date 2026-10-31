@@ -23,34 +23,56 @@ public sealed class InstallMediaSummaryTests
         };
     }
 
+    /// <summary>The bar's second line, empty when nothing goes into the image.</summary>
+    private static string Changes(MediaChoices c) => InstallMediaSummary.BarChanges(c) ?? "";
+
     [Fact]
-    public void BarNamesEditionAppsAccountAndSpace()
+    public void BarNamesTheImageOnTheFirstLineAndTheChangesOnTheSecond()
     {
-        var text = InstallMediaSummary.Bar(Choices(apps: 18, account: "joshu", profile: "gaming"), "Windows 11 Pro", "26300", 21_400_000_000);
-        Assert.Contains("Windows 11 Pro 26300", text);
-        Assert.Contains(Loc.Instance.Format("Media_Summary_Apps", 18), text);
-        Assert.Contains("joshu", text);
-        Assert.Contains(Loc.Instance["Profile_gaming"], text);
-        Assert.EndsWith(Loc.Instance.Format("Media_Summary_Needed", ByteSize.Format(21_400_000_000)), text);
+        var choices = Choices(apps: 18, account: "joshu", profile: "gaming");
+        var image = InstallMediaSummary.Bar(choices, "Windows 11 Pro", "26300");
+        Assert.StartsWith("Windows 11 Pro 26300, ", image);
+        Assert.Contains(Loc.Instance.Format("Media_Summary_Language", new System.Globalization.CultureInfo("de-de").DisplayName), image);
+        Assert.DoesNotContain(Loc.Instance.Format("Media_Summary_Apps", 18), image);
+        var changes = Changes(choices);
+        Assert.StartsWith(Loc.Instance.Format("Media_Summary_Apps", 18), changes);
+        Assert.Contains("joshu", changes);
+        Assert.Contains(Loc.Instance["Profile_gaming"], changes);
+        // The space is the caption below the bar (NeededText), not a part of it.
+        Assert.DoesNotContain(ByteSize.Format(21_400_000_000), image + changes);
     }
 
     [Fact]
     public void BarLeavesOutWhatIsOff()
     {
-        var text = InstallMediaSummary.Bar(Choices(apps: 0), "Windows 11 Pro", null, 1);
-        Assert.DoesNotContain(Loc.Instance.Format("Media_Summary_Apps", 0), text);
-        Assert.DoesNotContain(Loc.Instance.Format("Media_Summary_Account", ""), text);
-        Assert.StartsWith("Windows 11 Pro,", text);
+        Assert.Null(InstallMediaSummary.BarChanges(Choices(apps: 0)));
+        Assert.StartsWith("Windows 11 Pro,", InstallMediaSummary.Bar(Choices(apps: 0), "Windows 11 Pro", null));
+    }
+
+    [Fact]
+    public void BarNamesUnsupportedPcsUnreviewedAppsAndAppsToInstall()
+    {
+        var off = Changes(Choices(apps: 1, profile: "office"));
+        Assert.DoesNotContain(Loc.Instance["Media_UnsupportedTitle"], off);
+        Assert.DoesNotContain(Loc.Instance.Format("Media_Summary_Unreviewed", 2), off);
+        Assert.DoesNotContain(Loc.Instance.Format("Media_InstallSummary", 3), off);
+
+        var on = Changes(Choices(apps: 1, allowUnsupported: true, profile: "office", unreviewed: 2, install: 3));
+        Assert.Contains(Loc.Instance["Media_UnsupportedTitle"], on);
+        Assert.Contains(Loc.Instance.Format("Media_Summary_Unreviewed", 2), on);
+        Assert.Contains(Loc.Instance.Format("Media_InstallSummary", 3), on);
+        // Apps to install need the Tunero copy (the profile): without it nothing installs them.
+        Assert.DoesNotContain(Loc.Instance.Format("Media_InstallSummary", 3), Changes(Choices(apps: 1, install: 3)));
     }
 
     [Fact]
     public void PartsAppearInTheBarAndTheReviewOnlyWhenChosen()
     {
-        Assert.DoesNotContain(Loc.Instance.Format("Media_PartsSummary", 0), InstallMediaSummary.Bar(Choices(), "Windows 11 Pro", null, 1));
+        Assert.DoesNotContain(Loc.Instance.Format("Media_PartsSummary", 0), Changes(Choices()));
         Assert.DoesNotContain(InstallMediaSummary.Review(Choices(), "Windows 11 Pro", null, 1).Changes, l => l.Target == Loc.Instance["Media_PartsTitle"]);
 
         var on = Choices() with { RemoveParts = ["wordpad", "recall"] };
-        Assert.Contains(Loc.Instance.Format("Media_PartsSummary", 2), InstallMediaSummary.Bar(on, "Windows 11 Pro", null, 1));
+        Assert.Contains(Loc.Instance.Format("Media_PartsSummary", 2), Changes(on));
         var review = InstallMediaSummary.Review(on, "Windows 11 Pro", null, 1);
         var line = Assert.Single(review.Changes, l => l.Target == Loc.Instance["Media_PartsTitle"]);
         Assert.Contains("WordPad", line.After);
@@ -63,7 +85,7 @@ public sealed class InstallMediaSummaryTests
     {
         var only = InstallMediaSummary.Review(Choices() with { RemoveParts = ["textToSpeech"] }, "Windows 11 Pro", null, 1);
         // The bar counts what the review names.
-        Assert.Contains(Loc.Instance.Format("Media_PartsSummary", 2), InstallMediaSummary.Bar(Choices() with { RemoveParts = ["textToSpeech"] }, "Windows 11 Pro", null, 1));
+        Assert.Contains(Loc.Instance.Format("Media_PartsSummary", 2), Changes(Choices() with { RemoveParts = ["textToSpeech"] }));
         var line = Assert.Single(only.Changes, l => l.Target == Loc.Instance["Media_PartsTitle"]).After;
         Assert.Contains(CatalogData.Current.MediaParts.Single(p => p.Id == "textToSpeech").Label("en"), line);
         Assert.Contains(CatalogData.Current.MediaParts.Single(p => p.Id == "speech").Label("en"), line);
@@ -76,8 +98,8 @@ public sealed class InstallMediaSummaryTests
     [Fact]
     public void BarSaysSmallerIsoOnlyWhenChosen()
     {
-        Assert.Contains(Loc.Instance["Media_CompressionSmaller"], InstallMediaSummary.Bar(Choices(smaller: true), "Windows 11 Pro", null, 1));
-        Assert.DoesNotContain(Loc.Instance["Media_CompressionSmaller"], InstallMediaSummary.Bar(Choices(), "Windows 11 Pro", null, 1));
+        Assert.Contains(Loc.Instance["Media_CompressionSmaller"], Changes(Choices(smaller: true)));
+        Assert.DoesNotContain(Loc.Instance["Media_CompressionSmaller"], Changes(Choices()));
     }
 
     [Fact]
@@ -93,11 +115,11 @@ public sealed class InstallMediaSummaryTests
     public void TheImageSettingsAppearInTheBarTheReviewAndTheWarningsOnlyWhenOn()
     {
         var off = Choices();
-        Assert.DoesNotContain(Loc.Instance["Media_EncryptionTitle"], InstallMediaSummary.Bar(off, "Windows 11 Pro", null, 1));
+        Assert.DoesNotContain(Loc.Instance["Media_EncryptionTitle"], Changes(off));
         Assert.DoesNotContain(InstallMediaSummary.Review(off, "Windows 11 Pro", null, 1).Changes, l => l.Target == Loc.Instance["Media_ReservedTitle"]);
 
         var on = off with { Settings = new(true, true, false) };
-        var bar = InstallMediaSummary.Bar(on, "Windows 11 Pro", null, 1);
+        var bar = Changes(on);
         Assert.Contains(Loc.Instance["Media_EncryptionTitle"], bar);
         Assert.Contains(Loc.Instance["Media_ReservedTitle"], bar);
         var review = InstallMediaSummary.Review(on, "Windows 11 Pro", null, 1);
@@ -111,10 +133,10 @@ public sealed class InstallMediaSummaryTests
     public void LaterUpgradesAppearInTheBarTheReviewAndTheWarnings()
     {
         var off = Choices(allowUnsupported: true);
-        Assert.DoesNotContain(Loc.Instance["Media_UpgradesTitle"], InstallMediaSummary.Bar(off, "Windows 11 Pro", null, 1));
+        Assert.DoesNotContain(Loc.Instance["Media_UpgradesTitle"], Changes(off));
         Assert.DoesNotContain(InstallMediaSummary.Review(off, "Windows 11 Pro", null, 1).Changes, l => l.Target == Loc.Instance["Media_UpgradesTitle"]);
         var on = off with { Settings = new(false, false, true) };
-        Assert.Contains(Loc.Instance["Media_UpgradesTitle"], InstallMediaSummary.Bar(on, "Windows 11 Pro", null, 1));
+        Assert.Contains(Loc.Instance["Media_UpgradesTitle"], Changes(on));
         var review = InstallMediaSummary.Review(on, "Windows 11 Pro", null, 1);
         Assert.Contains(review.Changes, l => l.Target == Loc.Instance["Media_UpgradesTitle"] && l.After == Loc.Instance["Media_Review_On"]);
         Assert.Contains(review.Warnings, w => w.Contains(Loc.Instance["Media_UpgradesText"], StringComparison.Ordinal));
