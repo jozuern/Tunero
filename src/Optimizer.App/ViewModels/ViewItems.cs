@@ -87,9 +87,8 @@ public sealed partial class TweakGroupRow(string key, string title, SymbolRegula
     {
         var candidates = items.Where(i => !i.IsOn && i.CanToggle && i.Tweak.IsBatchSafe && i.Tweak.EffectiveRisk == Risk.Safe
                                           && i.Status_.Blocks.All(b => b.ReasonKey == "block.notElevated")).ToList();
-        var ids = candidates.Select(i => i.Tweak.Id).ToHashSet(StringComparer.Ordinal);
-        return candidates.Where(i => !i.Tweak.ConflictsWith.Any(ids.Contains)
-                                     && !candidates.Any(o => o.Tweak.ConflictsWith.Contains(i.Tweak.Id))).ToList();
+        // Declared or by a shared target: of two tweaks on one setting the engine would block the second.
+        return candidates.Where(i => !candidates.Any(o => o != i && TargetOverlap.Conflict(i.Tweak, o.Tweak))).ToList();
     }
 
     public bool CanApplyAll => Applicable.Count > 0;

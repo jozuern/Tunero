@@ -69,7 +69,8 @@ public sealed partial class MainViewModel
         UpdatePicks();
     }
 
-    private static bool Conflict(TweakDefinition a, TweakDefinition b) => a.ConflictsWith.Contains(b.Id) || b.ConflictsWith.Contains(a.Id);
+    // Declared or by a shared target: the engine would block the second one anyway.
+    private static bool Conflict(TweakDefinition a, TweakDefinition b) => TargetOverlap.Conflict(a, b);
 
     private void UpdatePicks()
     {

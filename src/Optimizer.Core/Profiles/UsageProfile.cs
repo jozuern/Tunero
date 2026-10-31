@@ -128,9 +128,12 @@ public static class ProfileView
     public static IReadOnlyList<ProfiledTweak> For(UsageProfile profile, IEnumerable<TweakStatus> statuses, Facts facts, IReadOnlySet<string>? ignored = null) =>
         statuses.Select(s => For(profile, s, facts, ignored)).ToList();
 
-    /// <summary>A fix built for this PC (runtime) is not offered while a tweak it conflicts with is on.</summary>
+    /// <summary>
+    /// A fix built for this PC (runtime) is not offered while a tweak it conflicts with (declared or by a shared target) is
+    /// on, or holds a change of this app that the engine would protect by blocking the fix.
+    /// </summary>
     public static bool RuntimeFixAllowed(TweakDefinition fix, IEnumerable<ProfiledTweak> tweaks) =>
-        !fix.ConflictsWith.Any(id => tweaks.Any(p => p.Tweak.Id == id && p.Status.IsOn));
+        !tweaks.Any(p => (p.Status.IsOn || p.Status.HasBackup) && TargetOverlap.Conflict(fix, p.Tweak));
 
     /// <summary>Same rule as the catalog recommendations: not applied yet and nothing blocks it.</summary>
     private static bool CanRecommend(TweakStatus s) =>

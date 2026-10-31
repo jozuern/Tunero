@@ -9,6 +9,9 @@
 
 ### Fixed
 
+- **Conflicts:** two changes that write the same setting (a registry value, an NVIDIA driver setting, one side of a power setting) now conflict even without a declared conflict, so batch applies, Undo all and the "changes reset" notice stay right.
+- **NVIDIA global settings:** with G-SYNC and V-Sync forced on, the quick fix sets the frame rate limit 3 FPS below the refresh rate instead of removing it.
+- **Apply again before a restart** no longer reports a failure when another program holds the undo record; the change is in place.
 - **Command line:** a sign-out or shutdown during `--apply`, `--undo-all`, the sign-in reapply task or `--build-media` no longer ends it halfway; Windows waits, as for changes made in the window.
 - **Install media:** an app that installs at the first sign-in no longer reports winget 0x00041303 while its one-time task still waits to start.
 - **Two copies:** a copy under another file name, such as `Tunero (1).exe`, no longer unloads the Default profile or install media hives of a copy that still runs.

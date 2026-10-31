@@ -38,8 +38,13 @@ public static class RuntimeFixes
 
     public static IReadOnlyList<string> DocIds => [RefreshRateDoc, GpuPreferenceDoc, NvidiaGlobalDoc, NvidiaFrameCapDoc, PowerModeDoc, EthernetAutoDoc];
 
-    /// <summary>Removes the global profile's own values for the given settings, so the driver defaults apply again.</summary>
-    public static TweakDefinition NvidiaGlobalReset(IEnumerable<uint> settings) => new()
+    /// <summary>
+    /// Removes the global profile's own values for the given settings, so the driver defaults apply again.
+    /// <paramref name="frameCap"/>: with G-SYNC and forced V-Sync the frame rate limit is set to it instead of removed, so
+    /// this fix alone owns that setting (a reset to "off" would only make the scan offer <see cref="NvidiaFrameCap"/> next,
+    /// which the engine then blocks as a change of the same setting).
+    /// </summary>
+    public static TweakDefinition NvidiaGlobalReset(IEnumerable<uint> settings, uint? frameCap = null) => new()
     {
         Id = "fix.nvidiaGlobal",
         Docs = NvidiaGlobalDoc,
@@ -48,12 +53,18 @@ public static class RuntimeFixes
         Risk = Risk.Safe,
         Preview = true,
         Hidden = true,
-        Actions = settings.Select(id => (TweakAction)new NvidiaDrsAction { Profile = "global", SettingId = id, Value = null }).ToList(),
+        Actions = settings.Select(id => (TweakAction)new NvidiaDrsAction
+        {
+            Profile = "global",
+            SettingId = id,
+            Value = id == Nvapi.SettingFrameRateLimiter ? frameCap : null,
+        }).ToList(),
         Fixes = [NvidiaGlobalCheck.Id],
         Sources =
         [
             "https://docs.nvidia.com/gameworks/content/gameworkslibrary/coresdk/nvapi/group__drsapi.html",
             "https://github.com/NVIDIA/nvapi/blob/main/NvApiDriverSettings.h",
+            "https://blurbusters.com/gsync/gsync101-input-lag-tests-and-settings/5/",
         ],
     };
 

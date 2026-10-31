@@ -204,7 +204,10 @@ public class ReapplyTaskTests
         Actions = [new RegistryAction { Hive = Hive.Machine, Path = @"SOFTWARE\TuneroTest", Name = "Shared", Kind = "dword", Value = JsonSerializer.SerializeToElement(value) }],
     };
 
-    /// <summary>Two changes that write one target differently: one always reads as reset, and the run must not flip it at every sign-in.</summary>
+    /// <summary>
+    /// Two changes that write one target differently (backups from before the conflict check by shared target, which now
+    /// blocks the second): the overwritten one is not drift, and the run must not flip the target at every sign-in.
+    /// </summary>
     [Fact]
     public async Task TwoChangesOnOneTargetAreLeftForTheUser()
     {
@@ -212,11 +215,16 @@ public class ReapplyTaskTests
         fx.RestorePoints.Enabled = false;
         var session = new ChangeSession(fx.Engine, fx.RestorePoints, fx.ChangeLock);
         var options = new ApplyOptions { ContinueWithoutRestorePoint = true };
-        await fx.Engine.ApplyAsync(Writes("test.one", 1), Facts(), options);
-        await fx.Engine.ApplyAsync(Writes("test.zero", 0), Facts(), options);
+        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(Writes("test.one", 1), Facts(), options)).Outcome);
+        Assert.Equal(ApplyOutcome.Blocked, (await fx.Engine.ApplyAsync(Writes("test.zero", 0), Facts(), options)).Outcome);
+        // The state an earlier version could leave: the second change applied over the first.
+        var first = fx.Store.Get("test.one")!;
+        fx.Store.Archive("test.one");
+        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(Writes("test.zero", 0), Facts(), options)).Outcome);
+        fx.Store.Save(first);
         UpdatedSince(fx, "test.one");
         UpdatedSince(fx, "test.zero");
-        Assert.Contains(fx.Engine.CheckDrift(Facts()), d => d.Tweak.Id == "test.one");
+        Assert.DoesNotContain(fx.Engine.CheckDrift(Facts()), d => d.Tweak.Id == "test.one");
         Assert.Same(BatchOutcome.Cancelled, await session.ReapplyResetAsync(new PcSnapshot(Facts(), [], new HashSet<string>(), [])));
     }
 }

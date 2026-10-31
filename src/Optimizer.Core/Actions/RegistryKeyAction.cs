@@ -18,6 +18,9 @@ public sealed class RegistryKeyAction : TweakAction
 
     public override string TargetKey => $"regkey:{Hive}:{Path}".ToLowerInvariant();
 
+    /// <summary>Every value and subkey below the key: a change of a value in it conflicts with deleting the key.</summary>
+    public override IEnumerable<SharedTarget> SharedTargets() => [new(SharedTarget.RegistryValueKey(Hive, Path, ""), IsPrefix: true)];
+
     public override TargetText TargetLabel(ActionContext c) => TargetText.Of("target.registryKey", $"{c.Registry.DisplayRoot(Hive)}\\{Path}");
 
     public override StoredValue Desired(ActionContext c) => StoredValue.Missing;

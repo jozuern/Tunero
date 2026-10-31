@@ -162,10 +162,11 @@ public partial class CatalogIntegrityTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public void TweaksWritingTheSameTargetDeclareTheConflict()
+    public void TweaksWritingTheSameTargetConflict()
     {
-        // Undoing one of two active tweaks on one target makes the other read as "reset by Windows": a declared conflict
-        // keeps only one of them active.
+        // Undoing one of two active tweaks on one target makes the other read as "reset by Windows": the conflict check
+        // by shared target keeps only one of them active, without a declaration. This rule, written independently of
+        // TweakAction.SharedTargets, finds the pairs that the check must catch.
         // A power setting restores only the side it writes, and a network adapter action only its own keywords.
         static IEnumerable<string> Targets(TweakAction a) => a switch
         {
@@ -179,8 +180,8 @@ public partial class CatalogIntegrityTests(ITestOutputHelper output)
             var sharing = g.Select(x => x.Tweak).DistinctBy(t => t.Id).ToList();
             for (var i = 0; i < sharing.Count; i++)
                 for (var j = i + 1; j < sharing.Count; j++)
-                    if (!sharing[i].ConflictsWith.Contains(sharing[j].Id) && !sharing[j].ConflictsWith.Contains(sharing[i].Id))
-                        problems.Add($"{sharing[i].Id} and {sharing[j].Id} both write {g.Key}: add conflictsWith");
+                    if (!TargetOverlap.SharesTarget(sharing[i], sharing[j]) || !TargetOverlap.Conflict(sharing[j], sharing[i]))
+                        problems.Add($"{sharing[i].Id} and {sharing[j].Id} both write {g.Key}, but the conflict check misses it");
         }
         AssertNone(problems);
     }

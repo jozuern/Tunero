@@ -538,6 +538,29 @@ public class EngineTests
     }
 
     [Fact]
+    public async Task AnUndoRecordThatCannotBeRemovedDoesNotFailTheApply()
+    {
+        // Undone and applied again before the restart, while a scanner holds the undo record: the change is in place, so
+        // the result says applied (with the bookkeeping behind) instead of throwing.
+        using var fx = new EngineFixture();
+        fx.Processes.MemoryCompressionAfterRestart = true;
+        var t = T("memory.compressionOff");
+        await fx.Engine.ApplyAsync(t, Facts(), Expert);
+        Restart(fx, t.Id);
+        Assert.True(fx.Engine.Revert(t).Success);
+        Assert.NotNull(fx.Store.GetPendingUndo(t.Id));
+
+        var file = Path.Combine(fx.Store.PendingUndoFolder, t.Id + ".json");
+        ApplyResult result;
+        using (new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read))
+            result = await fx.Engine.ApplyAsync(t, Facts(), Expert);
+
+        Assert.Equal(ApplyOutcome.Applied, result.Outcome);
+        Assert.True(result.BackupNotUpdated);
+        Assert.NotNull(fx.Store.Get(t.Id));
+    }
+
+    [Fact]
     public async Task MemoryCompressionTakesEffectAfterRestartAndUndoRestoresIt()
     {
         using var fx = new EngineFixture();

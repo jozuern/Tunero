@@ -128,6 +128,14 @@ public abstract class TweakAction
     /// <summary>Stable key of the changed target, used for the first-original backup rule.</summary>
     public abstract string TargetKey { get; }
 
+    /// <summary>
+    /// What this action writes, for the conflict check by shared target: a change of another tweak that wrote an
+    /// overlapping target blocks this one (and the other way round). By default the whole <see cref="TargetKey"/>;
+    /// actions that write only part of a value (bits, tokens, one side of a power setting) name that part, so tweaks that
+    /// share a value but not a part do not conflict. A method, so it is not written into backups.
+    /// </summary>
+    public virtual IEnumerable<SharedTarget> SharedTargets() => [new(TargetKey)];
+
     /// <summary>The value this action writes (for drift detection and feature-update-aware undo).</summary>
     public abstract StoredValue Desired(ActionContext c);
 

@@ -49,6 +49,17 @@ public sealed class PowerSettingAction : TweakAction
 
     // Backups written before schemes were part of the key have no scheme; their key stays the same.
     public override string TargetKey => Scheme is { } s ? $"pwr:{s}:{Sub}:{Set}" : $"pwr:{Sub}:{Set}";
+
+    /// <summary>
+    /// The sides it writes (mains, battery) of the setting on its plan: a mains-only and a battery-only tweak of one
+    /// setting do not conflict. Without a plan (an older backup, or the plan could not be read) it stands for every plan.
+    /// </summary>
+    public override IEnumerable<SharedTarget> SharedTargets()
+    {
+        var key = $"pwr:{Sub}:{Set}:{Scheme}".ToLowerInvariant();
+        var sides = new[] { Ac is null ? null : "ac", Dc is null ? null : "dc" }.OfType<string>().ToList();
+        return sides.Count == 0 ? [new(key, IsPrefix: Scheme is null)] : sides.Select(side => new SharedTarget(key, side, IsPrefix: Scheme is null));
+    }
     // The plan by the name Windows shows (its GUID only when it has none), as in the active-plan preview.
     public override TargetText TargetLabel(ActionContext c) => TargetText.Of("target.powerSetting",
         SchemeOf(c) is var scheme && c.Power.Schemes().FirstOrDefault(s => s.Id == scheme).Name is { Length: > 0 } name ? name : scheme.ToString(),

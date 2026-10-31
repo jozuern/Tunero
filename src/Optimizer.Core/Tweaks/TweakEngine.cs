@@ -23,7 +23,14 @@ public enum TweakState
 }
 
 /// <summary>A reason that prevents applying, as a label key plus values for the text.</summary>
-public sealed record Block(string ReasonKey, string? Detail = null, bool CanOverride = false);
+public sealed record Block(string ReasonKey, string? Detail = null, bool CanOverride = false)
+{
+    /// <summary>
+    /// For "block.conflict": the other change (<see cref="Detail"/> is its id), so a fix built for this PC or a service
+    /// change can be named by its title like a catalog tweak.
+    /// </summary>
+    public TweakDefinition? Other { get; init; }
+}
 
 public sealed record TweakStatus(
     TweakDefinition Tweak,
@@ -128,9 +135,45 @@ public sealed class TweakEngine(ActionContext ctx, BackupStore store, IRestorePo
     }
 
     /// <summary>The backups as one detection read them; null outside a detection (each lookup reads the file).</summary>
-    private sealed record BackupView(IReadOnlyDictionary<string, TweakBackup> Own, IReadOnlySet<string> OtherAccounts);
+    private sealed class BackupView(IReadOnlyDictionary<string, TweakBackup> own, IReadOnlySet<string> otherAccounts)
+    {
+        public IReadOnlyDictionary<string, TweakBackup> Own => own;
+        public IReadOnlySet<string> OtherAccounts => otherAccounts;
+
+        /// <summary>The actions each tweak expanded to in this detection, so the conflict check does not expand them again.</summary>
+        public Dictionary<string, IReadOnlyList<TweakAction>> Expanded { get; } = new(StringComparer.Ordinal);
+
+        /// <summary>The targets of the backups, built when the first tweak needs them.</summary>
+        public TargetIndex? Targets { get; set; }
+    }
 
     private TweakBackup? BackupOf(string id, BackupView? view) => view is null ? PeekBackup(id) : view.Own.GetValueOrDefault(id);
+
+    /// <summary>What the backups of this account wrote: from the detection's read, or read now outside a detection.</summary>
+    private TargetIndex TargetsOf(BackupView? view)
+    {
+        if (view?.Targets is { } kept) return kept;
+        IEnumerable<TweakBackup> backups;
+        if (view is not null)
+        {
+            backups = view.Own.Values;
+        }
+        else
+        {
+            try
+            {
+                backups = store.All();
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                Log.Warn("engine", $"backups unreadable for the conflict check: {ex.Message}");
+                backups = [];
+            }
+        }
+        var index = new TargetIndex(backups, Resolve, StoredAction);
+        if (view is not null) view.Targets = index;
+        return index;
+    }
 
     private bool HeldByAnotherAccount(string id, BackupView? view) => view?.OtherAccounts.Contains(id) ?? store.HeldByAnotherAccount(id);
 
@@ -190,6 +233,7 @@ public sealed class TweakEngine(ActionContext ctx, BackupStore store, IRestorePo
         if (!AppliesTo(t, facts)) return TweakState.NotApplicable;
         using var hold = HoldHives(t);
         var actions = Expand(t);
+        if (view is not null) view.Expanded[t.Id] = actions;
         var states = actions.Select(a => SafeState(a)).ToList();
         var supported = states.Where(s => s != ActionState.Unsupported).ToList();
         if (supported.Count == 0) return TweakState.Unsupported;
@@ -207,9 +251,11 @@ public sealed class TweakEngine(ActionContext ctx, BackupStore store, IRestorePo
             // We applied it, now it is gone: a feature update or another tool reset it (drift). Only
             // targets we changed count: a newly added adapter or a target outside the backup is simply not applied.
             // A target that still holds what the app wrote is not drift either: a newer catalog version asks for
-            // another value there, and the tweak simply reads as not (fully) applied.
+            // another value there, and the tweak simply reads as not (fully) applied. Nor is a target that another change
+            // of this app wrote since and still holds (two changes on one target from before the conflict check by
+            // shared target): reapplying this one would undo that change.
             if (actions.Select((a, i) => (a, s: states[i])).Any(x => x.s == ActionState.NotApplied && backup.Entry(x.a.TargetKey) is { } entry
-                    && !StillHoldsWhatWasWritten(x.a, entry)))
+                    && !StillHoldsWhatWasWritten(x.a, entry) && !HeldByAnotherChange(t.Id, x.a, view)))
                 return TweakState.RevertedByWindows;
         }
         else if (state != TweakState.Applied && facts.Get("device.managed") is true && actions.OfType<RegistryAction>().Any(a => IsPolicyPath(a.Path) && SafeRead(a) is { Existed: true }))
@@ -230,6 +276,32 @@ public sealed class TweakEngine(ActionContext ctx, BackupStore store, IRestorePo
         {
             Log.Warn("engine", $"{a.TargetKey}: could not compare with the written value: {ex.Message}");
             return false;
+        }
+    }
+
+    /// <summary>Another tweak's change wrote an overlapping target and it still holds what that change wrote.</summary>
+    private bool HeldByAnotherChange(string tweakId, TweakAction a, BackupView? view)
+    {
+        var index = TargetsOf(view);
+        if (index.IsEmpty) return false;
+        foreach (var target in TargetOverlap.Of(a))
+            foreach (var w in index.Writers(target, tweakId))
+                if (w.Entry.Applied is not null && (w.Action ?? CurrentAction(w)) is { } other && StillHoldsWhatWasWritten(other, w.Entry))
+                    return true;
+        return false;
+    }
+
+    /// <summary>For an entry stored without its action (older backups): the action its tweak expands to now under that key.</summary>
+    private TweakAction? CurrentAction(TargetWriter w)
+    {
+        try
+        {
+            return Resolve(w.Backup) is { } t ? Expand(t).FirstOrDefault(x => x.TargetKey == w.Entry.TargetKey) : null;
+        }
+        catch (Exception ex)
+        {
+            Log.Debug("engine", $"{w.Backup.TweakId}: action of {w.Entry.TargetKey} unknown: {ex.Message}");
+            return null;
         }
     }
 
@@ -285,13 +357,54 @@ public sealed class TweakEngine(ActionContext ctx, BackupStore store, IRestorePo
         // Conflicts: only changes this app made and has not undone. A value that merely matches the other tweak (the
         // Windows default Balanced plan matches power.balancedPlan) is not a change to protect; this tweak's own backup
         // keeps it as the original, so undo brings it back.
-        foreach (var other in t.ConflictsWith.Where(o => BackupOf(o, view) is not null)) blocks.Add(new Block("block.conflict", other));
+        foreach (var other in Conflicts(t, facts, view)) blocks.Add(new Block("block.conflict", other.TweakId) { Other = Resolve(other) });
         // A backup file that cannot be read still holds the true originals: applying again would record the changed
         // values as originals and overwrite it.
         if (store.IsDamaged(t.Id)) blocks.Add(new Block("block.backupDamaged", store.DamagedFile(t.Id)));
         if (HeldByAnotherAccount(t.Id, view)) blocks.Add(new Block("block.otherAccount"));
         if (facts.Get("elevated") is false) blocks.Add(new Block("block.notElevated"));
         return blocks;
+    }
+
+    /// <summary>
+    /// The changes of other tweaks this one conflicts with: declared in either direction, or by a shared target (the
+    /// actions expanded for this PC against what the backups recorded), so neither the catalog nor a fix built at run time
+    /// has to name every pair. A tweak that does not apply here is blocked anyway and not expanded.
+    /// </summary>
+    private List<TweakBackup> Conflicts(TweakDefinition t, Facts facts, BackupView? view)
+    {
+        var found = new List<TweakBackup>();
+        void Add(TweakBackup? b)
+        {
+            if (b is not null && !string.Equals(b.TweakId, t.Id, StringComparison.Ordinal) && !found.Exists(f => f.TweakId == b.TweakId)) found.Add(b);
+        }
+        foreach (var id in t.ConflictsWith) Add(BackupOf(id, view));
+        var index = TargetsOf(view);
+        if (index.IsEmpty || !AppliesTo(t, facts)) return found;
+        foreach (var b in index.DeclaringConflictWith(t.Id)) Add(b);
+        // Expanding needs no hive held: templates read the adapters and the power plan, not the Default profile.
+        var actions = view?.Expanded.GetValueOrDefault(t.Id) ?? ExpandForConflicts(t);
+        foreach (var target in actions.SelectMany(TargetOverlap.Of).Distinct())
+            foreach (var w in index.Writers(target, t.Id))
+                Add(w.Backup);
+        return found;
+    }
+
+    /// <summary>
+    /// The actions for this PC; when they cannot be built (an adapter list that fails to read), the catalog's own. Their
+    /// plain targets still count; a template then misses what was written per adapter, but the preflight does not fail.
+    /// </summary>
+    private IReadOnlyList<TweakAction> ExpandForConflicts(TweakDefinition t)
+    {
+        try
+        {
+            return Expand(t);
+        }
+        catch (Exception ex)
+        {
+            Log.Warn("engine", $"{t.Id}: actions for the conflict check not expanded: {ex.Message}");
+            return t.Actions;
+        }
     }
 
     // ---------------- preview ----------------
@@ -559,7 +672,10 @@ public sealed class TweakEngine(ActionContext ctx, BackupStore store, IRestorePo
         // The originals were saved before the first write; this save adds what was written and when. When it fails, the
         // change is in place and Undo still has the originals, but the result says so.
         var saved = SaveAfterChange(() => store.Save(backup), t.Id);
-        if (pendingUndo is not null) store.ClearPendingUndo(t.Id);
+        // The change is in place: an undo record that cannot be removed now (a scanner holding the file) must not turn it
+        // into a failure. Until the next restart drops it (ActivePendingUndo) the change may read as off after restart,
+        // so the result says that the bookkeeping is behind, as for the backup.
+        if (pendingUndo is not null && !SaveAfterChange(() => store.ClearPendingUndo(t.Id), t.Id)) saved = false;
 
         // The data lets the Changes page show the line in the UI language; the message stays English for the log file.
         foreach (var line in changes)

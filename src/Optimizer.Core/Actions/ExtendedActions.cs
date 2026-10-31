@@ -74,6 +74,10 @@ public sealed class PowerModeAction : TweakAction
     public PowerModeAction For(string source) => new() { Overlay = Overlay, Source = source };
 
     public override string TargetKey => Source is null ? "pwr:overlay" : $"pwr:overlay:{Source}";
+
+    /// <summary>The mode of its source; without one (the catalog, older backups) the mode of both sources.</summary>
+    public override IEnumerable<SharedTarget> SharedTargets() => [new("pwr:overlay", Source)];
+
     public override TargetText TargetLabel(ActionContext c) => TargetText.Of(Source switch
     {
         "ac" => "target.powerModeAc",
@@ -140,6 +144,18 @@ public sealed class NicPropertyAction : TweakAction
     public NicAdapter? Adapter { get; init; }
 
     public override string TargetKey => $"nic:{Adapter?.ClassKey}:{string.Join(",", Keys())}".ToLowerInvariant();
+
+    /// <summary>
+    /// The registry values it writes in its adapter's class key, one per keyword: tweaks that set other keywords of one
+    /// adapter do not conflict. A template (no adapter yet) names the keywords per medium; "any" stands for both.
+    /// </summary>
+    public override IEnumerable<SharedTarget> SharedTargets()
+    {
+        if (Adapter is { } adapter) return Keys().Select(k => new SharedTarget(SharedTarget.RegistryValueKey(Hive.Machine, adapter.ClassKey, k)));
+        var media = Media switch { "ethernet" => ["ethernet"], "wifi" => ["wifi"], _ => new[] { "ethernet", "wifi" } };
+        var scope = InterfaceGuid is { } only ? ":" + only.Trim('{', '}').ToLowerInvariant() : "";
+        return media.SelectMany(m => Properties.Keys.Concat(Dwords.Keys).Select(k => new SharedTarget($"nic:{m}{scope}", k.ToLowerInvariant(), IsPrefix: scope.Length == 0)));
+    }
     public override TargetText TargetLabel(ActionContext c) => Adapter?.Description is { } name
         ? TargetText.Of("target.nicProperties", name, string.Join(", ", Keys()))
         : TargetText.Of("target.nicPropertiesUnknown", string.Join(", ", Keys()));

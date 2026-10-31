@@ -102,6 +102,25 @@ public class AdvisorCheckTests
     }
 
     [Fact]
+    public void LowCapWithGsyncAndForcedVsyncIsResetToACapBelowTheRefreshRate()
+    {
+        // Removing the cap would leave G-SYNC without the cap it needs, and the next scan would offer the frame cap fix for
+        // the same driver setting (which the engine blocks while the reset is in place). The reset sets the cap instead.
+        var f = One(new NvidiaGlobalCheck(), Nv(frl: 30, pstate: Nvapi.PStatePreferMin, vsync: Nvapi.VSyncForceOn, vrrEnabled: true));
+        Assert.Equal(FindingStatus.Problem, f.Status);
+        Assert.Equal("yes", f.Params["capInReset"]);
+        Assert.Equal("fix.nvidiaGlobal", f.Fix!.Id);
+        var actions = f.Fix.Actions.Cast<NvidiaDrsAction>().ToDictionary(a => a.SettingId, a => a.Value);
+        Assert.Equal((uint?)141, actions[Nvapi.SettingFrameRateLimiter]);
+        Assert.Null(actions[Nvapi.SettingPreferredPState]);
+        AssertRenders(f);
+        // Once the cap is set, the check is content and offers no second fix for the same setting.
+        Assert.Equal(FindingStatus.Ok, One(new NvidiaGlobalCheck(), Nv(frl: 141, vsync: Nvapi.VSyncForceOn, vrrEnabled: true)).Status);
+        // Without forced V-Sync the reset removes the cap as before.
+        Assert.Equal("", One(new NvidiaGlobalCheck(), Nv(frl: 30, vrrEnabled: true)).Params["capInReset"]);
+    }
+
+    [Fact]
     public void GsyncStyleCapIsOk() => Assert.Equal(FindingStatus.Ok, One(new NvidiaGlobalCheck(), Nv(frl: 141)).Status);
 
     [Fact]

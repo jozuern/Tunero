@@ -125,6 +125,9 @@ public sealed class NvidiaGlobalCheck : IFindingCheck
         var reset = new List<uint>();
         if (lowCap) reset.Add(Nvapi.SettingFrameRateLimiter);
         if (powerMin) reset.Add(Nvapi.SettingPreferredPState);
+        // A low cap with G-SYNC and forced V-Sync: removing it would leave the setup without the cap it needs, and the next
+        // scan would offer the frame cap fix for the same setting. The reset sets the cap below the refresh rate instead.
+        var capInReset = lowCap && vrrOn && nv.VSyncMode == Nvapi.VSyncForceOn && capTarget > 0;
 
         yield return new Finding
         {
@@ -155,11 +158,13 @@ public sealed class NvidiaGlobalCheck : IFindingCheck
                 new("fact.gsyncEnabled", nv.Vrr.Count == 0 ? "@unknown" : vrrOn ? "@yes" : "@no"),
                 new("fact.currentRefresh", refresh > 0 ? $"{refresh:0.##} Hz" : "@unknown"),
             ],
-            Fix = reset.Count > 0 ? RuntimeFixes.NvidiaGlobalReset(reset) : gsyncNoCap ? RuntimeFixes.NvidiaFrameCap(capTarget) : null,
+            Fix = reset.Count > 0 ? RuntimeFixes.NvidiaGlobalReset(reset, capInReset ? (uint)capTarget : null)
+                : gsyncNoCap ? RuntimeFixes.NvidiaFrameCap(capTarget) : null,
             Params = new Dictionary<string, string>
             {
                 ["lowCap"] = lowCap ? "yes" : "",
                 ["gsyncNoCap"] = gsyncNoCap ? "yes" : "",
+                ["capInReset"] = capInReset ? "yes" : "",
                 ["capTarget"] = capTarget > 0 ? capTarget.ToString(CultureInfo.InvariantCulture) : "",
                 ["powerMin"] = powerMin ? "yes" : "",
                 ["vsyncForced"] = vsyncForced ? "yes" : "",

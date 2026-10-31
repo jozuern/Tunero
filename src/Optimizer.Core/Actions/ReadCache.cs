@@ -72,8 +72,6 @@ public static class ReadCache
         }
     }
 
-    public static void Invalidate(ActionContext c, string key) => Invalidate(c.Processes, key);
-
     /// <summary>
     /// Runs a write of the value under <paramref name="key"/>: the kept value is dropped before and after it (also when
     /// it fails), so a read that ran while the tool was writing cannot keep the old value.

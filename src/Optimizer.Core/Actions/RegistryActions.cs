@@ -65,7 +65,8 @@ public sealed class RegistryAction : TweakAction
         return current.SameAs(Desired(c)) ? ActionState.Applied : ActionState.NotApplied;
     }
 
-    public override string TargetKey => $"reg:{Hive}:{Path}\\{Name}".ToLowerInvariant();
+    // Frozen (backups): the same string as SharedTarget.RegistryValueKey, so a value overlaps the bits and tokens of it.
+    public override string TargetKey => SharedTarget.RegistryValueKey(Hive, Path, Name);
 
     public override TargetText TargetLabel(ActionContext c) => TargetText.Verbatim($"{c.Registry.DisplayRoot(Hive)}\\{Path}\\{(Name.Length == 0 ? "(Default)" : Name)}");
 
@@ -144,6 +145,15 @@ public sealed class RegistryBitsAction : TweakAction
 
     public override string TargetKey => $"regbits:{Hive}:{Path}\\{Name}:{Set:X}:{Clear:X}".ToLowerInvariant();
 
+    /// <summary>One part per bit it sets or clears: tweaks that own other bits of the value do not conflict.</summary>
+    public override IEnumerable<SharedTarget> SharedTargets()
+    {
+        var value = SharedTarget.RegistryValueKey(Hive, Path, Name);
+        var mask = Set | Clear;
+        if (mask == 0) return [new(value)];
+        return Enumerable.Range(0, 32).Where(bit => (mask & (1u << bit)) != 0).Select(bit => new SharedTarget(value, $"bit{bit}"));
+    }
+
     public override TargetText TargetLabel(ActionContext c) => TargetText.Of("target.registryBits", $"{c.Registry.DisplayRoot(Hive)}\\{Path}\\{Name}");
 
     private uint Current(ActionContext c) =>
@@ -194,6 +204,19 @@ public sealed class RegistryBinaryBitsAction : TweakAction
     public string Clear { get; init; } = "";
 
     public override string TargetKey => $"regbinbits:{Hive}:{Path}\\{Name}:{Set}:{Clear}".ToLowerInvariant();
+
+    /// <summary>One part per bit it sets or clears, numbered across the bytes (bit 8 is bit 0 of byte 1).</summary>
+    public override IEnumerable<SharedTarget> SharedTargets()
+    {
+        var value = SharedTarget.RegistryValueKey(Hive, Path, Name);
+        var set = Mask(Set);
+        var clear = Mask(Clear);
+        var parts = new List<SharedTarget>();
+        for (var i = 0; i < Math.Max(set.Length, clear.Length); i++)
+            for (var bit = 0; bit < 8; bit++)
+                if (((At(set, i) | At(clear, i)) & (1 << bit)) != 0) parts.Add(new SharedTarget(value, $"bit{i * 8 + bit}"));
+        return parts.Count > 0 ? parts : [new(value)];
+    }
 
     public override TargetText TargetLabel(ActionContext c) => TargetText.Of("target.registryBits", $"{c.Registry.DisplayRoot(Hive)}\\{Path}\\{Name}");
 
@@ -266,6 +289,9 @@ public sealed class RegistryTokenAction : TweakAction
 
     public override string TargetKey => $"regtoken:{Hive}:{Path}\\{Name}:{Token}".ToLowerInvariant();
 
+    /// <summary>Its token of the value: tweaks that set other tokens of it do not conflict.</summary>
+    public override IEnumerable<SharedTarget> SharedTargets() => [new(SharedTarget.RegistryValueKey(Hive, Path, Name), "token:" + Token.ToLowerInvariant())];
+
     public override TargetText TargetLabel(ActionContext c) => TargetText.Of("target.registryToken", $"{c.Registry.DisplayRoot(Hive)}\\{Path}\\{Name}", Token);
 
     public static Dictionary<string, string> Parse(string? s) =>
@@ -274,8 +300,6 @@ public sealed class RegistryTokenAction : TweakAction
             .Where(p => p.Length == 2)
             .GroupBy(p => p[0], StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.Last()[1], StringComparer.OrdinalIgnoreCase);
-
-    public static string Format(Dictionary<string, string> tokens) => string.Concat(tokens.Select(t => $"{t.Key}={t.Value};"));
 
     private string? CurrentString(ActionContext c) => RegistryValue.Read(c.Registry, Hive, Path, Name) is { Existed: true } v ? v.Data : null;
 

@@ -87,12 +87,13 @@ public sealed class ChangeRunner(AppServices services, IDialogs dialogs, Func<Fa
     }
 
     /// <summary>
-    /// A block reason as text. A conflict names the other tweak by id; the user sees its title instead.
+    /// A block reason as text. A conflict names the other change by id; the user sees its title instead (a fix built for
+    /// this PC is not in the catalog: the block carries its definition).
     /// </summary>
     public static string BlockText(Block b, string lang)
     {
         var detail = b.Detail ?? "";
-        if (b.ReasonKey is "block.conflict" && TweakCatalog.Current.Get(detail) is { } other) detail = TitleOf(other, lang);
+        if (b.ReasonKey is "block.conflict" && (b.Other ?? TweakCatalog.Current.Get(detail)) is { } other) detail = TitleOf(other, lang);
         return Labels.Current.Get(lang, b.ReasonKey) + detail;
     }
 

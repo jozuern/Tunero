@@ -217,6 +217,15 @@ public class ProfileTests
         Assert.Empty(Recommendations.Build(profiled, ProfileView.Findings(gaming, [f8])).Items);
         Assert.True(profiled.Single().Flagged);
 
+        // The same without a declaration: a tweak on the NVIDIA driver setting that the fix writes, on or holding a change.
+        var preferMax = TweakCatalog.Current.Get("nvidia.preferMaxPerformance")!;
+        var reset = RuntimeFixes.NvidiaGlobalReset([Interop.Nvapi.SettingPreferredPState]);
+        Assert.Empty(reset.ConflictsWith);
+        Assert.False(ProfileView.RuntimeFixAllowed(reset, ProfileView.For(gaming, [new TweakStatus(preferMax, TweakState.Applied, 0, ["none"], null, false, [], true)], new Facts())));
+        Assert.False(ProfileView.RuntimeFixAllowed(reset, ProfileView.For(gaming, [new TweakStatus(preferMax, TweakState.RevertedByWindows, 0, ["none"], null, false, [], true)], new Facts())));
+        Assert.True(ProfileView.RuntimeFixAllowed(reset, ProfileView.For(gaming, [new TweakStatus(preferMax, TweakState.NotApplied, 0, ["none"], null, false, [], false)], new Facts())));
+        Assert.True(ProfileView.RuntimeFixAllowed(RuntimeFixes.NvidiaFrameCap(141), ProfileView.For(gaming, [new TweakStatus(preferMax, TweakState.Applied, 0, ["none"], null, false, [], true)], new Facts())));
+
         // Restore processor turbo is blocked by the applied Quiet boost tweak: not offered as F6's fix.
         var turbo = TweakCatalog.Current.Get("power.turboRestore")!;
         var blocked = new TweakStatus(turbo, TweakState.NotApplied, 5, ["fps"], null, false, [new Block("block.conflict", "quiet.boostOff")], false);
