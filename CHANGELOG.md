@@ -9,6 +9,7 @@
 
 ### Fixed
 
+- **`--apply-recommended`** picks the profile as the window does: a saved profile this PC does not offer (a laptop profile on a desktop) falls back to Gaming, as on the Overview.
 - **Conflicts:** two changes that write the same setting (a registry value, an NVIDIA driver setting, one side of a power setting) now conflict even without a declared conflict, so batch applies, Undo all and the "changes reset" notice stay right.
 - **NVIDIA global settings:** with G-SYNC and V-Sync forced on, the quick fix sets the frame rate limit 3 FPS below the refresh rate instead of removing it.
 - **Apply again before a restart** no longer reports a failure when another program holds the undo record; the change is in place.

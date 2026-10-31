@@ -202,6 +202,80 @@ public class ProfileTests
         Assert.Empty(plan.Excluded);
     }
 
+    /// <summary>A desktop with integrated graphics and 4 GB: Low-end PC fits it best, laptop profiles are not offered.</summary>
+    private static Facts SmallDesktop() => new Facts().Set("system.laptop", false).Set("gpu.hasDiscrete", false).Set("memory.totalGb", 4.0);
+
+    [Fact]
+    public void ARequestedProfileMustBeOffered()
+    {
+        var facts = SmallDesktop();
+        var office = Profiles.Choose("office", "quiet", facts);
+        Assert.Equal(("office", ProfileSource.Requested), (office?.Profile.Id, office?.Source));
+        // A laptop profile on a desktop and an id this version does not know: nothing is picked (--profile stops there).
+        Assert.Null(Profiles.Choose("battery", "quiet", facts));
+        Assert.Null(Profiles.Choose("turbo", null, facts));
+        Assert.Equal("battery", Profiles.Choose("battery", null, SmallDesktop().Set("system.laptop", true))?.Profile.Id);
+    }
+
+    [Fact]
+    public void WithoutARequestTheSavedProfileIsUsedWhenOffered()
+    {
+        var facts = SmallDesktop();
+        Assert.Equal("lowEnd", Profiles.Suggest(facts).Id);
+        // Nothing saved yet: the one that fits this PC best.
+        Assert.Equal(new ProfileChoice(Profiles.Get("lowEnd"), ProfileSource.Suggested), Profiles.Choose(null, facts));
+        Assert.Equal(Profiles.Choose(null, facts), Profiles.Choose(null, null, facts));
+        Assert.Equal(new ProfileChoice(Profiles.Get("quiet"), ProfileSource.Saved), Profiles.Choose("quiet", facts));
+        // Saved but not offered here (a laptop profile on this desktop, an id a later version dropped): Gaming, not the
+        // suggestion, in the window and on the command line alike.
+        Assert.Equal(new ProfileChoice(Profiles.Default, ProfileSource.Fallback), Profiles.Choose("battery", facts));
+        Assert.Equal(new ProfileChoice(Profiles.Default, ProfileSource.Fallback), Profiles.Choose("dropped", facts));
+    }
+
+    [Fact]
+    public void ThePlanLeavesOutIgnoredResultsAfterTheProfileRatedThem()
+    {
+        // Battery rates battery wear 3 (its gaming impact is 0); the result is ignored. It is not shown and not counted,
+        // but listed under Ignored with the profile's impact.
+        var battery = Profiles.Get("battery");
+        var facts = new Facts().Set("system.laptop", true).Set("power.personality", "balanced");
+        var wear = F("F30.batteryWear", impact: 0);
+        var critical = F("A.raptorlake", impact: null, critical: true);
+        var plan = Recommendations.ForProfile(battery, [S("battery.boostOffDc")], [wear, critical], facts, [IgnoredResults.Key(wear)]);
+        Assert.Equal(["A.raptorlake"], plan.Findings.Select(f => f.Id));
+        Assert.Equal(3, Assert.Single(plan.IgnoredFindings).Impact);
+        Assert.Equal(["battery.boostOffDc"], plan.Plan.Items.Select(i => i.Tweak.Id));
+        // Without ignored results nothing is split off.
+        Assert.Empty(Recommendations.ForProfile(battery, [], [wear], facts).IgnoredFindings);
+    }
+
+    [Fact]
+    public void AnIgnoredProblemLosesItsFixInThePlan()
+    {
+        var gaming = Profiles.Default;
+        var turbo = F("F6.turbo", impact: 3);
+        Assert.Equal(["power.turboRestore"], Recommendations.ForProfile(gaming, [S("power.turboRestore")], [turbo], new Facts()).Plan.Items.Select(i => i.Tweak.Id));
+        var ignored = Recommendations.ForProfile(gaming, [S("power.turboRestore")], [turbo], new Facts(), [IgnoredResults.Key(turbo)]);
+        Assert.True(ignored.Plan.IsEmpty);
+        Assert.Empty(ignored.Plan.Excluded);
+        Assert.Equal(turbo.Id, Assert.Single(ignored.IgnoredFindings).Id);
+    }
+
+    [Fact]
+    public void AnIgnoredTweakIsNeitherInThePlanNorLeftOut()
+    {
+        // Game Mode is batch-safe; a recommendation that needs its own confirmation is left out for the app. Ignored, neither shows.
+        var gaming = Profiles.Default;
+        var expert = TweakCatalog.Current.Visible.First(t => !t.IsBatchSafe && gaming.Entry(t.Id) is null && !gaming.ExcludeCategories.Contains(t.Category));
+        var states = new[] { S("gpu.gameMode", recommended: true), S(expert.Id, recommended: true) };
+        var all = Recommendations.ForProfile(gaming, states, [], new Facts()).Plan;
+        Assert.Contains(all.Items, i => i.Tweak.Id == "gpu.gameMode");
+        Assert.Contains(all.Excluded, i => i.Tweak.Id == expert.Id);
+        var plan = Recommendations.ForProfile(gaming, states, [], new Facts(), ignoredTweaks: new HashSet<string> { "gpu.gameMode", expert.Id }).Plan;
+        Assert.True(plan.IsEmpty);
+        Assert.Empty(plan.Excluded);
+    }
+
     [Fact]
     public void FixesNeverOverwriteAConflictingChange()
     {

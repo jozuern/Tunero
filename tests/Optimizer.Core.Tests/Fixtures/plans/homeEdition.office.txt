@@ -1,0 +1,7 @@
+# "Apply recommended" on the sample PC homeEdition (SamplePcs.cs) with the profile office.
+# Written by ExpectedPlanTests with PCO_UPDATE_DOCS=1: review the diff, do not edit by hand.
+apply storage.trimOn fixes F18.trim
+apply explorer.fileExtensions
+apply office.clipboardHistoryOn
+apply privacy.feedbackNotificationsOff
+apply privacy.suggestionsOff

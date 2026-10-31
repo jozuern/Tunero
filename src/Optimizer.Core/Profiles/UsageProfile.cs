@@ -17,7 +17,44 @@ public sealed class ProfileCatalog
         Profiles.Where(p => p.SuggestWhen is not null && p.SuggestWhen.Evaluate(facts) && p.IsAvailable(facts))
             .OrderByDescending(p => p.SuggestPriority)
             .FirstOrDefault() ?? Default;
+
+    /// <summary>The profile with this id when this PC offers it (laptop profiles only on laptops); null otherwise.</summary>
+    public UsageProfile? Offered(string? id, Facts facts) => Profiles.FirstOrDefault(p => p.Id == id && p.IsAvailable(facts));
+
+    /// <summary>
+    /// The profile in use without a request, the same for the window and the command line: the saved one when this PC
+    /// offers it; nothing saved yet, the one that fits this PC best (the window then saves it); saved but not offered
+    /// here (a laptop profile copied to a desktop, an id a later version dropped), Gaming, without changing what is saved.
+    /// </summary>
+    public ProfileChoice Choose(string? saved, Facts facts) =>
+        saved is null ? new(Suggest(facts), ProfileSource.Suggested)
+        : Offered(saved, facts) is { } profile ? new(profile, ProfileSource.Saved)
+        : new(Default, ProfileSource.Fallback);
+
+    /// <summary>
+    /// The profile for a run that names one (--profile): that one, or null when this version does not know it or this
+    /// PC does not offer it. Without a request (<paramref name="requested"/> null), <see cref="Choose(string?, Facts)"/>.
+    /// </summary>
+    public ProfileChoice? Choose(string? requested, string? saved, Facts facts) =>
+        requested is null ? Choose(saved, facts)
+        : Offered(requested, facts) is { } profile ? new(profile, ProfileSource.Requested)
+        : null;
 }
+
+/// <summary>Where the profile in use came from (<see cref="ProfileCatalog.Choose(string?, string?, Facts)"/>).</summary>
+public enum ProfileSource
+{
+    /// <summary>Named with --profile.</summary>
+    Requested,
+    /// <summary>The one saved in the app.</summary>
+    Saved,
+    /// <summary>Nothing saved yet: the one that fits this PC best.</summary>
+    Suggested,
+    /// <summary>The saved one is not offered on this PC: Gaming.</summary>
+    Fallback,
+}
+
+public sealed record ProfileChoice(UsageProfile Profile, ProfileSource Source);
 
 /// <summary>
 /// What the PC is mainly used for. A profile does not change any setting by itself: it decides what "Apply

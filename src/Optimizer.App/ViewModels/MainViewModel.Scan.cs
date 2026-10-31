@@ -126,7 +126,7 @@ public sealed partial class MainViewModel
         var service = ScanService;
         var ignored = IgnoredKeys();
         var (completed, findings) = await Task.Run(() => service.WithSample(scanned, sample));
-        var facts = await Task.Run(() => FactsBuilder.Build(completed, IgnoredResults.Without(findings, ignored), _catalog, registry));
+        var facts = await Task.Run(() => FactsBuilder.Build(completed, findings, _catalog, registry, ignored));
         if (!ReferenceEquals(Profile, scanned) || IsScanning) return;
         _findings = findings;
         Profile = completed;
@@ -190,7 +190,7 @@ public sealed partial class MainViewModel
     {
         var engine = _services.Engine;
         var watch = System.Diagnostics.Stopwatch.StartNew();
-        var facts = FactsBuilder.Build(profile, IgnoredResults.Without(findings, ignored), _catalog, _services.Context.Registry);
+        var facts = FactsBuilder.Build(profile, findings, _catalog, _services.Context.Registry, ignored);
         var catalog = engine.DetectAll(_services.Catalog.Visible, facts);
         var device = engine.DetectAll(DeviceTweaks.Build(profile), facts);
         Log.Info("scan", "tweak states read", new { ms = watch.ElapsedMilliseconds });
@@ -225,40 +225,40 @@ public sealed partial class MainViewModel
     }
 
     /// <summary>
-    /// Picks the active profile after a scan: the saved one if this PC offers it, else (first start) the one that fits
-    /// this PC best, which a banner then mentions once.
+    /// Picks the active profile after a scan (<see cref="ChooseProfile"/>); on the first start the one that fits this PC
+    /// best is saved, and a banner then mentions it once.
     /// </summary>
     private void EnsureProfile()
     {
-        var profiles = _catalog.Profiles;
-        _suggested = profiles.Suggest(_facts);
-        if (ProfileOverride is { } forced && profiles.Profiles.FirstOrDefault(p => p.Id == forced && p.IsAvailable(_facts)) is { } chosen)
-        {
-            _usage = chosen;
-            return;
-        }
-        if (_settings.Profile is null)
-        {
-            _usage = _suggested;
-            _profileAutoSet = true;
-            _settings.Profile = _usage.Id;
-            _settings.Save();
-            Log.Info("profile", "profile suggested", new { profile = _usage.Id });
-        }
-        else
-        {
-            // A laptop profile copied to a desktop (or no longer offered) falls back to Gaming for this session only.
-            _usage = profiles.Profiles.FirstOrDefault(p => p.Id == _settings.Profile && p.IsAvailable(_facts)) ?? profiles.Default;
-        }
+        _suggested = _catalog.Profiles.Suggest(_facts);
+        var choice = ChooseProfile(_catalog.Profiles, ProfileOverride, _settings.Profile, _facts);
+        _usage = choice.Profile;
+        if (choice.Source != ProfileSource.Suggested) return;
+        _profileAutoSet = true;
+        _settings.Profile = _usage.Id;
+        _settings.Save();
+        Log.Info("profile", "profile suggested", new { profile = _usage.Id });
     }
 
+    /// <summary>
+    /// The window's profile: --profile when this PC offers it (one it does not offer is passed over here, where the
+    /// command line stops), else the command line's rule without it (<see cref="ProfileCatalog.Choose(string?, Facts)"/>):
+    /// a laptop profile copied to a desktop, or one no longer offered, is Gaming for this session only.
+    /// </summary>
+    internal static ProfileChoice ChooseProfile(ProfileCatalog profiles, string? forced, string? saved, Facts facts) =>
+        profiles.Choose(forced, saved, facts) ?? profiles.Choose(saved, facts);
+
     /// <summary>Rates tweaks and findings through the active profile and rebuilds the recommendation plan.</summary>
-    private void ApplyProfile()
-    {
-        _profiled = ProfileView.For(_usage, _tweakStates, _facts, IgnoredTweakIds());
-        _profiledFindings = WithoutIgnored(ProfileView.Findings(_usage, _findings));
-        _plan = Optimizer.Core.Tweaks.Recommendations.Build(_profiled, _profiledFindings);
-    }
+    private void ApplyProfile() =>
+        (_profiled, _profiledFindings, _ignoredFindings, _plan) = PlanFor(_usage, _settings, _facts, _tweakStates, _findings);
+
+    /// <summary>
+    /// The Overview's plan for the profile in use: the scan's catalog tweak states and every result, with the results and
+    /// recommendations ignored in <paramref name="settings"/>, through the function --apply-recommended uses too.
+    /// </summary>
+    internal static ProfiledPlan PlanFor(UsageProfile usage, AppSettings settings, Facts facts, IReadOnlyList<TweakStatus> states, IReadOnlyList<Finding> findings) =>
+        Optimizer.Core.Tweaks.Recommendations.ForProfile(usage, states, findings, facts,
+            settings.IgnoredFindings.ToHashSet(StringComparer.Ordinal), settings.IgnoredTweaks.ToHashSet(StringComparer.Ordinal));
 
     /// <summary>Picker entries in the current language: the profiles this PC offers (laptop profiles only on laptops).</summary>
     private void BuildProfileOptions()

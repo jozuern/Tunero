@@ -12,8 +12,14 @@ namespace Optimizer.Core.Tweaks;
 /// </summary>
 public static class FactsBuilder
 {
-    public static Facts Build(HardwareProfile p, IReadOnlyList<Finding> findings, CatalogData catalog, IRegistryRoots? registry)
+    /// <param name="ignored">
+    /// The results the user ignores (<see cref="IgnoredResults.Key"/>): they are not in the facts, so nothing is
+    /// recommended for them, in the window or by --apply-recommended.
+    /// </param>
+    public static Facts Build(HardwareProfile p, IReadOnlyList<Finding> findings, CatalogData catalog, IRegistryRoots? registry,
+        IReadOnlyCollection<string>? ignored = null)
     {
+        findings = IgnoredResults.Without(findings, ignored ?? []);
         var f = new Facts();
         f.Set("os.build", p.Os.Build);
         f.Set("os.insider", p.Os.FlightingActive);

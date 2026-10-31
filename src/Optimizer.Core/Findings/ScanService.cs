@@ -17,8 +17,9 @@ public sealed record ScanResult(HardwareProfile Profile, IReadOnlyList<Finding> 
 /// NVIDIA read is closed, and the checks are evaluated on the result.
 /// </summary>
 /// <param name="engine">Reads ahead for the tweak detection that follows; null when no detection follows (the report).</param>
+/// <param name="today">Today's date for the age checks (<see cref="FindingEngine"/>); null: the PC's clock.</param>
 public sealed class ScanService(CatalogData catalog, IRegistryRoots? registry, Func<IReadOnlyDictionary<string, string>?>? bcd, TweakEngine? engine = null,
-    IEnumerable<TweakDefinition>? tweaks = null)
+    IEnumerable<TweakDefinition>? tweaks = null, Func<DateTime>? today = null)
 {
     /// <param name="previous">The last result, after a change made by this app: slow parts no change can affect are reused.</param>
     /// <param name="lastSample">The last finished background CPU sample, reused by a quick rescan after a change.</param>
@@ -41,7 +42,7 @@ public sealed class ScanService(CatalogData catalog, IRegistryRoots? registry, F
         return new ScanResult(scanned, findings, scanner.PendingBackgroundSample);
     }
 
-    public IReadOnlyList<Finding> Evaluate(HardwareProfile profile) => new FindingEngine(catalog, registry, bcd).Evaluate(profile);
+    public IReadOnlyList<Finding> Evaluate(HardwareProfile profile) => new FindingEngine(catalog, registry, bcd, today).Evaluate(profile);
 
     /// <summary>The result with the background CPU sample that finished after it, and the checks evaluated again.</summary>
     public (HardwareProfile Profile, IReadOnlyList<Finding> Findings) WithSample(HardwareProfile scanned, IReadOnlyList<ProcessCpu>? sample)

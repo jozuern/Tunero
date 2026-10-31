@@ -1,0 +1,6 @@
+# "Apply recommended" on the sample PC nvidiaDesktop (SamplePcs.cs) with the profile lowEnd.
+# Written by ExpectedPlanTests with PCO_UPDATE_DOCS=1: review the diff, do not edit by hand.
+apply visual.bestPerformance
+apply background.edgeBoostOff
+apply background.widgetsOff
+apply visual.transparencyOff

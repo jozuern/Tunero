@@ -1,0 +1,8 @@
+# "Apply recommended" on the sample PC olderPc (SamplePcs.cs) with the profile lowEnd.
+# Written by ExpectedPlanTests with PCO_UPDATE_DOCS=1: review the diff, do not edit by hand.
+# The profile this PC gets when none is saved.
+apply power.balancedPlan fixes F9.powerSaver
+apply visual.bestPerformance
+apply background.edgeBoostOff
+apply background.widgetsOff
+apply visual.transparencyOff

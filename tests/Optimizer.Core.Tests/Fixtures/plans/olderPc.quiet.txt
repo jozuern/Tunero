@@ -1,0 +1,3 @@
+# "Apply recommended" on the sample PC olderPc (SamplePcs.cs) with the profile quiet.
+# Written by ExpectedPlanTests with PCO_UPDATE_DOCS=1: review the diff, do not edit by hand.
+apply quiet.boostOff

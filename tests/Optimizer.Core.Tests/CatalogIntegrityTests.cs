@@ -24,6 +24,39 @@ public partial class CatalogIntegrityTests(ITestOutputHelper output)
 
     private static readonly HashSet<string> FindingIds = DocLint.RequiredDocIds().ToHashSet(StringComparer.Ordinal);
 
+    /// <summary>
+    /// The window builds its first plan before the 3 second background CPU sample is done, the command line after it
+    /// (Recommendations.ForProfile): the plan may not depend on that check. It is never a problem (the plan only fixes
+    /// problems), no tweak fixes it, and no tweak or profile condition reads its facts.
+    /// </summary>
+    [Fact]
+    public void ThePlanDoesNotWaitForTheBackgroundCpuSample()
+    {
+        var id = Findings.Checks.BackgroundCpuCheck.Id;
+        bool ReadsIt(Condition c) => c.ReferencedFacts().Any(f => f.StartsWith($"finding.{id}.", StringComparison.OrdinalIgnoreCase));
+        var problems = new List<string>();
+        foreach (var t in Tweaks)
+        {
+            if (t.Fixes.Contains(id)) problems.Add($"{t.Id} fixes {id}");
+            if (t.Conditions().Any(ReadsIt)) problems.Add($"{t.Id} reads {id}");
+        }
+        foreach (var p in Catalog.CatalogData.Current.Profiles.Profiles)
+        {
+            if (p.SuggestWhen is { } when && ReadsIt(when)) problems.Add($"profile {p.Id} suggests by {id}");
+            problems.AddRange(p.Tweaks.Where(pt => pt.RecommendWhen is { } r && ReadsIt(r)).Select(pt => $"profile {p.Id}/{pt.Id} reads {id}"));
+        }
+        Assert.True(problems.Count == 0, string.Join(", ", problems));
+
+        var busy = new Hardware.HardwareProfile
+        {
+            Os = TestData.Os(),
+            Extras = new Hardware.HardwareExtras { BackgroundCpu = [new Tools.ProcessCpu("SomeUpdater", 1, 0.9, 1L << 30)] },
+        };
+        var finding = Assert.Single(new Findings.Checks.BackgroundCpuCheck().Evaluate(busy, Catalog.CatalogData.Current));
+        Assert.Equal(Findings.FindingStatus.Info, finding.Status);
+        Assert.Null(finding.Fix);
+    }
+
     /// <summary>A condition compares with exactly one operator: {"gte": 1, "lte": 5} evaluated only "gte" and ignored the rest.</summary>
     [Fact]
     public void ConditionsUseOneOperatorEach()

@@ -37,11 +37,17 @@ public sealed record UndoAllOutcome(IReadOnlyList<(TweakDefinition Tweak, Revert
 /// </summary>
 public sealed class ChangeBusyException() : InvalidOperationException("Another Tunero is changing this PC, so nothing was changed.");
 
-/// <summary>The PC as a scan sees it: the facts that decide what fits, the state of each tweak, the findings.</summary>
+/// <summary>
+/// The PC as a scan sees it: the facts that decide what fits (without the ignored results), the state of each tweak, and
+/// every result, ignored ones too (<see cref="Recommendations.ForProfile"/> removes those).
+/// </summary>
 public sealed record PcSnapshot(Facts Facts, IReadOnlyList<TweakStatus> States, IReadOnlySet<string> Applied, IReadOnlyList<Finding> Findings)
 {
     /// <summary>The hardware the scan read (the guards of the app removal list need it).</summary>
     public Hardware.HardwareProfile? Profile { get; init; }
+
+    /// <summary>The keys of the results the user ignores (<see cref="IgnoredResults.Key"/>), left out of <see cref="Facts"/>.</summary>
+    public IReadOnlyCollection<string> Ignored { get; init; } = [];
 }
 
 /// <summary>
@@ -186,16 +192,16 @@ public sealed class ChangeSession(TweakEngine engine, IRestorePoints restorePoin
     public Task<UndoAllOutcome> UndoAllAsync(IProgress<BatchStep>? progress = null) => Locked(async () => new UndoAllOutcome(await Task.Run(() => engine.RevertAll(progress))));
 
     /// <summary>The scan the window runs, without the window: findings, facts and the state of every visible tweak.</summary>
-    /// <param name="ignored">The results the user ignores (<see cref="IgnoredResults.Key"/>): left out of the findings and the facts, as in the window.</param>
+    /// <param name="ignored">The results the user ignores (<see cref="IgnoredResults.Key"/>): left out of the facts, as in the window, and kept in <see cref="PcSnapshot.Ignored"/>.</param>
     public static async Task<PcSnapshot> ScanAsync(CatalogData catalog, TweakCatalog tweaks, TweakEngine engine, Actions.IRegistryRoots registry,
         Func<IReadOnlyDictionary<string, string>?> bcd, IReadOnlyCollection<string>? ignored = null)
     {
         var visible = tweaks.Visible.ToList();
         var scan = await new ScanService(catalog, registry, bcd, engine, visible).RunAsync();
-        var findings = IgnoredResults.Without(scan.Findings, ignored ?? []);
-        var facts = FactsBuilder.Build(scan.Profile, findings, catalog, registry);
+        ignored ??= [];
+        var facts = FactsBuilder.Build(scan.Profile, scan.Findings, catalog, registry, ignored);
         var states = await Task.Run(() => engine.DetectAll(visible, facts));
         var applied = states.Where(s => s.State is TweakState.Applied or TweakState.PendingRestart).Select(s => s.Tweak.Id).ToHashSet(StringComparer.Ordinal);
-        return new PcSnapshot(facts, states, applied, findings) { Profile = scan.Profile };
+        return new PcSnapshot(facts, states, applied, scan.Findings) { Profile = scan.Profile, Ignored = ignored };
     }
 }

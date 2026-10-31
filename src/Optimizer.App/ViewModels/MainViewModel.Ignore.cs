@@ -16,6 +16,7 @@ namespace Optimizer.App.ViewModels;
 /// </summary>
 public sealed partial class MainViewModel
 {
+    /// <summary>The ignored results the active profile would show, with its impact (set with the plan, <see cref="ApplyProfile"/>).</summary>
     private IReadOnlyList<Finding> _ignoredFindings = [];
 
     public ObservableCollection<FindingItemViewModel> IgnoredItems { get; } = [];
@@ -31,14 +32,6 @@ public sealed partial class MainViewModel
 
     /// <summary>The ids of the tweaks whose recommendation the user ignores.</summary>
     private IReadOnlySet<string> IgnoredTweakIds() => _settings.IgnoredTweaks.ToHashSet(StringComparer.Ordinal);
-
-    /// <summary>Splits the profiled results into the shown ones and the ignored ones.</summary>
-    private IReadOnlyList<Finding> WithoutIgnored(IReadOnlyList<Finding> profiled)
-    {
-        var keys = IgnoredKeys();
-        _ignoredFindings = profiled.Where(f => IgnoredResults.IsIgnored(f, keys)).ToList();
-        return _ignoredFindings.Count == 0 ? profiled : profiled.Where(f => !_ignoredFindings.Contains(f)).ToList();
-    }
 
     private void BuildIgnored(string lang)
     {

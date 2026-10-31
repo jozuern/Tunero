@@ -1,0 +1,6 @@
+# "Apply recommended" on the sample PC olderPc (SamplePcs.cs) with the profile gaming.
+# Written by ExpectedPlanTests with PCO_UPDATE_DOCS=1: review the diff, do not edit by hand.
+apply power.balancedPlan fixes F9.powerSaver
+apply input.mouseAccelOff
+apply visual.bestPerformance
+apply visual.transparencyOff

@@ -74,15 +74,104 @@ public sealed class FirstSignInTests : IDisposable
         new(t, TweakState.NotApplied, t.Impact.Gaming, t.Impact.Effect, null, true, [], false);
 
     /// <summary>A scan where every visible tweak is recommended and off: batch-safe and other changes alike.</summary>
-    private static PcSnapshot Pc() =>
-        new(new Facts().Set("system.laptop", false), TweakCatalog.Current.Visible.Select(Status).ToList(), new HashSet<string>(), []);
+    private static PcSnapshot Pc(Facts? facts = null, IReadOnlyList<Optimizer.Core.Findings.Finding>? findings = null) =>
+        new(facts ?? new Facts().Set("system.laptop", false), TweakCatalog.Current.Visible.Select(Status).ToList(), new HashSet<string>(), findings ?? []);
+
+    /// <summary>A desktop with integrated graphics and 4 GB: it offers no laptop profile, and Low-end PC fits it best (not Gaming).</summary>
+    private static Facts SmallDesktop() => new Facts().Set("system.laptop", false).Set("gpu.hasDiscrete", false).Set("memory.totalGb", 4.0);
+
+    /// <summary>A problem the plan fixes first (power.turboRestore).</summary>
+    private static readonly Optimizer.Core.Findings.Finding Turbo = new()
+    {
+        Id = "F6.turbo", Kind = Optimizer.Core.Findings.FindingKind.Finding, Status = Optimizer.Core.Findings.FindingStatus.Problem, Impact = 3,
+    };
+
+    private sealed record PlanIds(string Profile, IReadOnlyList<string> Items, IReadOnlyList<string> Excluded);
+
+    /// <summary>
+    /// The Overview's plan, through the window's own path: the profile EnsureProfile picks (with --profile
+    /// <paramref name="forced"/> and the saved one), then <see cref="ViewModels.MainViewModel.PlanFor"/> with the ignore
+    /// lists of <paramref name="settings"/>.
+    /// </summary>
+    private static PlanIds WindowPlan(PcSnapshot pc, string? forced, AppSettings settings)
+    {
+        var choice = ViewModels.MainViewModel.ChooseProfile(Optimizer.Core.Catalog.CatalogData.Current.Profiles, forced, settings.Profile, pc.Facts);
+        var plan = ViewModels.MainViewModel.PlanFor(choice.Profile, settings, pc.Facts, pc.States, pc.Findings).Plan;
+        return new(choice.Profile.Id, plan.Items.Select(i => i.Tweak.Id).ToList(), plan.Excluded.Select(i => i.Tweak.Id).ToList());
+    }
+
+    /// <summary>--apply-recommended's plan for the same scan and settings (CommandLineVerbs passes them so); null when it stops.</summary>
+    private static PlanIds? CommandLinePlan(PcSnapshot pc, string? profile, AppSettings settings) =>
+        CommandLineApply.RecommendedPlan(pc with { Ignored = settings.IgnoredFindings.ToList() }, profile, settings.Profile, settings.IgnoredTweaks) is { } plan
+            ? new(plan.Profile.Id, plan.Together.Select(t => t.Id).ToList(), plan.InApp.Select(t => t.Id).ToList())
+            : null;
+
+    /// <summary>
+    /// The window and the command line pick the same profile and the same plan, in the same order, for every way the
+    /// profile is chosen (--profile, saved, nothing saved, saved but not offered on this PC) and with ignored results and
+    /// recommendations. Either side going its own way fails here.
+    /// </summary>
+    [Theory]
+    [InlineData("gaming", null, false, "gaming")]
+    [InlineData("quiet", "office", false, "quiet")]
+    [InlineData(null, "office", false, "office")]
+    [InlineData(null, "office", true, "office")]
+    [InlineData(null, null, false, "lowEnd")]
+    [InlineData(null, null, true, "lowEnd")]
+    // A laptop profile copied to a desktop and an id a later version dropped: Gaming for the session, not the suggestion.
+    [InlineData(null, "battery", false, "gaming")]
+    [InlineData(null, "dropped", true, "gaming")]
+    public void TheWindowAndTheCommandLinePickTheSamePlan(string? forced, string? saved, bool withIgnored, string expected)
+    {
+        var pc = Pc(SmallDesktop(), [Turbo]);
+        var settings = new AppSettings { Profile = saved };
+        if (withIgnored)
+        {
+            settings.IgnoredFindings.Add(Optimizer.Core.Findings.IgnoredResults.Key(Turbo));
+            settings.IgnoredTweaks.Add(WindowPlan(pc, forced, new AppSettings { Profile = saved }).Items.Last());
+        }
+        var window = WindowPlan(pc, forced, settings);
+        var commandLine = CommandLinePlan(pc, forced, settings);
+        Assert.NotNull(commandLine);
+        Assert.Equal(expected, window.Profile);
+        Assert.Equal(window.Profile, commandLine.Profile);
+        Assert.NotEmpty(window.Items);
+        Assert.Equal(window.Items, commandLine.Items);
+        Assert.Equal(window.Excluded, commandLine.Excluded);
+        // The fix of the problem comes first, unless the result is ignored (Quiet works against turning the boost back on).
+        Assert.Equal(!withIgnored && expected != "quiet", window.Items[0] == "power.turboRestore");
+        if (withIgnored) Assert.DoesNotContain(settings.IgnoredTweaks[0], window.Items);
+    }
+
+    /// <summary>
+    /// --profile with a profile this PC does not offer: the command line stops (exit 9, nothing applied), the window opens
+    /// with the profile it would pick without the switch.
+    /// </summary>
+    [Fact]
+    public void AnOfferedProfileIsNeededOnlyOnTheCommandLine()
+    {
+        var pc = Pc(SmallDesktop());
+        var settings = new AppSettings { Profile = "office" };
+        Assert.Null(CommandLinePlan(pc, "battery", settings));
+        Assert.Equal(WindowPlan(pc, null, settings), WindowPlan(pc, "battery", settings), PlanIdsComparer.Instance);
+        Assert.Equal("office", WindowPlan(pc, "battery", settings).Profile);
+    }
+
+    private sealed class PlanIdsComparer : IEqualityComparer<PlanIds>
+    {
+        public static readonly PlanIdsComparer Instance = new();
+        public bool Equals(PlanIds? x, PlanIds? y) =>
+            x is not null && y is not null && x.Profile == y.Profile && x.Items.SequenceEqual(y.Items) && x.Excluded.SequenceEqual(y.Excluded);
+        public int GetHashCode(PlanIds obj) => obj.Profile.GetHashCode(StringComparison.Ordinal);
+    }
 
     private static BatchOutcome AllApplied(IReadOnlyList<TweakDefinition> tweaks) =>
         new(tweaks.Select(t => new BatchItemResult(t, new ApplyResult(ApplyOutcome.Applied, []))).ToList());
 
     /// <summary>
-    /// The window's first sign-in applies exactly what --apply-recommended applies for the profile, and both leave out
-    /// (and the command line lists) the changes that need their own confirmation: previews, Expert, boot-critical, anti-cheat.
+    /// The window's first sign-in applies exactly what --apply-recommended applies for the profile (the plan the Overview
+    /// shows), and both leave out (and the command line lists) the changes that need their own confirmation: previews,
+    /// Expert, boot-critical, anti-cheat.
     /// </summary>
     [Fact]
     public async Task PlanIsTheSameForWindowAndCommandLine()
@@ -97,6 +186,7 @@ public sealed class FirstSignInTests : IDisposable
         }, lines);
 
         var window = CommandLineApply.RecommendedPlan(pc, "gaming", null);
+        Assert.Equal(WindowPlan(pc, "gaming", new AppSettings()), CommandLinePlan(pc, "gaming", new AppSettings())!, PlanIdsComparer.Instance);
         Assert.Equal(CommandLineApply.Done, code);
         Assert.NotNull(window);
         Assert.Equal("gaming", window.Profile.Id);

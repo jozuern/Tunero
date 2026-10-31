@@ -1,0 +1,5 @@
+# "Apply recommended" on the sample PC gamingLaptop (SamplePcs.cs) with the profile battery.
+# Written by ExpectedPlanTests with PCO_UPDATE_DOCS=1: review the diff, do not edit by hand.
+apply battery.boostOffDc
+apply background.edgeBoostOff
+apply battery.pcieAspmMaxDc

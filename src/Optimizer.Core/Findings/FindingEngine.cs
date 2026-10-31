@@ -7,10 +7,14 @@ namespace Optimizer.Core.Findings;
 
 /// <summary>Runs all read-only checks. A failing check yields an Unknown result instead of breaking the scan.</summary>
 /// <param name="bcd">Reads the BCD elements of {current} (bcdedit needs admin rights); null or a null result = unknown.</param>
-public sealed class FindingEngine(CatalogData catalog, Actions.IRegistryRoots? registry = null, Func<IReadOnlyDictionary<string, string>?>? bcd = null)
+/// <param name="today">Today's date for the age checks (BIOS, graphics driver); null: the PC's clock. Tests fix it.</param>
+public sealed class FindingEngine(CatalogData catalog, Actions.IRegistryRoots? registry = null, Func<IReadOnlyDictionary<string, string>?>? bcd = null,
+    Func<DateTime>? today = null)
 {
     /// <summary>All checks; <paramref name="registry"/> gives access to the session user's hive (F4).</summary>
-    public static IReadOnlyList<IFindingCheck> CreateChecks(Actions.IRegistryRoots? registry, Func<IReadOnlyDictionary<string, string>?>? bcd = null) =>
+    /// <param name="today">Today's date for the BIOS and graphics driver age; null: the PC's clock.</param>
+    public static IReadOnlyList<IFindingCheck> CreateChecks(Actions.IRegistryRoots? registry, Func<IReadOnlyDictionary<string, string>?>? bcd = null,
+        Func<DateTime>? today = null) =>
     [
         new RefreshRateCheck(),
         new EdidRefreshCheck(),
@@ -28,7 +32,7 @@ public sealed class FindingEngine(CatalogData catalog, Actions.IRegistryRoots? r
         new ApoCheck(),
         new AmdFtpmCheck(),
         new RyzenMemoryCheck(),
-        new BiosAgeCheck(),
+        new BiosAgeCheck(today),
         new IgpuUnusedCheck(),
         new SystemOnHddCheck(),
         new AmdAdrenalinCheck(),
@@ -46,7 +50,7 @@ public sealed class FindingEngine(CatalogData catalog, Actions.IRegistryRoots? r
         new EnergySaverCheck(),
         new LowRamCheck(),
         new GamesOnHddCheck(),
-        new GpuDriverAgeCheck(),
+        new GpuDriverAgeCheck(today),
         new LowDiskSpaceCheck(),
         new TrimCheck(),
         new XmpCheck(),
@@ -63,7 +67,7 @@ public sealed class FindingEngine(CatalogData catalog, Actions.IRegistryRoots? r
         new GameAccessCheck(),
     ];
 
-    public IReadOnlyList<Finding> Evaluate(HardwareProfile profile) => Evaluate(profile, CreateChecks(registry, bcd), catalog);
+    public IReadOnlyList<Finding> Evaluate(HardwareProfile profile) => Evaluate(profile, CreateChecks(registry, bcd, today), catalog);
 
     /// <summary>
     /// Runs <paramref name="checks"/>. A check that throws contributes exactly one Unknown of its own kind, never the

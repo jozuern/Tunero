@@ -56,7 +56,7 @@ public static class CommandLineApply
     }
 
     /// <param name="profileId">The profile named with --profile; it must exist and fit this PC.</param>
-    /// <param name="savedProfileId">The profile saved in the app, used without --profile; when this PC no longer offers it (or none was saved), the one that fits this PC best.</param>
+    /// <param name="savedProfileId">The profile saved in the app, used without --profile; none saved, the one that fits this PC best; saved but no longer offered here, Gaming, as in the window.</param>
     /// <param name="ignored">The results ignored in the app: nothing is applied for them, as on the Overview.</param>
     public static async Task<int> ApplyRecommendedAsync(AppServices services, string? profileId, string? savedProfileId, IReadOnlyCollection<string> ignored,
         IReadOnlyCollection<string> ignoredTweaks, string? logPath, bool withoutRestorePoint)
@@ -231,21 +231,18 @@ public static class CommandLineApply
 
     /// <summary>
     /// The Overview's recommended list for the profile (<paramref name="profileId"/>, which must exist and fit this PC;
-    /// without it the saved one, else the one that fits this PC best): <see cref="RecommendedSelection.Together"/> is
-    /// what applies without a confirmation, <see cref="RecommendedSelection.InApp"/> the previews, Expert, boot-critical
-    /// and anti-cheat sensitive changes that need their own. Null when the profile is unknown or not offered here.
-    /// Tweaks whose recommendation the user ignores (<paramref name="ignoredTweaks"/>) are left out, as in the window.
+    /// without it the window's rule, <see cref="Optimizer.Core.Profiles.ProfileCatalog.Choose(string?, Facts)"/>):
+    /// <see cref="RecommendedSelection.Together"/> is what applies without a confirmation, <see cref="RecommendedSelection.InApp"/>
+    /// the previews, Expert, boot-critical and anti-cheat sensitive changes that need their own. Null when the profile is
+    /// unknown or not offered here. The results ignored in the scan (<see cref="PcSnapshot.Ignored"/>) and the tweaks
+    /// whose recommendation the user ignores (<paramref name="ignoredTweaks"/>) are left out, as in the window.
     /// </summary>
     public static RecommendedSelection? RecommendedPlan(PcSnapshot pc, string? profileId, string? savedProfileId, IReadOnlyCollection<string>? ignoredTweaks = null)
     {
-        var profiles = CatalogData.Current.Profiles;
-        var profile = profileId is not null
-            ? profiles.Profiles.FirstOrDefault(p => p.Id == profileId && p.IsAvailable(pc.Facts))
-            : profiles.Profiles.FirstOrDefault(p => p.Id == savedProfileId && p.IsAvailable(pc.Facts)) ?? profiles.Suggest(pc.Facts);
-        if (profile is null) return null;
-        var plan = Recommendations.Build(Optimizer.Core.Profiles.ProfileView.For(profile, pc.States, pc.Facts, ignoredTweaks?.ToHashSet(StringComparer.Ordinal)),
-            Optimizer.Core.Profiles.ProfileView.Findings(profile, pc.Findings));
-        Log.Info("cli", "recommended plan", new { profile = profile.Id, items = plan.Items.Count, excluded = plan.Excluded.Count });
+        if (CatalogData.Current.Profiles.Choose(profileId, savedProfileId, pc.Facts) is not { } choice) return null;
+        var profile = choice.Profile;
+        var plan = Recommendations.ForProfile(profile, pc.States, pc.Findings, pc.Facts, pc.Ignored, ignoredTweaks?.ToHashSet(StringComparer.Ordinal)).Plan;
+        Log.Info("cli", "recommended plan", new { profile = profile.Id, source = choice.Source.ToString(), items = plan.Items.Count, excluded = plan.Excluded.Count });
         return new RecommendedSelection(profile, plan.Items.Select(i => i.Tweak).ToList(), plan.Excluded.Select(i => i.Tweak).ToList());
     }
 
