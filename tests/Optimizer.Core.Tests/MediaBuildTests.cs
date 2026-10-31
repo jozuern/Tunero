@@ -2233,6 +2233,37 @@ public sealed class MediaBuildTests : IDisposable
         Assert.Equal(["TuneroMediaSystem-100-2", "TuneroMediaSystem-300-4", "TuneroMediaSystem-x"], leftovers);
     }
 
+    /// <summary>
+    /// A copy under another exe name ("Tunero (1).exe", a renamed copy) is told by its product name, so its hives stay
+    /// loaded; another program with a reused id is not a Tunero; an exe that cannot be read counts as one (never unload on
+    /// a guess).
+    /// </summary>
+    [Fact]
+    public void ARenamedCopyCountsAsARunningTunero()
+    {
+        const string own = @"C:\Program Files\Tunero\Tunero.exe";
+        const string renamed = @"C:\Users\x\Downloads\Tunero (1).exe";
+        string? Product(string path) => path switch
+        {
+            own or renamed => "Tunero",
+            @"C:\Windows\notepad.exe" => "Microsoft Windows Operating System",
+            @"C:\Tools\NoVersion.exe" => "",
+            _ => null,
+        };
+        bool IsTunero(string name, string? image) => Platform.DefaultProfileHive.IsTuneroImage(name, image, "Tunero", own, Product);
+        Assert.True(IsTunero("Tunero", @"D:\Other\Tunero.exe"));
+        Assert.True(IsTunero("Tunero (1)", renamed));
+        Assert.False(IsTunero("notepad", @"C:\Windows\notepad.exe"));
+        Assert.False(IsTunero("NoVersion", @"C:\Tools\NoVersion.exe"));
+        Assert.True(IsTunero("Gone", @"C:\Gone\Gone.exe"));
+        Assert.True(IsTunero("Protected", null));
+
+        // The renamed copy's build keeps its hives; the hives of the program with a reused id are leftovers.
+        Assert.Equal(["TuneroMediaSystem-300-1"], OfflineSystemHive.LeftoversToUnload(
+            ["TuneroMediaSystem-200-1", "TuneroMediaSystem-300-1"], 100, [],
+            pid => pid == 200 ? IsTunero("Tunero (1)", renamed) : IsTunero("notepad", @"C:\Windows\notepad.exe")));
+    }
+
     // ---- Settings: values written into the registry of the mounted install.wim ----
 
     private static MediaImageSettings Both => new(true, true, false);

@@ -80,6 +80,22 @@ public class SecurityTests
     public void OnlyWebAndStoreLinksAreOpened(string target, bool expected) =>
         Assert.Equal(expected, DeElevatedLauncher.IsLink(target));
 
+    /// <summary>
+    /// A one-time task that is still waiting reports 1999-11-30 and SCHED_S_TASK_HAS_NOT_RUN: it has not run, so its
+    /// "result" is not taken for the program's exit code. One that ran after the start counts, with a little clock tolerance.
+    /// </summary>
+    [Fact]
+    public void AWaitingTaskIsNotTakenForAFinishedOne()
+    {
+        var runAt = new DateTime(2026, 10, 31, 12, 0, 0);
+        Assert.False(DeElevatedLauncher.HasRunSince(new DateTime(1999, 11, 30).ToOADate(), 0x00041303, runAt));
+        Assert.False(DeElevatedLauncher.HasRunSince(new DateTime(1999, 11, 30).ToOADate(), 0, runAt));
+        Assert.False(DeElevatedLauncher.HasRunSince(0, 0x00041303, runAt));
+        Assert.False(DeElevatedLauncher.HasRunSince(runAt.AddMinutes(-5).ToOADate(), 0, runAt));
+        Assert.True(DeElevatedLauncher.HasRunSince(runAt.AddSeconds(3).ToOADate(), 0, runAt));
+        Assert.True(DeElevatedLauncher.HasRunSince(runAt.AddSeconds(-1).ToOADate(), 1, runAt));
+    }
+
     [Fact]
     public void ElevatedToolsStartWithoutUserControlledCodePaths()
     {

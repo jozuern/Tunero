@@ -41,10 +41,9 @@ public partial class App : Application
 
     private void Mark(string name) => _startMarks.Add((name, DateTime.Now));
 
-    /// <summary>
-    /// Sign-out or shutdown during a change (a batch, an undo, a winget run): Windows is asked to wait, so the change
-    /// does not stop halfway. Windows shows the app in its "waiting for apps" list, where the user can still go on.
-    /// </summary>
+    // A command line verb (CommandLineVerbs) is running: it changes the PC without the window, so ChangeGate.Busy is not set.
+    private bool _commandLineRunning;
+
     protected override void OnExit(ExitEventArgs e)
     {
         try
@@ -58,9 +57,15 @@ public partial class App : Application
         base.OnExit(e);
     }
 
+    /// <summary>
+    /// Sign-out or shutdown during a change (a batch, an undo, a winget run, or a command line verb such as --undo-all,
+    /// --reapply or --build-media): Windows is asked to wait, so the change does not stop halfway. Without the cancel
+    /// WPF ends the app at the query itself, even when another app then stops the shutdown. Windows shows the app in its
+    /// "waiting for apps" list, where the user can still go on.
+    /// </summary>
     protected override void OnSessionEnding(SessionEndingCancelEventArgs e)
     {
-        if (ChangeGate.Instance.Busy)
+        if (ChangeGate.Instance.Busy || _commandLineRunning)
         {
             e.Cancel = true;
             Optimizer.Core.Logging.Log.Warn("app", $"{e.ReasonSessionEnding} asked to wait: a change is running");
@@ -187,7 +192,17 @@ public partial class App : Application
         if (CommandLineVerbs.Find(args) is { } verb)
         {
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
-            Shutdown(await CommandLineVerbs.RunAsync(verb, args, services, _settings));
+            int exitCode;
+            _commandLineRunning = true;
+            try
+            {
+                exitCode = await CommandLineVerbs.RunAsync(verb, args, services, _settings);
+            }
+            finally
+            {
+                _commandLineRunning = false;
+            }
+            Shutdown(exitCode);
             return;
         }
 
@@ -472,7 +487,8 @@ public partial class App : Application
             dlg.Close();
         }
 
-        // Developer aid: render the question dialog with two buttons (update) and with three (restore point).
+        // Developer aid: render the question dialog with two buttons (update), with three (restore point), the uninstall
+        // question with and without active changes, and the Expert mode question.
         if (args.Value("--message-shot") is { } messageShot)
         {
             var version = AppInfo.Version.ToString(3);

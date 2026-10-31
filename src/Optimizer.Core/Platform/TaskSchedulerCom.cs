@@ -82,7 +82,7 @@ internal static class TaskSchedulerCom
         [return: MarshalAs(UnmanagedType.IUnknown)] object RunEx(object? parameters, int flags, int sessionId, [MarshalAs(UnmanagedType.BStr)] string user);
         [return: MarshalAs(UnmanagedType.IUnknown)] object GetInstances(int flags);
 
-        /// <summary>An OLE automation date; 1899-12-30 (0) when the task never ran.</summary>
+        /// <summary>An OLE automation date in local time; a task that never ran reports 1999-11-30, with last result SCHED_S_TASK_HAS_NOT_RUN.</summary>
         double LastRunTime { get; }
         int LastTaskResult { get; }
         int NumberOfMissedRuns { get; }

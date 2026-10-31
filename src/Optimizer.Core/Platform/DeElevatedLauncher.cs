@@ -101,6 +101,7 @@ public static class DeElevatedLauncher
             action.Path = exe;
             action.Arguments = arguments;
             var task = folder.RegisterTaskDefinition(name, def, TaskSchedulerCom.CreateOrUpdate, null, null, TaskSchedulerCom.LogonInteractiveToken, null);
+            var runAt = DateTime.Now;
             task.Run(null);
             Logging.Log.Info("launcher", $"run as {user} and wait: {exe} {arguments}");
             var started = false;
@@ -115,7 +116,7 @@ public static class DeElevatedLauncher
                     continue;
                 }
                 // Ready again after it ran (a quick program may end before the first look: it has a last run time then).
-                if (state == TaskSchedulerCom.StateReady && (started || task.LastRunTime > 0)) return task.LastTaskResult;
+                if (state == TaskSchedulerCom.StateReady && (started || HasRunSince(task.LastRunTime, task.LastTaskResult, runAt))) return task.LastTaskResult;
                 if (!started && clock.Elapsed > TimeSpan.FromSeconds(30))
                 {
                     Logging.Log.Warn("launcher", $"{exe} did not start as {user} (task state {state})");
@@ -143,6 +144,29 @@ public static class DeElevatedLauncher
             }
             lock (Pending) Pending.Remove(name);
         }
+    }
+
+    // SCHED_S_TASK_HAS_NOT_RUN: the last result of a task that never ran.
+    private const int TaskHasNotRun = 0x00041303;
+
+    /// <summary>
+    /// Whether a task with this last run time (an OLE automation date in local time) and last result ran at or after
+    /// <paramref name="since"/>. A task that never ran reports 1999-11-30 (not 0) and SCHED_S_TASK_HAS_NOT_RUN, so a
+    /// still waiting one-time task is not taken for a finished one. Two seconds of tolerance for the clock.
+    /// </summary>
+    internal static bool HasRunSince(double lastRunTime, int lastTaskResult, DateTime since)
+    {
+        if (lastTaskResult == TaskHasNotRun) return false;
+        DateTime lastRun;
+        try
+        {
+            lastRun = DateTime.FromOADate(lastRunTime);
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+        return lastRun >= since - TimeSpan.FromSeconds(2);
     }
 
     // ---------------- scheduled-task fallback ----------------

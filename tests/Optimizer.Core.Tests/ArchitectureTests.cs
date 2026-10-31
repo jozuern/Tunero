@@ -28,8 +28,8 @@ public partial class ArchitectureTests
             var text = File.ReadAllText(file);
             if (text.Contains("SystemNotify.CreateContext(", StringComparison.Ordinal)) problems.Add($"{name}: SystemNotify.CreateContext (use ReadOnlyContext.Create)");
             foreach (Match m in RealAdapter().Matches(text)) problems.Add($"{name}: {m.Value} (use ReadOnlyContext.Create)");
-            if (text.Contains("ProcessLauncher.RunStreamingAsync(", StringComparison.Ordinal) && !AllowedToolRuns.ContainsKey(name))
-                problems.Add($"{name}: ProcessLauncher.RunStreamingAsync (review it and list it in AllowedToolRuns)");
+            if (LauncherStart().Match(text) is { Success: true } start && !AllowedToolRuns.ContainsKey(name))
+                problems.Add($"{name}: {start.Value.TrimEnd('(')} (review it and list it in AllowedToolRuns)");
             if (text.Contains("Process.Start(", StringComparison.Ordinal) && !AllowedToolRuns.ContainsKey(name))
                 problems.Add($"{name}: Process.Start (review it and list it in AllowedToolRuns)");
         }
@@ -164,8 +164,23 @@ public partial class ArchitectureTests
     [InlineData("winget.exe", "list --source winget", false)]
     [InlineData("fsutil.exe", "behavior set disablelastaccess 1", true)]
     [InlineData("fsutil.exe", "behavior query disablelastaccess", false)]
+    [InlineData("taskkill.exe", "/f /im explorer.exe /fi \"SESSION eq 1\"", true)]
+    [InlineData("shutdown.exe", "/r /o /t 0", true)]
+    [InlineData("chkdsk.exe", "C: /scan", true)]
     public void TheReadOnlyRunnerRefusesChanges(string file, string arguments, bool refused) =>
         Assert.Equal(refused, ReadOnlyProcesses.LooksLikeAWrite(file, arguments));
+
+    /// <summary>Every step of every quick fix changes something, so the read-only runner refuses each of them.</summary>
+    [Fact]
+    public void TheReadOnlyRunnerRefusesEveryQuickFix()
+    {
+        var passed = Optimizer.Core.Tools.QuickFixes.All
+            .SelectMany(fix => fix.Steps.Select(step => (fix.Id, step.File, step.Arguments)))
+            .Where(s => !ReadOnlyProcesses.LooksLikeAWrite(s.File, s.Arguments))
+            .Select(s => $"{s.Id}: {s.File} {s.Arguments}")
+            .ToList();
+        Assert.Empty(passed);
+    }
 
     [Fact]
     public void AnEncodedScriptIsCheckedToo()
@@ -174,6 +189,10 @@ public partial class ArchitectureTests
         Assert.False(ReadOnlyProcesses.LooksLikeAWrite("powershell.exe", $"-NoProfile -EncodedCommand {Encoded("Get-AppxPackage -AllUsers | ConvertTo-Json")}"));
         Assert.True(ReadOnlyProcesses.LooksLikeAWrite("powershell.exe", $"-NoProfile -EncodedCommand {Encoded("Remove-AppxPackage x")}"));
     }
+
+    /// <summary>The ProcessLauncher methods that start a real process.</summary>
+    [GeneratedRegex(@"ProcessLauncher\.(RunStreamingAsync|Run|Start|StartDetached)\(")]
+    private static partial Regex LauncherStart();
 
     /// <summary>The real adapter classes (SystemPowerManager, SystemBcdStore, SystemRegistryRoots and the others).</summary>
     [GeneratedRegex(@"new System[A-Z][A-Za-z]*(Manager|Store|Scheduler|Roots|Runner|Settings)\(")]

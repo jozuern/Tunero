@@ -26,4 +26,4 @@ Fixes ship in a new release, and the report is credited in the release notes if 
 
 Only the latest release gets fixes. It runs on Windows 11 25H2 and newer (x64); on 24H2 it starts only so that changes made there can still be undone.
 
-The exe carries the .NET 10 runtime (supported by Microsoft until November 2028), so a .NET security fix that concerns the app ships as a new Tunero release. The in-app update installs only a release whose signature matches an update key built into the app: the release key, and a backup key kept offline in case the first is ever lost or leaked (every release since 2026-10-13 accepts both).
+The exe carries the .NET 10 runtime (supported by Microsoft until November 2028), so a .NET security fix that concerns the app ships as a new Tunero release. The in-app update installs only a release whose signature matches an update key built into the app: the release key, and a backup key kept offline in case the first is ever lost or leaked (every release from 1.0.0 on accepts both).

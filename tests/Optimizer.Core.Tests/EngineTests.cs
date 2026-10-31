@@ -685,8 +685,11 @@ public class EngineTests
     }
 
     [Fact]
-    public void NotApplicableOnSmallRam() =>
-        Assert.Equal(TweakState.NotApplicable, new EngineFixture().Engine.DetectState(T("memory.compressionOff"), Facts(f => f.Set("memory.totalGb", 8.0))));
+    public void NotApplicableOnSmallRam()
+    {
+        using var fx = new EngineFixture();
+        Assert.Equal(TweakState.NotApplicable, fx.Engine.DetectState(T("memory.compressionOff"), Facts(f => f.Set("memory.totalGb", 8.0))));
+    }
 
     [Fact]
     public void ImpactOverrideForFrameGeneration()

@@ -61,7 +61,8 @@ public class DocsConsistencyTests
         {
             sb.Append("## ").Append(heading).Append("\n\n");
             if (intro.Length > 0) sb.Append(intro).Append("\n\n");
-            sb.Append(hardwareColumn ? "| Tweak | Title | Risk | Needs | Actions | Result |\n|---|---|---|---|---|---|\n" : "| Tweak | Title | Risk | Then | Actions | Result |\n|---|---|---|---|---|---|\n");
+            // No Result column: these tables are rewritten from the catalog, so results go into the hand-written table after them.
+            sb.Append(hardwareColumn ? "| Tweak | Title | Risk | Needs | Actions |\n|---|---|---|---|---|\n" : "| Tweak | Title | Risk | Then | Actions |\n|---|---|---|---|---|\n");
             foreach (var t in list)
             {
                 var third = hardwareColumn
@@ -69,7 +70,7 @@ public class DocsConsistencyTests
                     : t.Restart ? "restart" : t.SignOut ? "sign out" : "";
                 var actions = string.Join(", ", t.Actions.Select(ActionType).Distinct());
                 sb.Append("| `").Append(t.Id).Append("` | ").Append(Title(t)).Append(" | ").Append(RiskText(t)).Append(" | ").Append(third)
-                  .Append(" | ").Append(actions).Append(" | |\n");
+                  .Append(" | ").Append(actions).Append(" |\n");
             }
             sb.Append('\n');
         }

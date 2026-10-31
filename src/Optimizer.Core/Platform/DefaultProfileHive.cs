@@ -84,18 +84,55 @@ public static class DefaultProfileHive
         }
     }
 
-    /// <summary>A Tunero with this process id runs: the id alone may belong to another program by now (ids are reused).</summary>
+    /// <summary>
+    /// A Tunero with this process id runs: the id alone may belong to another program by now (ids are reused). Told by
+    /// the exe's product name, not the process name, since a copy may be called "Tunero (1).exe" or renamed. When the
+    /// process cannot be read it counts as running, so a hive is never unloaded on a guess: a reused id only delays the
+    /// cleanup until that program ends.
+    /// </summary>
     internal static bool IsTuneroRunning(int pid)
     {
         try
         {
             using var p = System.Diagnostics.Process.GetProcessById(pid);
+            if (p.HasExited) return false;
             using var self = System.Diagnostics.Process.GetCurrentProcess();
-            return !p.HasExited && string.Equals(p.ProcessName, self.ProcessName, StringComparison.OrdinalIgnoreCase);
+            return IsTuneroImage(p.ProcessName, Activity.ProcessSnapshotReader.ImagePath(pid), self.ProcessName, Environment.ProcessPath, ProductName);
         }
-        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or Win32Exception)
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
         {
-            return false;
+            return false; // not running (any more)
+        }
+        catch (Win32Exception)
+        {
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Whether a running process is a Tunero: the same process name or exe, or an exe with the same product name.
+    /// <paramref name="productName"/> gives "" for an exe without one and null when the file cannot be read; an image
+    /// that cannot be read counts as a Tunero (see <see cref="IsTuneroRunning"/>).
+    /// </summary>
+    internal static bool IsTuneroImage(string processName, string? imagePath, string ownName, string? ownPath, Func<string, string?> productName)
+    {
+        if (string.Equals(processName, ownName, StringComparison.OrdinalIgnoreCase)) return true;
+        if (imagePath is null) return true;
+        if (ownPath is null) return false;
+        if (string.Equals(imagePath, ownPath, StringComparison.OrdinalIgnoreCase)) return true;
+        if (productName(ownPath) is not { Length: > 0 } own) return false;
+        return productName(imagePath) is not { } other || string.Equals(other, own, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string? ProductName(string path)
+    {
+        try
+        {
+            return System.Diagnostics.FileVersionInfo.GetVersionInfo(path).ProductName ?? "";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            return null;
         }
     }
 

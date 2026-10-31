@@ -5,9 +5,13 @@
 ### Changed
 
 - **.NET runtime 10.0.14:** the exe carries the .NET and Windows Desktop runtime of Microsoft's out-of-band security release of October 25, 2026, which fixes a Brotli decoder flaw ([release notes](https://github.com/dotnet/core/blob/main/release-notes/10.0/10.0.14/10.0.14.md)), instead of 10.0.13.
+- **Markdig 1.4.2** for the explanation pages.
 
 ### Fixed
 
+- **Command line:** a sign-out or shutdown during `--apply`, `--undo-all`, the sign-in reapply task or `--build-media` no longer ends it halfway; Windows waits, as for changes made in the window.
+- **Install media:** an app that installs at the first sign-in no longer reports winget 0x00041303 while its one-time task still waits to start.
+- **Two copies:** a copy under another file name, such as `Tunero (1).exe`, no longer unloads the Default profile or install media hives of a copy that still runs.
 - **Undo:** a registry key that Tunero could delete only in part (a subkey Windows protects) comes back in full on Undo. Before, Undo took what was left for a key Windows had made again, reported success and did not restore the deleted values.
 - **Uninstall leftovers:** Move to Recycle Bin asks first, and checks each folder again right before it moves it, with the same evidence as Find unused program folders (autostart entries, services, scheduled tasks, running programs, taskbar pins). A folder something uses by now, such as a program installed again into it, stays and says why.
 - **Storage:** a file or folder right below a drive root (such as `D:\Old backups`) moves to the Recycle Bin. Before, the move always ended as "not moved".

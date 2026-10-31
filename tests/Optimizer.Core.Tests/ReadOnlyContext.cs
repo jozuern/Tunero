@@ -7,8 +7,8 @@ namespace Optimizer.Core.Tests;
 
 /// <summary>
 /// The real system adapters for the read-only checks of this PC (Category=Hardware), with every write refused: registry
-/// keys open read-only, and the write methods of services, power plans, BCD, tasks, displays, devices, DNS, NVIDIA and
-/// accessibility throw. Tools still run, since reads need them (bcdedit /enum, dism /Get-, PowerShell Get-), but a
+/// keys open read-only, and the write methods of services, power plans, BCD, tasks, displays, devices, DNS, NVIDIA,
+/// accessibility and SystemParametersInfo throw. Tools still run, since reads need them (bcdedit /enum, dism /Get-, PowerShell Get-), but a
 /// command that looks like a change is refused (<see cref="ReadOnlyProcesses.LooksLikeAWrite"/>). The only way a test
 /// may reach the real adapters (<see cref="ArchitectureTests"/>): a test that applies a tweak with it fails instead of
 /// changing the developer's PC.
@@ -33,6 +33,7 @@ internal static class ReadOnlyContext
             MemoryAgent = real.MemoryAgent,
             Nvidia = new Nvidia(real.Nvidia),
             Accessibility = new Accessibility(real.Accessibility),
+            SystemParameters = real.SystemParameters is { } parameters ? new SystemParameters(parameters) : null,
             ExportFolder = Path.GetTempPath(),
             Notify = _ => throw Refused("notify"),
         };
@@ -124,28 +125,36 @@ internal static class ReadOnlyContext
         public uint? GetFlags(AccessibilityFeature feature) => real.GetFlags(feature);
         public void SetFlags(AccessibilityFeature feature, uint flags) => throw Refused($"accessibility {feature}");
     }
+
+    private sealed class SystemParameters(ISystemParameters real) : ISystemParameters
+    {
+        public uint? Get(SystemParameter parameter) => real.Get(parameter);
+        public void Set(SystemParameter parameter, uint value) => throw Refused($"system parameter {parameter}");
+    }
 }
 
 /// <summary>Runs the tools the reads need and refuses a command that looks like a change.</summary>
 internal sealed class ReadOnlyProcesses(IProcessRunner real) : IProcessRunner
 {
     /// <summary>
-    /// Switches and cmdlet verbs of the tools the app runs that change something (bcdedit /set, powercfg /setactive,
-    /// dism /Enable-Feature, PowerShell Set-, Remove-, Disable-MMAgent, net stop). Reads use /enum, /query, /Get-, Get-.
+    /// Switches, cmdlet verbs and tools the app runs that change something (bcdedit /set, powercfg /setactive,
+    /// dism /Enable-Feature, PowerShell Set-, Remove-, Disable-MMAgent, Update-MpSignature, net stop, shutdown, taskkill).
+    /// Reads use /enum, /query, /Get-, Get-.
     /// </summary>
     private static readonly string[] WriteMarkers =
     [
         "/set", "/delete", "/import", "/export", "/create", "/copy", "/change", "/hibernate", "/duplicatescheme", "/apply",
         "/enable-", "/disable-", "/add-", "/remove-", "/cleanup-image", "/restorehealth", "/scannow",
         "set-", "remove-", "add-", "enable-", "disable-", "delete-", "new-", "stop-", "start-", "restart-", "register-",
-        "unregister-", "install-", "uninstall-", "clear-", "reset-", "rename-", "move-", "copy-", "invoke-",
+        "unregister-", "install-", "uninstall-", "clear-", "reset-", "rename-", "move-", "copy-", "invoke-", "update-",
         " stop ", " start ", " config ", " resize ", " add ", " delete ",
         // The tools also take "-" for "/" (powercfg -setactive, bcdedit -set).
         " -set", " -delete", " -import", " -export", " -create", " -copy", " -change", " -hibernate", " -duplicatescheme",
         // Quick fixes and other tools the app runs: ipconfig /release, netsh ... reset, reagentc /enable, w32tm /resync,
-        // lodctr /r, winget install and upgrade, fsutil ... set.
+        // lodctr /r, winget install and upgrade, fsutil ... set, chkdsk /scan (repairs online), shutdown /r /o (restarts
+        // into the recovery menu), taskkill (the Explorer restart).
         "/release", "/renew", "/flushdns", "/registerdns", " reset", "/enable", "/disable", "/resync", "lodctr",
-        " install ", " upgrade ", " uninstall ", " import ", " set ",
+        " install ", " upgrade ", " uninstall ", " import ", " set ", "chkdsk", "shutdown", "taskkill",
     ];
 
     public static bool LooksLikeAWrite(string file, string arguments)
