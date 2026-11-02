@@ -922,6 +922,8 @@ public sealed class MediaBuild(IMediaSteps steps)
                 }
                 else
                 {
+                    // By the spelling alone, before anything on the output's drive is asked: the work folder is renamed into the ISO.
+                    if (!OnFolderDrive(resumeFolder)) throw Refuse("the output file is on another drive.");
                     CheckOutput();
                     var saved = await OpenSavedAsync(resumeFolder);
                     if (saved.Kind == CheckpointKind.ImageReady)
@@ -1129,12 +1131,16 @@ public sealed class MediaBuild(IMediaSteps steps)
             }
         }
 
+        /// <summary>The output file is on the work folder's drive (a path that is no full path is refused by CheckOutput).</summary>
+        private bool OnFolderDrive(string folder) =>
+            !Path.IsPathFullyQualified(r.OutputIso) || Same(Path.GetPathRoot(Path.GetFullPath(folder)), Path.GetPathRoot(Path.GetFullPath(r.OutputIso)));
+
         private MediaBuildException Refuse(string reason) => Fail("The saved build cannot be resumed: " + reason, "Media_ResumeInvalid");
 
         /// <summary>
         /// Checks the saved build before anything in it is used: a trusted work folder whose lock this run takes, no image
         /// left mounted in it, a checkpoint that reads, is the one the page showed, has not expired and was saved for this
-        /// request, an output on the folder's drive, and saved files that hash as the checkpoint says. Any of these failing
+        /// request (the output's drive was checked before), and saved files that hash as the checkpoint says. Any of these failing
         /// refuses the resume (Media_ResumeInvalid) before the work folder is taken: the failure cleanup then leaves it as it
         /// is, for Discard.
         /// </summary>
@@ -1154,8 +1160,6 @@ public sealed class MediaBuild(IMediaSteps steps)
             if (saved.ResumesAt != _stage) throw Refuse("its checkpoint changed while the resume began.");
             if (saved.IsExpired(DateTimeOffset.Now)) throw Refuse($"it was saved more than {MediaCheckpoint.KeptFor.TotalDays:0} days ago.");
             if (saved.RequestHash != MediaCheckpoint.HashOf(r)) throw Refuse("the choices differ from those it was saved with.");
-            if (!Same(Path.GetPathRoot(Path.GetFullPath(folder)), Path.GetPathRoot(Path.GetFullPath(r.OutputIso))))
-                throw Refuse("the output file is on another drive.");
             var media = Path.Combine(folder, "media");
             try
             {

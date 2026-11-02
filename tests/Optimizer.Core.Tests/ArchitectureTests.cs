@@ -124,25 +124,47 @@ public partial class ArchitectureTests
     private static bool IsBuildOutput(string file) =>
         file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
         || file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal);
+
+    /// <summary>
+    /// App files that write with <see cref="Platform.DurableFile"/>, which follows a link as File.WriteAll* does, and why
+    /// the path is one of the app's own data files that nobody else chose.
+    /// </summary>
+    private static readonly Dictionary<string, string> DurableWrites = new(StringComparer.Ordinal)
+    {
+        ["AppSettings.cs"] = "settings.json in the app's data folder",
+        ["FirstSignInStart.cs"] = "the first sign-in marker in the app's data folder",
+        ["InstallMediaViewModel.cs"] = "the remembered media choices in the app's admin-only data folder",
+    };
+
     /// <summary>
     /// The window's code writes a file someone chose (an export, a developer switch's output) through
     /// <see cref="Platform.SafeDelete.WriteReplacing"/> or the new-file-only output of a switch, never with File.WriteAll*,
     /// which follows a link a program put in place of the file or a folder above it after the dialog closed. The app's own
-    /// data files go through <see cref="Platform.DurableFile"/>.
+    /// data files go through <see cref="Platform.DurableFile"/>, only in the files <see cref="DurableWrites"/> lists.
     /// </summary>
     [Fact]
     public void TheWindowWritesChosenFilesWithoutFollowingLinks()
     {
         var problems = new List<string>();
+        var durable = new HashSet<string>(StringComparer.Ordinal);
         foreach (var file in Directory.EnumerateFiles(Path.Combine(RepoPaths.Root, "src", "Optimizer.App"), "*.cs", SearchOption.AllDirectories))
         {
             if (IsBuildOutput(file)) continue;
             var name = Path.GetFileName(file);
-            if (FileWriteAll().IsMatch(File.ReadAllText(file)))
+            var text = File.ReadAllText(file);
+            if (FileWriteAll().IsMatch(text))
                 problems.Add($"{name}: writes with File.WriteAll* (use SafeDelete.WriteReplacing, or DurableFile for the app's own data files)");
+            if (!DurableWrite().IsMatch(text)) continue;
+            durable.Add(name);
+            if (!DurableWrites.ContainsKey(name))
+                problems.Add($"{name}: writes with DurableFile, which follows links (SafeDelete.WriteReplacing for a chosen file; an own data file goes in DurableWrites)");
         }
+        problems.AddRange(DurableWrites.Keys.Where(k => !durable.Contains(k)).Select(k => $"{k}: listed in DurableWrites but writes nothing with DurableFile"));
         Assert.Empty(problems);
     }
+
+    [GeneratedRegex(@"\bDurableFile\.\w*(Write|Append)\w*\(")]
+    private static partial Regex DurableWrite();
 
     [GeneratedRegex(@"\bFile\.(WriteAll|AppendAll)\w*\(")]
     private static partial Regex FileWriteAll();

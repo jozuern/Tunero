@@ -151,8 +151,8 @@ public sealed class InstallMediaSummaryTests
         Assert.Contains(Loc.Instance["Media_Summary_Encryption"], bar, StringComparison.OrdinalIgnoreCase);
         Assert.Contains(Loc.Instance["Media_Summary_Reserved"], bar, StringComparison.OrdinalIgnoreCase);
         var review = InstallMediaSummary.Review(on, "Windows 11 Pro", null, 1);
-        Assert.Contains(review.Changes, l => l.Target == Loc.Instance["Media_EncryptionTitle"] && l.After == Loc.Instance["Media_Review_On"]);
-        Assert.Contains(review.Changes, l => l.Target == Loc.Instance["Media_ReservedTitle"] && l.After == Loc.Instance["Media_Review_On"]);
+        Assert.Contains(review.Changes, l => l.Target == Loc.Instance["Media_EncryptionTitle"] && l.After == Loc.Instance["Feature_On"]);
+        Assert.Contains(review.Changes, l => l.Target == Loc.Instance["Media_ReservedTitle"] && l.After == Loc.Instance["Feature_On"]);
         Assert.Contains(review.Warnings, w => w.Contains(Loc.Instance["Media_EncryptionText"], StringComparison.Ordinal));
         Assert.Contains(review.Warnings, w => w.Contains(Loc.Instance["Media_ReservedText"], StringComparison.Ordinal));
         // The review says what the folded card says too: the value is not documented and not yet tested.
@@ -168,7 +168,7 @@ public sealed class InstallMediaSummaryTests
         var on = off with { Settings = new(false, false, true) };
         Assert.Contains(Loc.Instance["Media_Summary_Upgrades"], Changes(on), StringComparison.OrdinalIgnoreCase);
         var review = InstallMediaSummary.Review(on, "Windows 11 Pro", null, 1);
-        Assert.Contains(review.Changes, l => l.Target == Loc.Instance["Media_UpgradesTitle"] && l.After == Loc.Instance["Media_Review_On"]);
+        Assert.Contains(review.Changes, l => l.Target == Loc.Instance["Media_UpgradesTitle"] && l.After == Loc.Instance["Feature_On"]);
         Assert.Contains(review.Warnings, w => w.Contains(Loc.Instance["Media_UpgradesText"], StringComparison.Ordinal));
         Assert.Contains(review.Warnings, w => w.Contains(Loc.Instance["Media_UpgradesDetail"], StringComparison.Ordinal));
     }

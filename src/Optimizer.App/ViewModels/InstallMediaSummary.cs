@@ -95,22 +95,22 @@ internal static class InstallMediaSummary
         }
         if (c.Settings.PreventDeviceEncryption)
         {
-            changes.Add(Line(T["Media_EncryptionTitle"], T["Media_Review_On"]));
+            changes.Add(Line(T["Media_EncryptionTitle"], T["Feature_On"]));
             warnings.Add(Warning("Encryption"));
         }
         if (c.Settings.NoReservedStorage)
         {
-            changes.Add(Line(T["Media_ReservedTitle"], T["Media_Review_On"]));
+            changes.Add(Line(T["Media_ReservedTitle"], T["Feature_On"]));
             warnings.Add(Warning("Reserved"));
         }
         if (c.AllowUnsupported)
         {
-            changes.Add(Line(T["Media_UnsupportedTitle"], T["Media_Review_On"]));
+            changes.Add(Line(T["Media_UnsupportedTitle"], T["Feature_On"]));
             warnings.Add(Warning("Unsupported"));
         }
         if (c.Settings.AllowUnsupportedUpgrades)
         {
-            changes.Add(Line(T["Media_UpgradesTitle"], T["Media_Review_On"]));
+            changes.Add(Line(T["Media_UpgradesTitle"], T["Feature_On"]));
             warnings.Add(Warning("Upgrades"));
         }
         // Duration stays empty until the build times are measured in the test VM (docs/vm-test-plan.md).
@@ -148,11 +148,23 @@ internal static class InstallMediaSummary
         }
     }
 
-    /// <summary>"Account Anna, German (Austria)".</summary>
-    private static string SetupText(MediaChoices c)
+    private static string SetupText(MediaChoices c) => SetupLine(c.AccountName, CultureText(c.Region));
+
+    /// <summary>
+    /// "Account Anna, format German (Austria)", for the setup card and the review. A part that is not chosen yet is left
+    /// out, so no label stands without its value.
+    /// </summary>
+    internal static string SetupLine(string? accountName, string? regionText)
     {
-        var region = CultureText(c.Region) ?? "";
-        return c.AccountName?.Trim() is { Length: > 0 } name ? T.Format("Media_SetupSummary", name, region) : T.Format("Media_SetupSummaryNoName", region);
+        var name = accountName?.Trim() is { Length: > 0 } n ? n : null;
+        var region = string.IsNullOrWhiteSpace(regionText) ? null : regionText;
+        return (name, region) switch
+        {
+            ({ } a, { } r) => T.Format("Media_SetupSummary", a, r),
+            ({ } a, null) => T.Format("Media_SetupSummaryNoRegion", a),
+            (null, { } r) => T.Format("Media_SetupSummaryNoName", r),
+            _ => T["Media_SetupSummaryNothing"],
+        };
     }
 
     /// <summary>

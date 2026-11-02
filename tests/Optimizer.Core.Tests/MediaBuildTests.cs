@@ -1527,26 +1527,22 @@ public sealed class MediaBuildTests : IDisposable
         Assert.True(Directory.Exists(folder));
     }
 
-    /// <summary>The work folder is created on the output's drive and the ISO renamed out of it: another drive cannot be resumed into.</summary>
+    /// <summary>
+    /// The work folder is created on the output's drive and the ISO renamed out of it: another drive cannot be resumed into.
+    /// The refusal goes by the path's spelling, before the output checks: this test asks nothing of another drive of this PC.
+    /// </summary>
     [Fact]
     public async Task ResumeRefusesAnOutputOnAnotherDrive()
     {
         _steps.IsoWriter.Fails = true;
         await FailsAt(Download(), MediaStage.Iso, null);
-        var root = Path.GetPathRoot(Path.GetFullPath(_root));
-        // Another local fixed drive of this PC, so the output folder exists and the drive check itself is reached.
-        var other = DriveInfo.GetDrives()
-            .Where(d => d.IsReady && d.DriveType == DriveType.Fixed && !string.Equals(d.RootDirectory.FullName, root, StringComparison.OrdinalIgnoreCase))
-            .Select(d => Path.Combine(d.RootDirectory.FullName, "Win11.iso")).FirstOrDefault();
+        var root = Path.GetPathRoot(Path.GetFullPath(_root))!;
+        var other = (root.StartsWith('Z') || root.StartsWith('z') ? "Y" : "Z") + @":\Win11.iso";
         _steps.Calls.Clear();
-        var ex = await Assert.ThrowsAsync<MediaBuildException>(() => Resume(Download() with { OutputIso = other ?? OtherDriveLetter(root) }));
-        if (other is not null) Assert.Equal("Media_ResumeInvalid", ex.Key);
-        // A PC with one drive: the output's folder does not exist, so only CheckOutput's refusal is covered here.
-        else Assert.True(ex.Key is "Media_ResumeInvalid" or "Media_OutputInvalid", ex.Key);
+        var ex = await Assert.ThrowsAsync<MediaBuildException>(() => Resume(Download() with { OutputIso = other }));
+        Assert.Equal("Media_ResumeInvalid", ex.Key);
         Assert.Empty(_steps.Calls);
         Assert.True(Directory.Exists(_steps.WorkFolder));
-
-        static string OtherDriveLetter(string? root) => root?.StartsWith("C", StringComparison.OrdinalIgnoreCase) == true ? @"D:\Win11.iso" : @"C:\Win11.iso";
     }
 
     [Fact]

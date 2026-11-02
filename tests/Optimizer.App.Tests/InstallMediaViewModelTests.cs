@@ -278,7 +278,7 @@ public sealed class InstallMediaViewModelTests : IDisposable
         await media.IsoLoading;
         Assert.Equal(0, reads);
         Assert.False(media.CanBuild);
-        Assert.Equal(Loc.Instance["Media_NeedsIso"], media.BuildNote);
+        Assert.Equal(Loc.Instance["Media_SourceMissing"], media.BuildNote);
         Assert.Null(media.NeededText);
     }
 
@@ -296,7 +296,7 @@ public sealed class InstallMediaViewModelTests : IDisposable
         Assert.True(media.CanBuild);   // a refresh does not ask the file
         media.PageShown();
         Assert.False(media.CanBuild);
-        Assert.Equal(Loc.Instance["Media_NeedsIso"], media.BuildNote);
+        Assert.Equal(Loc.Instance["Media_SourceMissing"], media.BuildNote);
 
         File.WriteAllText(iso, "iso");
         media.PageShown();
@@ -307,7 +307,110 @@ public sealed class InstallMediaViewModelTests : IDisposable
         await media.BuildCommand.ExecuteAsync(null);
         Assert.Equal(0, _dialogs.ConfirmApplyCalls);
         Assert.Empty(_requests);
-        Assert.Equal(Loc.Instance["Media_NeedsIso"], media.BuildNote);
+        Assert.Equal(Loc.Instance["Media_SourceMissing"], media.BuildNote);
+    }
+
+    /// <summary>An ISO that is gone and back is read again with the edition chosen before, not this PC's.</summary>
+    [Fact]
+    public async Task AnIsoThatComesBackKeepsTheChosenEdition()
+    {
+        var media = await WithOwnIso();
+        var iso = media.IsoPath!;
+        Assert.Equal("2", media.Edition?.Key);   // this PC's Pro
+        media.Edition = media.Editions.Single(e => e.Key == "1");
+        File.Delete(iso);
+        media.PageShown();
+        Assert.False(media.CanBuild);
+
+        File.WriteAllText(iso, "iso");
+        media.PageShown();
+        await media.IsoLoading;
+        Assert.Equal("1", media.Edition?.Key);
+        Assert.True(media.CanBuild);
+        Assert.Null(media.ChoicesNote);
+    }
+
+    /// <summary>An ISO replaced by a file of another length is read again before Build reviews it: the checks see the new file.</summary>
+    [Fact]
+    public async Task AnIsoReplacedByAnotherFileIsReadAgainBeforeBuild()
+    {
+        var reads = 0;
+        var media = await WithOwnIso(Media(system: System() with
+        {
+            ReadIso = (_, _) =>
+            {
+                reads++;
+                return Task.FromResult(_iso);
+            },
+        }));
+        Assert.Equal(1, reads);
+        _iso = Iso(Image(1, "Professional", "Windows 11 Pro", arch: "ARM64"));
+        File.WriteAllText(media.IsoPath!, "another, longer ISO");
+
+        await media.BuildCommand.ExecuteAsync(null);
+        await media.IsoLoading;
+        Assert.Equal(2, reads);
+        Assert.Equal(0, _dialogs.ConfirmApplyCalls);
+        Assert.Equal("1", media.Edition?.Key);
+        Assert.Equal(Loc.Instance["Media_NotX64"], media.BuildNote);
+    }
+
+    /// <summary>A look at the own ISO that ends after the switch to the download reads nothing and leaves the download's edition.</summary>
+    [Fact]
+    public async Task ALookThatEndsAfterTheSwitchToTheDownloadReadsNothing()
+    {
+        var reads = 0;
+        TaskCompletionSource<long?>? look = null;
+        var media = await WithCatalog(Media(system: System() with
+        {
+            ReadIso = (_, _) =>
+            {
+                reads++;
+                return Task.FromResult(_iso);
+            },
+            IsoLength = path => look?.Task ?? Task.FromResult(InstallMediaSystem.LengthOf(path)),
+        }));
+        var iso = Path.Combine(_root, "Win11.iso");
+        media.UseDownload = false;
+        media.IsoPath = iso;   // not there yet
+        await media.IsoLoading;
+        Assert.Equal(0, reads);
+
+        File.WriteAllText(iso, "iso");
+        // Without RunContinuationsAsynchronously the look's end runs inside SetResult.
+        look = new TaskCompletionSource<long?>();
+        media.PageShown();
+        media.UseDownload = true;
+        media.Edition = media.Editions.Single(e => e.Key == "Core");
+        look.SetResult(InstallMediaSystem.LengthOf(iso));
+        Assert.Equal(0, reads);
+        Assert.False(media.IsReadingIso);
+        Assert.Equal("Core", media.Edition?.Key);
+    }
+
+    /// <summary>Showing the page again while the last look at the ISO still waits (a share that went away) starts no second look.</summary>
+    [Fact]
+    public async Task PageVisitsShareTheLookAtTheIso()
+    {
+        var looks = 0;
+        TaskCompletionSource<long?>? look = null;
+        var media = await WithOwnIso(Media(system: System() with
+        {
+            IsoLength = path =>
+            {
+                looks++;
+                return look?.Task ?? Task.FromResult(InstallMediaSystem.LengthOf(path));
+            },
+        }));
+        looks = 0;
+        look = new TaskCompletionSource<long?>();
+        media.PageShown();
+        media.PageShown();
+        media.PageShown();
+        Assert.Equal(1, looks);
+        look.SetResult(InstallMediaSystem.LengthOf(media.IsoPath!));
+        Assert.True(media.CanBuild);
+        Assert.Equal(1, looks);
     }
 
     /// <summary>A Downloads folder redirected to a share is not asked for a free name (each refresh would wait for the share); Build refuses it by its spelling.</summary>
@@ -1399,6 +1502,17 @@ public sealed class InstallMediaViewModelTests : IDisposable
         Assert.Equal(Loc.Instance.Format("Media_SetupSummaryNoName", media.Region!.Text), media.SetupSummary);
     }
 
+    /// <summary>Without a region format the summary names no "format" label without its value.</summary>
+    [Fact]
+    public async Task SetupSummaryWithoutARegionLeavesTheFormatOut()
+    {
+        var media = await WithCatalog();
+        media.Region = null;
+        Assert.Equal(Loc.Instance.Format("Media_SetupSummaryNoRegion", "Anna"), media.SetupSummary);
+        media.AccountNameText = "";
+        Assert.Equal(Loc.Instance["Media_SetupSummaryNothing"], media.SetupSummary);
+    }
+
     /// <summary>A region brings its keyboard along, until a keyboard was picked by hand.</summary>
     [Fact]
     public async Task ARegionPreselectsItsKeyboardUntilOneIsPicked()
@@ -2187,11 +2301,12 @@ public sealed class InstallMediaViewModelTests : IDisposable
     }
 
     /// <summary>
-    /// Resume checks the saved choices off the window's thread (on a share that went away this takes long), and Build stays
-    /// on meanwhile. A build started in that time keeps the choices it started with: the saved ones are not applied over it.
+    /// Resume checks the saved choices off the window's thread (on a share that went away this takes long). Meanwhile the
+    /// choices are locked and Build, Load choices and Discard stay off, so the saved choices it applies are the ones it
+    /// resumes with and the saved build is still there; a click that arrives before the buttons turned off does nothing.
     /// </summary>
     [Fact]
-    public async Task ABuildStartedWhileResumeChecksTheSavedChoicesKeepsItsChoices()
+    public async Task WhileResumeChecksTheSavedChoicesNothingElseStarts()
     {
         Loc.Instance.SetLanguage("en");
         var saved = SavedBuild(await SavedChoices());
@@ -2211,32 +2326,37 @@ public sealed class InstallMediaViewModelTests : IDisposable
                 return MediaCheckpoint.ReadChoices(folder);
             },
         };
-        var started = new TaskCompletionSource();
-        _build = async (_, ct) =>
-        {
-            started.SetResult();
-            await Task.Delay(Timeout.Infinite, ct);
-            return "";
-        };
         var media = await WithCatalog(Media(system: system));
         Assert.Equal("Anna", media.AccountNameText);
+        Assert.True(media.CanEdit);
+        _dialogs.OpenFile = Write(Saved(), "mine.json");
+        _dialogs.Answer = true;
 
         var resume = media.ResumeCommand.ExecuteAsync(null);
         await keyboards.Held.Task;
-        _dialogs.Answer = true;
-        var build = media.BuildCommand.ExecuteAsync(null);
-        await started.Task;
-        Assert.True(media.IsBuilding);
+        Assert.False(media.CanEdit);
+        Assert.False(media.CanBuild);
+        Assert.False(media.BuildCommand.CanExecute(null));
+        Assert.False(media.LoadChoicesCommand.CanExecute(null));
+        Assert.False(media.ResetChoicesCommand.CanExecute(null));
+        Assert.False(media.DiscardCommand.CanExecute(null));
+        Assert.Equal(Loc.Instance["Media_Preparing"], media.BuildNote);
+        var asked = _dialogs.Asked.Count;
+        await media.BuildCommand.ExecuteAsync(null);
+        await media.LoadChoicesCommand.ExecuteAsync(null);
+        await media.DiscardCommand.ExecuteAsync(null);
+        Assert.Equal(0, _dialogs.ConfirmApplyCalls);
+        Assert.Equal(asked, _dialogs.Asked.Count);
+        Assert.Empty(discarded);
+        Assert.Null(media.ChoicesNote);
         keyboards.Release.SetResult();
         await resume;
 
-        Assert.Empty(resumed);
-        Assert.Equal([saved.WorkFolder], discarded);
-        Assert.Equal("Anna", media.AccountNameText);
-        Assert.Null(media.ResumeNote);
-        Assert.True(media.IsBuilding);
-        await media.StopAndWaitAsync();
-        await build;
+        var (folder, _) = Assert.Single(resumed);
+        Assert.Equal(saved.WorkFolder, folder);
+        Assert.Empty(_requests);
+        Assert.Equal("Berta", media.AccountNameText);
+        Assert.True(media.CanEdit);
     }
 
     /// <summary>
@@ -2262,6 +2382,11 @@ public sealed class InstallMediaViewModelTests : IDisposable
         var build = media.BuildCommand.ExecuteAsync(null);
         Assert.True(media.BuildCommand.IsRunning);
         Assert.Equal(0, _dialogs.ConfirmApplyCalls);
+        // The note says that Build checks; the choices and Resume wait for the review.
+        Assert.Equal(Loc.Instance["Media_Preparing"], media.BuildNote);
+        Assert.False(media.CanEdit);
+        Assert.False(media.ResumeCommand.CanExecute(null));
+        Assert.False(media.DiscardCommand.CanExecute(null));
         await media.ResumeCommand.ExecuteAsync(null);
 
         Assert.Empty(resumed);
@@ -2290,9 +2415,12 @@ public sealed class InstallMediaViewModelTests : IDisposable
         look = new TaskCompletionSource<long?>(TaskCreationOptions.RunContinuationsAsynchronously);
         var build = media.BuildCommand.ExecuteAsync(null);
         Assert.True(media.BuildCommand.IsRunning);
+        Assert.False(media.LoadChoicesCommand.CanExecute(null));
         await media.LoadChoicesCommand.ExecuteAsync(null);
         Assert.Equal("Anna", media.AccountNameText);
         Assert.False(media.UseDownload);
+        // Not even the file dialog opened: nothing was picked that the page then drops without a word.
+        Assert.Null(media.ChoicesNote);
 
         look.SetResult(InstallMediaSystem.LengthOf(media.IsoPath!));
         await build;

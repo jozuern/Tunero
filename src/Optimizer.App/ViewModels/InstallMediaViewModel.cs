@@ -499,11 +499,8 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         }
     }
 
-    /// <summary>What the folded setup card holds: "Account Anna, German (Austria)"; null while it is off.</summary>
-    public string? SetupSummary =>
-        !SkipSetup ? null
-        : AccountNameText.Trim() is { Length: > 0 } name ? Loc.Instance.Format("Media_SetupSummary", name, Region?.Text ?? "")
-        : Loc.Instance.Format("Media_SetupSummaryNoName", Region?.Text ?? "");
+    /// <summary>What the folded setup card holds: "Account Anna, format German (Austria)"; null while it is off.</summary>
+    public string? SetupSummary => SkipSetup ? InstallMediaSummary.SetupLine(AccountNameText, Region?.Text) : null;
 
     [ObservableProperty] private bool _applyProfile;
 
@@ -704,8 +701,25 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         Changed();
     }
 
-    /// <summary>The choices stay as they are while a build runs: it uses the ones it started with (and may hold the own ISO).</summary>
-    public bool CanEdit => !IsBuilding;
+    /// <summary>
+    /// Build, Resume, Load choices or Discard is getting ready: Build looks at the own ISO before its review, Resume reads
+    /// the saved choices and the ISO, Load checks its file, Discard deletes the saved build. Until it has started or given up,
+    /// the choices stay as they are and none of the others starts (one state, so no pair of them has to guard the other).
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanEdit))]
+    private bool _isPreparing;
+
+    partial void OnIsPreparingChanged(bool value) => Changed();
+
+    /// <summary>Nothing runs or gets ready that uses the choices: Build, Resume, Load choices and Discard may start.</summary>
+    private bool CanHold => !IsBuilding && !IsPreparing;
+
+    /// <summary>
+    /// The choices stay as they are while a build runs (it uses the ones it started with and may hold the own ISO) and while
+    /// Build, Resume or Load choices gets ready (<see cref="IsPreparing"/>).
+    /// </summary>
+    public bool CanEdit => CanHold;
 
     /// <summary>The space the build needs on the output drive and what is free there.</summary>
     public string? NeededText
@@ -724,6 +738,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     /// runs too: the window's banner says so, with its own Stop.
     /// </summary>
     public string? BuildNote => IsBuilding || IsWorking ? null
+        : IsPreparing ? Loc.Instance[IsReadingIso || IsReadingApps ? "Media_ReadingIso" : "Media_Preparing"]
         : Problem() is { } key ? Loc.Instance[key] : IsCleaning ? Loc.Instance["Media_CleanupRunning"] : null;
 
     /// <summary>The note beside the summary bar: <see cref="BuildNote"/>, unless the bar's own line says it already (no image to build from yet).</summary>
@@ -768,7 +783,8 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     {
         if (!WasLoaded) return;
         RefreshBuild();
-        _ = RefreshIsoFileAsync();
+        // Build and Resume look at the file themselves while they get ready.
+        if (!IsPreparing) _ = RefreshIsoFileAsync(fromPage: true);
     }
 
     private void RefreshBuild()
@@ -797,7 +813,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     /// <summary>Another change or an update holds the gate: a build would be refused (a scan only delays it, the runner waits for it).</summary>
     private static bool GateBusy => ChangeGate.Instance.Busy || ChangeGate.Instance.Updating;
 
-    public bool CanBuild => Problem() is null;
+    public bool CanBuild => !IsPreparing && Problem() is null;
 
     // The result of the last build, shown on the Build card (and in the window's result bar on another page).
     [ObservableProperty] private string? _resultText;
@@ -918,8 +934,8 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         {
             if (IsoPath is null) return "Media_NeedsIso";
             if (IsReadingIso || IsReadingApps) return "Media_ReadingIso";
-            // The read found no file there (the demo's sample ISO is no file).
-            if (!_demo && _isoBytes is null) return "Media_NeedsIso";
+            // The read or a later look found no file there, though the page still names it (the demo's sample ISO is no file).
+            if (!_demo && _isoBytes is null) return "Media_SourceMissing";
             if (_isoProblem is { } problem) return problem;
             // An install image without a readable image list: the read failed, nothing says the media is wrong.
             if (_isoInfo is { ImageFile: not null, Images.Count: 0 }) return "Media_IsoReadFailed";
@@ -1340,7 +1356,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
                 OnPropertyChanged(nameof(NeededText));
             }
             // A file that is not there is not attached: Build names the missing ISO.
-            if ((_demo || _isoBytes is not null) && (_system.Elevated || _demo)) info = await _system.ReadIso(path, read.Token);
+            if (_demo || (_system.Elevated && _isoBytes is not null)) info = await _system.ReadIso(path, read.Token);
         }
         catch (OperationCanceledException) when (read.IsCancellationRequested)
         {
@@ -1376,34 +1392,53 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     partial void OnIsReadingIsoChanged(bool value) => Changed();
 
     /// <summary>
-    /// Looks at the own ISO file again, off the window's thread: when the page is shown and before Build and Resume (it may
-    /// have been deleted, replaced or its share gone since the read). A file that was missing at the read and is there now
-    /// is read. Nothing while a read runs (it looks itself), while a build runs (its choices stay as they are) or in the
-    /// demo; a newer pick drops what this found.
+    /// Looks at the own ISO file again, off the window's thread: when the page is shown (<paramref name="fromPage"/>) and
+    /// before Build and Resume (it may have been deleted, replaced or its share gone since the read). A file that is gone is
+    /// no longer built from; one that is back, or was replaced by a file of another length, is read again, the chosen
+    /// edition kept where the file still holds it. Nothing while a read runs (it looks itself), while a build runs (its
+    /// choices stay as they are) or in the demo; a newer pick or a switch to the download drops what this found, and so
+    /// does a page look that ends while Build or Resume gets ready (they look themselves).
     /// </summary>
-    private async Task RefreshIsoFileAsync()
+    private async Task RefreshIsoFileAsync(bool fromPage = false)
     {
         if (UseDownload || _demo || IsReadingIso || IsBuilding || IsoPath is not { } path) return;
         var generation = _isoGeneration;
         var before = _isoBytes;
-        long? bytes;
+        var bytes = await LookAtIso(path);
+        if (generation != _isoGeneration || UseDownload || IsoPath != path || IsBuilding || (fromPage && IsPreparing) || bytes == before) return;
+        if (bytes is null)
+        {
+            _isoBytes = null;
+            Changed();
+            return;
+        }
+        // A new read starts from this PC's edition: the one chosen now is asked for again.
+        _wantedIsoEdition ??= SelectedImage() is { } image ? image.Edition ?? image.Name : null;
+        IsoLoading = ReadIsoAsync(path);
+    }
+
+    /// <summary>The look at the own ISO that runs now, shared by every refresh of the same file (each new one would wait for a share's timeout again).</summary>
+    private (string Path, Task<long?> Length)? _look;
+
+    private Task<long?> LookAtIso(string path)
+    {
+        if (_look is { } running && running.Path == path && !running.Length.IsCompleted) return running.Length;
+        var look = LookAtIsoAsync(path);
+        _look = (path, look);
+        return look;
+    }
+
+    private async Task<long?> LookAtIsoAsync(string path)
+    {
         try
         {
-            bytes = await _system.IsoLength(path);
+            return await _system.IsoLength(path);
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
             Log.Warn("media", $"the own ISO could not be looked at: {ex.GetType().Name}: {ex.Message}");
-            bytes = null;
+            return null;
         }
-        if (generation != _isoGeneration || IsoPath != path || IsBuilding || bytes == before) return;
-        if (before is null)
-        {
-            IsoLoading = ReadIsoAsync(path);
-            return;
-        }
-        _isoBytes = bytes;
-        Changed();
     }
 
     // ---- commands ----
@@ -1544,21 +1579,31 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     [RelayCommand(CanExecute = nameof(CanBuild))]
     private async Task BuildAsync()
     {
-        // The own ISO may be gone since it was read: Build then says so (off the window's thread, as every look at it).
-        await RefreshIsoFileAsync();
-        if (Request() is not { } request || ReviewRequest() is not { } review) return;
-        // The review shows every choice once more; cancelling it builds nothing.
-        if (_dialogs.ConfirmApply(review) is null) return;
-        Func<Task<bool>>? discard = null;
-        if (Resumable is { } saved)
+        if (!CanHold) return;
+        IsPreparing = true;
+        try
         {
-            if (!_dialogs.Ask(Loc.Instance["Media_DiscardTitle"], Loc.Instance.Format("Media_DiscardFirstText", ByteSize.Format(saved.Bytes), DriveOf(saved)),
-                    Loc.Instance["Media_DiscardAndBuild"]))
-                return;
-            // Only once the build may run: a build that another change keeps from starting keeps the saved build.
-            discard = () => DiscardSavedAsync(saved);
+            // The own ISO may be gone or replaced since it was read: Build then says so (off the window's thread, as every
+            // look at it). The note says that Build checks meanwhile, and the choices stay as the review will show them.
+            await RefreshIsoFileAsync();
+            if (Request() is not { } request || ReviewRequest() is not { } review) return;
+            // The review shows every choice once more; cancelling it builds nothing.
+            if (_dialogs.ConfirmApply(review) is null) return;
+            Func<Task<bool>>? discard = null;
+            if (Resumable is { } saved)
+            {
+                if (!_dialogs.Ask(Loc.Instance["Media_DiscardTitle"], Loc.Instance.Format("Media_DiscardFirstText", ByteSize.Format(saved.Bytes), DriveOf(saved)),
+                        Loc.Instance["Media_DiscardAndBuild"]))
+                    return;
+                // Only once the build may run: a build that another change keeps from starting keeps the saved build.
+                discard = () => DiscardSavedAsync(saved);
+            }
+            await (_running = RunBuildAsync(request, Choices(), before: discard));
         }
-        await (_running = RunBuildAsync(request, Choices(), before: discard));
+        finally
+        {
+            IsPreparing = false;
+        }
     }
 
     /// <summary>
@@ -1925,7 +1970,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         ? Loc.Instance.Format("Media_SavedBuildSize", ByteSize.Format(saved.Bytes), DriveOf(saved))
         : null;
 
-    private bool CanResumeOrDiscard => Resumable is not null && !IsBuilding && !IsWorking && !IsCleaning;
+    private bool CanResumeOrDiscard => Resumable is not null && CanHold && !IsWorking && !IsCleaning;
 
     /// <summary>Resume runs a build: not while another change or an update holds the gate (Discard only deletes the saved files).</summary>
     private bool CanResume => CanResumeOrDiscard && !GateBusy;
@@ -1962,60 +2007,79 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     [RelayCommand(CanExecute = nameof(CanResume))]
     private async Task ResumeAsync()
     {
-        if (Resumable is not { } saved) return;
-        ResumeNote = null;
-        MediaRequestFile? file = null;
+        if (Resumable is not { } saved || !CanHold) return;
+        // Until the build runs, the choices stay as the saved ones make them and Build, Load choices and Discard stay off:
+        // a change in between would make another request, which the engine refuses after the stage list was shown.
+        IsPreparing = true;
         try
         {
-            // Off the window's thread: the parse looks for an own ISO, which may lie on a share that went away.
-            var keyboards = _keyboardProfiles;
-            if (_system.SavedChoices(saved.WorkFolder) is { } text) file = await Task.Run(() => MediaRequestFile.ParseKeepingWhatFits(text, keyboards));
+            ResumeNote = null;
+            MediaRequestFile? file = null;
+            try
+            {
+                // Off the window's thread: the parse looks for an own ISO, which may lie on a share that went away.
+                var keyboards = _keyboardProfiles;
+                if (_system.SavedChoices(saved.WorkFolder) is { } text) file = await Task.Run(() => MediaRequestFile.ParseKeepingWhatFits(text, keyboards));
+            }
+            catch (MediaRequestFileException ex)
+            {
+                Log.Warn("media", $"the saved build's choices were not used: {ex.Message}");
+            }
+            if (file is null)
+            {
+                ResumeNote = Loc.Instance["Media_ResumeInvalid"];
+                return;
+            }
+            _droppedNames = [];
+            ShowDropped(ApplyChoices(file));
+            // A read that runs (a new ISO the choices name) looks at the file itself; the same ISO is not read again but
+            // looked at once more (off the window's thread), as before Build.
+            var reading = !IsoLoading.IsCompleted;
+            await IsoLoading;
+            await AppsLoading;
+            if (!reading)
+            {
+                await RefreshIsoFileAsync();
+                await IsoLoading;
+                await AppsLoading;
+            }
+            // A value that no longer fits (named in the choices note) makes another request: the engine would refuse it.
+            if (_droppedNames.Count > 0)
+            {
+                ResumeNote = Loc.Instance["Media_ResumeInvalid"];
+                return;
+            }
+            var problem = Problem(space: false);
+            if (problem is not null || Choices()?.ToRequest() is not { } request)
+            {
+                ResumeNote = Loc.Instance[problem ?? "Media_ResumeInvalid"];
+                return;
+            }
+            var folder = saved.WorkFolder;
+            await (_running = RunBuildAsync(request, Choices(), (progress, ct) => _system.ResumeBuild(folder, request, progress, ct), saved.Checkpoint.ResumesAt));
         }
-        catch (MediaRequestFileException ex)
+        finally
         {
-            Log.Warn("media", $"the saved build's choices were not used: {ex.Message}");
+            IsPreparing = false;
         }
-        // A build that started, or whose review is open, while the saved choices were checked keeps its choices.
-        if (IsBuilding || BuildCommand.IsRunning) return;
-        if (file is null)
-        {
-            ResumeNote = Loc.Instance["Media_ResumeInvalid"];
-            return;
-        }
-        _droppedNames = [];
-        ShowDropped(ApplyChoices(file));
-        await IsoLoading;
-        await AppsLoading;
-        // The same ISO is not read again: it is looked at once more (off the window's thread), as before Build.
-        await RefreshIsoFileAsync();
-        await IsoLoading;
-        await AppsLoading;
-        // The same for a build clicked while the ISO was looked at: its review shows the choices it builds.
-        if (IsBuilding || BuildCommand.IsRunning) return;
-        // A value that no longer fits (named in the choices note) makes another request: the engine would refuse it.
-        if (_droppedNames.Count > 0)
-        {
-            ResumeNote = Loc.Instance["Media_ResumeInvalid"];
-            return;
-        }
-        var problem = Problem(space: false);
-        if (problem is not null || Choices()?.ToRequest() is not { } request)
-        {
-            ResumeNote = Loc.Instance[problem ?? "Media_ResumeInvalid"];
-            return;
-        }
-        var folder = saved.WorkFolder;
-        await (_running = RunBuildAsync(request, Choices(), (progress, ct) => _system.ResumeBuild(folder, request, progress, ct), saved.Checkpoint.ResumesAt));
     }
 
-    /// <summary>Deletes the saved build after asking (it frees its gigabytes; a later build starts from the beginning).</summary>
+    /// <summary>Deletes the saved build after asking (it frees its gigabytes; a later build starts from the beginning). Resume and Build wait until it is gone.</summary>
     [RelayCommand(CanExecute = nameof(CanResumeOrDiscard))]
     private async Task DiscardAsync()
     {
-        if (Resumable is not { } saved) return;
+        if (Resumable is not { } saved || !CanHold) return;
         if (!_dialogs.Ask(Loc.Instance["Media_DiscardTitle"], Loc.Instance.Format("Media_DiscardText", ByteSize.Format(saved.Bytes), DriveOf(saved)), Loc.Instance["Media_DiscardButton"]))
             return;
-        await DiscardSavedAsync(saved);
+        IsPreparing = true;
+        try
+        {
+            await DiscardSavedAsync(saved);
+        }
+        finally
+        {
+            IsPreparing = false;
+        }
     }
 
     /// <summary>Deletes the saved build off the window's thread (gigabytes); false, with the note, when that failed.</summary>
@@ -2265,15 +2329,19 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         return dropped;
     }
 
-    /// <summary>An own ISO's image by the edition a file named, once the ISO was read; if it holds none, the page keeps its default and says so.</summary>
+    /// <summary>
+    /// An own ISO's image by the edition a file named, once the ISO was read; if it holds none, the page keeps its default
+    /// and says so. While no image list is known (the file is missing, or could not be attached) the edition waits for the
+    /// read that finds one.
+    /// </summary>
     private void ApplyWantedIsoEdition()
     {
-        if (_wantedIsoEdition is not { } wanted) return;
+        if (_wantedIsoEdition is not { } wanted || _isoInfo is not { } info) return;
         _wantedIsoEdition = null;
-        var image = _isoInfo?.Editions.FirstOrDefault(i => string.Equals(i.Edition, wanted, StringComparison.OrdinalIgnoreCase)
-                                                           || string.Equals(i.Name, wanted, StringComparison.OrdinalIgnoreCase));
+        var image = info.Editions.FirstOrDefault(i => string.Equals(i.Edition, wanted, StringComparison.OrdinalIgnoreCase)
+                                                      || string.Equals(i.Name, wanted, StringComparison.OrdinalIgnoreCase));
         if (image is not null && Pick(Editions, image.Index.ToString(CultureInfo.InvariantCulture)) is { } edition) Edition = edition;
-        else if (_isoInfo is not null) AddDropped(FieldLabel("edition"));
+        else AddDropped(FieldLabel("edition"));
     }
 
     private bool CanSaveChoices => !IsBuilding && Source() is not null && Edition is not null;
@@ -2304,7 +2372,9 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     [RelayCommand(CanExecute = nameof(CanEdit))]
     private async Task LoadChoicesAsync()
     {
-        if (_dialogs.PickOpenFile(Loc.Instance["Media_ChoicesFiles"], ".json") is not { } path) return;
+        if (!CanHold || _dialogs.PickOpenFile(Loc.Instance["Media_ChoicesFiles"], ".json") is not { } path) return;
+        // While the file is checked, Build and Resume stay off: the file is applied, or the note says why not.
+        IsPreparing = true;
         MediaRequestFile? file;
         try
         {
@@ -2330,8 +2400,10 @@ public sealed partial class InstallMediaViewModel : PageViewModel
             ShowChoicesNote(Loc.Instance.Format("Media_ChoicesUnreadable", path), InfoBarSeverity.Warning);
             return;
         }
-        // A build that started, or whose review is open, while the file was checked keeps its choices; so does a resume.
-        if (!CanEdit || BuildCommand.IsRunning || ResumeCommand.IsRunning) return;
+        finally
+        {
+            IsPreparing = false;
+        }
         _droppedNames = [];
         var dropped = ApplyChoices(file);
         if (dropped.Count > 0) ShowDropped(dropped);
