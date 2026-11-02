@@ -19,6 +19,10 @@ All 186 findings of [audit-2026-10-31.md](audit-2026-10-31.md) and the follow-up
 - **Website build:** `deepmerge` 4.3.1 (prototype poisoning, low) comes only through `@sveltejs/vite-plugin-svelte`, which merges its defaults with our own config files at build time; nothing reaches the site, and no fixed version exists. The Dependabot alert is dismissed as a tolerable risk (2026-10-31); take the fixed version once one is out.
 - **Large files, as pure moves only, in a session that works in the file anyway:** `InstallMediaViewModel.cs` (choices, stages, resume), `AppsViewModel.cs` (programs, package managers), the three page view models in `PageViewModels.cs`, `MediaBuild.cs` (leftover cleanup, `MediaSteps`, the request records) and the fakes in `MediaBuildTests.cs`. Each move is its own commit with no other change.
 
+## From the audit of 2026-11-02
+
+All 229 findings are fixed in code. What only the VM can prove: the sign-out hold of a command line run (vm-test-plan section 1, "Sign-out during a command line run"), `office.clipboardHistoryOn`, which stays undocumented and a preview until its row in the preview table passes, and the Resume space refusal in VM 4c.
+
 ## Code structure and tests
 
 From a review of the architecture (October 2026), with nothing of it left open. The window and the command line pick the profile and the plan with one function each (`ProfileCatalog.Choose`, `Recommendations.ForProfile`), `FirstSignInTests` compares both paths, `ExpectedPlanTests` keeps the plans of four sample PCs in `tests/Optimizer.Core.Tests/Fixtures/plans`, and the window's scan and plan state is a plain class (`ScanState`) that `ScanStateTests` runs without the window.
