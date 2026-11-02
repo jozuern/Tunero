@@ -71,7 +71,9 @@
                 <Separator />
             </StackPanel>
 
-            <ScrollViewer x:Name="ChangeScroll" VerticalScrollBarVisibility="Auto" MaxHeight="360">
+            <!-- A Tab stop while the list is longer than the box (ConfirmWindow.xaml.cs), so the arrow and page keys reach the rows below -->
+            <ScrollViewer x:Name="ChangeScroll" VerticalScrollBarVisibility="Auto" MaxHeight="360" Focusable="False" IsTabStop="True" AutomationProperties.Name="{l:Tr Confirm_Changes}"
+                          FocusVisualStyle="{DynamicResource DefaultControlFocusVisualStyle}">
                 <v:ItemList x:Name="ChangeList">
                     <v:ItemList.ItemTemplate>
                         <DataTemplate>
@@ -104,10 +106,13 @@
         <Border Grid.Row="2" Padding="24" BorderThickness="0,1,0,0"
                 Background="{DynamicResource SolidBackgroundFillColorBaseBrush}" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}">
             <DockPanel LastChildFill="False">
-                <!-- Windows 11 content dialog order: the primary button first, Cancel last (on the right) -->
-                <ui:Button x:Name="CancelButton" DockPanel.Dock="Right" Content="{l:Tr Confirm_Cancel}" MinWidth="100" IsCancel="True" />
-                <ui:Button x:Name="ApplyButton" DockPanel.Dock="Right" Appearance="Primary" MinWidth="120" Margin="0,0,8,0" Click="Apply_Click" IsDefault="True" />
-                <ui:TextBlock x:Name="FooterText" DockPanel.Dock="Left" FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,16,0" />
+                <!-- Windows 11 content dialog order: the primary button first, Cancel last (on the right), and Tab in the same
+                     order (two buttons docked right came in Tab order Cancel first) -->
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <ui:Button x:Name="ApplyButton" Appearance="Primary" MinWidth="120" Margin="0,0,8,0" Click="Apply_Click" IsDefault="True" />
+                    <ui:Button x:Name="CancelButton" Content="{l:Tr Confirm_Cancel}" MinWidth="100" IsCancel="True" />
+                </StackPanel>
+                <ui:TextBlock x:Name="FooterText" DockPanel.Dock="Left" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,16,0" />
             </DockPanel>
         </Border>
     </Grid>

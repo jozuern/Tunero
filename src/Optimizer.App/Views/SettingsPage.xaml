@@ -15,7 +15,7 @@
                     <ui:SymbolIcon Symbol="LocalLanguage24" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
                 </ui:CardControl.Icon>
                 <ui:CardControl.Header>
-                    <ui:TextBlock FontTypography="Body" Text="{l:Tr Settings_Language}" />
+                    <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Settings_Language}" />
                 </ui:CardControl.Header>
                 <!-- A drop-down as in Windows Settings; each language in its own name -->
                 <ComboBox x:Name="LanguageBox" MinWidth="200" SelectionChanged="Language_Changed" AutomationProperties.Name="{l:Tr Settings_Language}">
@@ -28,7 +28,7 @@
                     <ui:SymbolIcon Symbol="DarkTheme24" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
                 </ui:CardControl.Icon>
                 <ui:CardControl.Header>
-                    <ui:TextBlock FontTypography="Body" Text="{l:Tr Settings_Theme}" />
+                    <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Settings_Theme}" />
                 </ui:CardControl.Header>
                 <ComboBox x:Name="ThemeBox" MinWidth="200" SelectionChanged="Theme_Changed" AutomationProperties.Name="{l:Tr Settings_Theme}">
                     <ComboBoxItem Content="{l:Tr Theme_System}" Tag="System" />
@@ -42,7 +42,7 @@
                 </ui:CardControl.Icon>
                 <ui:CardControl.Header>
                     <StackPanel>
-                        <ui:TextBlock FontTypography="Body" Text="{l:Tr StartMenu_Setting}" />
+                        <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr StartMenu_Setting}" />
                         <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding StartMenuHint}" Margin="0,4,0,0" />
                     </StackPanel>
                 </ui:CardControl.Header>
@@ -55,7 +55,7 @@
                 </ui:CardControl.Icon>
                 <ui:CardControl.Header>
                     <StackPanel>
-                        <ui:TextBlock FontTypography="Body" Text="{l:Tr Settings_Technical}" />
+                        <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Settings_Technical}" />
                         <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Settings_TechnicalHint}" Margin="0,4,0,0" />
                     </StackPanel>
                 </ui:CardControl.Header>
@@ -70,7 +70,7 @@
                 </ui:CardControl.Icon>
                 <ui:CardControl.Header>
                     <StackPanel>
-                        <ui:TextBlock FontTypography="Body" Text="{l:Tr Settings_Expert}" />
+                        <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Settings_Expert}" />
                         <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Settings_ExpertHint}" Margin="0,4,0,0" />
                     </StackPanel>
                 </ui:CardControl.Header>
@@ -83,7 +83,7 @@
                 </ui:CardControl.Icon>
                 <ui:CardControl.Header>
                     <StackPanel>
-                        <ui:TextBlock FontTypography="Body" Text="{l:Tr Settings_Install}" />
+                        <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Settings_Install}" />
                         <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Settings_InstallHint}" Margin="0,4,0,0" />
                     </StackPanel>
                 </ui:CardControl.Header>
@@ -96,7 +96,7 @@
                 </ui:CardControl.Icon>
                 <ui:CardControl.Header>
                     <StackPanel>
-                        <ui:TextBlock FontTypography="Body" Text="{l:Tr Settings_Reapply}" />
+                        <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Settings_Reapply}" />
                         <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding ReapplyHint}" Margin="0,4,0,0" />
                     </StackPanel>
                 </ui:CardControl.Header>
@@ -135,13 +135,13 @@
                 <StackPanel>
                     <ui:TextBlock FontTypography="Body" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{l:Tr Settings_Logs}" />
                     <DockPanel Margin="0,4,0,8">
-                        <ui:HyperlinkButton DockPanel.Dock="Right" Content="{l:Tr Settings_ShowInFolder}" Padding="0" Margin="16,0,0,0" VerticalAlignment="Center"
+                        <ui:HyperlinkButton DockPanel.Dock="Right" Content="{l:Tr Settings_ShowInFolder}" AutomationProperties.Name="{l:Tr Settings_ShowLogName}" Padding="0" Margin="16,0,0,0" VerticalAlignment="Center"
                                             Command="{Binding ShowInExplorerCommand}" CommandParameter="{Binding LogFile}" />
                         <TextBlock Style="{StaticResource Mono}" Text="{Binding LogFile}" VerticalAlignment="Center" />
                     </DockPanel>
                     <ui:TextBlock FontTypography="Body" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{l:Tr Settings_Data}" />
                     <DockPanel Margin="0,4,0,0">
-                        <ui:HyperlinkButton DockPanel.Dock="Right" Content="{l:Tr Settings_OpenFolder}" Padding="0" Margin="16,0,0,0" VerticalAlignment="Center"
+                        <ui:HyperlinkButton DockPanel.Dock="Right" Content="{l:Tr Settings_OpenFolder}" AutomationProperties.Name="{l:Tr Settings_OpenDataName}" Padding="0" Margin="16,0,0,0" VerticalAlignment="Center"
                                             Command="{Binding ShowInExplorerCommand}" CommandParameter="{Binding DataFolder}" />
                         <TextBlock Style="{StaticResource Mono}" Text="{Binding DataFolder}" VerticalAlignment="Center" />
                     </DockPanel>
@@ -161,7 +161,7 @@
                         <ui:ToggleSwitch Style="{StaticResource SettingSwitch}" DockPanel.Dock="Right" AutomationProperties.Name="{l:Tr Update_AtStart}" IsChecked="{Binding CheckForUpdates}" VerticalAlignment="Center" Margin="16,0,0,0" />
                         <ui:SymbolIcon Symbol="ArrowSync20" FontSize="24" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" Margin="0,0,16,0" VerticalAlignment="Center" />
                         <StackPanel>
-                            <ui:TextBlock FontTypography="Body" Text="{l:Tr Update_AtStart}" />
+                            <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Update_AtStart}" />
                             <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Update_Hint}" Margin="0,4,0,0" />
                         </StackPanel>
                     </DockPanel>
@@ -183,7 +183,7 @@
                 </ui:CardControl.Icon>
                 <ui:CardControl.Header>
                     <StackPanel>
-                        <ui:TextBlock FontTypography="Body" Text="{l:Tr Uninstall_Setting}" />
+                        <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Uninstall_Setting}" />
                         <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Uninstall_Hint}" Margin="0,4,0,0" />
                     </StackPanel>
                 </ui:CardControl.Header>

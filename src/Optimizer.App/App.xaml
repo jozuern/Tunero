@@ -32,6 +32,9 @@
             <!-- Navigation badges as in Windows 11: a 16 px circle for one digit, a pill for more. WPF-UI's template lets the
                  line height of the number stretch it to an upright oval. -->
             <Style TargetType="{x:Type ui:InfoBadge}" BasedOn="{StaticResource {x:Type ui:InfoBadge}}">
+                <!-- A count to look at, not a control: it was a Tab stop without a name between two pages of the rail -->
+                <Setter Property="Focusable" Value="False" />
+                <Setter Property="IsTabStop" Value="False" />
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="{x:Type ui:InfoBadge}">
@@ -111,6 +114,21 @@
             <SolidColorBrush x:Key="TreemapSystemBrush" Color="{StaticResource TreemapSystemDark}" />
             <SolidColorBrush x:Key="TreemapOtherBrush" Color="{StaticResource TreemapOtherDark}" />
 
+            <!-- A check box in front of a row's title, with no text of its own: the box where Cleanup's boxes are and the title
+                 8 px after it, as on Cleanup where the title is the box's content. WPF-UI's padding (11,5,11,6) without its
+                 right part, which added to the margin; WPF-UI's template gives a box without content a minimum width of 30,
+                 which only a trigger (or a local value) overrides. -->
+            <Style x:Key="RowCheckBox" TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
+                <Setter Property="MinWidth" Value="0" />
+                <Setter Property="Padding" Value="11,5,0,6" />
+                <Setter Property="Margin" Value="0,0,8,0" />
+                <Style.Triggers>
+                    <Trigger Property="Content" Value="{x:Null}">
+                        <Setter Property="MinWidth" Value="0" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
             <!-- The right-hand column of rows with a switch: wide enough for the longest label ("Nicht angewendet") -->
             <sys:Double x:Key="SwitchColumnWidth">168</sys:Double>
 
@@ -136,6 +154,30 @@
                 <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
                 <Setter Property="TextWrapping" Value="Wrap" />
                 <Setter Property="Margin" Value="0,4,0,16" />
+            </Style>
+
+            <!-- Title and intro of a page with a command (Views/PageHeader.cs): the command beside the title only, so the intro
+                 gets the page's full width -->
+            <Style TargetType="v:PageHeader">
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="v:PageHeader">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <ui:TextBlock Style="{StaticResource PageTitle}" Text="{TemplateBinding Title}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                <ContentPresenter Grid.Column="1" VerticalAlignment="Center" Margin="16,0,0,0" />
+                                <ui:TextBlock Grid.Row="1" Grid.ColumnSpan="2" Style="{StaticResource PageIntro}" Text="{TemplateBinding Intro}" />
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
             </Style>
 
             <Style x:Key="Caption" TargetType="ui:TextBlock">
@@ -339,8 +381,10 @@
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="*" />
                                 </Grid.RowDefinitions>
-                                <ScrollViewer Style="{StaticResource SelectorTabScroll}" KeyboardNavigation.TabIndex="1">
-                                    <StackPanel Style="{StaticResource SelectorTabRow}" IsItemsHost="True" />
+                                <!-- The tabs before the content in Tab order: the index on the row, the Tab group (on the scroll
+                                     viewer, which is neither a stop nor a group, WPF ignored it and the tabs came last) -->
+                                <ScrollViewer Style="{StaticResource SelectorTabScroll}">
+                                    <StackPanel Style="{StaticResource SelectorTabRow}" IsItemsHost="True" KeyboardNavigation.TabIndex="1" />
                                 </ScrollViewer>
                                 <Border Grid.Row="1" BorderThickness="0,1,0,0" CornerRadius="0,4,4,4" BorderBrush="{TemplateBinding BorderBrush}" Background="{TemplateBinding Background}"
                                         KeyboardNavigation.TabIndex="2" KeyboardNavigation.TabNavigation="Local" KeyboardNavigation.DirectionalNavigation="Contained">
@@ -488,7 +532,7 @@
                              the row; an empty space of the same width where nothing can be picked, so the titles stay in line) -->
                         <DockPanel>
                             <Border DockPanel.Dock="Left" Margin="0,0,8,0" VerticalAlignment="Top" Visibility="{Binding ShowPick, Converter={StaticResource BoolToVisibility}}">
-                                <CheckBox IsChecked="{Binding IsPicked}" IsEnabled="{Binding CanPick}" MinWidth="0"
+                                <CheckBox Style="{StaticResource RowCheckBox}" Margin="0" IsChecked="{Binding IsPicked}" IsEnabled="{Binding CanPick}"
                                           AutomationProperties.Name="{Binding PickLabel}" ToolTip="{Binding PickNote}" ToolTipService.ShowOnDisabled="True"
                                           Visibility="{Binding HasPickBox, Converter={StaticResource BoolToHidden}}" />
                             </Border>
@@ -506,7 +550,7 @@
                                 <!-- State, impact and effects, then the badges as tags; both wrap inside the card -->
                                 <WrapPanel Margin="0,4,0,0">
                                     <!-- Collapsed when empty: its margin would move the tags off the title's left edge -->
-                                    <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Text="{Binding MetaText}" TextWrapping="Wrap"
+                                    <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{Binding MetaText}" TextWrapping="Wrap"
                                                   VerticalAlignment="Center" Margin="0,0,8,0" Visibility="{Binding MetaText, Converter={StaticResource NullToVisibility}}" />
                                     <v:ItemList ItemsSource="{Binding Badges}" ItemTemplate="{StaticResource BadgeTag}" Focusable="False">
                                         <v:ItemList.ItemsPanel>

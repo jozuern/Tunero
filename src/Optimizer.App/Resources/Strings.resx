@@ -44,8 +44,8 @@
   <data name="Banner_NotValidated" xml:space="preserve"><value>Windows build {0} is newer than the builds this version was validated on. Checks run normally but some may be inaccurate.</value></data>
   <data name="Banner_Insider" xml:space="preserve"><value>Windows Insider build detected ({0}).</value></data>
   <data name="Banner_Managed" xml:space="preserve"><value>This PC is managed by an organization (domain, Entra ID or MDM). Policies may override settings.</value></data>
-  <data name="Banner_SeparateAdmin" xml:space="preserve"><value>The app runs as {0}, but {1} is signed in. User settings belong to {1}.</value></data>
-  <data name="Banner_UnresolvedUser" xml:space="preserve"><value>The app runs as {0}, but {1} is signed in, and Windows cannot look up the account {1} (a domain account while the domain cannot be reached, for example). User settings are changed for {0}, not for {1}.</value></data>
+  <data name="Banner_SeparateAdmin" xml:space="preserve"><value>Tunero runs as {0}, but {1} is signed in. User settings belong to {1}.</value></data>
+  <data name="Banner_UnresolvedUser" xml:space="preserve"><value>Tunero runs as {0}, but {1} is signed in, and Windows cannot look up the account {1} (a domain account while the domain cannot be reached, for example). User settings are changed for {0}, not for {1}.</value></data>
   <data name="Banner_NotElevated" xml:space="preserve"><value>Running without administrator rights. Some values (for example TPM) show as unknown.</value></data>
   <data name="Banner_Unsupported" xml:space="preserve"><value>Windows 11 24H2 is no longer supported: Home and Pro get no updates since 13 October 2026. Undo works as before. Update Windows to 25H2 or newer before you make new changes.</value></data>
   <data name="Startup_RuntimeFolderUnsafe" xml:space="preserve"><value>The program could not move its runtime libraries into its protected folder, so it does not start with administrator rights. If the environment variables {0} or {1} are set for your account, remove them and start Tunero again. Nothing was changed.</value></data>
@@ -95,8 +95,8 @@
   <data name="Result_UndoneSkippedOne" xml:space="preserve"><value>Undone: {0}. Windows had already changed one of its values, so that one was left as it is.</value></data>
   <data name="Result_UndoAll" xml:space="preserve"><value>Changes undone: {0}.</value></data>
   <data name="Changes_Title" xml:space="preserve"><value>Changes</value></data>
-  <data name="Changes_Hint" xml:space="preserve"><value>Everything this app changed, with the original values it keeps. Undo restores them.</value></data>
-  <data name="Changes_Empty" xml:space="preserve"><value>No changes yet. What you change with this app shows up here, with the original values and an Undo button.</value></data>
+  <data name="Changes_Hint" xml:space="preserve"><value>Everything Tunero changed, with the original values it keeps. Undo restores them.</value></data>
+  <data name="Changes_Empty" xml:space="preserve"><value>No changes yet. What you change with Tunero shows up here, with the original values and an Undo button.</value></data>
   <data name="Changes_UndoAll" xml:space="preserve"><value>Undo all</value></data>
   <data name="Changes_Entries" xml:space="preserve"><value>Values: {0}</value></data>
   <data name="Changes_Safety" xml:space="preserve"><value>Safety net</value></data>
@@ -105,7 +105,7 @@
   <data name="Changes_Backups" xml:space="preserve"><value>Changes you can undo</value></data>
   <data name="Changes_Log" xml:space="preserve"><value>Change log (this session)</value></data>
   <data name="Rp_On" xml:space="preserve"><value>On. A restore point is created before the first change of each session.</value></data>
-  <data name="Rp_Off" xml:space="preserve"><value>Off. Without it, no restore point can be created. The app's own backup still works.</value></data>
+  <data name="Rp_Off" xml:space="preserve"><value>Off. Without it, no restore point can be created. Tunero's own backup still works.</value></data>
   <data name="Rp_Unknown" xml:space="preserve"><value>Unknown (needs administrator rights).</value></data>
   <data name="Banner_Restart" xml:space="preserve"><value>Changes that take effect after a restart: {0}.</value></data>
   <data name="Settings_Expert" xml:space="preserve"><value>Expert mode</value></data>
@@ -135,7 +135,7 @@
   <data name="Confirm_Backup" xml:space="preserve"><value>The original values are saved before anything changes.</value></data>
   <data name="Confirm_UndoKeeps" xml:space="preserve"><value>Values that cannot be restored stay on the Changes page.</value></data>
   <data name="Rp_AskTitle" xml:space="preserve"><value>System Protection is off</value></data>
-  <data name="Rp_AskText" xml:space="preserve"><value>Windows cannot create a restore point because System Protection is off for the system drive. The app's own backup still restores every value it changes. Turn System Protection on now?</value></data>
+  <data name="Rp_AskText" xml:space="preserve"><value>Windows cannot create a restore point because System Protection is off for the system drive. Tunero's own backup still restores every value it changes. Turn System Protection on now?</value></data>
   <data name="Rp_Enable" xml:space="preserve"><value>Turn on</value></data>
   <data name="Rp_Continue" xml:space="preserve"><value>Continue without it</value></data>
   <data name="Rp_FailedTitle" xml:space="preserve"><value>No restore point</value></data>
@@ -184,10 +184,10 @@
     <value>Impact {0} of 5</value>
   </data>
   <data name="Tweak_AlreadyOn" xml:space="preserve">
-    <value>set outside this app</value>
+    <value>set outside Tunero</value>
   </data>
   <data name="Tweak_NoBackup" xml:space="preserve">
-    <value>This setting was not changed by this app, so there is nothing to undo.</value>
+    <value>This setting was not changed by Tunero, so there is nothing to undo.</value>
   </data>
   <data name="Rec_Section" xml:space="preserve">
     <value>Recommended for this PC</value>
@@ -398,12 +398,14 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Cleanup_ComponentText" xml:space="preserve">
     <value>Windows removes old component versions. Updates installed so far can no longer be uninstalled afterwards.</value>
   </data>
+  <data name="Cleanup_ComponentRunName" xml:space="preserve"><value>Clean up superseded Windows components</value></data>
   <data name="Cleanup_DoTitle" xml:space="preserve">
     <value>Delivery Optimization cache</value>
   </data>
   <data name="Cleanup_DoHint" xml:space="preserve">
     <value>Update files Windows keeps to share with other PCs. Safe to delete; Windows downloads again what it needs.</value>
   </data>
+  <data name="Cleanup_DoRunName" xml:space="preserve"><value>Clean up the Delivery Optimization cache</value></data>
   <data name="Tools_Running" xml:space="preserve">
     <value>Running.</value>
   </data>
@@ -694,6 +696,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Repair_Run" xml:space="preserve">
     <value>Repair</value>
   </data>
+  <data name="Repair_RunName" xml:space="preserve"><value>Repair Windows Update</value></data>
   <data name="Repair_Text" xml:space="preserve">
     <value>The update services stop for a moment and the update cache is rebuilt. Downloads start over and the update history in Settings may be empty afterwards. Restart the PC when it is done.</value>
   </data>
@@ -746,7 +749,7 @@ The files are deleted permanently. Files in use are skipped.</value>
     <value>Throttle check</value>
   </data>
   <data name="Throttle_Hint" xml:space="preserve">
-    <value>Start the check, then play a demanding game. The app samples the processor and graphics card limits once per second. Nothing is changed.</value>
+    <value>Start the check, then play a demanding game. Tunero samples the processor and graphics card limits once per second. Nothing is changed.</value>
   </data>
   <data name="Throttle_Start" xml:space="preserve">
     <value>Start check</value>
@@ -1067,7 +1070,7 @@ The files are deleted permanently. Files in use are skipped.</value>
     <value>Apply again</value>
   </data>
   <data name="Drift_ConfirmIntro" xml:space="preserve">
-    <value>These changes were reset since this app applied them. The original values from before the first change stay saved, so undo still restores them.</value>
+    <value>These changes were reset since Tunero applied them. The original values from before the first change stay saved, so undo still restores them.</value>
   </data>
   <data name="Drift_ExpertIndividually" xml:space="preserve">
     <value>Expert changes not applied again automatically: {0}. Apply them one by one on the Changes page.</value>
@@ -1079,7 +1082,7 @@ The files are deleted permanently. Files in use are skipped.</value>
     <value>Reset by Windows or another program</value>
   </data>
   <data name="WinUpdated_AllGood" xml:space="preserve">
-    <value>Windows was updated from {0} to {1}. Every change made by this app is still in place. Changes: {2}.</value>
+    <value>Windows was updated from {0} to {1}. Every change made by Tunero is still in place. Changes: {2}.</value>
   </data>
   <data name="Startup_ScriptHost" xml:space="preserve">
     <value>Starts a script host (PowerShell, cmd, mshta or similar). The program itself is signed by Microsoft, but the command line decides what runs: malware often starts this way, some legitimate tools do too. Check the command.</value>
@@ -1088,7 +1091,7 @@ The files are deleted permanently. Files in use are skipped.</value>
     <value>No restore point could be created, so nothing was changed. Try again in a moment, or choose “Continue without it” (the backup of the original values is made either way).</value>
   </data>
   <data name="Storage_RecycleOtherAccount" xml:space="preserve">
-    <value>This app runs as a different account ({0}). Files and folders go to that account's Recycle Bin, which you may not be able to open from your own account. Treat this as a permanent delete.</value>
+    <value>Tunero runs as a different account ({0}). Files and folders go to that account's Recycle Bin, which you may not be able to open from your own account. Treat this as a permanent delete.</value>
   </data>
   <data name="Profile_Label" xml:space="preserve">
     <value>Profile</value>
@@ -1173,6 +1176,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Rec_AgainstHintDetails" xml:space="preserve"><value>For a setting made outside Tunero, “Details” explains how to change it.</value></data>
   <data name="Rec_AgainstOutside" xml:space="preserve"><value>Set outside Tunero</value></data>
   <data name="Rec_AgainstIgnore" xml:space="preserve"><value>Ignore this setting</value></data>
+  <data name="Rec_AgainstIgnoreName" xml:space="preserve"><value>Ignore {0}</value></data>
   <data name="Dash_ScoreHintGoal" xml:space="preserve">
     <value>Counts the problems the scan found, weighted by their impact on {0}. It rises when you fix them; turning on tweaks adds no points by itself, and settings that work against the profile take none away.</value>
   </data>
@@ -1355,6 +1359,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Prio_Other" xml:space="preserve"><value>Priority class {0}, set by another program</value></data>
   <data name="Debloat_CameBackDismiss" xml:space="preserve"><value>I installed them again myself</value></data>
   <data name="Common_Close" xml:space="preserve"><value>Close</value></data>
+  <data name="Details_CloseName" xml:space="preserve"><value>Close details</value></data>
   <data name="Nav_Toggle" xml:space="preserve"><value>Show or hide navigation</value></data>
   <data name="Window_Minimize" xml:space="preserve"><value>Minimize</value></data>
   <data name="Window_Maximize" xml:space="preserve"><value>Maximize</value></data>
@@ -1378,13 +1383,14 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Badge_TipBoot" xml:space="preserve"><value>Changes the boot configuration. A restore point is created first.</value></data>
   <data name="Badge_TipAntiCheat" xml:space="preserve"><value>Some kernel anti-cheat systems check this setting and can refuse to start games.</value></data>
   <data name="Badge_TipReinstall" xml:space="preserve"><value>Undo needs a reinstall, for example from the Microsoft Store.</value></data>
-  <data name="Badge_TipPermanent" xml:space="preserve"><value>Cannot be undone by this app.</value></data>
+  <data name="Badge_TipPermanent" xml:space="preserve"><value>Cannot be undone by Tunero.</value></data>
   <data name="Badge_TipPreview" xml:space="preserve"><value>Tested only in a sandbox so far, not yet on a real Windows installation. Apply it on its own and check the result.</value></data>
   <data name="Badge_TipUndocumented" xml:space="preserve"><value>Uses a value Microsoft does not document. The details say how it was checked.</value></data>
   <data name="Badge_TipDisputed" xml:space="preserve"><value>Measurements disagree on whether this helps. The details show the sources.</value></data>
   <data name="Badge_TipRestart" xml:space="preserve"><value>Takes effect after a restart.</value></data>
   <data name="Badge_TipSignOut" xml:space="preserve"><value>Takes effect after you sign out and in again.</value></data>
   <data name="Net_DnsServers" xml:space="preserve"><value>DNS servers</value></data>
+  <data name="Net_DnsDetailsName" xml:space="preserve"><value>Details about the DNS servers</value></data>
   <data name="Net_DnsInUse" xml:space="preserve"><value>In use:</value></data>
   <data name="Net_DnsCustom" xml:space="preserve"><value>None of the choices matches: the servers were set by hand or by another program.</value></data>
   <data name="Net_DnsAutomatic" xml:space="preserve"><value>Automatic (from the router)</value></data>
@@ -1397,7 +1403,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Cleanup_Nothing" xml:space="preserve"><value>Empty</value></data>
   <data name="Settings_Hint" xml:space="preserve"><value>Language, theme, Expert mode, optional online features and diagnostics.</value></data>
   <data name="Changes_Transfer" xml:space="preserve"><value>Move to another PC</value></data>
-  <data name="Changes_TransferText" xml:space="preserve"><value>Export saves the tweaks you turned on and your program priorities to a file. Import applies such a file here, for example after reinstalling Windows. Device settings stay with this PC; removed apps, service start types and startup entries go along only when you choose them below.</value></data>
+  <data name="Changes_TransferText" xml:space="preserve"><value>Export saves the tweaks you turned on and your program start priorities to a file. Import applies such a file here, for example after reinstalling Windows. Device settings stay with this PC; removed apps, service start types and startup entries go along only when you choose them below.</value></data>
   <data name="NewUsers_Title" xml:space="preserve"><value>New accounts on this PC</value></data>
   <data name="NewUsers_Text" xml:space="preserve"><value>Copies the tweaks you turned on for your account to accounts created later on this PC, if those tweaks only change registry values (Explorer, taskbar, privacy and others). Existing accounts keep their settings. You can undo this on this page.</value></data>
   <data name="NewUsers_Copy" xml:space="preserve"><value>Copy to new accounts</value></data>
@@ -1413,7 +1419,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Changes_Export" xml:space="preserve"><value>Export</value></data>
   <data name="Changes_Import" xml:space="preserve"><value>Import</value></data>
   <data name="Transfer_FileType" xml:space="preserve"><value>Tunero changes</value></data>
-  <data name="Transfer_NothingToExport" xml:space="preserve"><value>Nothing to export: no catalog tweak or start priority made with this app is on.</value></data>
+  <data name="Transfer_NothingToExport" xml:space="preserve"><value>Nothing to export: no catalog tweak or start priority made with Tunero is on.</value></data>
   <data name="Transfer_Exported" xml:space="preserve"><value>Changes saved: {0}, in {1}. Changes for this PC only, not included: {2}.</value></data>
   <data name="Transfer_Invalid" xml:space="preserve"><value>This file is not a Tunero changes file, it is damaged, or it comes from a newer version.</value></data>
   <data name="Transfer_Nothing" xml:space="preserve"><value>Nothing to apply from this file.</value></data>
@@ -1426,12 +1432,12 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Transfer_OneByOneGo" xml:space="preserve"><value>Show them</value></data>
   <data name="Settings_Uninstall" xml:space="preserve"><value>Uninstall</value></data>
   <data name="Uninstall_Setting" xml:space="preserve"><value>Remove Tunero from this PC</value></data>
-  <data name="Uninstall_Hint" xml:space="preserve"><value>Offers to undo its changes first, then deletes the app, its data folder with backups and logs, and its Start menu entry.</value></data>
+  <data name="Uninstall_Hint" xml:space="preserve"><value>Offers to undo its changes first, then deletes Tunero, its data folder with backups and logs, and its Start menu entry.</value></data>
   <data name="Uninstall_Button" xml:space="preserve"><value>Uninstall</value></data>
   <data name="Uninstall_Title" xml:space="preserve"><value>Uninstall Tunero?</value></data>
   <data name="Uninstall_Text" xml:space="preserve"><value>Tunero closes and deletes its exe, its backups, logs and settings, and its Start menu entry.</value></data>
   <data name="Uninstall_WarningTitle" xml:space="preserve"><value>Changes still active: {0}</value></data>
-  <data name="Uninstall_Warning" xml:space="preserve"><value>Their backups are deleted with the app, so changes you keep can no longer be undone.</value></data>
+  <data name="Uninstall_Warning" xml:space="preserve"><value>Their backups are deleted with Tunero, so changes you keep can no longer be undone.</value></data>
   <data name="Uninstall_Details" xml:space="preserve"><value>Stays on the PC: restore points, apps you installed through Tunero (remove them under Settings &gt; Apps &gt; Installed apps) and the PawnIO driver (uninstalling it there can leave the driver in Windows: pnputil /delete-driver with its oem file removes it too).</value></data>
   <data name="Uninstall_DataFolder" xml:space="preserve"><value>Data folder: {0}</value></data>
   <data name="Uninstall_UndoFirst" xml:space="preserve"><value>Undo and uninstall</value></data>
@@ -1451,13 +1457,13 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Drv_GroupOther" xml:space="preserve"><value>No known update source</value></data>
   <data name="Drv_GroupBoard" xml:space="preserve"><value>Updates from the mainboard maker</value></data>
   <data name="Tweak_AlreadyOnShort" xml:space="preserve"><value>Already on</value></data>
-  <data name="Tweak_AlreadyOnTip" xml:space="preserve"><value>Windows, a policy or another tool set this before Tunero changed anything. With no original value to restore, the app does not turn it off.</value></data>
+  <data name="Tweak_AlreadyOnTip" xml:space="preserve"><value>Windows, a policy or another tool set this before Tunero changed anything. With no original value to restore, Tunero does not turn it off.</value></data>
   <data name="Confirm_Blocked" xml:space="preserve"><value>Not possible yet: see the red note above. Nothing was changed.</value></data>
   <data name="Confirm_NothingToChange" xml:space="preserve"><value>Every value is already set as this change would set it. There is nothing to apply.</value></data>
-  <data name="Svc_LockTipReadOnly" xml:space="preserve"><value>This app has no explanation for this Windows service, so it does not change it.</value></data>
-  <data name="Svc_LockTipManual" xml:space="preserve"><value>Already on Manual, the only start type this app offers for this Windows service.</value></data>
+  <data name="Svc_LockTipReadOnly" xml:space="preserve"><value>Tunero has no explanation for this Windows service, so it does not change it.</value></data>
+  <data name="Svc_LockTipManual" xml:space="preserve"><value>Already on Manual, the only start type Tunero offers for this Windows service.</value></data>
   <data name="Svc_FromWindows" xml:space="preserve"><value>Service description:</value></data>
-  <data name="Rec_SafetyNote" xml:space="preserve"><value>Before the first change the app creates a restore point, or asks you if System Protection is off. Every change then shows up on the Changes page and can be undone there.</value></data>
+  <data name="Rec_SafetyNote" xml:space="preserve"><value>Before the first change Tunero creates a restore point, or asks you if System Protection is off. Every change then shows up on the Changes page and can be undone there.</value></data>
   <data name="Rec_NoneSelected" xml:space="preserve"><value>Nothing is ticked. Tick the changes you want to apply.</value></data>
   <data name="Debloat_PageHint" xml:space="preserve"><value>Apps that came with Windows, and desktop programs you installed.</value></data>
   <data name="Debloat_TabStore" xml:space="preserve"><value>Preinstalled apps</value></data>
@@ -1529,6 +1535,8 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Cleanup_RunClean" xml:space="preserve"><value>Clean up</value></data>
   <data name="Settings_ShowInFolder" xml:space="preserve"><value>Show in folder</value></data>
   <data name="Settings_OpenFolder" xml:space="preserve"><value>Open folder</value></data>
+  <data name="Settings_ShowLogName" xml:space="preserve"><value>Show the log file in its folder</value></data>
+  <data name="Settings_OpenDataName" xml:space="preserve"><value>Open the data folder</value></data>
   <data name="Changes_OtherPcs" xml:space="preserve"><value>Other PCs and new accounts</value></data>
   <data name="Search_Placeholder" xml:space="preserve"><value>Search the app (Ctrl+F)</value></data>
   <data name="Search_Empty" xml:space="preserve"><value>Nothing found. Try another word, for example a setting, a program or a service.</value></data>
@@ -1538,11 +1546,11 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Intro_Text" xml:space="preserve"><value>The scan only reads: nothing changes until you confirm it, and changed settings can be undone on the Changes page.</value></data>
   <data name="Intro_Dismiss" xml:space="preserve"><value>Got it</value></data>
   <data name="Settings_Technical" xml:space="preserve"><value>Technical details</value></data>
-  <data name="Settings_TechnicalHint" xml:space="preserve"><value>Paths, registry locations and package names on Startup, Cleanup, Services and Remove apps, and IDs and raw values on System info. Off gives a simpler view; the details pane and every confirmation still show them.</value></data>
+  <data name="Settings_TechnicalHint" xml:space="preserve"><value>Paths, registry locations and package names on Startup, Cleanup, Services &amp; tasks and Remove apps, and IDs and raw values on System info. Off gives a simpler view; the details pane and every confirmation still show them.</value></data>
   <data name="TweakView_Label" xml:space="preserve"><value>Show</value></data>
   <data name="TweakView_Profile" xml:space="preserve"><value>Relevant to this profile</value></data>
   <data name="TweakView_Recommended" xml:space="preserve"><value>Recommended for this PC</value></data>
-  <data name="TweakView_Changed" xml:space="preserve"><value>Changed by this app</value></data>
+  <data name="TweakView_Changed" xml:space="preserve"><value>Changed by Tunero</value></data>
   <data name="TweakView_Applicable" xml:space="preserve"><value>All that apply to this PC</value></data>
   <data name="TweakView_Everything" xml:space="preserve"><value>All, also those that do not apply</value></data>
   <data name="TweakImpact_Label" xml:space="preserve"><value>Impact</value></data>
@@ -1572,7 +1580,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Result_ViewChanges" xml:space="preserve"><value>View changes</value></data>
   <data name="Tweak_SwitchOn" xml:space="preserve"><value>Applied</value></data>
   <data name="Tweak_SwitchOff" xml:space="preserve"><value>Not applied</value></data>
-  <data name="Tweaks_ProfileLink" xml:space="preserve"><value>Profile: {0} (change on the overview)</value></data>
+  <data name="Tweaks_ProfileLink" xml:space="preserve"><value>Profile: {0} (change it on the Overview)</value></data>
   <data name="Rec_EmptyButExcluded" xml:space="preserve"><value>Nothing can be applied in one click right now. The changes that would help are listed below, with what they need first.</value></data>
   <data name="Debloat_TabNote" xml:space="preserve"><value>Only apps from a reviewed list are offered, never parts of Windows. Apps that installed games need stay locked. Removing cannot be undone here; for apps still in the Microsoft Store, Removed apps below keeps a link to install them again.</value></data>
   <data name="Debloat_AdminToRemove" xml:space="preserve"><value>Removing apps needs administrator rights. Start Tunero as administrator.</value></data>
@@ -1682,8 +1690,8 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Debloat_UnreviewedHint" xml:space="preserve"><value>Other removable apps on this PC. Nobody checked what they do: remove only apps you know, because a program or a device may need one.</value></data>
   <data name="Debloat_UnreviewedEmpty" xml:space="preserve"><value>No other removable apps found.</value></data>
   <data name="Debloat_UnreviewedMeta" xml:space="preserve"><value>Not reviewed, version {0}</value></data>
-  <data name="Debloat_UnreviewedConfirm" xml:space="preserve"><value>{0} is not on the reviewed list, so nobody checked what it does or what needs it. It is removed for all users together with its data in every account (for a Linux distribution of WSL: all its files), and this app cannot undo that; reinstall it from the Microsoft Store or its maker if you need it again.</value></data>
-  <data name="Tweaks_CountByApp" xml:space="preserve"><value>{0} changed by this app</value></data>
+  <data name="Debloat_UnreviewedConfirm" xml:space="preserve"><value>{0} is not on the reviewed list, so nobody checked what it does or what needs it. It is removed for all users together with its data in every account (for a Linux distribution of WSL: all its files), and Tunero cannot undo that; reinstall it from the Microsoft Store or its maker if you need it again.</value></data>
+  <data name="Tweaks_CountByApp" xml:space="preserve"><value>{0} changed by Tunero</value></data>
   <data name="Tweaks_CountAlreadySet" xml:space="preserve"><value>{0} already set</value></data>
   <data name="Tweaks_CountRecommended" xml:space="preserve"><value>{0} recommended for this PC</value></data>
   <data name="Net_TweaksLink" xml:space="preserve"><value>Network tweaks</value></data>
@@ -1730,6 +1738,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Bench_StepOf" xml:space="preserve"><value>Step {0} of 4</value></data>
   <data name="Bench_StepLabelDone" xml:space="preserve"><value>Done</value></data>
   <data name="Bench_PickGame" xml:space="preserve"><value>Pick the game</value></data>
+  <data name="Bench_RefreshGames" xml:space="preserve"><value>Refresh the list of games</value></data>
   <data name="Advisor_CountPassed" xml:space="preserve"><value>{0} passed</value></data>
   <data name="Advisor_CountUnknown" xml:space="preserve"><value>{0} could not be checked</value></data>
   <data name="Advisor_CountNotes" xml:space="preserve"><value>{0} with a note</value></data>
@@ -1883,6 +1892,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Media_BuildTitle" xml:space="preserve"><value>Build</value></data>
   <data name="Media_Output" xml:space="preserve"><value>ISO file</value></data>
   <data name="Media_PickOutput" xml:space="preserve"><value>Change</value></data>
+  <data name="Media_PickOutputName" xml:space="preserve"><value>Change where the ISO file is saved</value></data>
   <data name="Media_Needed" xml:space="preserve"><value>The build needs about {0} free on this drive; {1} are free.</value></data>
   <data name="Media_NeededOnly" xml:space="preserve"><value>The build needs about {0} free on the drive of the ISO file.</value></data>
   <data name="Media_SecureBootNote" xml:space="preserve"><value>The ISO starts with the same boot files as Microsoft's own Windows 11 ISO.</value></data>
@@ -1978,7 +1988,6 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Media_StageWaiting" xml:space="preserve"><value>Waiting</value></data>
   <data name="Media_AppsSummary" xml:space="preserve"><value>Apps to remove: {0}</value></data>
   <data name="Media_SetupSummary" xml:space="preserve"><value>Account {0}, {1}</value></data>
-  <data name="Media_Off" xml:space="preserve"><value>Off</value></data>
   <data name="Media_ChoicesButton" xml:space="preserve"><value>Choices</value></data>
   <data name="Media_SaveChoices" xml:space="preserve"><value>Save choices</value></data>
   <data name="Media_LoadChoices" xml:space="preserve"><value>Load choices</value></data>
@@ -2146,5 +2155,6 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Changes_UndoName" xml:space="preserve"><value>Undo {0}</value></data>
   <data name="Changes_ApplyAgainName" xml:space="preserve"><value>Apply {0} again</value></data>
   <data name="Common_DetailsName" xml:space="preserve"><value>Details for {0}</value></data>
+  <data name="Common_OptionsFor" xml:space="preserve"><value>Options for {0}</value></data>
   <data name="Export_LinkedFolder" xml:space="preserve"><value>{0} is reached through a link (a junction or symbolic link), so Tunero does not save there: a program could have put the link there. Choose the folder it points to, or another folder.</value></data>
 </root>

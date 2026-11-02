@@ -15,13 +15,9 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <DockPanel Grid.Row="0">
-            <ui:Button DockPanel.Dock="Right" Content="{l:Tr Common_Refresh}" Icon="{ui:SymbolIcon ArrowClockwise20}" Command="{Binding Startup.ReloadCommand}" ToolTip="F5" VerticalAlignment="Top" />
-            <StackPanel>
-                <ui:TextBlock Style="{StaticResource PageTitle}" Text="{l:Tr Startup_Title}" />
-                <ui:TextBlock Style="{StaticResource PageIntro}" Text="{l:Tr Startup_Hint}" />
-            </StackPanel>
-        </DockPanel>
+        <v:PageHeader Grid.Row="0" Title="{l:Tr Startup_Title}" Intro="{l:Tr Startup_Hint}">
+            <ui:Button Content="{l:Tr Common_Refresh}" Icon="{ui:SymbolIcon ArrowClockwise20}" Command="{Binding Startup.ReloadCommand}" ToolTip="F5" />
+        </v:PageHeader>
 
         <!-- The selector bar of the other pages with tabs, headers only: every tab shows the card and the list below,
              filtered to its entries. Each header counts what it shows under the search and filters. -->

@@ -12,13 +12,9 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
         <StackPanel Grid.Row="0">
-            <DockPanel>
-                <ui:Button DockPanel.Dock="Right" Content="{l:Tr Common_Refresh}" Icon="{ui:SymbolIcon ArrowClockwise20}" Command="{Binding Cleanup.ReloadCommand}" ToolTip="F5" VerticalAlignment="Top" />
-                <StackPanel>
-                    <ui:TextBlock Style="{StaticResource PageTitle}" Text="{l:Tr Cleanup_Title}" />
-                    <ui:TextBlock Style="{StaticResource PageIntro}" Text="{l:Tr Cleanup_Hint}" />
-                </StackPanel>
-            </DockPanel>
+            <v:PageHeader Title="{l:Tr Cleanup_Title}" Intro="{l:Tr Cleanup_Hint}">
+                <ui:Button Content="{l:Tr Common_Refresh}" Icon="{ui:SymbolIcon ArrowClockwise20}" Command="{Binding Cleanup.ReloadCommand}" ToolTip="F5" />
+            </v:PageHeader>
             <ui:ProgressRing IsIndeterminate="True" Width="24" Height="24" HorizontalAlignment="Left" Margin="0,0,0,8" Visibility="{Binding Cleanup.IsLoading, Converter={StaticResource BoolToVisibility}}" />
 
             <!-- Total and the button above the list, so they stay in view without scrolling past every category -->
@@ -82,7 +78,7 @@
                         <ContentControl Style="{StaticResource DurationHint}" Content="{l:Tr Hint_TakesMinutesServicing}" Margin="0,8,0,0" />
                     </StackPanel>
                 </ui:CardControl.Header>
-                <ui:Button Content="{l:Tr Cleanup_RunClean}" MinWidth="96" Command="{Binding Cleanup.ComponentCleanupCommand}" IsEnabled="{Binding Cleanup.IsWorking, Converter={StaticResource InverseBool}}" />
+                <ui:Button Content="{l:Tr Cleanup_RunClean}" AutomationProperties.Name="{l:Tr Cleanup_ComponentRunName}" MinWidth="96" Command="{Binding Cleanup.ComponentCleanupCommand}" IsEnabled="{Binding Cleanup.IsWorking, Converter={StaticResource InverseBool}}" />
             </ui:CardControl>
             <ui:CardControl Padding="{StaticResource CardPadding}" Margin="{StaticResource CardRowMargin}">
                 <ui:CardControl.Header>
@@ -91,7 +87,7 @@
                         <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Cleanup_DoHint}" Margin="0,4,0,0" />
                     </StackPanel>
                 </ui:CardControl.Header>
-                <ui:Button Content="{l:Tr Cleanup_RunClean}" MinWidth="96" Command="{Binding Cleanup.DeliveryOptimizationCleanupCommand}" IsEnabled="{Binding Cleanup.IsWorking, Converter={StaticResource InverseBool}}" />
+                <ui:Button Content="{l:Tr Cleanup_RunClean}" AutomationProperties.Name="{l:Tr Cleanup_DoRunName}" MinWidth="96" Command="{Binding Cleanup.DeliveryOptimizationCleanupCommand}" IsEnabled="{Binding Cleanup.IsWorking, Converter={StaticResource InverseBool}}" />
             </ui:CardControl>
             <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding Cleanup.ToolOutput}" Margin="0,8,0,0" Visibility="{Binding Cleanup.ToolOutput, Converter={StaticResource NullToVisibility}}" />
         </StackPanel>

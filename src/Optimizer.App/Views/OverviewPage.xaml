@@ -7,13 +7,9 @@
              Foreground="{DynamicResource TextFillColorPrimaryBrush}">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Style="{StaticResource PageRoot}">
-            <DockPanel>
-                <ui:Button DockPanel.Dock="Right" Content="{l:Tr Scan_Again}" Icon="{ui:SymbolIcon ArrowSync20}" Command="{Binding ScanCommand}" ToolTip="F5" VerticalAlignment="Top" />
-                <StackPanel>
-                    <ui:TextBlock Style="{StaticResource PageTitle}" Text="{l:Tr Dash_Title}" />
-                    <ui:TextBlock Style="{StaticResource PageIntro}" Text="{Binding Headline}" />
-                </StackPanel>
-            </DockPanel>
+            <v:PageHeader Title="{l:Tr Dash_Title}" Intro="{Binding Headline}">
+                <ui:Button Content="{l:Tr Scan_Again}" Icon="{ui:SymbolIcon ArrowSync20}" Command="{Binding ScanCommand}" ToolTip="F5" />
+            </v:PageHeader>
 
             <v:ItemList ItemsSource="{Binding Banners}">
                 <v:ItemList.ItemTemplate>
@@ -28,7 +24,8 @@
                             <ui:InfoBar Grid.ColumnSpan="2" Title="" Message="" Severity="{Binding Severity}" IsOpen="True" IsClosable="False" VerticalAlignment="Stretch" />
                             <TextBlock Text="{Binding Text}" TextWrapping="Wrap" FontSize="14" VerticalAlignment="Center" Margin="46,12,16,12"
                                        Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
-                            <ui:Button Grid.Column="1" Content="{Binding ActionText}" Command="{Binding Action}"
+                            <!-- The banner's sentence goes with the button: Tab skips the text, and "Got it" alone says nothing -->
+                            <ui:Button Grid.Column="1" Content="{Binding ActionText}" Command="{Binding Action}" AutomationProperties.HelpText="{Binding Text}"
                                        VerticalAlignment="Center" Margin="0,8,16,8"
                                        Visibility="{Binding ActionText, Converter={StaticResource NullToVisibility}}">
                                 <ui:Button.Icon>
@@ -125,7 +122,7 @@
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Top" MinWidth="0" Margin="0,0,8,0" AutomationProperties.Name="{Binding Title}" />
+                                    <CheckBox Style="{StaticResource RowCheckBox}" IsChecked="{Binding IsSelected}" VerticalAlignment="Top" AutomationProperties.Name="{Binding Title}" />
                                     <StackPanel Grid.Column="1">
                                         <ui:TextBlock FontTypography="Body" Text="{Binding Title}" TextWrapping="Wrap" />
                                         <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding Reason}" />
@@ -202,7 +199,7 @@
                                                Visibility="{Binding SetOutside, Converter={StaticResource BoolToVisibility}}"
                                                Command="{Binding DataContext.ShowTweakCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding TweakId}" />
                                     <ui:Button Grid.Column="3" Appearance="Transparent" Icon="{ui:SymbolIcon EyeOff20}" Margin="8,0,0,0" VerticalAlignment="Center"
-                                               ToolTip="{l:Tr Rec_AgainstIgnore}" AutomationProperties.Name="{l:Tr Rec_AgainstIgnore}"
+                                               ToolTip="{l:Tr Rec_AgainstIgnore}" AutomationProperties.Name="{Binding IgnoreLabel}"
                                                Command="{Binding DataContext.IgnoreTweakCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding TweakId}" />
                                 </Grid>
                             </DataTemplate>

@@ -42,17 +42,13 @@
     </UserControl.Resources>
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Style="{StaticResource PageRoot}">
-            <DockPanel>
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
+            <v:PageHeader Title="{l:Tr Hw_Title}" Intro="{l:Tr Hw_Hint}">
+                <StackPanel Orientation="Horizontal">
                     <!-- The same saved setting as Settings > Technical details: one switch for every page's IDs and raw values -->
                     <ui:ToggleSwitch Content="{l:Tr Hw_ShowDetails}" IsChecked="{Binding ShowTechnical}" Margin="0,0,16,0" />
                     <ui:Button Content="{l:Tr Hw_Copy}" Icon="{ui:SymbolIcon Copy20}" Command="{Binding CopyHardwareCommand}" />
                 </StackPanel>
-                <StackPanel>
-                    <ui:TextBlock Style="{StaticResource PageTitle}" Text="{l:Tr Hw_Title}" />
-                    <ui:TextBlock Style="{StaticResource PageIntro}" Text="{l:Tr Hw_Hint}" />
-                </StackPanel>
-            </DockPanel>
+            </v:PageHeader>
 
             <!-- Summary tiles: what is looked up most, like Settings > System > About -->
             <v:ItemList ItemsSource="{Binding HardwareTiles}" Margin="0,0,-8,8">

@@ -420,8 +420,8 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         : ImageAppsRead(out var read) ? read is null ? Loc.Instance["Media_AppsIsoFailed"] : Loc.Instance.Format("Media_AppsFromIso", AppRows.Count)
         : Loc.Instance["Media_AppsIsoNotRead"];
 
-    /// <summary>What the folded apps card holds: "18 apps", or off.</summary>
-    public string AppsSummary => RemoveApps ? Loc.Instance.Format("Media_AppsSummary", AppRows.Count(r => r.IsChecked)) : Loc.Instance["Media_Off"];
+    /// <summary>What the folded apps card holds: "Apps to remove: 18"; null while it is off (its switch says Off).</summary>
+    public string? AppsSummary => RemoveApps ? Loc.Instance.Format("Media_AppsSummary", AppRows.Count(r => r.IsChecked)) : null;
 
     [ObservableProperty] private bool _skipSetup = true;
     [ObservableProperty] private string _accountNameText = "";
@@ -468,9 +468,9 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         }
     }
 
-    /// <summary>What the folded setup card holds: "Account Anna, German (Austria)", or off.</summary>
-    public string SetupSummary =>
-        !SkipSetup ? Loc.Instance["Media_Off"]
+    /// <summary>What the folded setup card holds: "Account Anna, German (Austria)"; null while it is off.</summary>
+    public string? SetupSummary =>
+        !SkipSetup ? null
         : AccountNameText.Trim() is { Length: > 0 } name ? Loc.Instance.Format("Media_SetupSummary", name, Region?.Text ?? "")
         : Loc.Instance.Format("Media_SetupSummaryNoName", Region?.Text ?? "");
 
@@ -490,8 +490,8 @@ public sealed partial class InstallMediaViewModel : PageViewModel
 
     partial void OnProfileChanged(FilterOption? value) => Changed();
 
-    /// <summary>What the folded profile card holds: the profile's name, or off.</summary>
-    public string ProfileSummary => ApplyProfile && CanApplyProfile ? Profile?.Text ?? "" : Loc.Instance["Media_Off"];
+    /// <summary>What the folded profile card holds: the profile's name; null while it is off (<see cref="ProfileNote"/> says why it cannot be on).</summary>
+    public string? ProfileSummary => ApplyProfile && CanApplyProfile ? Profile?.Text : null;
 
     // ---- apps to install ----
 
@@ -512,8 +512,8 @@ public sealed partial class InstallMediaViewModel : PageViewModel
 
     public string? InstallNote => CanInstallApps ? null : Loc.Instance["Media_InstallNeedsProfile"];
 
-    /// <summary>What the folded install card holds: "5 apps", or off.</summary>
-    public string InstallSummary => InstallApps && CanInstallApps ? Loc.Instance.Format("Media_InstallSummary", InstallRows.Count(r => r.IsChecked)) : Loc.Instance["Media_Off"];
+    /// <summary>What the folded install card holds: "5 apps"; null while it is off (<see cref="InstallNote"/> says why it cannot be on).</summary>
+    public string? InstallSummary => InstallApps && CanInstallApps ? Loc.Instance.Format("Media_InstallSummary", InstallRows.Count(r => r.IsChecked)) : null;
 
     private void BuildInstallGroups()
     {
@@ -598,11 +598,11 @@ public sealed partial class InstallMediaViewModel : PageViewModel
             : UnreviewedRows.Count == 0 ? Loc.Instance["Media_UnreviewedNone"] : Loc.Instance.Format("Media_UnreviewedFound", UnreviewedRows.Count)
         : Loc.Instance["Media_AppsIsoNotRead"];
 
-    /// <summary>What the folded card holds; with the download, why its switch is off (the reason is in the folded part too).</summary>
-    public string UnreviewedSummary =>
+    /// <summary>What the folded card holds, null while it is off; with the download, why its switch is off (the reason is in the folded part too).</summary>
+    public string? UnreviewedSummary =>
         UseDownload ? Loc.Instance["Media_UnreviewedOnlyIso"]
         : RemoveUnreviewed ? Loc.Instance.Format("Media_AppsSummary", UnreviewedRows.Count(r => r.IsChecked))
-        : Loc.Instance["Media_Off"];
+        : null;
 
     private void BuildUnreviewedRows()
     {
@@ -628,10 +628,10 @@ public sealed partial class InstallMediaViewModel : PageViewModel
 
     private readonly HashSet<string> _partTicks = new(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>What the folded parts card holds: "Parts to remove: 3" (with the parts a ticked one takes along), or off.</summary>
-    public string PartsSummary => RemoveParts
+    /// <summary>What the folded parts card holds: "Parts to remove: 3" (with the parts a ticked one takes along); null while it is off.</summary>
+    public string? PartsSummary => RemoveParts
         ? Loc.Instance.Format("Media_PartsSummary", MediaParts.WithImplied(CatalogData.Current.MediaParts, PartRows.Where(r => r.IsChecked).Select(r => r.Key)).Count)
-        : Loc.Instance["Media_Off"];
+        : null;
 
     /// <summary>The parts in the current language, the ticks kept by id.</summary>
     private void BuildPartRows()

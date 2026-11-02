@@ -568,7 +568,7 @@ public sealed class InstallMediaViewModelTests : IDisposable
         // Per-user apps too: the first sign-in installs them as the account that signed in.
         Assert.Contains(media.InstallRows, r => r.App.Scope == "user");
         Assert.All(media.InstallRows, r => Assert.False(r.IsChecked));
-        Assert.Equal(Loc.Instance["Media_Off"], media.InstallSummary);
+        Assert.Null(media.InstallSummary);
 
         media.InstallRows.Single(r => r.Key == "Valve.Steam").IsChecked = true;
         // Ticked while the card is off: nothing is installed.
@@ -1161,6 +1161,7 @@ public sealed class InstallMediaViewModelTests : IDisposable
         Assert.NotNull(media.CatalogText);
     }
 
+    /// <summary>The summary left of a card's switch says what is on; while it is off there is none, the switch says Off.</summary>
     [Fact]
     public async Task FoldedCardsSayWhatTheyHold()
     {
@@ -1171,9 +1172,11 @@ public sealed class InstallMediaViewModelTests : IDisposable
         media.SkipSetup = false;
         media.ApplyProfile = false;
         media.RemoveApps = false;
-        Assert.Equal(Loc.Instance["Media_Off"], media.SetupSummary);
-        Assert.Equal(Loc.Instance["Media_Off"], media.ProfileSummary);
-        Assert.Equal(Loc.Instance["Media_Off"], media.AppsSummary);
+        Assert.Null(media.SetupSummary);
+        Assert.Null(media.ProfileSummary);
+        Assert.Null(media.AppsSummary);
+        Assert.Null(media.PartsSummary);
+        Assert.Null(media.InstallSummary);
     }
 
     [Fact]
@@ -1617,7 +1620,7 @@ public sealed class InstallMediaViewModelTests : IDisposable
         Assert.False(media.RemoveParts);
         Assert.Equal(CatalogData.Current.MediaParts.Select(p => p.Id), media.PartRows.Select(r => r.Key));
         Assert.DoesNotContain(media.PartRows, r => r.IsChecked);
-        Assert.Equal(Loc.Instance["Media_Off"], media.PartsSummary);
+        Assert.Null(media.PartsSummary);
 
         // A ticked part is not sent while the card is off.
         media.PartRows.First(r => r.Key == "wordpad").IsChecked = true;

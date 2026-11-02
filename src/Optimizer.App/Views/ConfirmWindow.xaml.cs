@@ -24,7 +24,15 @@ public partial class ConfirmWindow : FluentWindow
         if (ActualHeight > limit) ChangeScroll.MaxHeight = Math.Max(96, ChangeScroll.ActualHeight - (ActualHeight - limit));
         UpdateLayout();
         if (Top + ActualHeight > area.Bottom) Top = Math.Max(area.Top, area.Bottom - ActualHeight);
+        UpdateChangeScrollStop();
     }
+
+    /// <summary>
+    /// The list of changes is a Tab stop only while it is longer than its box: its rows are text, so without the stop a
+    /// keyboard could not reach the rows below the fold before confirming. Focused, the scroll viewer takes the arrow,
+    /// Page and Home/End keys.
+    /// </summary>
+    private void UpdateChangeScrollStop() => ChangeScroll.Focusable = ChangeScroll.ScrollableHeight > 0;
 
     /// <summary>
     /// One line of the table; <see cref="Unchanged"/> when the value already is what the change writes (After then says
@@ -45,6 +53,10 @@ public partial class ConfirmWindow : FluentWindow
         InitializeComponent();
         Loaded += (_, _) => FitToWorkArea();
         Loaded += (_, _) => IconButtonNames.Apply(this);
+        ChangeScroll.ScrollChanged += (_, e) =>
+        {
+            if (e.ExtentHeightChange != 0 || e.ViewportHeightChange != 0) UpdateChangeScrollStop();
+        };
         TitleText.Text = request.Title;
         Title = request.Title;
         SummaryText.Text = request.Summary;

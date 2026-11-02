@@ -151,16 +151,9 @@ public partial class XamlRulesTests
     [Fact]
     public void SwitchesSayWhatTheyShow()
     {
-        // (file, IsChecked binding) -> why the switch shows none of these
-        var allowed = new Dictionary<(string File, string IsChecked), string>
-        {
-            [("Views/InstallMediaPage.xaml", "{Binding InstallMedia.RemoveApps}")] = "a summary left of the switch says what is on, or Off",
-            [("Views/InstallMediaPage.xaml", "{Binding InstallMedia.RemoveParts}")] = "a summary left of the switch says what is on, or Off",
-            [("Views/InstallMediaPage.xaml", "{Binding InstallMedia.SkipSetup}")] = "a summary left of the switch says what is on, or Off",
-            [("Views/InstallMediaPage.xaml", "{Binding InstallMedia.ApplyProfile}")] = "a summary left of the switch says what is on, or Off",
-            [("Views/InstallMediaPage.xaml", "{Binding InstallMedia.InstallApps}")] = "a summary left of the switch says what is on, or Off",
-            [("Views/InstallMediaPage.xaml", "{Binding InstallMedia.RemoveUnreviewed}")] = "a summary left of the switch says what is on, or Off",
-        };
+        // (file, IsChecked binding) -> why the switch shows none of these. Empty: the install media cards had On or Off in a
+        // summary left of the switch, the only switches in the app with the state on the other side.
+        var allowed = new Dictionary<(string File, string IsChecked), string>();
         var offenders = new List<string>();
         foreach (var (relative, doc) in AppXaml())
             foreach (var toggle in doc.Descendants().Where(e => e.Name.LocalName == "ToggleSwitch"))
@@ -177,11 +170,101 @@ public partial class XamlRulesTests
         Assert.Empty(offenders);
     }
 
+    /// <summary>
+    /// Tab and screen readers land on an expander's header toggle, not on the expander: the toggle takes the expander's
+    /// AutomationProperties.Name (Views/ExpanderToggle.cs). Without one, Narrator said only "button".
+    /// </summary>
+    [Fact]
+    public void ExpandersHaveAName()
+    {
+        var offenders = new List<string>();
+        var count = 0;
+        foreach (var (relative, doc) in AppXaml())
+            foreach (var expander in doc.Descendants().Where(e => e.Name.LocalName is "CardExpander" or "Expander"))
+            {
+                count++;
+                if (expander.Attribute("AutomationProperties.Name") is null)
+                    offenders.Add($"{relative}:{((IXmlLineInfo)expander).LineNumber}: an expander without AutomationProperties.Name");
+            }
+        Assert.Empty(offenders);
+        Assert.True(count >= 9, $"only {count} expanders found");
+    }
+
+    /// <summary>
+    /// KeyboardNavigation.TabIndex orders Tab stops and Tab groups only. On a scroll viewer that is neither, WPF ignored it,
+    /// and the tab headers of every SelectorTabs page came after the whole tab content.
+    /// </summary>
+    [Fact]
+    public void TabIndexSitsOnAStopOrAGroup()
+    {
+        var offenders = new List<string>();
+        foreach (var (relative, doc) in AppXaml())
+            foreach (var scroll in doc.Descendants(Presentation + "ScrollViewer"))
+                if (scroll.Attribute("KeyboardNavigation.TabIndex") is not null && scroll.Attribute("KeyboardNavigation.TabNavigation") is null)
+                    offenders.Add($"{relative}:{((IXmlLineInfo)scroll).LineNumber}: KeyboardNavigation.TabIndex on a ScrollViewer (no Tab stop or group)");
+        Assert.Empty(offenders);
+
+        // The tab row is the group: index 1, before the content's 2
+        var app = XDocument.Load(Path.Combine(RepoPaths.App, "App.xaml"));
+        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
+        var tabs = app.Descendants(Presentation + "Style").Single(s => (string?)s.Attribute(x + "Key") == "SelectorTabs");
+        var row = tabs.Descendants(Presentation + "StackPanel").Single(p => (string?)p.Attribute("IsItemsHost") == "True");
+        Assert.Equal("1", (string?)row.Attribute("KeyboardNavigation.TabIndex"));
+    }
+
+    /// <summary>
+    /// TextFillColorTertiaryBrush measures 3.25:1 on a light card, below the 4.5:1 WCAG AA asks for small text. It is for
+    /// placeholders, disabled or ended text and icons (3:1 is enough for those); a line that says something uses the
+    /// secondary brush. The exceptions below are those cases.
+    /// </summary>
+    [Fact]
+    public void TertiaryTextIsOnlyForPlaceholdersAndDisabledText()
+    {
+        var allowed = new Dictionary<string, (int Count, string Reason)>
+        {
+            ["Views/ConfirmWindow.xaml"] = (1, "a value that already is what the change writes, so it reads as no change"),
+            ["Views/HealthPage.xaml"] = (2, "the game picker's placeholder, and the rows of programs that ended"),
+            ["Views/MainWindow.xaml"] = (1, "the version under the navigation"),
+            ["Views/InstallMediaPage.xaml"] = (1, "the icon of a stage that has not started"),
+            ["Views/ServicesPage.xaml"] = (1, "the lock icon of a service that cannot be changed"),
+        };
+        var offenders = new List<string>();
+        foreach (var file in Directory.EnumerateFiles(RepoPaths.App, "*.xaml", SearchOption.AllDirectories)
+                     .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}") && !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}")))
+        {
+            var relative = Path.GetRelativePath(RepoPaths.App, file).Replace(Path.DirectorySeparatorChar, '/');
+            var count = Regex.Matches(XamlComment().Replace(File.ReadAllText(file), ""), "TextFillColorTertiaryBrush").Count;
+            var allow = allowed.TryGetValue(relative, out var a) ? a.Count : 0;
+            if (count > allow)
+                offenders.Add($"{relative}: {count} uses of TextFillColorTertiaryBrush, {allow} allowed (use TextFillColorSecondaryBrush for text that says something)");
+        }
+        Assert.Empty(offenders);
+    }
+
+    /// <summary>
+    /// A check box in front of a row's title has no text of its own and uses RowCheckBox (App.xaml): with WPF-UI's padding
+    /// and a margin of its own, the title stood 19 px from the box instead of 8 as on Cleanup.
+    /// </summary>
+    [Fact]
+    public void CheckBoxesWithoutTextUseTheRowStyle()
+    {
+        var offenders = new List<string>();
+        foreach (var (relative, doc) in AppXaml())
+            foreach (var box in doc.Descendants(Presentation + "CheckBox"))
+                if (box.Attribute("Content") is null && !box.Elements().Any(e => !e.Name.LocalName.StartsWith("CheckBox.", StringComparison.Ordinal))
+                    && (string?)box.Attribute("Style") != "{StaticResource RowCheckBox}")
+                    offenders.Add($"{relative}:{((IXmlLineInfo)box).LineNumber}: a CheckBox without text and without Style=\"{{StaticResource RowCheckBox}}\"");
+        Assert.Empty(offenders);
+    }
+
     /// <summary>The app's XAML files with forward-slash paths relative to the app project, line numbers kept.</summary>
     private static IEnumerable<(string Relative, XDocument Doc)> AppXaml() =>
         Directory.EnumerateFiles(RepoPaths.App, "*.xaml", SearchOption.AllDirectories)
             .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}") && !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"))
             .Select(f => (Path.GetRelativePath(RepoPaths.App, f).Replace(Path.DirectorySeparatorChar, '/'), XDocument.Load(f, LoadOptions.SetLineInfo)));
+
+    [GeneratedRegex(@"<!--.*?-->", RegexOptions.Singleline)]
+    private static partial Regex XamlComment();
 
     [GeneratedRegex(@"^(\{x:Type\s+)?TabItem\}?$")]
     private static partial Regex TabItemType();

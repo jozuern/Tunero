@@ -12,13 +12,9 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
         <StackPanel Grid.Row="0">
-            <DockPanel>
-                <ui:ToggleSwitch DockPanel.Dock="Right" Content="{l:Tr Dash_ShowAll}" IsChecked="{Binding ShowPassed}" VerticalAlignment="Top" />
-                <StackPanel>
-                    <ui:TextBlock Style="{StaticResource PageTitle}" Text="{l:Tr Advisor_Title}" />
-                    <ui:TextBlock Style="{StaticResource PageIntro}" Text="{l:Tr Advisor_Hint}" />
-                </StackPanel>
-            </DockPanel>
+            <v:PageHeader Title="{l:Tr Advisor_Title}" Intro="{l:Tr Advisor_Hint}">
+                <ui:ToggleSwitch Content="{l:Tr Dash_ShowAll}" IsChecked="{Binding ShowPassed}" />
+            </v:PageHeader>
             <!-- What was checked and how it came out: the page says that much even when nothing needs a change -->
             <ui:Card Padding="{StaticResource CardPadding}" Margin="0,0,0,8" Visibility="{Binding AdvisorSummaryTitle, Converter={StaticResource NullToVisibility}}">
                 <DockPanel>

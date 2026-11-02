@@ -148,7 +148,7 @@
                                               TextTrimming="CharacterEllipsis" MaxWidth="192" VerticalAlignment="Center" Visibility="{Binding IsPaneOpen, ElementName=Nav, Converter={StaticResource BoolToVisibility}}" />
                             </StackPanel>
                             <Border Visibility="{Binding IsScanning, Converter={StaticResource IdleToVisible}}">
-                                <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Text="{Binding LastScanText}" VerticalAlignment="Center"
+                                <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{Binding LastScanText}" VerticalAlignment="Center"
                                               Visibility="{Binding IsPaneOpen, ElementName=Nav, Converter={StaticResource BoolToVisibility}}" />
                             </Border>
                         </Grid>
@@ -219,7 +219,7 @@
                     Visibility="{Binding SelectedItem, Converter={StaticResource NullToVisibility}}">
                 <DockPanel Margin="24,16,0,0">
                     <DockPanel DockPanel.Dock="Top" Margin="0,0,24,8" DataContext="{Binding SelectedItem}">
-                        <ui:Button DockPanel.Dock="Right" VerticalAlignment="Top" Appearance="Transparent" Icon="{ui:SymbolIcon Dismiss20}" ToolTip="Esc" AutomationProperties.Name="{l:Tr Common_Close}"
+                        <ui:Button DockPanel.Dock="Right" VerticalAlignment="Top" Appearance="Transparent" Icon="{ui:SymbolIcon Dismiss20}" ToolTip="Esc" AutomationProperties.Name="{l:Tr Details_CloseName}"
                                    Command="{Binding DataContext.CloseInspectorCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
                         <!-- Title first, then the state, the action and the explanation (the document leaves out its own title) -->
                         <StackPanel Margin="0,4,8,0">

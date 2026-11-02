@@ -61,7 +61,7 @@
                                     <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Quick_ExplorerHint}" Margin="0,4,0,0" />
                                 </StackPanel>
                             </ui:CardControl.Header>
-                            <ui:Button Content="{l:Tr Quick_ExplorerAction}" MinWidth="96" Command="{Binding Tools.RestartExplorerCommand}" IsEnabled="{Binding Tools.IsWorking, Converter={StaticResource InverseBool}}" />
+                            <ui:Button Content="{l:Tr Quick_ExplorerAction}" AutomationProperties.Name="{l:Tr Quick_Explorer}" MinWidth="96" Command="{Binding Tools.RestartExplorerCommand}" IsEnabled="{Binding Tools.IsWorking, Converter={StaticResource InverseBool}}" />
                         </ui:CardControl>
                         <ui:CardControl Padding="{StaticResource CardPadding}" Margin="{StaticResource CardRowMargin}">
                             <ui:CardControl.Header>
@@ -70,7 +70,7 @@
                                     <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Quick_IconCacheHint}" Margin="0,4,0,0" />
                                 </StackPanel>
                             </ui:CardControl.Header>
-                            <ui:Button Content="{l:Tr Quick_IconCacheAction}" MinWidth="96" Command="{Binding Tools.ResetIconCacheCommand}" IsEnabled="{Binding Tools.IsWorking, Converter={StaticResource InverseBool}}" />
+                            <ui:Button Content="{l:Tr Quick_IconCacheAction}" AutomationProperties.Name="{l:Tr Quick_IconCache}" MinWidth="96" Command="{Binding Tools.ResetIconCacheCommand}" IsEnabled="{Binding Tools.IsWorking, Converter={StaticResource InverseBool}}" />
                         </ui:CardControl>
                         <v:ItemList ItemsSource="{Binding Tools.QuickRestartRows}" ItemTemplate="{StaticResource QuickFixRow}" />
 
@@ -101,7 +101,7 @@
                                     <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Repair_Hint}" Margin="0,4,0,0" />
                                 </StackPanel>
                             </ui:CardControl.Header>
-                            <ui:Button Content="{l:Tr Repair_Run}" MinWidth="96" Command="{Binding Tools.RepairUpdateCommand}"
+                            <ui:Button Content="{l:Tr Repair_Run}" AutomationProperties.Name="{l:Tr Repair_RunName}" MinWidth="96" Command="{Binding Tools.RepairUpdateCommand}"
                                        IsEnabled="{Binding Tools.IsWorking, Converter={StaticResource InverseBool}}" />
                         </ui:CardControl>
                         <v:ItemList ItemsSource="{Binding Tools.RepairSteps}" Margin="0,4,0,8" Visibility="{Binding Tools.RepairSteps.Count, Converter={StaticResource CountToVisibility}}">
@@ -115,7 +115,7 @@
                                                            Visibility="{Binding Ok, Converter={StaticResource InverseBoolToVisibility}}" />
                                         </Grid>
                                         <ui:TextBlock FontTypography="Body" Text="{Binding Text}" />
-                                        <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Text="{Binding Detail}" Margin="12,0,0,0" VerticalAlignment="Center" />
+                                        <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{Binding Detail}" Margin="12,0,0,0" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </DataTemplate>
                             </v:ItemList.ItemTemplate>
@@ -171,10 +171,15 @@
                         <!-- One field per line in a fixed order, so the layout is the same in every language -->
                         <ui:Card Padding="{StaticResource CardPadding}" Margin="{StaticResource CardRowMargin}">
                             <StackPanel>
-                                <DockPanel>
-                                    <ui:Button DockPanel.Dock="Right" Content="{l:Tr Prio_Browse}" Icon="{ui:SymbolIcon FolderOpen20}" Command="{Binding Tools.BrowsePriorityExeCommand}" Margin="8,0,0,0" />
+                                <!-- The field before its button, on screen and in Tab order -->
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
                                     <ui:TextBox PlaceholderText="{l:Tr Prio_ExePlaceholder}" Text="{Binding Tools.NewPriorityExe, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="{l:Tr Prio_ExePlaceholder}" />
-                                </DockPanel>
+                                    <ui:Button Grid.Column="1" Content="{l:Tr Prio_Browse}" Icon="{ui:SymbolIcon FolderOpen20}" Command="{Binding Tools.BrowsePriorityExeCommand}" Margin="8,0,0,0" />
+                                </Grid>
                                 <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Prio_Priority}" Margin="0,12,0,4" />
                                 <ComboBox ItemsSource="{Binding Tools.PriorityChoices}" SelectedItem="{Binding Tools.NewPriority}" DisplayMemberPath="Text" MinWidth="200" HorizontalAlignment="Left"
                                           AutomationProperties.Name="{l:Tr Prio_Priority}" />

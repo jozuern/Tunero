@@ -1,6 +1,4 @@
 using System.Windows;
-using System.Windows.Controls.Primitives;
-using System.Windows.Media;
 
 namespace Optimizer.App.Views;
 
@@ -29,24 +27,12 @@ public static class ExpanderChevron
     {
         if (sender is not FrameworkElement expander || double.IsNaN(GetTop(expander))) return;
         expander.ApplyTemplate();
-        // The header's toggle button is the first one in the template; the card's content comes after it.
-        if (FirstToggle(expander) is not { } toggle) return;
+        if (ExpanderToggle.HeaderToggle(expander) is not { } toggle) return;
         toggle.ApplyTemplate();
         if (toggle.Template?.FindName("ChevronGrid", toggle) is FrameworkElement chevron)
         {
             chevron.VerticalAlignment = VerticalAlignment.Top;
             chevron.Margin = new Thickness(0, GetTop(expander), 0, 0);
         }
-    }
-
-    private static ToggleButton? FirstToggle(DependencyObject parent)
-    {
-        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
-        {
-            var child = VisualTreeHelper.GetChild(parent, i);
-            if (child is ToggleButton toggle) return toggle;
-            if (FirstToggle(child) is { } deeper) return deeper;
-        }
-        return null;
     }
 }

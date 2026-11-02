@@ -53,12 +53,27 @@ public sealed class Loc : INotifyPropertyChanged
     private static CultureInfo Pick(string language) => language == "de" ? new CultureInfo("de") : new CultureInfo("en");
 }
 
-/// <summary>{l:Tr Key} -> binding to Loc.Instance[Key].</summary>
+/// <summary>
+/// {l:Tr Key} -> binding to Loc.Instance[Key]. {l:Tr Key, Format=Other} puts that text into the text of Other as {0}
+/// ("Options for {0}"), also live.
+/// </summary>
 [MarkupExtensionReturnType(typeof(BindingExpression))]
 public sealed class TrExtension(string key) : MarkupExtension
 {
     public string Key { get; set; } = key;
 
+    /// <summary>The key of a text with {0} that the text of <see cref="Key"/> goes into, or null.</summary>
+    public string? Format { get; set; }
+
     public override object ProvideValue(IServiceProvider serviceProvider) =>
-        new Binding($"[{Key}]") { Source = Loc.Instance, Mode = BindingMode.OneWay }.ProvideValue(serviceProvider);
+        new Binding($"[{Key}]") { Source = Loc.Instance, Mode = BindingMode.OneWay, Converter = Format is null ? null : new FormatConverter(Format) }
+            .ProvideValue(serviceProvider);
+
+    /// <summary>Runs when Loc.Instance raises its change, after the language switched, so the format is the new language's.</summary>
+    internal sealed class FormatConverter(string format) : IValueConverter
+    {
+        public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) => Loc.Instance.Format(format, value);
+
+        public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => Binding.DoNothing;
+    }
 }

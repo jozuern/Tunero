@@ -175,6 +175,9 @@ public sealed record AgainstLine(string TweakId, string Title, string Reason, bo
 
     public string DetailsLabel => Loc.Instance.Format("Common_DetailsName", Title);
 
+    /// <summary>The ignore button's name: with the row's title, so a list of rows does not read "Ignore this setting" several times.</summary>
+    public string IgnoreLabel => Loc.Instance.Format("Rec_AgainstIgnoreName", Title);
+
     // What screen readers announce for this item in a list or combo box.
     public override string ToString() => Title;
 }

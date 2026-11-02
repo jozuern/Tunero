@@ -103,7 +103,7 @@
                                           VerticalAlignment="Center" IsHitTestVisible="False"
                                           Visibility="{Binding Health.SelectedProcess, Converter={StaticResource VisibleWhenNull}}" />
                         </Grid>
-                        <ui:Button Icon="{ui:SymbolIcon ArrowSync20}" Command="{Binding Health.RefreshProcessesCommand}" ToolTip="{l:Tr Common_Refresh}" AutomationProperties.Name="{l:Tr Common_Refresh}" Margin="0,0,8,8" />
+                        <ui:Button Icon="{ui:SymbolIcon ArrowSync20}" Command="{Binding Health.RefreshProcessesCommand}" ToolTip="{l:Tr Bench_RefreshGames}" AutomationProperties.Name="{l:Tr Bench_RefreshGames}" Margin="0,0,8,8" />
                         <StackPanel Orientation="Horizontal" Margin="0,0,16,8">
                             <ui:TextBlock FontTypography="Body" Text="{l:Tr Bench_PerRun}" VerticalAlignment="Center" Margin="0,0,8,0" />
                             <ComboBox ItemsSource="{Binding Health.CaptureOptions}" SelectedItem="{Binding Health.CaptureSeconds}" ItemStringFormat="{}{0} s" MinWidth="100" AutomationProperties.Name="{l:Tr Bench_PerRun}" />
@@ -132,7 +132,7 @@
                                     <ui:TextBlock FontTypography="BodyStrong" Text="{Binding Label}" />
                                     <ui:TextBlock Grid.Column="1" FontTypography="Body" Text="{Binding AvgFps}" />
                                     <ui:TextBlock Grid.Column="2" FontTypography="Body" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{Binding Low}" />
-                                    <ui:TextBlock Grid.Column="3" FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Text="{Binding Frames}" VerticalAlignment="Center" />
+                                    <ui:TextBlock Grid.Column="3" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{Binding Frames}" VerticalAlignment="Center" />
                                 </Grid>
                             </DataTemplate>
                         </v:ItemList.ItemTemplate>
@@ -172,7 +172,7 @@
                     <StackPanel>
                         <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Sensors_Live}" />
                         <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Sensors_Hint}" Margin="0,4,0,0" />
-                        <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Text="{Binding Health.PawnIoText}" Margin="0,4,0,0" />
+                        <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{Binding Health.PawnIoText}" Margin="0,4,0,0" />
                     </StackPanel>
                 </ui:CardControl.Header>
                 <StackPanel Orientation="Horizontal">
@@ -188,7 +188,8 @@
                 <v:ItemList.ItemTemplate>
                     <DataTemplate>
                         <!-- The chevron beside the title row, not in the middle of the values below it -->
-                        <ui:CardExpander Margin="{StaticResource CardRowMargin}" IsExpanded="{Binding IsExpanded}" HorizontalContentAlignment="Stretch" v:ExpanderChevron.Top="6">
+                        <ui:CardExpander Margin="{StaticResource CardRowMargin}" IsExpanded="{Binding IsExpanded}" HorizontalContentAlignment="Stretch" v:ExpanderChevron.Top="6"
+                                         AutomationProperties.Name="{Binding Name}">
                             <ui:CardExpander.Header>
                                 <StackPanel Margin="0,4,0,4">
                                     <DockPanel>
@@ -230,7 +231,7 @@
                                                     </Border>
                                                     <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{Binding Source}"
                                                                   TextTrimming="CharacterEllipsis" ToolTip="{Binding Source}" />
-                                                    <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Text="{Binding Peak}" />
+                                                    <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{Binding Peak}" />
                                                 </StackPanel>
                                             </DataTemplate>
                                         </v:ItemList.ItemTemplate>
@@ -482,7 +483,7 @@
                                                                 <ui:TextBlock FontTypography="Body" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{Binding Name}"
                                                                               TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" />
                                                                 <ui:TextBlock Grid.Column="1" FontTypography="Body" Text="{Binding Value}" HorizontalAlignment="Right" />
-                                                                <ui:TextBlock Grid.Column="2" FontTypography="Body" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Text="{Binding Peak}" HorizontalAlignment="Right" />
+                                                                <ui:TextBlock Grid.Column="2" FontTypography="Body" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{Binding Peak}" HorizontalAlignment="Right" />
                                                             </Grid>
                                                         </Border>
                                                     </DataTemplate>

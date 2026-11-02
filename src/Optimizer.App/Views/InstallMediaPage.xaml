@@ -91,14 +91,16 @@
                           MinWidth="240" AutomationProperties.Name="{l:Tr Media_Edition}" />
             </ui:CardControl>
 
-            <!-- 3. Changes: each a switch, its options folded below. No On or Off next to these switches: the summary left of
-                 each says what is on ("Apps to remove: 18") or Off (XamlRulesTests.SwitchesSayWhatTheyShow allow list). -->
+            <!-- 3. Changes: each a switch with On or Off left of it as everywhere else (SettingSwitch), its options folded below.
+                 The summary left of the switch says what is on ("Apps to remove: 18"), or why the switch cannot be used. -->
             <ui:TextBlock Style="{StaticResource SectionHeader}" Text="{l:Tr Media_ChangesTitle}" />
-            <ui:CardExpander Margin="{StaticResource CardRowMargin}" HorizontalContentAlignment="Stretch" IsExpanded="{Binding InstallMedia.ExpandOptions, Mode=OneWay}" IsEnabled="{Binding InstallMedia.CanEdit}">
+            <ui:CardExpander Margin="{StaticResource CardRowMargin}" HorizontalContentAlignment="Stretch" IsExpanded="{Binding InstallMedia.ExpandOptions, Mode=OneWay}" IsEnabled="{Binding InstallMedia.CanEdit}"
+                             AutomationProperties.Name="{l:Tr Media_RemoveAppsTitle, Format=Common_OptionsFor}">
                 <ui:CardExpander.Header>
                     <DockPanel Margin="0,4">
-                        <ui:ToggleSwitch DockPanel.Dock="Right" IsChecked="{Binding InstallMedia.RemoveApps}" AutomationProperties.Name="{l:Tr Media_RemoveAppsTitle}" Margin="16,0,12,0" />
-                        <ui:TextBlock DockPanel.Dock="Right" Style="{StaticResource Caption}" Text="{Binding InstallMedia.AppsSummary}" VerticalAlignment="Center" Margin="16,0,0,0" />
+                        <ui:ToggleSwitch DockPanel.Dock="Right" Style="{StaticResource SettingSwitch}" IsChecked="{Binding InstallMedia.RemoveApps}" AutomationProperties.Name="{l:Tr Media_RemoveAppsTitle}" Margin="16,0,12,0" />
+                        <ui:TextBlock DockPanel.Dock="Right" Style="{StaticResource Caption}" Text="{Binding InstallMedia.AppsSummary}" VerticalAlignment="Center" Margin="16,0,0,0"
+                                      Visibility="{Binding InstallMedia.AppsSummary, Converter={StaticResource NullToVisibility}}" />
                         <ui:SymbolIcon Style="{StaticResource MediaCardIcon}" Symbol="Apps24" />
                         <StackPanel>
                             <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Media_RemoveAppsTitle}" />
@@ -122,7 +124,7 @@
                                     <Expander IsExpanded="{Binding IsExpanded}" Margin="0,0,0,4" HorizontalContentAlignment="Stretch" AutomationProperties.Name="{Binding Title}">
                                         <Expander.Header>
                                             <DockPanel>
-                                                <CheckBox DockPanel.Dock="Left" IsChecked="{Binding AllChecked}" MinWidth="0" Margin="0,0,8,0" VerticalAlignment="Center"
+                                                <CheckBox DockPanel.Dock="Left" Style="{StaticResource RowCheckBox}" IsChecked="{Binding AllChecked}" VerticalAlignment="Center"
                                                           AutomationProperties.Name="{Binding AllCheckedLabel}" ToolTip="{Binding AllCheckedLabel}" />
                                                 <ui:TextBlock DockPanel.Dock="Right" Style="{StaticResource Caption}" Text="{Binding Summary}" VerticalAlignment="Center" Margin="16,0,8,0" />
                                                 <ui:TextBlock FontTypography="BodyStrong" Text="{Binding Title}" VerticalAlignment="Center" />
@@ -149,11 +151,13 @@
             </ui:CardExpander>
 
             <!-- Optional Windows parts (WordPad, speech data, Recall ...): off, none ticked -->
-            <ui:CardExpander Margin="{StaticResource CardRowMargin}" HorizontalContentAlignment="Stretch" IsExpanded="{Binding InstallMedia.ExpandOptions, Mode=OneWay}" IsEnabled="{Binding InstallMedia.CanEdit}">
+            <ui:CardExpander Margin="{StaticResource CardRowMargin}" HorizontalContentAlignment="Stretch" IsExpanded="{Binding InstallMedia.ExpandOptions, Mode=OneWay}" IsEnabled="{Binding InstallMedia.CanEdit}"
+                             AutomationProperties.Name="{l:Tr Media_PartsTitle, Format=Common_OptionsFor}">
                 <ui:CardExpander.Header>
                     <DockPanel Margin="0,4">
-                        <ui:ToggleSwitch DockPanel.Dock="Right" IsChecked="{Binding InstallMedia.RemoveParts}" AutomationProperties.Name="{l:Tr Media_PartsTitle}" Margin="16,0,12,0" />
-                        <ui:TextBlock DockPanel.Dock="Right" Style="{StaticResource Caption}" Text="{Binding InstallMedia.PartsSummary}" VerticalAlignment="Center" Margin="16,0,0,0" />
+                        <ui:ToggleSwitch DockPanel.Dock="Right" Style="{StaticResource SettingSwitch}" IsChecked="{Binding InstallMedia.RemoveParts}" AutomationProperties.Name="{l:Tr Media_PartsTitle}" Margin="16,0,12,0" />
+                        <ui:TextBlock DockPanel.Dock="Right" Style="{StaticResource Caption}" Text="{Binding InstallMedia.PartsSummary}" VerticalAlignment="Center" Margin="16,0,0,0"
+                                      Visibility="{Binding InstallMedia.PartsSummary, Converter={StaticResource NullToVisibility}}" />
                         <ui:SymbolIcon Style="{StaticResource MediaCardIcon}" Symbol="PuzzlePiece24" />
                         <StackPanel>
                             <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Media_PartsTitle}" />
@@ -178,11 +182,13 @@
                 </StackPanel>
             </ui:CardExpander>
 
-            <ui:CardExpander Margin="{StaticResource CardRowMargin}" HorizontalContentAlignment="Stretch" IsExpanded="{Binding InstallMedia.ExpandOptions, Mode=OneWay}" IsEnabled="{Binding InstallMedia.CanEdit}">
+            <ui:CardExpander Margin="{StaticResource CardRowMargin}" HorizontalContentAlignment="Stretch" IsExpanded="{Binding InstallMedia.ExpandOptions, Mode=OneWay}" IsEnabled="{Binding InstallMedia.CanEdit}"
+                             AutomationProperties.Name="{l:Tr Media_SkipSetupTitle, Format=Common_OptionsFor}">
                 <ui:CardExpander.Header>
                     <DockPanel Margin="0,4">
-                        <ui:ToggleSwitch DockPanel.Dock="Right" IsChecked="{Binding InstallMedia.SkipSetup}" AutomationProperties.Name="{l:Tr Media_SkipSetupTitle}" Margin="16,0,12,0" />
-                        <ui:TextBlock DockPanel.Dock="Right" Style="{StaticResource Caption}" Text="{Binding InstallMedia.SetupSummary}" VerticalAlignment="Center" Margin="16,0,0,0" />
+                        <ui:ToggleSwitch DockPanel.Dock="Right" Style="{StaticResource SettingSwitch}" IsChecked="{Binding InstallMedia.SkipSetup}" AutomationProperties.Name="{l:Tr Media_SkipSetupTitle}" Margin="16,0,12,0" />
+                        <ui:TextBlock DockPanel.Dock="Right" Style="{StaticResource Caption}" Text="{Binding InstallMedia.SetupSummary}" VerticalAlignment="Center" Margin="16,0,0,0"
+                                      Visibility="{Binding InstallMedia.SetupSummary, Converter={StaticResource NullToVisibility}}" />
                         <ui:SymbolIcon Style="{StaticResource MediaCardIcon}" Symbol="Person24" />
                         <StackPanel>
                             <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Media_SkipSetupTitle}" />
@@ -232,12 +238,14 @@
                 </StackPanel>
             </ui:CardExpander>
 
-            <ui:CardExpander Margin="{StaticResource CardRowMargin}" HorizontalContentAlignment="Stretch" IsExpanded="{Binding InstallMedia.ExpandOptions, Mode=OneWay}" IsEnabled="{Binding InstallMedia.CanEdit}">
+            <ui:CardExpander Margin="{StaticResource CardRowMargin}" HorizontalContentAlignment="Stretch" IsExpanded="{Binding InstallMedia.ExpandOptions, Mode=OneWay}" IsEnabled="{Binding InstallMedia.CanEdit}"
+                             AutomationProperties.Name="{l:Tr Media_ProfileTitle, Format=Common_OptionsFor}">
                 <ui:CardExpander.Header>
                     <DockPanel Margin="0,4">
-                        <ui:ToggleSwitch DockPanel.Dock="Right" IsChecked="{Binding InstallMedia.ApplyProfile}" IsEnabled="{Binding InstallMedia.CanApplyProfile}"
+                        <ui:ToggleSwitch DockPanel.Dock="Right" Style="{StaticResource SettingSwitch}" IsChecked="{Binding InstallMedia.ApplyProfile}" IsEnabled="{Binding InstallMedia.CanApplyProfile}"
                                          AutomationProperties.Name="{l:Tr Media_ProfileTitle}" Margin="16,0,12,0" />
-                        <ui:TextBlock DockPanel.Dock="Right" Style="{StaticResource Caption}" Text="{Binding InstallMedia.ProfileSummary}" VerticalAlignment="Center" Margin="16,0,0,0" />
+                        <ui:TextBlock DockPanel.Dock="Right" Style="{StaticResource Caption}" Text="{Binding InstallMedia.ProfileSummary}" VerticalAlignment="Center" Margin="16,0,0,0"
+                                      Visibility="{Binding InstallMedia.ProfileSummary, Converter={StaticResource NullToVisibility}}" />
                         <ui:SymbolIcon Style="{StaticResource MediaCardIcon}" Symbol="Sparkle24" />
                         <StackPanel>
                             <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Media_ProfileTitle}" />
@@ -255,12 +263,14 @@
             </ui:CardExpander>
 
             <!-- Apps the copied Tunero installs with winget at the first sign-in: needs the profile card's Tunero copy -->
-            <ui:CardExpander Margin="{StaticResource CardRowMargin}" HorizontalContentAlignment="Stretch" IsExpanded="{Binding InstallMedia.ExpandOptions, Mode=OneWay}" IsEnabled="{Binding InstallMedia.CanEdit}">
+            <ui:CardExpander Margin="{StaticResource CardRowMargin}" HorizontalContentAlignment="Stretch" IsExpanded="{Binding InstallMedia.ExpandOptions, Mode=OneWay}" IsEnabled="{Binding InstallMedia.CanEdit}"
+                             AutomationProperties.Name="{l:Tr Media_InstallTitle, Format=Common_OptionsFor}">
                 <ui:CardExpander.Header>
                     <DockPanel Margin="0,4">
-                        <ui:ToggleSwitch DockPanel.Dock="Right" IsChecked="{Binding InstallMedia.InstallApps}" IsEnabled="{Binding InstallMedia.CanInstallApps}"
+                        <ui:ToggleSwitch DockPanel.Dock="Right" Style="{StaticResource SettingSwitch}" IsChecked="{Binding InstallMedia.InstallApps}" IsEnabled="{Binding InstallMedia.CanInstallApps}"
                                          AutomationProperties.Name="{l:Tr Media_InstallTitle}" Margin="16,0,12,0" />
-                        <ui:TextBlock DockPanel.Dock="Right" Style="{StaticResource Caption}" Text="{Binding InstallMedia.InstallSummary}" VerticalAlignment="Center" Margin="16,0,0,0" />
+                        <ui:TextBlock DockPanel.Dock="Right" Style="{StaticResource Caption}" Text="{Binding InstallMedia.InstallSummary}" VerticalAlignment="Center" Margin="16,0,0,0"
+                                      Visibility="{Binding InstallMedia.InstallSummary, Converter={StaticResource NullToVisibility}}" />
                         <ui:SymbolIcon Style="{StaticResource MediaCardIcon}" Symbol="Box24" />
                         <StackPanel>
                             <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Media_InstallTitle}" />
@@ -282,7 +292,7 @@
                             <Expander IsExpanded="{Binding IsExpanded}" Margin="0,0,0,4" HorizontalContentAlignment="Stretch" AutomationProperties.Name="{Binding Title}">
                                 <Expander.Header>
                                     <DockPanel>
-                                        <CheckBox DockPanel.Dock="Left" IsChecked="{Binding AllChecked}" MinWidth="0" Margin="0,0,8,0" VerticalAlignment="Center"
+                                        <CheckBox DockPanel.Dock="Left" Style="{StaticResource RowCheckBox}" IsChecked="{Binding AllChecked}" VerticalAlignment="Center"
                                                   AutomationProperties.Name="{Binding AllCheckedLabel}" ToolTip="{Binding AllCheckedLabel}" />
                                         <ui:TextBlock DockPanel.Dock="Right" Style="{StaticResource Caption}" Text="{Binding Summary}" VerticalAlignment="Center" Margin="16,0,8,0" />
                                         <ui:TextBlock FontTypography="BodyStrong" Text="{Binding Title}" VerticalAlignment="Center" />
@@ -324,12 +334,14 @@
             <!-- Expert: changes that need knowing what they do -->
             <ui:TextBlock Style="{StaticResource SectionHeader}" Text="{l:Tr Media_ExpertTitle}" />
             <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Media_ExpertText}" Margin="0,0,0,8" />
-            <ui:CardExpander Margin="{StaticResource CardRowMargin}" HorizontalContentAlignment="Stretch" IsExpanded="{Binding InstallMedia.ExpandOptions, Mode=OneWay}" IsEnabled="{Binding InstallMedia.CanEdit}">
+            <ui:CardExpander Margin="{StaticResource CardRowMargin}" HorizontalContentAlignment="Stretch" IsExpanded="{Binding InstallMedia.ExpandOptions, Mode=OneWay}" IsEnabled="{Binding InstallMedia.CanEdit}"
+                             AutomationProperties.Name="{l:Tr Media_UnreviewedTitle, Format=Common_OptionsFor}">
                 <ui:CardExpander.Header>
                     <DockPanel Margin="0,4">
-                        <ui:ToggleSwitch DockPanel.Dock="Right" IsChecked="{Binding InstallMedia.RemoveUnreviewed}" IsEnabled="{Binding InstallMedia.UseIso}"
+                        <ui:ToggleSwitch DockPanel.Dock="Right" Style="{StaticResource SettingSwitch}" IsChecked="{Binding InstallMedia.RemoveUnreviewed}" IsEnabled="{Binding InstallMedia.UseIso}"
                                          AutomationProperties.Name="{l:Tr Media_UnreviewedTitle}" Margin="16,0,12,0" />
-                        <ui:TextBlock DockPanel.Dock="Right" Style="{StaticResource Caption}" Text="{Binding InstallMedia.UnreviewedSummary}" VerticalAlignment="Center" Margin="16,0,0,0" />
+                        <ui:TextBlock DockPanel.Dock="Right" Style="{StaticResource Caption}" Text="{Binding InstallMedia.UnreviewedSummary}" VerticalAlignment="Center" Margin="16,0,0,0"
+                                      Visibility="{Binding InstallMedia.UnreviewedSummary, Converter={StaticResource NullToVisibility}}" />
                         <ui:SymbolIcon Style="{StaticResource MediaCardIcon}" Symbol="Warning24" Foreground="{DynamicResource SystemFillColorCautionBrush}" />
                         <StackPanel>
                             <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Media_UnreviewedTitle}" />
@@ -501,7 +513,7 @@
                 <StackPanel>
                     <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Media_Output}" />
                     <DockPanel Margin="0,8,0,0">
-                        <ui:Button DockPanel.Dock="Right" Content="{l:Tr Media_PickOutput}" Icon="{ui:SymbolIcon Folder20}" Command="{Binding InstallMedia.PickOutputCommand}" IsEnabled="{Binding InstallMedia.CanEdit}" Margin="12,0,0,0" />
+                        <ui:Button DockPanel.Dock="Right" Content="{l:Tr Media_PickOutput}" AutomationProperties.Name="{l:Tr Media_PickOutputName}" Icon="{ui:SymbolIcon Folder20}" Command="{Binding InstallMedia.PickOutputCommand}" IsEnabled="{Binding InstallMedia.CanEdit}" Margin="12,0,0,0" />
                         <ui:TextBlock FontTypography="Body" Text="{Binding InstallMedia.OutputPath}" TextTrimming="CharacterEllipsis" ToolTip="{Binding InstallMedia.OutputPath}" VerticalAlignment="Center" />
                     </DockPanel>
                     <!-- Room for a later choice of boot files; today the media keeps the source's own, which are Microsoft's only for the download -->

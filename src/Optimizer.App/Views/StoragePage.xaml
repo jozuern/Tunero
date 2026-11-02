@@ -58,7 +58,7 @@
                 <CheckBox IsChecked="{Binding Selected}" AutomationProperties.Name="{Binding Path}" AutomationProperties.HelpText="{Binding BlockText}">
                     <StackPanel>
                         <TextBlock Style="{StaticResource Mono}" Text="{Binding Path}" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
-                        <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Text="{Binding Meta}" />
+                        <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{Binding Meta}" />
                     </StackPanel>
                 </CheckBox>
             </DockPanel>

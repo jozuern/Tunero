@@ -119,7 +119,12 @@ public partial class DocLintTests(ITestOutputHelper output)
                 foreach (Match m in KeyLiteralPattern().Matches(line)) used.Add(m.Groups[1].Value);
         }
         foreach (var file in Directory.EnumerateFiles(RepoPaths.App, "*.xaml", SearchOption.AllDirectories).Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")))
-            foreach (Match m in XamlKeyPattern().Matches(File.ReadAllText(file))) used.Add(m.Groups[1].Value);
+            foreach (Match m in XamlKeyPattern().Matches(File.ReadAllText(file)))
+            {
+                used.Add(m.Groups[1].Value);
+                // {l:Tr Key, Format=Other}: the text the key's text goes into
+                if (m.Groups[2].Success) used.Add(m.Groups[2].Value);
+            }
         foreach (var p in Catalog.CatalogData.Current.Profiles.Profiles) used.UnionWith([$"Profile_{p.Id}", $"ProfileDesc_{p.Id}"]);
         foreach (var type in new[] { "Temperature", "Load", "Clock", "Power", "Fan" }) used.Add($"SensorType_{type}");
         // Quick fix cards build their keys from the fix id; the question only for fixes that ask first.
@@ -169,7 +174,7 @@ public partial class DocLintTests(ITestOutputHelper output)
     [GeneratedRegex(@"""([A-Z][A-Za-z0-9]*_\w+)""")]
     private static partial Regex KeyLiteralPattern();
 
-    [GeneratedRegex(@"\{l:Tr (\w+)\}")]
+    [GeneratedRegex(@"\{l:Tr (\w+)(?:, Format=(\w+))?\}")]
     private static partial Regex XamlKeyPattern();
 
     /// <summary>The same rule for the repository's own documents, and for code (comments included), minus the plural rule there.</summary>

@@ -11,13 +11,9 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
-        <DockPanel Grid.Row="0">
-            <ui:Button DockPanel.Dock="Right" Content="{l:Tr Common_Refresh}" Icon="{ui:SymbolIcon ArrowClockwise20}" Command="{Binding ServicesPage.ReloadCommand}" ToolTip="F5" VerticalAlignment="Top" />
-            <StackPanel>
-                <ui:TextBlock Style="{StaticResource PageTitle}" Text="{l:Tr Svc_Title}" />
-                <ui:TextBlock Style="{StaticResource PageIntro}" Text="{l:Tr Svc_Hint}" />
-            </StackPanel>
-        </DockPanel>
+        <v:PageHeader Grid.Row="0" Title="{l:Tr Svc_Title}" Intro="{l:Tr Svc_Hint}">
+            <ui:Button Content="{l:Tr Common_Refresh}" Icon="{ui:SymbolIcon ArrowClockwise20}" Command="{Binding ServicesPage.ReloadCommand}" ToolTip="F5" />
+        </v:PageHeader>
 
         <TabControl Grid.Row="1" Style="{StaticResource SelectorTabs}" SelectedIndex="{Binding ServicesTab}">
             <TabItem Header="{l:Tr Svc_TabServices}">

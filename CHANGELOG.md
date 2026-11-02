@@ -41,6 +41,9 @@
 - **Overview:** the works-against hint says the settings are "in effect" and explains Undo or Details only when a row shows that button; the readiness line and the score hint say that settings against the profile are not counted. The graphics card name drops trademark signs, as the processor name does.
 - **Restore point question:** with System Protection on and no restore point created, it says so and offers Continue without it and Cancel instead of Turn on.
 - **Wording:** clearer New accounts text, German impact filter tooltip and Expert mode question; About names the license GPL-3.0-only.
+- **Page headers:** Refresh and the other page commands sit next to the title, so the intro uses the full width. Settings card titles are semibold as on the other pages, and row check boxes sit 8 px from their titles, as on Cleanup.
+- **Light mode:** state and location lines ("Unknown", "Not supported", startup locations) use the easier to read secondary text color.
+- **Wording:** the app calls itself Tunero everywhere, and links use the names of the pages they open.
 
 ### Fixed
 
@@ -94,7 +97,7 @@
 - **Graphics & DNS:** the link to the other network settings opens the Network group of the Tweaks page, also with a search or filter set. Before, it could open Security and system.
 - **Install & update:** an Update all or Update that cannot start while another change runs keeps the result of Check for updates. Refresh or a language switch during an install keeps the row's progress and result.
 - **Exports** (changes, Startup list, install media choices) replace the chosen file without following a link put in its place. A folder reached through a link is refused with a message that says so; choose the folder it points to.
-- **Screen readers:** Undo, Apply again, Details, Remove and Reinstall in lists name their item.
+- **Screen readers:** Undo, Apply again, Details, Remove and Reinstall in lists name their item. The fold buttons of expandable cards (Package managers, the install media options, Health sensor cards) have names; buttons that only said "Clean up", "Restart", "Repair", "Details" or "Open folder" say what they act on, ignore buttons name their setting and banner buttons read the banner's sentence.
 - **Tabs** no longer make the search and sort boxes of the selected tab bold; sizes under 1 KB read 1 KB instead of "0 KB"; screen readers name the component list of the Licenses window.
 - **Startup:** Startup folders moved through User Shell Folders are read, and items in a moved folder are marked for a look; a per-user COM registration counts for shell extensions, Explorer add-ons, DirectShow filters and task COM handlers; a task lists every COM handler, also one next to a program.
 - **Services & tasks** checks every program a task runs, so an unsigned second action no longer hides behind a signed first one. Shortcut targets and Policy Run values are expanded with the signed-in user's variables, not those of the elevated app.
@@ -103,6 +106,7 @@
 - **Show passed checks** on the Overview and Manual checks no longer changes the Tweaks list, and the Tweaks Show filter no longer turns it off.
 - **Graphics & DNS:** the details pane of a row shows the new state after a change and stays open.
 - **Screen readers:** the title bar buttons of the confirmation, question and Licenses windows have names.
+- **Keyboard:** on pages with tabs, the tabs come right after the page's command in Tab order; navigation badges are no Tab stops; in the confirmation, Tab follows the buttons on screen and a long list of exact changes scrolls with the keyboard.
 
 ## 1.5.0
 

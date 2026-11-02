@@ -92,6 +92,7 @@ public partial class App : Application
         // replaces WPF-UI's own and loses its template.
         UIElement.FocusableProperty.OverrideMetadata(typeof(CardControl), new FrameworkPropertyMetadata(false));
         ScrollBarNames.Register();
+        ExpanderToggle.Register();
         StartAsync(e);
     }
 

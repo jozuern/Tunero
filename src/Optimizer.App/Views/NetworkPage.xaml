@@ -18,7 +18,7 @@
                         <ui:SymbolIcon Symbol="{Binding StatusSymbol}" Filled="True" FontSize="16" v:ThemeBrush.Key="{Binding StatusBrushKey}" Margin="0,0,8,0"
                                        VerticalAlignment="Center" Visibility="{Binding NeedsAttention, Converter={StaticResource BoolToVisibility}}" />
                         <ui:TextBlock FontTypography="Body" Text="{Binding Title}" VerticalAlignment="Center" Margin="0,0,12,0" />
-                        <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Text="{Binding CompactMeta}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{Binding CompactMeta}" VerticalAlignment="Center" Margin="0,0,8,0" />
                     </WrapPanel>
                 </ui:CardControl.Header>
                 <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource TweakSwitch}" />
@@ -88,7 +88,7 @@
                     </StackPanel>
                 </ui:CardControl.Header>
                 <StackPanel Orientation="Horizontal">
-                    <ui:Button Content="{l:Tr Common_Details}" Appearance="Transparent" Command="{Binding Network.ShowDnsDetailsCommand}" Margin="0,0,8,0" />
+                    <ui:Button Content="{l:Tr Common_Details}" AutomationProperties.Name="{l:Tr Net_DnsDetailsName}" Appearance="Transparent" Command="{Binding Network.ShowDnsDetailsCommand}" Margin="0,0,8,0" />
                     <ComboBox ItemsSource="{Binding Network.DnsChoices}" SelectedItem="{Binding Network.SelectedDns}" DisplayMemberPath="Name" MinWidth="220" ToolTip="{Binding Network.CurrentDnsDetail}"
                               AutomationProperties.Name="{l:Tr Net_DnsServers}" IsEnabled="{Binding CanChange, Source={x:Static s:ChangeGate.Instance}}" />
                 </StackPanel>
