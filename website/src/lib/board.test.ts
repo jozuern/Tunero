@@ -38,6 +38,25 @@ test('no tweak rates 5, and Restore processor turbo rates 4 on some PCs and 0 el
   assert.equal(turbo?.higher?.impact, 4);
 });
 
+// The app's reasons speak of the PC it runs on ("on this PC", "is currently on"); the board states conditions instead.
+test("every higher rating on the board has the site's own sentence in both languages", () => {
+  const keys = new Set(tweakImpacts('en').flatMap((tweak) => (tweak.higher ? [tweak.higher.reasonKey] : [])));
+  assert.ok(keys.size > 0);
+  for (const copy of [en, de]) {
+    assert.deepEqual(Object.keys(copy.board.when).sort(), [...keys].sort(), 'board.when holds exactly the keys in use');
+    for (const key of keys) {
+      const sentence = copy.board.when[key];
+      assert.ok(sentence, `board.when has no ${key}`);
+      assert.doesNotMatch(sentence, /this PC|this CPU|this graphics|currently|diesem PC|dieser PC|diese CPU|dieser Grafikkarte|gerade/i, key);
+    }
+  }
+  for (const lang of ['en', 'de'] as const) {
+    const copy = lang === 'en' ? en : de;
+    const turbo = ratingBoard(lang).rows.flatMap((row) => row.tweaks).find((entry) => entry.id === 'power.turboRestore');
+    assert.equal(turbo?.otherwise?.reason, copy.board.when['impact.turboCapped']);
+  }
+});
+
 test('the trust items link only to the repository', () => {
   for (const copy of [en, de]) {
     assert.ok(copy.trust.items.length >= 7);

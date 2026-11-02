@@ -187,7 +187,6 @@
     gap: 8px;
     min-width: 0;
     max-width: 100%;
-    overflow: hidden;
   }
 
   /* On narrow screens it shrinks within its column instead of running under Start and Search. */

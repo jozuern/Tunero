@@ -181,18 +181,20 @@ export function tweak(id: string): { impact: number; basis: string; risk: string
   return { impact: t.impact.gaming, basis: t.impact.basis, risk: t.risk, actions: t.actions, fixes: t.fixes ?? [] };
 }
 
-/** A tweak's gaming impact (0 to 5) on most PCs, and the highest rating a condition on some PCs gives it. */
+/**
+ * A tweak's gaming impact (0 to 5) on most PCs, and the highest rating a condition on some PCs gives it, with the
+ * labels.json key of the app's reason. The app's sentence speaks of the PC it runs on, so the site words its own.
+ */
 export interface TweakImpact {
   id: string;
   title: string;
   impact: number;
   basis: string;
-  higher?: { impact: number; reason: string };
+  higher?: { impact: number; reasonKey: string };
 }
 
 /** The gaming impact of every tweak the app shows, in catalog order. */
 export function tweakImpacts(lang: Lang): TweakImpact[] {
-  const labels = JSON.parse(read('src/Optimizer.Core/Catalog/Data/labels.json'))[lang] as Record<string, string>;
   return catalog.map((t) => {
     const title = docTitle(lang, t.docs ?? t.id) ?? t.id;
     const top = (t.impactOverrides ?? [])
@@ -203,7 +205,7 @@ export function tweakImpacts(lang: Lang): TweakImpact[] {
       title: t.subject ? `${title}: ${t.subject}` : title,
       impact: t.impact.gaming,
       basis: t.impact.basis,
-      higher: top && { impact: top.gaming!, reason: labels[top.reasonKey] ?? '' },
+      higher: top && { impact: top.gaming!, reasonKey: top.reasonKey },
     };
   });
 }

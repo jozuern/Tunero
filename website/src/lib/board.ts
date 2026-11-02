@@ -2,7 +2,7 @@
 // for games (0 to 5), read from the repository at build time.
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import type { Lang } from '../i18n/index.ts';
+import { t, type Lang } from '../i18n/index.ts';
 import { checkImpacts, counts, tweakImpacts } from './repo.ts';
 
 const root = join(process.cwd(), '..');
@@ -16,7 +16,10 @@ export interface BoardEntry {
   basis?: string;
   /** A check: the lower ratings it gives for other findings, highest first. */
   also?: number[];
-  /** A tweak that rates higher on some PCs: its rating elsewhere, and the app's reason for the higher one. */
+  /**
+   * A tweak that rates higher on some PCs: its rating elsewhere, and where it rates higher, in the site's words
+   * (board.when): the app's own reason speaks of the PC it runs on.
+   */
   otherwise?: { impact: number; reason: string };
 }
 
@@ -57,7 +60,10 @@ function microcodeRatings(): Map<string, number[] | 'critical'> {
   return new Map(rules.map((rule) => [rule.id, rule.critical ? 'critical' : [Number(expression[1])]]));
 }
 
-/** The board in one language. Fails the build when a check has no rating the site can read. */
+/**
+ * The board in one language. Fails the build when a check has no rating the site can read, or a tweak rates higher
+ * for a reason the site has no sentence for.
+ */
 export function ratingBoard(lang: Lang): Board {
   const microcode = microcodeRatings();
   const ids = readdirSync(join(root, docsDir(lang)))
@@ -88,10 +94,15 @@ export function ratingBoard(lang: Lang): Board {
     row(highest).checks.push({ id, title, also: lower.length > 0 ? lower : undefined });
   }
 
+  const when = t(lang).board.when;
   const tweaks = tweakImpacts(lang);
   for (const tweak of tweaks) {
     const entry: BoardEntry = { id: tweak.id, title: tweak.title, basis: tweak.basis };
-    if (tweak.higher) entry.otherwise = { impact: tweak.impact, reason: tweak.higher.reason };
+    if (tweak.higher) {
+      const reason = when[tweak.higher.reasonKey];
+      if (!reason) throw new Error(`Tweak ${tweak.id} rates higher for ${tweak.higher.reasonKey}, which board.when (${lang}) has no sentence for`);
+      entry.otherwise = { impact: tweak.impact, reason };
+    }
     const level = tweak.higher?.impact ?? tweak.impact;
     if (level > 5 || level < 0) throw new Error(`Tweak ${tweak.id} rates ${level}, outside 0 to 5`);
     row(level).tweaks.push(entry);

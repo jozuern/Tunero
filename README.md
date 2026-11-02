@@ -64,7 +64,7 @@ The app uses settings that Microsoft or the hardware vendor documents. A few har
 ## What it does differently
 
 - **It shows its work.** Every check and every change has a page with what it does, why, how solid the evidence is and the sources, in English and German.
-- **Every setting it changes can be undone.** Each change is backed up first and can be undone on the Changes page, also after a restart or an update of the app; Uninstall offers to undo everything before it removes the app. Removed apps and deleted files are the exception, and the app says so before.
+- **Every setting it changes can be undone.** Each change is backed up first and can be undone on the Changes page, also after a restart or an update of the app; Uninstall offers to undo everything before it removes the app. Removed apps, deleted files and data Windows deletes when a setting turns off (such as Recall snapshots or the personal typing and handwriting dictionary) are the exception, and the app says so before.
 - **No placebo.** Popular tweaks without evidence are left out, and the search says why when you look for one. The full list with sources is in [docs/not-included.md](docs/not-included.md); [tunero.dev](https://tunero.dev) shows how every tweak the app offers rates for games.
 - **It looks at your PC first.** It recommends only what fits this PC and your profile, and keeps risky changes behind Expert mode.
 - **Nothing runs in the background.** No service, no tray icon, no telemetry. Windows applies the settings itself; the app runs only when you start it, or once after you sign in if you turn on "Apply my changes again when Windows resets them" in Settings (a scheduled task).
@@ -110,7 +110,7 @@ Exit codes: 0 done, 1 some changes failed, 2 not a valid changes file, or `--exp
 
 ## Privacy
 
-No telemetry, no accounts. The app goes online only for features you start or turn on (update check, VirusTotal lookup, DNS benchmark, app installs, the Windows download for install media). After an unexpected error it asks whether to open a GitHub bug report filled in with the error details, without your user or computer name; nothing is sent unless you submit it there. Details: [docs/PRIVACY.md](docs/PRIVACY.md).
+No telemetry, no accounts. The app goes online only for features you start or turn on, such as the update check, a VirusTotal lookup, the DNS benchmark, app installs and updates, the Windows download for install media and the repairs and Windows features on Tools. After an unexpected error it asks whether to open a GitHub bug report filled in with the error details, without your user or computer name; nothing is sent unless you submit it there. Details: [docs/PRIVACY.md](docs/PRIVACY.md).
 
 ## Uninstall
 

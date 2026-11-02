@@ -93,12 +93,12 @@ const en = {
       },
       {
         title: 'No telemetry',
-        body: 'No telemetry, no account, no ads, no service and no tray icon. The app goes online only for features you start or turn on: the update check, a VirusTotal lookup with your own key, the DNS benchmark, app installs and the Windows download for install media.',
+        body: 'No telemetry, no account, no ads, no service and no tray icon. The app goes online only for features you start or turn on, such as the update check, a VirusTotal lookup with your own key, the DNS benchmark, app installs and updates, the Windows download for install media and the repairs and Windows features on Tools.',
         link: { label: 'Everything the app sends, and to whom', href: `${repo}/blob/main/docs/PRIVACY.md` },
       },
       {
         title: 'Every setting it changes can be undone',
-        body: 'Each setting is backed up before it changes and checked after applying, and a restore point is created before the first change when System Protection is on. The Changes page lists every change with Undo, also after a restart or an update of the app, and Uninstall offers to undo everything first. Removed apps and deleted files are the exception, and the app says so before.',
+        body: 'Each setting is backed up before it changes and checked after applying, and a restore point is created before the first change when System Protection is on. The Changes page lists every change with Undo, also after a restart or an update of the app, and Uninstall offers to undo everything first. Removed apps, deleted files and data Windows deletes when a setting turns off, such as Recall snapshots or the personal typing and handwriting dictionary, are the exception, and the app says so before.',
       },
       {
         title: 'Check the download',
@@ -128,6 +128,19 @@ const en = {
     disputed: 'disputed',
     /** A tweak that rates higher on some PCs, with its rating elsewhere. */
     some: (base: number) => `on some PCs, otherwise ${base}`,
+    /**
+     * Where a tweak rates higher, by the reasonKey of its override in the catalog. The app's own sentences speak of
+     * the PC it runs on, which the site cannot know, so these name the condition instead. A missing key fails the build.
+     */
+    when: {
+      'impact.turboCapped': 'Higher where processor boost is blocked: the processor stays at its base clock under load.',
+      'impact.fromPowerSaver': 'Higher on a PC that uses a power saver plan.',
+      'impact.hagsFrameGen': 'Higher on graphics cards with DLSS Frame Generation, which needs this setting.',
+      'impact.x3dGameMode': "Higher on a Ryzen X3D with two CCDs: AMD's driver needs Game Mode to keep games on the cores with the extra cache.",
+      'impact.backgroundRecording': 'Higher while background recording is on.',
+      'impact.integratedGraphics': 'Higher on a PC without a dedicated graphics card.',
+      'impact.noMbec': 'Higher on CPUs without MBEC/GMET, where memory integrity is emulated.',
+    } as Record<string, string>,
     /** A check that also gives lower ratings, such as 0 for a laptop on battery. */
     also: (levels: string) => `also ${levels}, depending on what it finds`,
     zeroNamed: 'Popular gaming tweaks with disputed evidence. Offered, rated 0, and their pages explain the dispute.',
@@ -227,7 +240,7 @@ const en = {
       {
         heading: 'Links to other sites',
         paragraphs: [
-          ['The download, the source code and the releases are on GitHub, and support goes through Ko-fi. When you follow one of these links, that provider\'s privacy policy applies.'],
+          ['The download, the source code and the releases are on GitHub, and support goes through Ko-fi or GitHub Sponsors. When you follow one of these links, that provider\'s privacy policy applies.'],
         ],
       },
       {

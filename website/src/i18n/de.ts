@@ -78,12 +78,12 @@ const de: Strings = {
       },
       {
         title: 'Keine Telemetrie',
-        body: 'Keine Telemetrie, kein Konto, keine Werbung, kein Dienst und kein Symbol im Infobereich. Ins Internet geht die App nur für Funktionen, die du startest oder einschaltest: die Update-Prüfung, eine VirusTotal-Abfrage mit deinem eigenen Schlüssel, den DNS-Benchmark, App-Installationen und den Windows-Download für das Installationsmedium.',
+        body: 'Keine Telemetrie, kein Konto, keine Werbung, kein Dienst und kein Symbol im Infobereich. Ins Internet geht die App nur für Funktionen, die du startest oder einschaltest, etwa die Update-Prüfung, eine VirusTotal-Abfrage mit deinem eigenen Schlüssel, den DNS-Benchmark, App-Installationen und -Updates, den Windows-Download für das Installationsmedium und die Reparaturen und Windows-Features unter Tools.',
         link: { label: 'Alles, was die App sendet, und an wen', href: `${repo}/blob/main/docs/PRIVACY.md#datenschutz` },
       },
       {
         title: 'Jede Einstellung, die es ändert, lässt sich rückgängig machen',
-        body: 'Jede Einstellung wird gesichert, bevor sie sich ändert, und nach dem Anwenden geprüft, und vor der ersten Änderung entsteht ein Wiederherstellungspunkt, wenn der Computerschutz eingeschaltet ist. Die Seite Änderungen listet jede Änderung mit „Rückgängig“, auch nach einem Neustart oder einem Update der App, und „Deinstallieren“ bietet an, vorher alles rückgängig zu machen. Entfernte Apps und gelöschte Dateien sind die Ausnahme, und das sagt die App vorher.',
+        body: 'Jede Einstellung wird gesichert, bevor sie sich ändert, und nach dem Anwenden geprüft, und vor der ersten Änderung entsteht ein Wiederherstellungspunkt, wenn der Computerschutz eingeschaltet ist. Die Seite Änderungen listet jede Änderung mit „Rückgängig“, auch nach einem Neustart oder einem Update der App, und „Deinstallieren“ bietet an, vorher alles rückgängig zu machen. Entfernte Apps, gelöschte Dateien und Daten, die Windows beim Ausschalten einer Einstellung löscht, etwa Recall-Momentaufnahmen oder das persönliche Wörterbuch für Eingaben und Handschrift, sind die Ausnahme, und das sagt die App vorher.',
       },
       {
         title: 'Den Download prüfen',
@@ -112,6 +112,15 @@ const de: Strings = {
     measured: 'gemessen',
     disputed: 'umstritten',
     some: (base) => `auf manchen PCs, sonst ${base}`,
+    when: {
+      'impact.turboCapped': 'Höher, wo der CPU-Boost blockiert ist: Die CPU bleibt unter Last beim Basistakt.',
+      'impact.fromPowerSaver': 'Höher auf einem PC, der einen Energiesparplan nutzt.',
+      'impact.hagsFrameGen': 'Höher auf Grafikkarten mit DLSS Frame Generation, die diese Einstellung voraussetzt.',
+      'impact.x3dGameMode': 'Höher auf einem Ryzen X3D mit zwei CCDs: AMDs Treiber braucht den Spielmodus, um Spiele auf den Kernen mit dem zusätzlichen Cache zu halten.',
+      'impact.backgroundRecording': 'Höher, solange die Hintergrundaufnahme an ist.',
+      'impact.integratedGraphics': 'Höher auf einem PC ohne eigene Grafikkarte.',
+      'impact.noMbec': 'Höher auf CPUs ohne MBEC/GMET, wo die Speicherintegrität emuliert wird.',
+    },
     also: (levels) => `je nach Befund auch ${levels}`,
     zeroNamed: 'Beliebte Gaming-Tweaks mit umstrittenen Belegen. Angeboten, mit 0 bewertet, und ihre Seiten erklären den Streit.',
     zeroRest: (count) => `Dazu ${count} weitere, die meisten für Datenschutz, den Browser und Windows. Sie versprechen keine FPS.`,
@@ -210,7 +219,7 @@ const de: Strings = {
       {
         heading: 'Links zu anderen Seiten',
         paragraphs: [
-          ['Der Download, der Quellcode und die Versionen liegen auf GitHub, die Unterstützung läuft über Ko-fi. Folgst du einem dieser Links, gilt dort die Datenschutzerklärung des jeweiligen Anbieters.'],
+          ['Der Download, der Quellcode und die Versionen liegen auf GitHub, die Unterstützung läuft über Ko-fi oder GitHub Sponsors. Folgst du einem dieser Links, gilt dort die Datenschutzerklärung des jeweiligen Anbieters.'],
         ],
       },
       {

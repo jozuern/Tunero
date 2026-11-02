@@ -85,3 +85,28 @@ test('narrower than 1180 px the taskbar search, and narrower than 900 px the rai
   await page.setViewportSize({ width: 860, height: 768 });
   for (const name of ['Tweaks', 'Changes']) await expect(tunero(page).getByRole('button', { name, exact: true })).toBeVisible();
 });
+
+for (const width of [900, 1024, 1179, 1180, 1920]) {
+  test(`at ${width} px the watermark ends before Start, and nothing clips the focus ring of the Classic page link`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 800 });
+    await visit(page, { saved: seen });
+    const watermark = (await page.locator('.taskbar .watermark').boundingBox())!;
+    const start = (await page.locator('.taskbar [data-anchor="start"]').boundingBox())!;
+    const corner = page.locator('.taskbar .corner');
+    const link = (await corner.boundingBox())!;
+    expect(link.x + link.width).toBeLessThanOrEqual(start.x);
+    // Where there is no room, the watermark shrinks to nothing (it clips its own text) instead of running under Start.
+    if (watermark.width > 0) expect(watermark.x + watermark.width).toBeLessThanOrEqual(start.x);
+    // The ring is an outline 4 px outside the link; an ancestor that hides its overflow cut it to one thin line once.
+    await corner.focus();
+    const clipped = await corner.evaluate((link) => {
+      const found: string[] = [];
+      for (let el = link.parentElement; el && !el.classList.contains('taskbar'); el = el.parentElement) {
+        const style = getComputedStyle(el);
+        if (style.overflowX !== 'visible' || style.overflowY !== 'visible') found.push(el.className);
+      }
+      return found;
+    });
+    expect(clipped).toEqual([]);
+  });
+}
