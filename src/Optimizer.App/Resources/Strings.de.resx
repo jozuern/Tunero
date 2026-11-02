@@ -1639,6 +1639,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <!-- 4a -->
   <data name="Cli_NotElevated" xml:space="preserve"><value>Tunero braucht Administratorrechte, um etwas zu ändern oder rückgängig zu machen.</value></data>
   <data name="Cli_Busy" xml:space="preserve"><value>Ein anderes Tunero-Fenster oder ein anderer Befehlszeilenlauf hat diesen PC 5 Minuten lang geändert, deshalb wurde nichts geändert. Führe den Befehl erneut aus, wenn er fertig ist.</value></data>
+  <data name="Cli_ShutdownBlocked" xml:space="preserve"><value>Tunero arbeitet noch. Warte, bis es fertig ist.</value></data>
   <data name="Cli_Error" xml:space="preserve"><value>Der Lauf wurde wegen eines unerwarteten Fehlers beendet: {0}</value></data>
   <data name="Cli_FileUnreadable" xml:space="preserve"><value>{0} konnte nicht gelesen werden: {1}</value></data>
   <data name="Cli_FileInvalid" xml:space="preserve"><value>{0} ist keine Änderungsdatei von Tunero, oder sie stammt aus einer neueren Version der App.</value></data>

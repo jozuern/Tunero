@@ -164,24 +164,23 @@ public sealed class ChangeSession(TweakEngine engine, IRestorePoints restorePoin
     /// <summary>
     /// The re-apply task's run (<see cref="ReapplyTask"/>): the changes the Overview lists as reset by a Windows update
     /// that "Apply again" offers (no Expert, boot-critical or anti-cheat sensitive change), applied again in one go. A
-    /// change reset without an update (the user turned it back in Windows) stays as it is, and so does one whose target
-    /// another change of this app also writes (a catalog tweak and the Services page on one service): each would undo the
-    /// other at every sign-in. A restore point is made when Windows can; without one the run goes on, since the user
-    /// chose these changes before and nobody is there to ask. <see cref="BatchOutcome.Cancelled"/> when nothing was reset.
+    /// change reset without an update (the user turned it back in Windows) stays as it is, and so does one that conflicts
+    /// with another change of this app, by the check the apply itself makes (<see cref="TweakEngine.ConflictingWithAnotherChange"/>:
+    /// one registry value, one service, one side of a power setting, or a declared conflict): the apply would refuse it at
+    /// every sign-in. A restore point is made when Windows can; without one the run goes on, since the user chose these
+    /// changes before and nobody is there to ask. <see cref="BatchOutcome.Cancelled"/> when nothing was reset.
     /// </summary>
     public Task<BatchOutcome> ReapplyResetAsync(PcSnapshot pc) => Locked(async () =>
     {
         var known = pc.States.ToDictionary(s => s.Tweak.Id, s => s.State, StringComparer.Ordinal);
         var reset = await Task.Run(() =>
         {
-            var shared = engine.Store.All().SelectMany(b => b.Entries.Select(e => (b.TweakId, e.TargetKey)))
-                .GroupBy(x => x.TargetKey, StringComparer.OrdinalIgnoreCase).Where(g => g.Select(x => x.TweakId).Distinct(StringComparer.Ordinal).Skip(1).Any())
-                .Select(g => g.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
             var kept = new List<string>();
             var drift = engine.CheckDrift(pc.Facts, known, kept);
             engine.NoteKept(kept);
-            return drift.Where(d => d.WindowsUpdatedSince && d.Tweak.IsBatchSafe && !d.Backup.Entries.Any(e => shared.Contains(e.TargetKey)))
-                .Select(d => d.Tweak).ToList();
+            var candidates = drift.Where(d => d.WindowsUpdatedSince && d.Tweak.IsBatchSafe).Select(d => d.Tweak).ToList();
+            var conflicting = candidates.Count == 0 ? new HashSet<string>() : engine.ConflictingWithAnotherChange(candidates, pc.Facts);
+            return candidates.Where(t => !conflicting.Contains(t.Id)).ToList();
         });
         if (reset.Count == 0) return BatchOutcome.Cancelled;
         return await ApplyBatchAsync(reset, pc.Facts, new ApplyOptions { ContinueWithoutRestorePoint = true }, () => RestorePointChoice.Continue);

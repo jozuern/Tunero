@@ -155,13 +155,15 @@
             </Style>
 
             <!-- Switches, three kinds (XamlRulesTests.SwitchesSayWhatTheyShow):
-                 - A setting in a card: its name in the card's header, the switch on the right with On or Off next to it, as in
+                 - A setting in a card: its name in the card's header, the switch on the right with On or Off left of it, as in
                    Windows Settings. Style SettingSwitch.
                  - A filter over a list ("Show passed checks", "Show Windows services"): the label is the switch's Content, no
                    state text; the label says what turning it on shows.
                  - The state of a row (a tweak, a service, a startup entry): the row's own words ("Applied", "Enabled") as
                    OnContent and OffContent, in one column (TweakSwitch). -->
             <Style x:Key="SettingSwitch" TargetType="ui:ToggleSwitch" BasedOn="{StaticResource {x:Type ui:ToggleSwitch}}">
+                <!-- "Off [switch]": the state word left of the switch, so the switch ends at the card's padding whatever the word -->
+                <Setter Property="LabelPosition" Value="Left" />
                 <Setter Property="OnContent" Value="{s:Tr Feature_On}" />
                 <Setter Property="OffContent" Value="{s:Tr Feature_Off}" />
             </Style>
@@ -277,7 +279,7 @@
                                  content routes its mouse events through the TabItem), so every text and card showed as clickable -->
                             <Border x:Name="Bg" Background="Transparent" CornerRadius="4" Padding="10,6,10,4" Margin="0,0,4,0" Cursor="Hand">
                                 <StackPanel>
-                                    <ContentPresenter ContentSource="Header" HorizontalAlignment="Center" TextElement.Foreground="{TemplateBinding Foreground}" />
+                                    <ContentPresenter x:Name="Header" ContentSource="Header" HorizontalAlignment="Center" TextElement.Foreground="{TemplateBinding Foreground}" />
                                     <Border x:Name="Pill" Height="3" Width="16" CornerRadius="1.5" Margin="0,4,0,0" HorizontalAlignment="Center"
                                             Background="{DynamicResource AccentFillColorDefaultBrush}" Visibility="Hidden" />
                                 </StackPanel>
@@ -289,7 +291,9 @@
                                 <Trigger Property="IsSelected" Value="True">
                                     <Setter TargetName="Pill" Property="Visibility" Value="Visible" />
                                     <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
-                                    <Setter Property="FontWeight" Value="SemiBold" />
+                                    <!-- On the header only: set on the TabItem, the weight reached the tab's content too, and every
+                                         text there without a weight of its own (a search box, a sort box) turned bold -->
+                                    <Setter TargetName="Header" Property="TextElement.FontWeight" Value="SemiBold" />
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
@@ -378,7 +382,8 @@
                         <StackPanel>
                             <ui:TextBlock FontTypography="BodyStrong" Text="{Binding Title}" TextWrapping="Wrap" />
                             <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding Summary}" Margin="0,4,0,0" Visibility="{Binding Summary, Converter={StaticResource NullToVisibility}}" />
-                            <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Text="{Binding MetaText}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                            <!-- Secondary, not tertiary: the line can be the only word that says a check is unknown -->
+                            <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding MetaText}" Margin="0,4,0,0" />
                         </StackPanel>
                     </ui:CardControl.Header>
                     <!-- The button has a place of its own on every row, so the rating marks of a list stand in one column -->
@@ -479,11 +484,14 @@
                                 AutomationProperties.Name="{Binding Title}" AutomationProperties.HelpText="{Binding MetaText}"
                                 Command="{Binding DataContext.SelectCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}">
                     <ui:CardControl.Header>
-                        <!-- Select mode of the Tweaks page: a check box in front (off where the batch cannot take the row) -->
+                        <!-- Select mode of the Tweaks page: a check box in front (off with its reason where the batch cannot take
+                             the row; an empty space of the same width where nothing can be picked, so the titles stay in line) -->
                         <DockPanel>
-                            <CheckBox DockPanel.Dock="Left" IsChecked="{Binding IsPicked}" IsEnabled="{Binding CanPick}" MinWidth="0" Margin="0,0,8,0" VerticalAlignment="Top"
-                                      AutomationProperties.Name="{Binding PickLabel}" ToolTip="{Binding PickNote}" ToolTipService.ShowOnDisabled="True"
-                                      Visibility="{Binding ShowPick, Converter={StaticResource BoolToVisibility}}" />
+                            <Border DockPanel.Dock="Left" Margin="0,0,8,0" VerticalAlignment="Top" Visibility="{Binding ShowPick, Converter={StaticResource BoolToVisibility}}">
+                                <CheckBox IsChecked="{Binding IsPicked}" IsEnabled="{Binding CanPick}" MinWidth="0"
+                                          AutomationProperties.Name="{Binding PickLabel}" ToolTip="{Binding PickNote}" ToolTipService.ShowOnDisabled="True"
+                                          Visibility="{Binding HasPickBox, Converter={StaticResource BoolToHidden}}" />
+                            </Border>
                             <StackPanel>
                                 <!-- The switch shows on and off; an icon in front of the title marks only rows that need attention
                                      (reset by Windows, partly applied). No icon column: an empty one looked like a missing icon. -->

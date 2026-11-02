@@ -64,9 +64,11 @@ internal sealed class FakeServices : IServiceManager
 
     public bool? IsRunning(string name) => Running.TryGetValue(name, out var r) ? r : null;
 
+    /// <summary>Like the real adapter: a service that is not there (never seeded in <see cref="Start"/>) cannot be opened.</summary>
     public void SetStartType(string name, ServiceStart start)
     {
         if (FailOnWrite.Contains(name)) throw new InvalidOperationException($"access denied: {name}");
+        if (!Start.ContainsKey(name)) throw new InvalidOperationException($"Cannot open service {name}");
         Start[name] = start;
     }
 }
@@ -145,11 +147,22 @@ internal sealed class FakeDisplays : IDisplayManager
 
     public void SetMode(string gdi, int w, int h, int hz)
     {
+        Connected(gdi);
         Size[gdi] = (w, h);
         Refresh[gdi] = hz;
     }
 
-    public void SetRefresh(string gdi, int hz) => Refresh[gdi] = hz;
+    public void SetRefresh(string gdi, int hz)
+    {
+        Connected(gdi);
+        Refresh[gdi] = hz;
+    }
+
+    // Like the real adapter: a display that is not connected (never seeded in Refresh, or removed) is not found.
+    private void Connected(string gdi)
+    {
+        if (!Refresh.ContainsKey(gdi)) throw new InvalidOperationException($"Display {gdi} not found");
+    }
 }
 
 internal sealed class FakeProcesses : IProcessRunner

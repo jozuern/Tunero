@@ -391,6 +391,18 @@ public sealed class TweakEngine(ActionContext ctx, BackupStore store, IRestorePo
     }
 
     /// <summary>
+    /// The ids of <paramref name="tweaks"/> that <see cref="Preflight(TweakDefinition, Facts, ApplyOptions)"/> would block
+    /// for a conflict with another change of this app (declared, or a shared target such as one side of a power setting),
+    /// from one read of the backups. The re-apply task leaves them for the user instead of failing at every sign-in.
+    /// </summary>
+    internal IReadOnlySet<string> ConflictingWithAnotherChange(IEnumerable<TweakDefinition> tweaks, Facts facts)
+    {
+        var read = store.ReadAll();
+        var view = new BackupView(read.Own.ToDictionary(b => b.TweakId, StringComparer.Ordinal), read.OtherAccounts);
+        return tweaks.Where(t => Conflicts(t, facts, view).Count > 0).Select(t => t.Id).ToHashSet(StringComparer.Ordinal);
+    }
+
+    /// <summary>
     /// The actions for this PC; when they cannot be built (an adapter list that fails to read), the catalog's own. Their
     /// plain targets still count; a template then misses what was written per adapter, but the preflight does not fail.
     /// </summary>

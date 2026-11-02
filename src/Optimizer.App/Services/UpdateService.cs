@@ -146,15 +146,9 @@ public sealed class UpdateService(InstallFacts install, IDialogs dialogs, IShell
             bool started;
             try
             {
-                started = _steps.StartVerified(exe, download.Sha256!, path =>
-                {
-                    // Like the start's own restart: no profiler or startup hook from the user's environment in the new process.
-                    var start = new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = false };
-                    // This copy still holds the single-instance lock until it has closed: the new one waits for it.
-                    start.ArgumentList.Add(SingleInstance.AfterUpdate);
-                    ProcessHardening.RemoveCodeLoadingVariables(start.Environment);
-                    _launch.Start(start);
-                });
+                // Started like the installed exe (no shell, no profiler or startup hook from the user's environment). This
+                // copy still holds the single-instance lock until it has closed: the new one waits for it.
+                started = _steps.StartVerified(exe, download.Sha256!, path => _launch.Start(InstallService.ExeStart(path, [SingleInstance.AfterUpdate])));
             }
             catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception or InvalidOperationException)
             {

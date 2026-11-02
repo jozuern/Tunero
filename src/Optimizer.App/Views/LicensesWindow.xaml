@@ -24,7 +24,7 @@
                 <ColumnDefinition Width="16" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
-            <ui:ListView x:Name="ComponentList" Grid.Column="0" SelectionChanged="Component_Changed"
+            <ui:ListView x:Name="ComponentList" Grid.Column="0" SelectionChanged="Component_Changed" AutomationProperties.Name="{l:Tr Licenses_Title}"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                 <ui:ListView.ItemTemplate>
                     <DataTemplate>

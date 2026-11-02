@@ -273,9 +273,8 @@ public sealed class BackupStore
     /// A backup with any per-user target goes to the account's folder and records the account; a copy in the shared
     /// folder (from an older version, or saved before its first per-user entry) is removed. A backup without per-user
     /// targets (left after a partial undo) goes to the shared folder, and the account's copy is removed: it would be
-    /// read first and bring back entries that were already restored.
-    /// </summary>
-    /// A backup in the shared folder that belongs to another account is never deleted or overwritten.
+    /// read first and bring back entries that were already restored. A backup in the shared folder that belongs to another
+    /// account is never deleted or overwritten.
     /// </summary>
     public void Save(TweakBackup backup)
     {

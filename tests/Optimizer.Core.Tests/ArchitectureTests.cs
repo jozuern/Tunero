@@ -21,8 +21,9 @@ public partial class ArchitectureTests
     public void TestsReachTheRealSystemOnlyReadOnly()
     {
         var problems = new List<string>();
-        foreach (var file in new[] { "Optimizer.Core.Tests", "Optimizer.App.Tests" }.SelectMany(t => Directory.EnumerateFiles(Path.Combine(RepoPaths.Root, "tests", t), "*.cs")))
+        foreach (var file in new[] { "Optimizer.Core.Tests", "Optimizer.App.Tests" }.SelectMany(t => Directory.EnumerateFiles(Path.Combine(RepoPaths.Root, "tests", t), "*.cs", SearchOption.AllDirectories)))
         {
+            if (IsBuildOutput(file)) continue;
             var name = Path.GetFileName(file);
             if (name is "ReadOnlyContext.cs" or "ArchitectureTests.cs") continue;
             var text = File.ReadAllText(file);
@@ -72,14 +73,14 @@ public partial class ArchitectureTests
     {
         ["ProcessLauncher.cs"] = "the one place that builds hardened start infos",
         ["Program.cs"] = "the bundle starting itself again with the protected runtime folder",
-        ["UpdateService.cs"] = "the updated exe started with the start's own environment rules",
-        ["InstallService.cs"] = "the installed exe started like the updated one",
+        ["InstallService.cs"] = "a Tunero exe started with the start's own environment rules (the installed copy, the self-update, the first sign-in)",
         ["DeElevatedLauncher.cs"] = "the shell opening a file or link as the signed-in user",
     };
 
     /// <summary>
-    /// Programs start through ProcessLauncher (System32 tools, no shell, hardened environment) and PowerShell command lines
-    /// come from PowerShellScript (-NoProfile always), so a new call site cannot forget either.
+    /// Programs start through ProcessLauncher (System32 tools, no shell, hardened environment) and PowerShell flags come only
+    /// from PowerShellScript (-NoProfile always): a ProcessStartInfo, a Process.Start or a PowerShell flag anywhere else
+    /// fails here.
     /// </summary>
     [Fact]
     public void ProcessesStartThroughTheLauncher()
@@ -87,16 +88,42 @@ public partial class ArchitectureTests
         var problems = new List<string>();
         foreach (var file in Directory.EnumerateFiles(Path.Combine(RepoPaths.Root, "src"), "*.cs", SearchOption.AllDirectories))
         {
-            if (file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)) continue;
+            if (IsBuildOutput(file)) continue;
             var name = Path.GetFileName(file);
             var text = File.ReadAllText(file);
             if (text.Contains("new ProcessStartInfo(", StringComparison.Ordinal) || text.Contains("new System.Diagnostics.ProcessStartInfo(", StringComparison.Ordinal))
                 if (!OwnStartInfo.ContainsKey(name)) problems.Add($"{name}: builds a ProcessStartInfo (use ProcessLauncher.Info)");
-            if (text.Contains("\"-NoProfile", StringComparison.Ordinal) && name != "PowerShellScript.cs")
+            if (ProcessStart().IsMatch(text) && !OwnStartInfo.ContainsKey(name)) problems.Add($"{name}: Process.Start (use ProcessLauncher.Start)");
+            if (PowerShellFlag().IsMatch(text) && name != "PowerShellScript.cs")
                 problems.Add($"{name}: writes PowerShell flags (use PowerShellScript)");
         }
         Assert.Empty(problems);
     }
+
+    /// <summary>The launcher guard finds a PowerShell flag without -NoProfile and a direct Process.Start, not a script's own parameters.</summary>
+    [Theory]
+    [InlineData("ProcessLauncher.Info(PowerShellScript.Exe, \"-ExecutionPolicy Bypass -Command \\\"Get-X\\\"\")", true, false)]
+    [InlineData("var args = \"-NonInteractive -EncodedCommand \" + encoded;", true, false)]
+    [InlineData("Process.Start(\"netsh.exe\", args);", false, true)]
+    [InlineData("System.Diagnostics.Process.Start(start);", false, true)]
+    [InlineData("PowerShellScript.Command(\"Get-ChildItem -File C:\\\\x | Select-Object -First 1\")", false, false)]
+    [InlineData("_launch.Start(InstallService.ExeStart(path, [SingleInstance.AfterUpdate]));", false, false)]
+    public void TheLauncherGuardFindsFlagsAndDirectStarts(string code, bool flag, bool start)
+    {
+        Assert.Equal(flag, PowerShellFlag().IsMatch(code));
+        Assert.Equal(start, ProcessStart().IsMatch(code));
+    }
+
+    /// <summary>A PowerShell flag in a string literal, at its start or after a space.</summary>
+    [GeneratedRegex(@"""[^""\r\n]*(?<![\w-])-(NoProfile|NonInteractive|EncodedCommand|ExecutionPolicy|Command)\b")]
+    private static partial Regex PowerShellFlag();
+
+    [GeneratedRegex(@"\bProcess\.Start\(")]
+    private static partial Regex ProcessStart();
+
+    private static bool IsBuildOutput(string file) =>
+        file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+        || file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal);
 
     /// <summary>App files allowed to write a file with File.WriteAll*, and why the path cannot be one someone else chose.</summary>
     private static readonly Dictionary<string, string> OwnFileWrites = new(StringComparer.Ordinal)
@@ -115,7 +142,7 @@ public partial class ArchitectureTests
         var problems = new List<string>();
         foreach (var file in Directory.EnumerateFiles(Path.Combine(RepoPaths.Root, "src", "Optimizer.App"), "*.cs", SearchOption.AllDirectories))
         {
-            if (file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)) continue;
+            if (IsBuildOutput(file)) continue;
             var name = Path.GetFileName(file);
             if (FileWriteAll().IsMatch(File.ReadAllText(file)) && !OwnFileWrites.ContainsKey(name))
                 problems.Add($"{name}: writes with File.WriteAll* (use SafeDelete.WriteReplacing)");
@@ -138,7 +165,7 @@ public partial class ArchitectureTests
         var problems = new List<string>();
         foreach (var file in Directory.EnumerateFiles(Path.Combine(RepoPaths.Root, "src"), "*.cs", SearchOption.AllDirectories))
         {
-            if (file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)) continue;
+            if (IsBuildOutput(file)) continue;
             var name = Path.GetFileName(file);
             var text = File.ReadAllText(file);
             if (name is not ("ChangeLock.cs" or "ChangeSession.cs") && LockTaken().IsMatch(text)) problems.Add($"{name}: takes the change lock (use ChangeSession.ExclusiveAsync)");
@@ -148,11 +175,29 @@ public partial class ArchitectureTests
         Assert.Empty(problems);
     }
 
-    [GeneratedRegex(@"\b(ChangeLock|changeLock|IChangeLock)\.TryAcquire\(|ChangeLock\.DataFolder\.TryAcquire\(")]
+    /// <summary>The change lock taken through any name that ends in ChangeLock (a field "_changeLock" too), or its data folder lock.</summary>
+    [GeneratedRegex(@"\b\w*[Cc]hangeLock(\.DataFolder)?\.TryAcquire\(")]
     private static partial Regex LockTaken();
 
-    [GeneratedRegex(@"\b[Ee]ngine\.(ApplyAsync|ApplyBatchAsync|Revert|RevertAll)\(")]
+    /// <summary>The engine's apply or undo through any name that ends in engine ("_engine", "tweakEngine").</summary>
+    [GeneratedRegex(@"\b\w*[Ee]ngine\.(ApplyAsync|ApplyBatchAsync|Revert|RevertAll)\(")]
     private static partial Regex EngineChange();
+
+    [Theory]
+    [InlineData("_engine.Revert(t)", false, true)]
+    [InlineData("await tweakEngine.ApplyAsync(t, facts, options)", false, true)]
+    [InlineData("Engine.RevertAll(progress)", false, true)]
+    [InlineData("_changeLock.TryAcquire(wait)", true, false)]
+    [InlineData("IChangeLock.TryAcquire(wait)", true, false)]
+    [InlineData("ChangeLock.DataFolder.TryAcquire(TimeSpan.Zero)", true, false)]
+    [InlineData("SingleInstance.TryAcquire()", false, false)]
+    [InlineData("Runner.ApplyAsync(t)", false, false)]
+    [InlineData("steps.Dism.ApplyAsync(esd, 1, m, p, ct)", false, false)]
+    public void TheSessionGuardFindsTheLockAndTheEngineByAnyName(string code, bool lockTaken, bool engineChange)
+    {
+        Assert.Equal(lockTaken, LockTaken().IsMatch(code));
+        Assert.Equal(engineChange, EngineChange().IsMatch(code));
+    }
 
     [Fact]
     public void PowerShellCommandLines()

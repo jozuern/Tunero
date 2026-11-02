@@ -49,8 +49,9 @@ public partial class App : Application
     /// <summary>
     /// Sign-out or shutdown during a change (a batch, an undo, a winget run, or a command line verb such as --undo-all,
     /// --reapply or --build-media): Windows is asked to wait, so the change does not stop halfway. Without the cancel
-    /// WPF ends the app at the query itself, even when another app then stops the shutdown. Windows shows the app in its
-    /// "waiting for apps" list, where the user can still go on.
+    /// WPF ends the app at the query itself, even when another app then stops the shutdown. The window lists the app in
+    /// Windows' "waiting for apps" screen, where the user can still go on. A command line run has no visible window, and
+    /// Windows ends such an app when it refuses: its <see cref="ShutdownBlock"/> names the reason, which keeps it running.
     /// </summary>
     protected override void OnSessionEnding(SessionEndingCancelEventArgs e)
     {
@@ -60,6 +61,20 @@ public partial class App : Application
             Optimizer.Core.Logging.Log.Warn("app", $"{e.ReasonSessionEnding} asked to wait: a change is running");
         }
         base.OnSessionEnding(e);
+    }
+
+    // The run goes on without the reason when the window cannot be made: a sign-out then ends it, as before.
+    private static ShutdownBlock? HoldShutdown()
+    {
+        try
+        {
+            return new ShutdownBlock(Loc.Instance["Cli_ShutdownBlocked"]);
+        }
+        catch (Exception ex)
+        {
+            Log.Warn("app", $"sign-out not held for the command line run: {ex.Message}");
+            return null;
+        }
     }
 
     protected override void OnStartup(StartupEventArgs e)
@@ -183,6 +198,7 @@ public partial class App : Application
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
             int exitCode;
             _commandLineRunning = true;
+            var block = HoldShutdown();
             try
             {
                 exitCode = await CommandLineVerbs.RunAsync(verb, args, services, _settings);
@@ -190,6 +206,7 @@ public partial class App : Application
             finally
             {
                 _commandLineRunning = false;
+                block?.Dispose();
             }
             Shutdown(exitCode);
             return;

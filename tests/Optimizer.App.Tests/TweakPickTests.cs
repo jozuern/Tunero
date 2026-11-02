@@ -31,6 +31,7 @@ public sealed class TweakPickTests
         var row = Row(NotBatchSafe, TweakState.NotApplied);
         Assert.Equal(PickKind.None, row.Pick);
         Assert.NotNull(row.PickNote);
+        Assert.True(row.HasPickBox); // off, with the reason as its tooltip
         row.IsPicked = true;
         Assert.False(row.IsPicked);
     }
@@ -40,6 +41,7 @@ public sealed class TweakPickTests
     {
         Assert.Equal(PickKind.Undo, Row(NotBatchSafe, TweakState.Applied, backup: true).Pick);
         Assert.Equal(PickKind.Undo, Row(BatchSafe, TweakState.RevertedByWindows, backup: true).Pick);
+        Assert.True(Row(NotBatchSafe, TweakState.Applied, backup: true).HasPickBox);
     }
 
     [Fact]
@@ -49,6 +51,9 @@ public sealed class TweakPickTests
         Assert.Equal(PickKind.None, row.Pick);
         Assert.Null(row.PickNote);
         Assert.Equal(PickKind.None, Row(BatchSafe, TweakState.NotApplicable).Pick);
+        // No check box that does nothing and says nothing.
+        Assert.False(row.HasPickBox);
+        Assert.False(Row(BatchSafe, TweakState.NotApplicable).HasPickBox);
     }
 
     [Fact]

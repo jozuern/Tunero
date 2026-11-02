@@ -192,7 +192,7 @@
                                     <StackPanel Grid.Column="1">
                                         <ui:TextBlock FontTypography="Body" Text="{Binding Title}" TextWrapping="Wrap" />
                                         <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding Reason}" TextWrapping="Wrap" />
-                                        <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Rec_AgainstOutside}" Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                        <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Rec_AgainstOutside}"
                                                       Visibility="{Binding SetOutside, Converter={StaticResource BoolToVisibility}}" />
                                     </StackPanel>
                                     <ui:Button Grid.Column="2" Content="{l:Tr Tweak_Undo}" Icon="{ui:SymbolIcon ArrowUndo20}" Margin="16,0,0,0" VerticalAlignment="Center" AutomationProperties.Name="{Binding UndoLabel}"

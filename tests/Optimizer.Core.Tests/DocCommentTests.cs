@@ -27,9 +27,10 @@ public partial class DocCommentTests
     [Theory]
     [InlineData("/// <summary>A.</summary>\n/// <summary>B.</summary>\nvoid M() { }", "1: two <summary> blocks on one member")]
     [InlineData("/// <summary>A.</summary>\n\n[Obsolete]\n// note\n/// <summary>B.</summary>\nvoid M() { }", "1: the summary is followed by another doc comment (line 5) before a declaration")]
+    [InlineData("/// <summary>\n/// A.\n/// </summary>\n/// B.\n/// </summary>\nvoid M() { }", "1: <summary> and </summary> do not pair up")]
     [InlineData("/// <summary>A.</summary>\n/// <param name=\"x\">X.</param>\nvoid M(int x) { }", null)]
     [InlineData("/// <summary>A.</summary>\n[ObservableProperty] private bool _a;\n\n/// <summary>B.</summary>\n[ObservableProperty] private bool _b;", null)]
-    public void TheRuleFindsAnOrphanAndADoubleSummary(string code, string? problem)
+    public void TheRuleFindsAnOrphanADoubleSummaryAndAStrayEnd(string code, string? problem)
     {
         var found = Problems(code.Split('\n')).ToList();
         if (problem is null) Assert.Empty(found);
@@ -53,7 +54,9 @@ public partial class DocCommentTests
             var start = i;
             while (i < lines.Count && IsDoc(lines[i])) i++;
             var block = string.Join("\n", lines.Skip(start).Take(i - start));
-            if (Regex.Matches(block, "<summary>").Count > 1) yield return $"{start + 1}: two <summary> blocks on one member";
+            var opened = Regex.Matches(block, "<summary>").Count;
+            if (opened > 1) yield return $"{start + 1}: two <summary> blocks on one member";
+            else if (Regex.Matches(block, "</summary>").Count != opened) yield return $"{start + 1}: <summary> and </summary> do not pair up";
             if (!block.Contains("</summary>", StringComparison.Ordinal)) continue;
             var next = i;
             while (next < lines.Count && IsBetween(lines[next])) next++;

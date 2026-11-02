@@ -105,13 +105,20 @@ public class BackupFormatTests
     ];
 
     /// <summary>
-    /// A real file in a Startup folder below the temp folder. The fixture stores <see cref="FixturePlaceholder"/> instead of
-    /// the temp folder of the PC that wrote it (no user name in the repository); <see cref="Swap"/> maps one to the other.
+    /// A real file in a Startup folder below the temp folder. The fixture stores <see cref="FixturePlaceholder"/> and
+    /// <see cref="ExportsPlaceholder"/> instead of the temp folders of the PC that wrote it (no user name in the repository);
+    /// <see cref="Swap"/> maps one to the other.
     /// </summary>
     private static string FixtureStartupFile => Path.Combine(FixtureRoot, @"Microsoft\Windows\Start Menu\Programs\Startup\Fixture.lnk");
 
     private static string FixtureRoot => Path.Combine(Path.GetTempPath(), "tunero-backup-fixture");
     private const string FixturePlaceholder = @"C:\TuneroBackupFixture";
+
+    /// <summary>Where the fixture says the BCD and power plan exports went (the test's backup folder in a temp folder). Undo deletes only exports in its own folder.</summary>
+    private const string ExportsPlaceholder = @"C:\TuneroBackupExports";
+
+    /// <summary>A backup file's text as the fixture stores it: no folder of the PC that wrote it.</summary>
+    private static string Anonymized(string text, EngineFixture fx) => Swap(Swap(text, FixtureRoot, FixturePlaceholder), fx.BackupRoot, ExportsPlaceholder);
 
     /// <summary>Replaces a folder in the backup's text: plain, JSON-escaped and escaped twice (the stored action), each also in lower case (target keys).</summary>
     private static string Swap(string text, string from, string to)
@@ -183,7 +190,7 @@ public class BackupFormatTests
             var r = await fx.Engine.ApplyAsync(t, Facts, Options);
             Assert.True(r.Outcome is ApplyOutcome.Applied or ApplyOutcome.AppliedIneffective, $"{s.Name}: {r.Outcome} {r.Error}");
             var file = Path.Combine(folder, s.Name + ".json");
-            if (!File.Exists(file)) File.WriteAllText(file, Swap(File.ReadAllText(Path.Combine(fx.Store.BackupFolder, s.Id + ".json")), FixtureRoot, FixturePlaceholder));
+            if (!File.Exists(file)) File.WriteAllText(file, Anonymized(File.ReadAllText(Path.Combine(fx.Store.BackupFolder, s.Id + ".json")), fx));
         }
 
         // An undo whose value takes effect after a restart is kept as a pending undo.
@@ -196,7 +203,7 @@ public class BackupFormatTests
             fx.Processes.Restart();
             Assert.True(fx.Engine.Revert(t).Success);
             var file = Path.Combine(folder, "pending-undo.memoryCompression.json");
-            if (!File.Exists(file)) File.Copy(Path.Combine(fx.Store.PendingUndoFolder, pendingScenario.Id + ".json"), file);
+            if (!File.Exists(file)) File.WriteAllText(file, Anonymized(File.ReadAllText(Path.Combine(fx.Store.PendingUndoFolder, pendingScenario.Id + ".json")), fx));
         }
     }
 

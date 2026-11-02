@@ -130,8 +130,8 @@ public sealed class InstallService(string runningExe, AppSettings settings, Acti
     }
 
     /// <summary>
-    /// The start of a Tunero exe the setup put in place (or of this one again, <see cref="FirstSignInStart"/>): no shell, and
-    /// none of the variables that load code into a process.
+    /// The start of a Tunero exe the setup or the self-update put in place (or of this one again, <see cref="FirstSignInStart"/>):
+    /// no shell, and none of the variables that load code into a process.
     /// </summary>
     internal static System.Diagnostics.ProcessStartInfo ExeStart(string exe, IEnumerable<string> arguments)
     {

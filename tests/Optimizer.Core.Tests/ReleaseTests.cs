@@ -121,10 +121,15 @@ public class ReleaseTests
         Assert.Equal(256, key.KeySize);
     }
 
-    /// <summary>The offline backup key (when present) is a P-256 key of its own, and a release signed with it is accepted.</summary>
+    /// <summary>
+    /// Every build carries the offline backup key, a P-256 key of its own: a version can only accept a key it already
+    /// carries, and the csproj embeds the file only when it exists, so a moved or renamed file would drop it silently.
+    /// </summary>
     [Fact]
     public void TheBackupKeyIsAnotherP256Key()
     {
+        Assert.True(UpdateSignature.PublicKeyPems.Count == 2, "src/Optimizer.Core/Updates/update-key-backup.pem is not embedded (scripts/new-update-key.ps1 -Backup)");
+        Assert.Equal(UpdateSignature.PublicKeyPem, UpdateSignature.PublicKeyPems[0]);
         Assert.All(UpdateSignature.PublicKeyPems, pem =>
         {
             using var key = System.Security.Cryptography.ECDsa.Create();

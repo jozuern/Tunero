@@ -182,6 +182,12 @@ public sealed class TweakItemViewModel : InspectorItem
 
     public bool CanPick => Pick != PickKind.None;
 
+    /// <summary>
+    /// Select mode shows a check box only where it does something or says why it cannot (<see cref="PickNote"/>): a row
+    /// that is on outside this app or does not apply here keeps an empty space instead, so the titles stay in one column.
+    /// </summary>
+    public bool HasPickBox => CanPick || PickNote is not null;
+
     /// <summary>Tweaks page in Select mode: the row shows its check box (the switch stays).</summary>
     public bool ShowPick
     {

@@ -33,6 +33,8 @@
 - **Inking and typing personalization off** is rated Moderate, is marked Permanent and says up front that it deletes the personal dictionary, which Undo does not bring back.
 - **Silent app installs off** no longer sets three undocumented Preinstalled values that no source carries; the Windows Search tweak is called Windows Search: web search and location policies.
 - **Markdig 1.5.0** for the explanation pages.
+- **Setting switches** read "Off" left of the switch, as in Windows Settings, so the switch ends at the card's edge; "Set outside Tunero" and a check's status line use the easier to read secondary text color.
+- **Tweaks:** in Select mode, rows that cannot be picked for no reason worth showing (on outside Tunero, not for this PC) show no check box that does nothing.
 
 ### Fixed
 
@@ -67,7 +69,7 @@
 - **Conflicts:** two changes that write the same setting (a registry value, an NVIDIA driver setting, one side of a power setting) now conflict even without a declared conflict, so batch applies, Undo all and the "changes reset" notice stay right.
 - **NVIDIA global settings:** with G-SYNC and V-Sync forced on, the quick fix sets the frame rate limit 3 FPS below the refresh rate instead of removing it.
 - **Apply again before a restart** no longer reports a failure when another program holds the undo record; the change is in place.
-- **Command line:** a sign-out or shutdown during `--apply`, `--undo-all`, the sign-in reapply task or `--build-media` no longer ends it halfway; Windows waits, as for changes made in the window.
+- **Command line:** a sign-out or shutdown during `--apply`, `--undo-all`, the sign-in reapply task or `--build-media` no longer ends it halfway; Windows waits and says "Tunero is still working", as for changes made in the window.
 - **Install media:** an app that installs at the first sign-in no longer reports winget 0x00041303 while its one-time task still waits to start.
 - **Two copies:** a copy under another file name, such as `Tunero (1).exe`, no longer unloads the Default profile or install media hives of a copy that still runs.
 - **Undo:** a registry key that Tunero could delete only in part (a subkey Windows protects) comes back in full on Undo. Before, Undo took what was left for a key Windows had made again, reported success and did not restore the deleted values.
@@ -77,7 +79,7 @@
 - **Screen readers:** the result of a change, a cleanup or another task is read out also when the result bar had closed by itself before.
 - **Remove apps:** the warning for an app that is not on the reviewed list says that its data in every account goes with it (for a Linux distribution of WSL: all its files).
 - **Startup:** the CSV export uses the separator Excel expects for your regional settings, also when the app language differs from them (an English app on German regional settings).
-- **Apply my changes again:** a change you turned back in Windows yourself, after a Windows update had left it in place, stays turned back. Before, the task applied it again at every sign-in and the Changes page blamed the update.
+- **Apply my changes again:** a change you turned back in Windows yourself, after a Windows update had left it in place, stays turned back. Before, the task applied it again at every sign-in and the Changes page blamed the update. The task now also applies the mains and battery side of one power setting again, and skips only changes the apply itself would refuse.
 - **DNS servers: automatic** leaves network adapters with a fixed IP address alone. Before, it cleared their DNS servers, and no router hands them new ones.
 - **Uninstall leftovers:** a folder another installed program still uses is not offered when its uninstall entry or service names it with an 8.3 short name (`C:\PROGRA~2\...`).
 - **Update in the app:** works for a Tunero.exe in a drive root, such as a USB stick. A failed update no longer leaves the downloaded copy (`Tunero.exe.new`) beside the exe.
@@ -87,6 +89,7 @@
 - **Install & update:** an Update all or Update that cannot start while another change runs keeps the result of Check for updates. Refresh or a language switch during an install keeps the row's progress and result.
 - **Exports** (changes, Startup list, install media choices) replace the chosen file without following a link put in its place. A folder reached through a link is refused with a message that says so; choose the folder it points to.
 - **Screen readers:** Undo, Apply again, Details, Remove and Reinstall in lists name their item.
+- **Tabs** no longer make the search and sort boxes of the selected tab bold; sizes under 1 KB read 1 KB instead of "0 KB"; screen readers name the component list of the Licenses window.
 
 ## 1.5.0
 

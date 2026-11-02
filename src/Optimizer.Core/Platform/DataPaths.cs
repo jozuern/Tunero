@@ -109,9 +109,10 @@ public static class AppInfo
 /// <summary>Sizes as people read them.</summary>
 public static class ByteSize
 {
-    /// <summary>"1.5 GB", "512 MB", "12 KB".</summary>
+    /// <summary>"1.5 GB", "512 MB", "12 KB". Less than 1 KB that is not nothing reads as 1 KB, as in File Explorer, so a file is never "0 KB".</summary>
     public static string Format(long bytes) =>
         bytes >= 1L << 30 ? $"{bytes / (double)(1L << 30):0.#} GB"
         : bytes >= 1L << 20 ? $"{bytes / (double)(1L << 20):0} MB"
+        : bytes is > 0 and < 1024 ? "1 KB"
         : $"{bytes / 1024.0:0} KB";
 }

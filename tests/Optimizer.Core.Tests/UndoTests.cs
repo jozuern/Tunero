@@ -527,6 +527,7 @@ public class UndoTests
 
         Assert.True(fx.Engine.Revert(t).Success);
         Assert.Null(fx.Store.Get(t.Id));
+        Assert.False(fx.Services.Start.ContainsKey("OldSvc"));
     }
 }
 

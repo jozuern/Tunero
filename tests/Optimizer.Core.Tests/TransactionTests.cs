@@ -344,6 +344,7 @@ public class TransactionTests
         fx.Displays.Refresh.Remove(@"\\.\DISPLAY1"); // monitor unplugged
         Assert.True(fx.Engine.Revert(t).Success);
         Assert.Null(fx.Store.Get(t.Id));
+        Assert.False(fx.Displays.Refresh.ContainsKey(@"\\.\DISPLAY1"));
     }
 
     [Fact]

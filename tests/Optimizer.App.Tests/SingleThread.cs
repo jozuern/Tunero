@@ -57,12 +57,17 @@ internal sealed class SingleThread : SynchronizationContext
         }
     }
 
-    /// <summary>Waits on this thread (posted continuations keep running) until <paramref name="condition"/> holds, at most 10 seconds.</summary>
+    /// <summary>
+    /// Waits on this thread (posted continuations keep running) until <paramref name="condition"/> holds, at most 10 seconds
+    /// of real time: a 5 ms delay lasts a whole timer tick (about 15.6 ms), so counting delays would wait three times as long
+    /// and let <see cref="Run"/>'s deadline end the test first, without naming what it waited for.
+    /// </summary>
     public static async Task Until(Func<bool> condition, string what)
     {
-        for (var waited = 0; !condition(); waited += 5)
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        while (!condition())
         {
-            if (waited > 10_000) throw new TimeoutException($"waited 10 seconds for {what}");
+            if (watch.Elapsed > TimeSpan.FromSeconds(10)) throw new TimeoutException($"waited 10 seconds for {what}");
             await Task.Delay(5);
         }
     }

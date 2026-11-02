@@ -193,16 +193,8 @@ public class ReapplyTaskTests
         Assert.Equal(fx.Engine.WindowsVersion, fx.Store.Get(t.Id)!.KeptOnVersion);
     }
 
-    private static TweakDefinition Writes(string id, int value) => new()
-    {
-        Id = id,
-        Docs = id,
-        Category = "Test",
-        Impact = new ImpactInfo { Gaming = 0, Basis = "situational", Effect = ["none"] },
-        Risk = Risk.Safe,
-        Hidden = true,
-        Actions = [new RegistryAction { Hive = Hive.Machine, Path = @"SOFTWARE\TuneroTest", Name = "Shared", Kind = "dword", Value = JsonSerializer.SerializeToElement(value) }],
-    };
+    private static TweakDefinition Writes(string id, int value) =>
+        Test(id, new RegistryAction { Hive = Hive.Machine, Path = @"SOFTWARE\TuneroTest", Name = "Shared", Kind = "dword", Value = JsonSerializer.SerializeToElement(value) });
 
     /// <summary>
     /// Two changes that write one target differently (backups from before the conflict check by shared target, which now
@@ -225,6 +217,81 @@ public class ReapplyTaskTests
         UpdatedSince(fx, "test.one");
         UpdatedSince(fx, "test.zero");
         Assert.DoesNotContain(fx.Engine.CheckDrift(Facts()), d => d.Tweak.Id == "test.one");
+        Assert.Same(BatchOutcome.Cancelled, await session.ReapplyResetAsync(new PcSnapshot(Facts(), [], new HashSet<string>(), [])));
+    }
+
+    private static TweakDefinition Test(string id, TweakAction action) => new()
+    {
+        Id = id,
+        Docs = id,
+        Category = "Test",
+        Impact = new ImpactInfo { Gaming = 0, Basis = "situational", Effect = ["none"] },
+        Risk = Risk.Safe,
+        Hidden = true,
+        Actions = [action],
+    };
+
+    private static PowerSettingAction Boost(uint? ac, uint? dc) =>
+        new() { Subgroup = "54533251-82be-4824-96c1-47b60b740d00", Setting = "be337238-0d82-4146-a960-4f3749d470c7", Ac = ac, Dc = dc };
+
+    /// <summary>
+    /// A mains-only and a battery-only change of one power setting on one plan do not conflict (the apply allows both):
+    /// both reset by an update, the run applies both again, as "Apply again" in the window does.
+    /// </summary>
+    [Fact]
+    public async Task TheMainsAndTheBatterySideOfOneSettingAreBothAppliedAgain()
+    {
+        using var fx = new EngineFixture();
+        fx.RestorePoints.Enabled = false;
+        var session = new ChangeSession(fx.Engine, fx.RestorePoints, fx.ChangeLock);
+        var options = new ApplyOptions { ContinueWithoutRestorePoint = true };
+        var mains = Test("test.boostAc", Boost(0, null));
+        var battery = Test("test.boostDc", Boost(null, 0));
+        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(mains, Facts(), options)).Outcome);
+        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(battery, Facts(), options)).Outcome);
+        // Both backups name the setting by one key without its side.
+        Assert.Equal(fx.Store.Get(mains.Id)!.Entries.Single().TargetKey, fx.Store.Get(battery.Id)!.Entries.Single().TargetKey);
+
+        // A feature update puts the plan back to its defaults.
+        fx.Power.Ac.Clear();
+        fx.Power.Dc.Clear();
+        UpdatedSince(fx, mains.Id);
+        UpdatedSince(fx, battery.Id);
+
+        var outcome = await session.ReapplyResetAsync(new PcSnapshot(Facts(), [], new HashSet<string>(), []));
+        Assert.Equal(2, outcome.Applied);
+        Assert.Equal(0, outcome.Failed);
+        Assert.Equal(TweakState.Applied, fx.Engine.DetectState(mains, Facts()));
+        Assert.Equal(TweakState.Applied, fx.Engine.DetectState(battery, Facts()));
+    }
+
+    /// <summary>
+    /// A whole value and a bit of it, both applied by an earlier version: the apply refuses each for the other, so the run
+    /// leaves both for the user instead of failing at every sign-in.
+    /// </summary>
+    [Fact]
+    public async Task AValueAndABitOfItAreLeftForTheUser()
+    {
+        using var fx = new EngineFixture();
+        fx.RestorePoints.Enabled = false;
+        var session = new ChangeSession(fx.Engine, fx.RestorePoints, fx.ChangeLock);
+        var options = new ApplyOptions { ContinueWithoutRestorePoint = true };
+        var whole = Test("test.flagsWhole", new RegistryAction { Hive = Hive.Machine, Path = @"SOFTWARE\TuneroTest", Name = "Flags", Kind = "dword", Value = JsonSerializer.SerializeToElement(1) });
+        var bit = Test("test.flagsBit", new RegistryBitsAction { Hive = Hive.Machine, Path = @"SOFTWARE\TuneroTest", Name = "Flags", Set = 0x4 });
+        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(whole, Facts(), options)).Outcome);
+        Assert.Equal(ApplyOutcome.Blocked, (await fx.Engine.ApplyAsync(bit, Facts(), options)).Outcome);
+        // The state an earlier version could leave: both applied.
+        var first = fx.Store.Get(whole.Id)!;
+        fx.Store.Archive(whole.Id);
+        Assert.Equal(ApplyOutcome.Applied, (await fx.Engine.ApplyAsync(bit, Facts(), options)).Outcome);
+        fx.Store.Save(first);
+        Assert.NotEqual(fx.Store.Get(whole.Id)!.Entries.Single().TargetKey, fx.Store.Get(bit.Id)!.Entries.Single().TargetKey);
+
+        RegistryValue.Delete(fx.Registry, Hive.Machine, @"SOFTWARE\TuneroTest", "Flags");
+        UpdatedSince(fx, whole.Id);
+        UpdatedSince(fx, bit.Id);
+        Assert.Contains(fx.Engine.CheckDrift(Facts()), d => d.WindowsUpdatedSince);
+
         Assert.Same(BatchOutcome.Cancelled, await session.ReapplyResetAsync(new PcSnapshot(Facts(), [], new HashSet<string>(), [])));
     }
 }
