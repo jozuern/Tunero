@@ -154,9 +154,16 @@ public class DiskTreeTests
         Assert.Equal(FileGroup.Other, t.Group(odd));
         Assert.Equal(FileGroup.Other, t.Group(t.Root));
 
-        var before = GC.GetAllocatedBytesForCurrentThread();
-        for (var k = 0; k < 1000; k++) { t.Group(mp4); t.Group(none); t.Group(odd); }
-        Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - before);
+        // The lowest of three rounds after a warm-up: a one-time allocation of the runtime on this thread (tiered
+        // compilation swapping the loop's code during a parallel test run) lands in one round, one of Group in every round.
+        long Round()
+        {
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            for (var k = 0; k < 1000; k++) { t.Group(mp4); t.Group(none); t.Group(odd); }
+            return GC.GetAllocatedBytesForCurrentThread() - before;
+        }
+        Round();
+        Assert.Equal(0, Enumerable.Range(0, 3).Min(_ => Round()));
     }
 
     [Fact]
