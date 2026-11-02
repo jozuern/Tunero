@@ -12,7 +12,7 @@ internal static class TaskSchedulerCom
 {
     // taskschd.h
     public const int EnumHidden = 1, CreateOrUpdate = 6, LogonInteractiveToken = 3, RunLevelLua = 0;
-    public const int TriggerBoot = 8, TriggerLogon = 9, ActionExec = 0;
+    public const int TriggerBoot = 8, TriggerLogon = 9, ActionExec = 0, ActionComHandler = 5;
 
     // TASK_STATE
     public const int StateQueued = 2, StateReady = 3, StateRunning = 4;
@@ -152,6 +152,15 @@ internal static class TaskSchedulerCom
         int Type { get; }
         string? Path { [return: MarshalAs(UnmanagedType.BStr)] get; [param: MarshalAs(UnmanagedType.BStr)] set; }
         string? Arguments { [return: MarshalAs(UnmanagedType.BStr)] get; [param: MarshalAs(UnmanagedType.BStr)] set; }
+    }
+
+    /// <summary>An action of type <see cref="ActionComHandler"/>; IAction's members come first.</summary>
+    [ComImport, Guid("6D2FD252-75C5-4F66-90BA-2A7D8CC3039F"), InterfaceType(ComInterfaceType.InterfaceIsDual)]
+    public interface IComHandlerAction
+    {
+        string? Id { [return: MarshalAs(UnmanagedType.BStr)] get; [param: MarshalAs(UnmanagedType.BStr)] set; }
+        int Type { get; }
+        string? ClassId { [return: MarshalAs(UnmanagedType.BStr)] get; [param: MarshalAs(UnmanagedType.BStr)] set; }
     }
 
     [ComImport, Guid("D98D51E5-C9B4-496A-A9C1-18980261CF0F"), InterfaceType(ComInterfaceType.InterfaceIsDual)]

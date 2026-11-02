@@ -1,7 +1,7 @@
-# Dienst eines anderen Herstellers beim Start (Experte)
+# Dienst beim Start
 
 ## Zusammenfassung
-Lässt diesen Dienst eines anderen Herstellers bei Bedarf (Manuell) statt mit Windows starten.
+Lässt diesen Dienst bei Bedarf (Manuell) statt mit Windows starten. Einen Windows-Dienst nur, wo Tunero ihn erklärt.
 
 ## So funktioniert es
 Der Starttyp wird im Dienststeuerungs-Manager auf Manuell gestellt [1]; der Dienst wird nicht deaktiviert, sein Programm kann ihn weiterhin starten. Rückgängig machen stellt den vorherigen Starttyp wieder her.

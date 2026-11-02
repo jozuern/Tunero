@@ -18,20 +18,24 @@ namespace Optimizer.App.ViewModels;
 public sealed partial class StartupRow : SwitchRow
 {
     // What screen readers announce for this item in a list or combo box.
-    public override string ToString() => Name;
+    public override string ToString() => DisplayName;
 
     private readonly AppServices _services;
     private readonly ChangeRunner _runner;
     private readonly Action<bool>? _switched;
 
     /// <param name="switched">Called with the new state once a switch was written (a page that rebuilds its rows from its own list keeps that list current).</param>
-    public StartupRow(StartupEntry entry, string lang, AppServices services, ChangeRunner runner, Action<bool>? switched = null) : base(entry.Enabled ?? true)
+    /// <param name="expertMode">Expert mode is on: a switch that makes an Expert change is shown (<see cref="SetExpertMode"/> follows it).</param>
+    public StartupRow(StartupEntry entry, string lang, AppServices services, ChangeRunner runner, Action<bool>? switched = null, bool expertMode = false) : base(entry.Enabled ?? true)
     {
         _services = services;
         _runner = runner;
         _switched = switched;
+        _expertMode = expertMode;
         Entry = entry;
         Tab = StartupViewModel.TabOf(entry);
+        IsOwnTask = entry.Kind == StartupKind.LogonTask && ReapplyTask.IsOwnTask(entry.Target ?? "");
+        DisplayName = IsOwnTask ? Loc.Instance["Startup_OwnTaskName"] : entry.Name;
         // A task on Apps at sign-in names its trigger: next to the tab of the other tasks it would look misfiled.
         KindText = Tab == StartupTab.SignIn && entry.Kind == StartupKind.LogonTask ? SignInTaskText(entry)
             : Labels.Current.Get(lang, $"startupKind.{entry.Kind}");
@@ -41,12 +45,39 @@ public sealed partial class StartupRow : SwitchRow
         OnText = service ? Labels.Current.Get(lang, $"serviceStart.{ServiceStart.Automatic}") : Loc.Instance["Startup_Enabled"];
         OffText = service ? Labels.Current.Get(lang, $"serviceStart.{ServiceStart.Manual}") : Loc.Instance["Startup_Disabled"];
         SwitchTip = service ? Loc.Instance["Startup_ServiceSwitchTip"] : null;
-        _switchable = entry.Enabled is not null && StartupTweaks.Set(entry, !(entry.Enabled ?? true)) is not null;
+        var change = entry.Enabled is null ? null : StartupTweaks.Set(entry, !(entry.Enabled ?? true));
+        _switchable = change is not null;
+        NeedsExpertMode = change?.EffectiveRisk == Risk.Expert;
         // Until the signature is read, a service counts as Windows' own.
         UpdateCanToggle(microsoftOrUnknown: true);
     }
 
     private readonly bool _switchable;
+
+    /// <summary>The switch makes an Expert change (removing a program redirect): hidden while Expert mode is off, with a note why.</summary>
+    public bool NeedsExpertMode { get; }
+
+    private bool _expertMode;
+
+    /// <summary>The last signature rule <see cref="UpdateCanToggle"/> was given, kept for a change of Expert mode.</summary>
+    private bool _microsoftOrUnknown = true;
+
+    /// <summary>Expert mode was turned on or off: an Expert switch shows or hides at once.</summary>
+    public void SetExpertMode(bool on)
+    {
+        if (_expertMode == on) return;
+        _expertMode = on;
+        UpdateCanToggle(_microsoftOrUnknown);
+    }
+
+    /// <summary>
+    /// Tunero's own task (Apply my changes again): named in words instead of its task path with the account's SID, and
+    /// turned on and off in Settings, which the row links to (<see cref="ReapplyTask.IsOwnTask"/>).
+    /// </summary>
+    public bool IsOwnTask { get; }
+
+    /// <summary>The name on the card; <see cref="Name"/> stays the entry's real name for the search, the export and the snapshot.</summary>
+    public string DisplayName { get; }
 
     private static string SignInTaskText(StartupEntry e) => Loc.Instance[e.AtBootOnly ? "Startup_PlainTaskAtBoot" : "Startup_PlainTask"];
 
@@ -61,14 +92,22 @@ public sealed partial class StartupRow : SwitchRow
     /// <summary>
     /// A service follows the Services page's rule (<see cref="ServiceRow.EditFor"/>): Windows' own services only when the
     /// service catalog explains that Manual is fine, so Dhcp or the firewall cannot be switched off here. A service this
-    /// page set to Manual can always be switched back.
+    /// page set to Manual can always be switched back. An Expert switch shows only in Expert mode. Without a switch the
+    /// row still says whether the entry runs, in the switch's words, and below why there is no switch.
     /// </summary>
     private void UpdateCanToggle(bool microsoftOrUnknown)
     {
-        CanToggle = _switchable && (Entry.Kind != StartupKind.Service || Entry.Enabled == false
+        _microsoftOrUnknown = microsoftOrUnknown;
+        var allowed = _switchable && (Entry.Kind != StartupKind.Service || Entry.Enabled == false
             || ServiceRow.EditFor(CatalogData.Current.Services.Find(Entry.Target ?? ""), microsoftOrUnknown) != ServiceEdit.ReadOnly);
-        ReadOnlyNote = CanToggle ? null : Loc.Instance["Startup_ReadOnly"];
+        CanToggle = allowed && (!NeedsExpertMode || _expertMode);
+        ReadOnlyState = CanToggle || Entry.Enabled is null ? null : IsOn ? OnText : OffText;
+        ReadOnlyNote = CanToggle || IsOwnTask ? null : Loc.Instance[allowed ? "Startup_NeedsExpert" : "Startup_ReadOnly"];
+        ReadOnlyTip = Loc.Instance[allowed ? "Startup_NeedsExpertTip" : "Startup_ReadOnlyTip"];
     }
+
+    /// <summary>Enabled or Disabled (Automatic or Manual for a service) where a row has no switch but a state; null otherwise.</summary>
+    [ObservableProperty] private string? _readOnlyState;
 
     public StartupEntry Entry { get; }
     public string Name => Entry.Name;
@@ -76,8 +115,8 @@ public sealed partial class StartupRow : SwitchRow
     /// <summary>A registry value Autoruns-style Delete can remove, with a backup (<see cref="StartupTweaks.Delete"/>).</summary>
     public bool CanDelete => StartupTweaks.Delete(Entry) is not null;
 
-    public string DeleteLabel => Loc.Instance.Format("Startup_DeleteName", Name);
-    public string MoreOptionsLabel => Loc.Instance.Format("Startup_MoreOptionsName", Name);
+    public string DeleteLabel => Loc.Instance.Format("Startup_DeleteName", DisplayName);
+    public string MoreOptionsLabel => Loc.Instance.Format("Startup_MoreOptionsName", DisplayName);
 
     /// <summary>The tab the entry is listed on; fixed by its kind (and for a task, its trigger).</summary>
     public StartupTab Tab { get; }
@@ -107,6 +146,12 @@ public sealed partial class StartupRow : SwitchRow
     public string Location => Entry.Location;
     public string? Command => Entry.Command;
     [ObservableProperty] private string? _readOnlyNote;
+
+    /// <summary>
+    /// The note's tooltip, in step with it: an Expert switch says Expert mode brings it, every other row that Tunero
+    /// does not switch it at all.
+    /// </summary>
+    [ObservableProperty] private string _readOnlyTip = "";
     public bool Suspicious => Entry.Suspicious;
 
     /// <summary>
@@ -302,8 +347,10 @@ public sealed partial class StartupViewModel(IPageHost owner, AppServices servic
     private async Task ShowAsync(IReadOnlyList<StartupEntry> entries)
     {
         var lang = Lang;
+        WatchExpertMode();
+        var expert = Owner.ExpertMode;
         // A switch changes what the summary counts as turned off: it follows at once, without building the rows again.
-        _all = entries.Select(e => new StartupRow(e, lang, services, runner, _ => UpdateSummary())).ToList();
+        _all = entries.Select(e => new StartupRow(e, lang, services, runner, _ => UpdateSummary(), expert)).ToList();
         // Services and drivers are found on Services & tasks; here only what the Startup page is for.
         services.Search.UpdateRuntime(Optimizer.Core.Search.SearchKind.StartupEntry,
             _all.Where(r => r.Entry.Kind is not (StartupKind.Service or StartupKind.Driver)).Select(r => ("Startup", r.Name, r.Name, r.MetaText)));
@@ -328,9 +375,25 @@ public sealed partial class StartupViewModel(IPageHost owner, AppServices servic
         Filter();
     }
 
+    private bool _watchingExpertMode;
+
+    /// <summary>Expert mode turned on or off in Settings: the rows' Expert switches (program redirects) follow without a new scan.</summary>
+    private void WatchExpertMode()
+    {
+        if (_watchingExpertMode || Owner is not System.ComponentModel.INotifyPropertyChanged host) return;
+        _watchingExpertMode = true;
+        host.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName != nameof(IPageHost.ExpertMode)) return;
+            var expert = Owner.ExpertMode;
+            foreach (var r in _all) r.SetExpertMode(expert);
+        };
+    }
+
     /// <summary>Shows these rows as a finished load does, with their signatures already set (tests).</summary>
     internal void ShowRows(IEnumerable<StartupRow> rows)
     {
+        WatchExpertMode();
         _all = [.. rows];
         UpdateAdvancedKinds();
         Filter();
@@ -388,7 +451,7 @@ public sealed partial class StartupViewModel(IPageHost owner, AppServices servic
     /// <summary>The search, Show Windows entries, Only new and Only attention; the tab and the Advanced kind are not part of it.</summary>
     private bool Passes(StartupRow r, string q) =>
         (ShowMicrosoft || !r.IsPlainMicrosoft) && (!OnlyNew || r.IsNew) && (!OnlyAttention || r.NeedsAttention)
-        && (q.Length == 0 || r.Name.Contains(q, StringComparison.CurrentCultureIgnoreCase)
+        && (q.Length == 0 || r.Name.Contains(q, StringComparison.CurrentCultureIgnoreCase) || r.DisplayName.Contains(q, StringComparison.CurrentCultureIgnoreCase)
             || r.Command?.Contains(q, StringComparison.OrdinalIgnoreCase) == true || r.Location.Contains(q, StringComparison.OrdinalIgnoreCase)
             || r.MetaText.Contains(q, StringComparison.CurrentCultureIgnoreCase)
             || r.AttentionTags.Any(t => t.Contains(q, StringComparison.CurrentCultureIgnoreCase)));
@@ -422,6 +485,7 @@ public sealed partial class StartupViewModel(IPageHost owner, AppServices servic
         OnPropertyChanged(nameof(ServicesHintText));
         OnPropertyChanged(nameof(ShowServicesHint));
         OnPropertyChanged(nameof(IsAdvancedTab));
+        OnPropertyChanged(nameof(TabHintText));
     }
 
     /// <summary>
@@ -463,11 +527,12 @@ public sealed partial class StartupViewModel(IPageHost owner, AppServices servic
         }, total);
         List<string> parts = [];
         // Leads with what the list shows, so it matches the header, and then names the total only there:
-        // "Showing 4 of 51. 16 are turned off." instead of "51 apps start at sign-in" a second time.
+        // "Showing 4 of 51. Of all 51, 16 are turned off." instead of "51 apps start at sign-in" a second time. Turned
+        // off counts the whole tab, also entries the filters hide, and says so.
         if (!checking && hidden > 0)
         {
             parts.Add(Loc.Instance.Format("Startup_Showing", total - hidden, total));
-            if (off > 0) parts.Add(Loc.Instance.Format(off == 1 ? "Startup_OffOne" : "Startup_Off", off));
+            if (off > 0) parts.Add(off == 1 ? Loc.Instance.Format("Startup_OffOne", total) : Loc.Instance.Format("Startup_Off", off, total));
         }
         else
             parts.Add(off == 0 ? Loc.Instance.Format("Startup_SummaryCount", count)
@@ -493,6 +558,17 @@ public sealed partial class StartupViewModel(IPageHost owner, AppServices servic
     }
 
     public bool IsAdvancedTab => CurrentTab == StartupTab.Advanced;
+
+    /// <summary>
+    /// The info line under the card on the tabs whose entries are listed only: what the Advanced places are, and why
+    /// drivers have no switch. Null on the other tabs.
+    /// </summary>
+    public string? TabHintText => CurrentTab switch
+    {
+        StartupTab.Advanced => Loc.Instance["Startup_AdvancedHint"],
+        StartupTab.Drivers => Loc.Instance["Startup_DriversHint"],
+        _ => null,
+    };
 
     public bool ShowServicesHint => ServicesHintTab >= 0;
 

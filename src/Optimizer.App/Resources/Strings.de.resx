@@ -426,7 +426,12 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Startup_ReadOnly" xml:space="preserve">
     <value>Nur Anzeige</value>
   </data>
-  <data name="Startup_ReadOnlyTip" xml:space="preserve"><value>Tunero schaltet diesen Eintrag nicht. Unter Weitere Optionen kannst du die Datei zeigen oder den Ort kopieren.</value></data>
+  <data name="Startup_NeedsExpert" xml:space="preserve"><value>Braucht den Expertenmodus</value></data>
+  <data name="Startup_NeedsExpertTip" xml:space="preserve"><value>Eine Expertenänderung: Schalte in den Einstellungen den Expertenmodus ein, um diesen Eintrag ein- oder auszuschalten.</value></data>
+  <data name="Startup_ReadOnlyTip" xml:space="preserve"><value>Tunero schaltet diesen Eintrag nicht ein oder aus. Unter Weitere Optionen kannst du den Dateipfad öffnen oder den Ort des Eintrags kopieren.</value></data>
+  <data name="Startup_OwnTaskName" xml:space="preserve"><value>Tunero: Meine Änderungen erneut anwenden</value></data>
+  <data name="Startup_OwnTaskLink" xml:space="preserve"><value>In den Einstellungen</value></data>
+  <data name="Startup_OwnTaskTip" xml:space="preserve"><value>Die eigene Aufgabe von Tunero. Schalte sie in den Einstellungen mit Meine Änderungen erneut anwenden ein oder aus.</value></data>
   <data name="Vt_Check" xml:space="preserve">
     <value>Mit VirusTotal prüfen</value>
   </data>
@@ -474,7 +479,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
     <value>Alle Windows-Dienste zeigen</value>
   </data>
   <data name="Svc_Rules" xml:space="preserve">
-    <value>Windows-Dienste lassen sich hier nicht ändern, außer die App erklärt sie; dann wird nur Manuell angeboten. Dienste anderer Hersteller lassen sich auf Manuell oder Deaktiviert stellen.</value>
+    <value>Windows-Dienste lassen sich hier nicht ändern, außer Tunero erklärt sie; dann wird nur Manuell angeboten. Dienste anderer Hersteller lassen sich auf jeden Starttyp stellen.</value>
   </data>
   <data name="Svc_ReadOnly" xml:space="preserve">
     <value>Hier nicht änderbar</value>
@@ -1281,8 +1286,8 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Startup_SnapshotDiff" xml:space="preserve"><value>Verglichen mit dem Stand vom {0}: {1} neu oder geändert, {2} entfernt.</value></data>
   <data name="Startup_SnapshotRemoved" xml:space="preserve"><value>Entfernt: {0}</value></data>
   <data name="Startup_New" xml:space="preserve"><value>Neu seit dem Stand</value></data>
-  <data name="Startup_ShowFile" xml:space="preserve"><value>Datei zeigen</value></data>
-  <data name="Startup_CopyLocation" xml:space="preserve"><value>Ort kopieren</value></data>
+  <data name="Startup_ShowFile" xml:space="preserve"><value>Dateipfad öffnen</value></data>
+  <data name="Startup_CopyLocation" xml:space="preserve"><value>Ort des Eintrags kopieren</value></data>
   <data name="Startup_Delete" xml:space="preserve"><value>Eintrag löschen</value></data>
   <data name="Startup_DeleteName" xml:space="preserve"><value>{0} löschen</value></data>
   <data name="Startup_DeleteHint" xml:space="preserve"><value>Entfernt diesen Eintrag (den Registry-Wert, die Datei im Autostart-Ordner oder die Aufgabe), wie Autoruns. Er wird vorher gesichert: Rückgängig auf der Seite Änderungen stellt ihn wieder her.</value></data>
@@ -1690,6 +1695,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Startup_TabDrivers" xml:space="preserve"><value>Treiber</value></data>
   <data name="Startup_TabAdvanced" xml:space="preserve"><value>Erweitert</value></data>
   <data name="Startup_AdvancedHint" xml:space="preserve"><value>Weitere Stellen, von denen Windows und Programme Code laden, wie Autoruns sie zeigt. Die meisten stehen nur zur Anzeige hier: Ändern lassen sie sich im Programm, zu dem sie gehören.</value></data>
+  <data name="Startup_DriversHint" xml:space="preserve"><value>Treiber werden hier nur aufgelistet: Lädt einer nicht, funktioniert womöglich ein Gerät nicht mehr oder Windows startet nicht. Aktualisieren oder entfernen kannst du Treiber im Geräte-Manager oder mit dem Installationsprogramm des Geräts.</value></data>
   <data name="Startup_MoreOptions" xml:space="preserve"><value>Weitere Optionen</value></data>
   <data name="Startup_MoreOptionsName" xml:space="preserve"><value>Weitere Optionen für {0}</value></data>
   <data name="Startup_PlainRegistry" xml:space="preserve"><value>Registrierung</value></data>
@@ -1711,8 +1717,8 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Startup_SummaryCount" xml:space="preserve"><value>{0}.</value></data>
   <data name="Startup_SummaryCountOff" xml:space="preserve"><value>{0} (abgeschaltet).</value></data>
   <data name="Startup_SummaryCountSomeOff" xml:space="preserve"><value>{0}, davon {1} abgeschaltet.</value></data>
-  <data name="Startup_OffOne" xml:space="preserve"><value>1 ist abgeschaltet.</value></data>
-  <data name="Startup_Off" xml:space="preserve"><value>{0} sind abgeschaltet.</value></data>
+  <data name="Startup_OffOne" xml:space="preserve"><value>Von allen {0} ist 1 abgeschaltet.</value></data>
+  <data name="Startup_Off" xml:space="preserve"><value>Von allen {1} sind {0} abgeschaltet.</value></data>
   <data name="Startup_AttentionOne" xml:space="preserve"><value>1 braucht Aufmerksamkeit.</value></data>
   <data name="Startup_Attention" xml:space="preserve"><value>{0} brauchen Aufmerksamkeit.</value></data>
   <data name="Startup_Showing" xml:space="preserve"><value>{0} von {1} werden gezeigt.</value></data>

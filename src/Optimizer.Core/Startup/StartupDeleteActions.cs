@@ -57,12 +57,14 @@ public static class ScheduledTaskXml
     public static string? Program(string xml) =>
         Root(xml)?.Element(Ns + "Actions")?.Element(Ns + "Exec")?.Element(Ns + "Command")?.Value is { Length: > 0 } command ? command : null;
 
-    /// <summary>The first program the task runs with its arguments, for the confirmation; null for a COM handler.</summary>
+    /// <summary>
+    /// The first program the task runs with its arguments, for the confirmation, written as the Startup page shows it
+    /// (<see cref="StartupScanner.TaskCommand"/>: quoted once, also when the task stores it quoted); null for a COM handler.
+    /// </summary>
     public static string? Command(string xml)
     {
         var exec = Root(xml)?.Element(Ns + "Actions")?.Element(Ns + "Exec");
-        if (exec?.Element(Ns + "Command")?.Value is not { Length: > 0 } command) return null;
-        return exec.Element(Ns + "Arguments")?.Value is { Length: > 0 } args ? $"\"{command}\" {args}" : command;
+        return StartupScanner.TaskCommand(exec?.Element(Ns + "Command")?.Value, exec?.Element(Ns + "Arguments")?.Value);
     }
 }
 

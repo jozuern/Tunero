@@ -245,7 +245,9 @@ public static class ProgramLeftovers
     public static IReadOnlyList<Leftover> Find(DesktopProgram removed, LeftoverRoots roots, IReadOnlyCollection<string> referenced,
         Func<string, string?>? shortcutTarget = null, PathExpander? user = null)
     {
-        shortcutTarget ??= ShortcutTarget;
+        // A per-user program's shortcut names its folder with that user's variables (%LOCALAPPDATA%).
+        var paths = user ?? PathExpander.UnknownUser;
+        shortcutTarget ??= lnk => ShortcutTarget(lnk, paths);
         var folders = Folders(removed, user: user).Where(f => MayOffer(f, roots, referenced)).ToList();
         if (folders.Count == 0) return [];
         // A folder inside another one found here is moved with it.
@@ -272,7 +274,8 @@ public static class ProgramLeftovers
         IReadOnlyCollection<string> referenced, PathExpander? user = null)
     {
         var targets = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
-        string? Cached(string lnk) => targets.TryGetValue(lnk, out var t) ? t : targets[lnk] = ShortcutTarget(lnk);
+        var paths = user ?? PathExpander.UnknownUser;
+        string? Cached(string lnk) => targets.TryGetValue(lnk, out var t) ? t : targets[lnk] = ShortcutTarget(lnk, paths);
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         return removed.SelectMany(p => Find(p, roots, referenced, Cached, user).Select(l => (p, l))).Where(x => seen.Add(x.l.Path)).ToList();
     }
@@ -292,11 +295,15 @@ public static class ProgramLeftovers
         }
     }
 
-    internal static string? ShortcutTarget(string lnk)
+    /// <summary>
+    /// The shortcut's target with its %variables% expanded by <paramref name="paths"/> (the shell would use this process's
+    /// own, see <see cref="ShellLinkFile.Read"/>); null when it cannot be read.
+    /// </summary>
+    internal static string? ShortcutTarget(string lnk, PathExpander paths)
     {
         try
         {
-            return ShellLinkFile.Read(lnk).Target;
+            return paths.Expand(ShellLinkFile.Read(lnk).Target);
         }
         catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or IOException or UnauthorizedAccessException or InvalidCastException)
         {

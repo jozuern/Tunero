@@ -39,6 +39,7 @@ public sealed partial class ServiceRowVm : ObservableObject
         StateText = Loc.Instance[row.Running ? "Svc_Running" : "Svc_Stopped"];
         Publisher = row.Signature?.Publisher ?? "";
         MetaText = string.Join(", ", new[] { row.Name, StateText, Publisher }.Where(x => x.Length > 0));
+        SimpleMetaText = string.Join(", ", new[] { StateText, Publisher }.Where(x => x.Length > 0));
         CanSetManual = row.Edit == ServiceEdit.ManualOnly && row.Start != ServiceStart.Manual;
         // Every row shows its start type in the same combo box, so the column reads the same all the way down: all four
         // start types, the current one and Manual for a Windows service the app explains, or only the current one
@@ -90,7 +91,13 @@ public sealed partial class ServiceRowVm : ObservableObject
     public string? Note { get; }
     public string StateText { get; }
     public string Publisher { get; }
+
+    /// <summary>Service name, state and publisher (Technical details).</summary>
     public string MetaText { get; }
+
+    /// <summary>The same line in the simple view: state and publisher, without the service's internal name.</summary>
+    public string SimpleMetaText { get; }
+
     public string? EditText { get; }
     public IReadOnlyList<StartOption> Options { get; }
     public bool CanEdit => Row.Edit == ServiceEdit.Full;
@@ -185,6 +192,9 @@ public sealed partial class ServicesViewModel(IPageHost owner, AppServices servi
         return list.AsParallel().WithDegreeOfParallelism(4).Select(r => r.Note is null ? r with { Signature = SignatureVerifier.Verify(r.File) } : r).ToList();
     };
 
+    /// <summary>Who signed a task's file (the verifier caches the files); tests give their own.</summary>
+    internal Func<string?, SignatureInfo> VerifySignature { get; init; } = SignatureVerifier.Verify;
+
     protected override async Task LoadAsync()
     {
         _serviceRows = await Task.Run(ReadServices);
@@ -200,7 +210,7 @@ public sealed partial class ServicesViewModel(IPageHost owner, AppServices servi
     }
 
     /// <summary>What a task runs and who signed it, read once per load in the background (the verifier caches the files).</summary>
-    private sealed record TaskCheck(string? Image, SignatureInfo Signature, bool RunsScriptHost);
+    internal sealed record TaskCheck(string? Command, string? Image, SignatureInfo Signature, bool RunsScriptHost);
 
     /// <summary>
     /// Until the signatures are read, Windows' own tasks are told by their folder (\Microsoft\); after that by the rule
@@ -212,14 +222,29 @@ public sealed partial class ServicesViewModel(IPageHost owner, AppServices servi
     private Dictionary<string, TaskCheck> CheckTasks(IReadOnlyList<ScheduledTaskInfo> tasks)
     {
         var scanner = new StartupScanner(services.Context.Registry, services.Context.Tasks, services.ProfilePath);
-        return tasks.AsParallel().WithDegreeOfParallelism(4).Select(t =>
-            {
-                var image = scanner.TaskImage(t);
-                var command = StartupScanner.TaskCommand(t.Command, t.Arguments);
-                return (t.Path, Check: new TaskCheck(image, SignatureVerifier.Verify(image), CommandLine.RunsUnverifiedScript(command, PathExpander.Machine.Expand)));
-            })
+        var verify = VerifySignature;
+        return tasks.AsParallel().WithDegreeOfParallelism(4).Select(t => (t.Path, Check: CheckTask(t, scanner.TaskActions(t), verify)))
             .GroupBy(x => x.Path, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.First().Check, StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// The check a task's row shows: every action is checked, as the Startup page lists each on its own, and the first one
+    /// that needs a look decides (not signed by Microsoft, or a script host), so a second program cannot hide behind a
+    /// signed first one. When all are Windows' own, the first action's.
+    /// </summary>
+    internal static TaskCheck CheckTask(ScheduledTaskInfo t, IReadOnlyList<StartupScanner.TaskAction> actions, Func<string?, SignatureInfo> verify)
+    {
+        TaskCheck? first = null;
+        foreach (var a in actions)
+        {
+            var check = new TaskCheck(a.Command, a.Image, verify(a.Image), CommandLine.RunsUnverifiedScript(a.Command, PathExpander.Machine.Expand));
+            first ??= check;
+            // The rule of StartupRow.IsPlainMicrosoft: Microsoft's file, or a file of Windows' own task that this PC lacks.
+            var windows = check.Signature.IsMicrosoft || (check.Signature.Status == SignatureStatus.NotFound && StartupScanner.IsWindowsTask(t.Path));
+            if (!windows || check.RunsScriptHost) return check;
+        }
+        return first ?? new TaskCheck(null, null, verify(null), false);
     }
 
     // A language switch builds the rows from the services and tasks already read.
@@ -252,13 +277,15 @@ public sealed partial class ServicesViewModel(IPageHost owner, AppServices servi
         var userPaths = services.UserPaths;
         var checks = _taskChecks;
         Tasks.Clear();
-        foreach (var t in _taskList.Where(t => q.Length == 0 || t.Path.Contains(q, StringComparison.OrdinalIgnoreCase) || t.Command?.Contains(q, StringComparison.OrdinalIgnoreCase) == true)
+        foreach (var t in _taskList.Where(t => q.Length == 0 || t.Path.Contains(q, StringComparison.OrdinalIgnoreCase) || t.Command?.Contains(q, StringComparison.OrdinalIgnoreCase) == true
+                                               || t.OtherActions?.Any(a => a.Command.Contains(q, StringComparison.OrdinalIgnoreCase)) == true)
                      .OrderBy(t => t.Path, StringComparer.OrdinalIgnoreCase))
         {
             var check = checks?.GetValueOrDefault(t.Path);
             if (!showMs && check is null && t.Path.StartsWith(@"\Microsoft\", StringComparison.OrdinalIgnoreCase)) continue;
-            // Full command with arguments: rundll32 resolves to its DLL, and script hosts are judged by what they run.
-            var command = StartupScanner.TaskCommand(t.Command, t.Arguments);
+            // Full command with arguments: rundll32 resolves to its DLL, and script hosts are judged by what they run. Once
+            // checked, the action that needs a look (CheckTask), which is the first one when none does.
+            var command = check is null ? StartupScanner.TaskCommand(t.Command, t.Arguments) : check.Command;
             var entry = new StartupEntry(StartupKind.LogonTask, t.Path.TrimStart('\\'), command, check is null ? CommandLine.ImagePath(command, userPaths.Expand) : check.Image,
                 t.AtLogon ? Loc.Instance["Task_AtLogon"] : t.AtBoot ? Loc.Instance["Task_AtBoot"] : Loc.Instance["Task_Other"], Hive.Machine, t.Enabled, $"task:{t.Path}")
             {

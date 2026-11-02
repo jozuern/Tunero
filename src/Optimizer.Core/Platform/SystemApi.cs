@@ -391,16 +391,17 @@ public sealed class SystemTaskScheduler : ITaskScheduler
 
         var ns = TaskNamespace;
         var triggers = root.Element(ns + "Triggers")?.Elements().Select(e => e.Name.LocalName).ToList() ?? [];
-        // Every program the task runs counts (a second action can hide behind a signed first one), and a COM handler is
-        // named by its CLSID so the scanner can check the DLL behind it.
+        // Every program the task runs counts (a second action can hide behind a signed first one), and every COM handler
+        // is named by its CLSID so the scanner can check the DLL behind it, also next to a program.
         var actions = root.Element(ns + "Actions");
         var execs = actions?.Elements(ns + "Exec").Select(e => (Command: e.Element(ns + "Command")?.Value, Arguments: e.Element(ns + "Arguments")?.Value))
             .Where(e => !string.IsNullOrWhiteSpace(e.Command)).Select(e => (e.Command!, e.Arguments)).ToList() ?? [];
-        var comHandler = actions?.Element(ns + "ComHandler")?.Element(ns + "ClassId")?.Value;
+        var comHandlers = actions?.Elements(ns + "ComHandler").Select(e => e.Element(ns + "ClassId")?.Value).OfType<string>()
+            .Where(c => !string.IsNullOrWhiteSpace(c)).ToList() ?? [];
         var author = root.Element(ns + "RegistrationInfo")?.Element(ns + "Author")?.Value;
         if (author?.StartsWith("$(", StringComparison.Ordinal) == true) author = task.Definition.RegistrationInfo.Author;
         return new ScheduledTaskInfo(path, enabled, author, execs.Count > 0 ? execs[0].Item1 : null, execs.Count > 0 ? execs[0].Item2 : null,
-            triggers.Contains("LogonTrigger"), triggers.Contains("BootTrigger"), lastRunOrNull, execs.Skip(1).ToList(), comHandler);
+            triggers.Contains("LogonTrigger"), triggers.Contains("BootTrigger"), lastRunOrNull, execs.Skip(1).ToList(), comHandlers.FirstOrDefault(), comHandlers.Skip(1).ToList());
     }
 
     private static ScheduledTaskInfo DescribeByProperties(TaskSchedulerCom.IRegisteredTask task, string path, bool enabled, DateTime? lastRun)
@@ -415,12 +416,18 @@ public sealed class SystemTaskScheduler : ITaskScheduler
             if (t == TaskSchedulerCom.TriggerBoot) boot = true;
         }
         var execs = new List<(string Command, string? Arguments)>();
+        var comHandlers = new List<string>();
         var actions = definition.Actions;
         for (var i = 1; i <= actions.Count; i++)
-            if (actions.Item(i) is TaskSchedulerCom.IExecAction { Type: TaskSchedulerCom.ActionExec } action && !string.IsNullOrWhiteSpace(action.Path))
+        {
+            var item = actions.Item(i);
+            if (item is TaskSchedulerCom.IExecAction { Type: TaskSchedulerCom.ActionExec } action && !string.IsNullOrWhiteSpace(action.Path))
                 execs.Add((action.Path, action.Arguments));
+            else if (item is TaskSchedulerCom.IComHandlerAction { Type: TaskSchedulerCom.ActionComHandler } handler && !string.IsNullOrWhiteSpace(handler.ClassId))
+                comHandlers.Add(handler.ClassId);
+        }
         return new ScheduledTaskInfo(path, enabled, definition.RegistrationInfo.Author, execs.Count > 0 ? execs[0].Command : null,
-            execs.Count > 0 ? execs[0].Arguments : null, logon, boot, lastRun, execs.Skip(1).ToList());
+            execs.Count > 0 ? execs[0].Arguments : null, logon, boot, lastRun, execs.Skip(1).ToList(), comHandlers.FirstOrDefault(), comHandlers.Skip(1).ToList());
     }
 
     private static TaskSchedulerCom.IRegisteredTask GetTask(string path)

@@ -141,7 +141,8 @@ public sealed partial class StartupScanner(IRegistryRoots registry, ITaskSchedul
             using var key = Open(hive, path);
             foreach (var name in key?.GetValueNames() ?? [])
             {
-                var command = key!.GetValue(name)?.ToString();
+                // Unexpanded, as the Run keys: this app's own variables are not the ones the user's sign-in expands it with.
+                var command = key!.GetValue(name, null, Microsoft.Win32.RegistryValueOptions.DoNotExpandEnvironmentNames)?.ToString();
                 yield return new StartupEntry(StartupKind.PolicyRun, name, command, CommandLine.ImagePath(command, _userExpand), $@"{(hive == Hive.Machine ? "HKLM" : "HKCU")}\{path}", hive, null, $"policyrun:{hive}:{name}");
             }
         }
@@ -156,15 +157,49 @@ public sealed partial class StartupScanner(IRegistryRoots registry, ITaskSchedul
 
     // ---------------- Startup folders ----------------
 
-    /// <summary>The Startup folder for all users; null = Windows' own (tests point it at a temp folder).</summary>
+    /// <summary>The Startup folder for all users; null = the one Windows uses (tests point it at a temp folder).</summary>
     public string? CommonStartupFolder { get; init; }
+
+    private const string UserShellFolders = @"Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders";
+
+    /// <summary>
+    /// The Startup folders Explorer runs at sign-in: the machine's ("Common Startup") and the user's ("Startup") as the
+    /// User Shell Folders values name them, which folder redirection or a program can point elsewhere (the user's value
+    /// needs no administrator rights). Their default places when a value is missing or names no full path. A folder
+    /// outside its default place and not on a network share (where folder redirection puts it) is marked for a look:
+    /// Windows never moves it there itself.
+    /// </summary>
+    internal IReadOnlyList<(string Dir, Hive Hive, bool Moved)> StartupFolderPaths()
+    {
+        var folders = new List<(string, Hive, bool)>();
+        if (CommonStartupFolder is { } given) folders.Add((given, Hive.Machine, false));
+        else
+        {
+            var usual = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), @"Microsoft\Windows\Start Menu\Programs\StartUp");
+            var common = ShellFolder(Hive.Machine, @"SOFTWARE\" + UserShellFolders, "Common Startup", Platform.PathExpander.Machine.Expand) ?? usual;
+            folders.Add((common, Hive.Machine, Moved(common, usual)));
+        }
+        var userUsual = profilePath is null ? null : Path.Combine(profilePath, @"AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup");
+        if ((ShellFolder(Hive.User, @"Software\" + UserShellFolders, "Startup", _userExpand) ?? userUsual) is { } user) folders.Add((user, Hive.User, Moved(user, userUsual)));
+        return folders;
+
+        static bool Moved(string dir, string? usual) =>
+            !string.Equals(Path.TrimEndingDirectorySeparator(dir), usual is null ? null : Path.TrimEndingDirectorySeparator(usual), StringComparison.OrdinalIgnoreCase)
+            && !dir.StartsWith(@"\\", StringComparison.Ordinal);
+    }
+
+    /// <summary>A User Shell Folders value, expanded; null when it is missing or does not name a full path.</summary>
+    private string? ShellFolder(Hive hive, string path, string name, Func<string, string> expand)
+    {
+        using var key = Open(hive, path);
+        if (key?.GetValue(name, null, Microsoft.Win32.RegistryValueOptions.DoNotExpandEnvironmentNames)?.ToString() is not { Length: > 0 } value) return null;
+        var dir = expand(value.Trim().Trim('"'));
+        return !dir.Contains('%') && !dir.Contains("..", StringComparison.Ordinal) && Path.IsPathFullyQualified(dir) ? dir : null;
+    }
 
     public IEnumerable<StartupEntry> StartupFolders()
     {
-        var common = CommonStartupFolder ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), @"Microsoft\Windows\Start Menu\Programs\StartUp");
-        var folders = new List<(string Dir, Hive Hive)> { (common, Hive.Machine) };
-        if (profilePath is not null) folders.Add((Path.Combine(profilePath, @"AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup"), Hive.User));
-        foreach (var (dir, hive) in folders)
+        foreach (var (dir, hive, moved) in StartupFolderPaths())
         {
             if (!Directory.Exists(dir)) continue;
             foreach (var file in Directory.EnumerateFiles(dir).Where(f => !Path.GetFileName(f).Equals("desktop.ini", StringComparison.OrdinalIgnoreCase)))
@@ -178,6 +213,7 @@ public sealed partial class StartupScanner(IRegistryRoots registry, ITaskSchedul
                     ApprovedState(hive, "StartupFolder", name), $"folder:{hive}:{name}")
                 {
                     Target = $@"{Approved}\StartupFolder|{name}",
+                    Suspicious = moved,
                 };
             }
         }
@@ -236,24 +272,19 @@ public sealed partial class StartupScanner(IRegistryRoots registry, ITaskSchedul
         && e.Command is { } clsid && WindowsShellServiceObjects.Contains(clsid);
 
     /// <summary>
-    /// One entry per program a task runs: a second action is checked and shown on its own, so it cannot hide behind a
-    /// signed first one. A task that runs a COM handler shows the DLL registered for it, so Windows' own handler tasks
-    /// are recognized as Microsoft's instead of "no publisher".
+    /// One entry per action a task runs (<see cref="TaskActions"/>): a second action is checked and shown on its own, so
+    /// it cannot hide behind a signed first one.
     /// </summary>
     private IEnumerable<StartupEntry> TaskEntries(Func<ScheduledTaskInfo, bool> include)
     {
         foreach (var t in tasks.List().Where(include))
         {
-            var programs = new List<(string? Command, string? Arguments)> { (t.Command, t.Arguments) };
-            programs.AddRange((t.OtherActions ?? []).Select(a => ((string?)a.Command, a.Arguments)));
-            for (var i = 0; i < programs.Count; i++)
+            var actions = TaskActions(t);
+            for (var i = 0; i < actions.Count; i++)
             {
-                var (program, arguments) = programs[i];
-                var command = TaskCommand(program, arguments);
-                var image = command is not null ? CommandLine.ImagePath(command, _userExpand) : ComServer(t.ComHandler);
+                var (command, image, keySuffix) = actions[i];
                 var name = t.Path.TrimStart('\\') + (i == 0 ? "" : $" ({i + 1})");
-                yield return new StartupEntry(StartupKind.LogonTask, name, command ?? image, image, t.Path, Hive.Machine, t.Enabled,
-                    i == 0 ? $"task:{t.Path}" : $"task:{t.Path}#{i + 1}")
+                yield return new StartupEntry(StartupKind.LogonTask, name, command, image, t.Path, Hive.Machine, t.Enabled, $"task:{t.Path}{keySuffix}")
                 {
                     Target = t.Path,
                     StartsWithWindows = t.AtLogon || t.AtBoot,
@@ -263,19 +294,50 @@ public sealed partial class StartupScanner(IRegistryRoots registry, ITaskSchedul
         }
     }
 
+    /// <summary>One action of a task: what the row shows as its command, the file it runs and the end of its entry's key.</summary>
+    public sealed record TaskAction(string? Command, string? Image, string KeySuffix);
+
+    /// <summary>
+    /// Everything a task runs, as the Startup page and Services &amp; tasks check it: each program (expanded for the
+    /// signed-in user), then each COM handler with the DLL registered for it, so Windows' own handler tasks are recognized
+    /// as Microsoft's and a handler next to a program is not left out. A task without a program starts with its first
+    /// handler; a task with neither gets one action without a file. Reads the registry for a COM handler: not for every
+    /// row on each search. The machine's registration only: such a task often runs as another account, for which the
+    /// signed-in user's classes do not count.
+    /// </summary>
+    public IReadOnlyList<TaskAction> TaskActions(ScheduledTaskInfo t)
+    {
+        var list = new List<TaskAction>();
+        var handlers = new[] { t.ComHandler }.Concat(t.OtherComHandlers ?? []).OfType<string>().Where(c => c.Length > 0).ToList();
+        if (TaskCommand(t.Command, t.Arguments) is { } first) list.Add(new TaskAction(first, CommandLine.ImagePath(first, _userExpand), ""));
+        else if (handlers.Count > 0)
+        {
+            var dll = ComServer(handlers[0]);
+            list.Add(new TaskAction(dll, dll, ""));
+            handlers.RemoveAt(0);
+        }
+        else list.Add(new TaskAction(null, null, ""));
+        var others = t.OtherActions ?? [];
+        for (var i = 0; i < others.Count; i++)
+        {
+            var command = TaskCommand(others[i].Command, others[i].Arguments);
+            list.Add(new TaskAction(command, CommandLine.ImagePath(command, _userExpand), $"#{i + 2}"));
+        }
+        for (var i = 0; i < handlers.Count; i++)
+        {
+            // Next to a program: the CLSID when no DLL is registered for it, so the row still says what it runs.
+            var dll = ComServer(handlers[i]);
+            list.Add(new TaskAction(dll ?? handlers[i], dll, i == 0 ? "#com" : $"#com{i + 1}"));
+        }
+        return list;
+    }
+
     /// <summary>
     /// A task's program with its arguments, as both pages show it. The program path is often stored with quotes already:
     /// quoted only once. Null for a task without a program (a COM handler).
     /// </summary>
     public static string? TaskCommand(string? program, string? arguments) =>
         string.IsNullOrWhiteSpace(program) ? null : $"\"{program.Trim().Trim('"')}\" {arguments}".Trim();
-
-    /// <summary>
-    /// The file a task's first action runs, as the Startup page reads it: its program expanded for the signed-in user, or
-    /// the DLL registered for its COM handler. Reads the registry for a COM handler: not for every row on each search.
-    /// </summary>
-    public string? TaskImage(ScheduledTaskInfo t) =>
-        TaskCommand(t.Command, t.Arguments) is { } command ? CommandLine.ImagePath(command, _userExpand) : ComServer(t.ComHandler);
 
     /// <summary>
     /// The DLL registered for a COM class (InprocServer32), expanded with the machine's variables; null when unknown. A
@@ -294,6 +356,38 @@ public sealed partial class StartupScanner(IRegistryRoots registry, ITaskSchedul
         }
         // A file path, not a command line: spaces in "C:\Program Files\..." are part of it.
         return CommandLine.FilePath(dll, Platform.PathExpander.Machine.Expand);
+    }
+
+    /// <summary>
+    /// The DLL a program of the signed-in user (Explorer, a media player) loads for a COM class, as it is registered and
+    /// as a file. The account's own registration (HKCU\Software\Classes, without administrator rights) wins over the
+    /// machine's, as in HKEY_CLASSES_ROOT: a class registered there for a CLSID the machine also has replaces the
+    /// machine's DLL for that user, which <paramref name="overridesMachine"/> says so the row is marked for a look.
+    /// </summary>
+    private (string? Registered, string? File) UserComServer(string id, bool wow64, out bool overridesMachine)
+    {
+        overridesMachine = false;
+        using var own = Open(Hive.User, $@"Software\Classes\{(wow64 ? @"WOW6432Node\" : "")}CLSID\{id}\InprocServer32");
+        if (own?.GetValue("", null, Microsoft.Win32.RegistryValueOptions.DoNotExpandEnvironmentNames)?.ToString() is { } dll && !string.IsNullOrWhiteSpace(dll))
+        {
+            var file = CommandLine.FilePath(dll, _userExpand);
+            overridesMachine = ComServer(id, wow64) is { } machine && !string.Equals(machine, file, StringComparison.OrdinalIgnoreCase);
+            return (dll, file);
+        }
+        using var server = Open(Hive.Machine, $@"SOFTWARE\Classes\{(wow64 ? @"WOW6432Node\" : "")}CLSID\{id}\InprocServer32");
+        var registered = server?.GetValue("", null, Microsoft.Win32.RegistryValueOptions.DoNotExpandEnvironmentNames)?.ToString();
+        return string.IsNullOrWhiteSpace(registered) ? (null, ComServer(id, wow64)) : (registered, CommandLine.FilePath(registered, Platform.PathExpander.Machine.Expand));
+    }
+
+    /// <summary>A COM class's name as the signed-in user's programs see it: the account's own registration first; null when it has none.</summary>
+    private string? ClassName(string id)
+    {
+        foreach (var (hive, classes) in new[] { (Hive.User, @"Software\Classes\CLSID"), (Hive.Machine, @"SOFTWARE\Classes\CLSID") })
+        {
+            using var cls = Open(hive, $@"{classes}\{id}");
+            if (cls?.GetValue("")?.ToString() is { Length: > 0 } name) return name;
+        }
+        return null;
     }
 
     // ---------------- Services and drivers ----------------
@@ -370,16 +464,16 @@ public sealed partial class StartupScanner(IRegistryRoots registry, ITaskSchedul
                 if (clsid is null || !Guid.TryParse(clsid, out var g)) continue;
                 var id = g.ToString("B").ToUpperInvariant();
                 if (!seen.Add(id)) continue;
-                using var server = Open(Hive.Machine, $@"SOFTWARE\Classes\CLSID\{id}\InprocServer32");
-                var dll = server?.GetValue("", null, Microsoft.Win32.RegistryValueOptions.DoNotExpandEnvironmentNames)?.ToString();
-                using var cls = Open(Hive.Machine, $@"SOFTWARE\Classes\CLSID\{id}");
-                var name = cls?.GetValue("")?.ToString() is { Length: > 0 } n ? n : handler;
+                // Explorer loads the class as the signed-in user sees it: that account's own registration wins.
+                var (dll, file) = UserComServer(id, wow64: false, out var overridden);
+                var name = ClassName(id) ?? handler;
                 var blockedForUserOnly = !blockedSet.Contains(id) && userBlockedSet.Contains(id);
-                yield return new StartupEntry(StartupKind.ShellExtension, name, dll, CommandLine.FilePath(dll), $@"HKCR\{handlerRoot}\{handler}",
+                yield return new StartupEntry(StartupKind.ShellExtension, name, dll, file, $@"HKCR\{handlerRoot}\{handler}",
                     blockedForUserOnly ? Hive.User : Hive.Machine, !blockedSet.Contains(id) && !blockedForUserOnly, $"shellext:{id}")
                 {
                     Target = id,
                     BlockedForUserToo = blockedSet.Contains(id) && userBlockedSet.Contains(id),
+                    Suspicious = overridden,
                 };
             }
         }
@@ -595,7 +689,14 @@ public static class StartupTweaks
             _ => null,
         };
         if (action is null) return null;
-        var expert = e.Kind is StartupKind.ImageHijack or StartupKind.Service;
+        // A service to Manual is the change Services & tasks makes with the same rule (ServiceManager.Change): moderate
+        // where the service catalog warns about it. Removing a program redirect stays Expert.
+        var risk = e.Kind switch
+        {
+            StartupKind.ImageHijack => Risk.Expert,
+            StartupKind.Service when Catalog.CatalogData.Current.Services.Find(Services.ServiceManager.BaseName(e.Target!))?.Mode == "warn" => Risk.Moderate,
+            _ => Risk.Safe,
+        };
         return new TweakDefinition
         {
             Id = $"startup.{(enabled ? "on" : "off")}.{e.Kind.ToString().ToLowerInvariant()}.{TweakIds.Slug(e.Key)}",
@@ -603,7 +704,7 @@ public static class StartupTweaks
             Subject = e.Name,
             Category = "Startup",
             Impact = new ImpactInfo { Gaming = 0, Basis = "situational", Effect = ["none"] },
-            Risk = expert ? Risk.Expert : Risk.Safe,
+            Risk = risk,
             Hidden = true,
             SignOut = e.Kind is StartupKind.ShellExtension,
             // Explorer honors both lists: an extension blocked in both stays off until it is gone from both.

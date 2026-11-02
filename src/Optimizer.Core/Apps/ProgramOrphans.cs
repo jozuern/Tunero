@@ -74,7 +74,8 @@ public static class ProgramOrphans
     {
         if (profile is not { Length: > 0 }) return [];
         var pins = Path.Combine(profile, "AppData", "Roaming", "Microsoft", "Internet Explorer", "Quick Launch", "User Pinned");
-        return Directory.Exists(pins) ? ProgramLeftovers.Shortcuts(pins).Select(ProgramLeftovers.ShortcutTarget).OfType<string>().ToList() : [];
+        var paths = Platform.PathExpander.ForUser(profile);
+        return Directory.Exists(pins) ? ProgramLeftovers.Shortcuts(pins).Select(l => ProgramLeftovers.ShortcutTarget(l, paths)).OfType<string>().ToList() : [];
     }
 
     /// <summary>
@@ -129,9 +130,9 @@ public static class ProgramOrphans
     public static IReadOnlyList<Leftover> Find(IEnumerable<string> programFolders, LeftoverRoots roots, OrphanEvidence evidence, DateTime nowUtc,
         Func<string, string?>? shortcutTarget = null)
     {
-        // A Start menu or desktop shortcut into a folder counts as use.
+        // A Start menu or desktop shortcut into a folder counts as use; "%ProgramFiles%\..." with the machine's variables.
         var shortcuts = roots.ShortcutFolders.Where(Directory.Exists).SelectMany(ProgramLeftovers.Shortcuts)
-            .Select(shortcutTarget ?? ProgramLeftovers.ShortcutTarget).OfType<string>();
+            .Select(shortcutTarget ?? (l => ProgramLeftovers.ShortcutTarget(l, Platform.PathExpander.Machine))).OfType<string>();
         var used = evidence.Paths.Concat(shortcuts).ToList();
         var names = evidence.Names.Select(Normalize).Where(n => n.Length >= 3).Distinct().ToList();
         var found = new List<Leftover>();

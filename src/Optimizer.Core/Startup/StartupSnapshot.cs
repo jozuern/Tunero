@@ -49,13 +49,15 @@ public static class StartupSnapshot
     }
 
     /// <summary>
-    /// The key and the command. A command that is one quoted path counts as the same path unquoted: Startup folder files
-    /// and shortcuts without arguments were stored unquoted by older versions, so an older snapshot does not call them changed.
+    /// The key and the command. For a Startup folder entry a command that is one quoted path counts as the same path
+    /// unquoted: Startup folder files and shortcuts without arguments were stored unquoted by older versions, so an older
+    /// snapshot does not call them changed. Everywhere else the quotes count: a Run value that loses them runs another
+    /// file when its path has spaces (a planted C:\Users\x\My.exe for C:\Users\x\My App\app.exe).
     /// </summary>
     private static string Identity(string key, string? command)
     {
         var c = command?.Trim() ?? "";
-        if (c.Length >= 2 && c[0] == '"' && c.IndexOf('"', 1) == c.Length - 1) c = c[1..^1];
+        if (key.StartsWith("folder:", StringComparison.Ordinal) && c.Length >= 2 && c[0] == '"' && c.IndexOf('"', 1) == c.Length - 1) c = c[1..^1];
         return key + "\n" + c;
     }
 

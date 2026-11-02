@@ -202,6 +202,27 @@ public class StartupTests
         }
     }
 
+    /// <summary>
+    /// Quotes that go away change what a Run value starts when its path has spaces: reported as changed. A Startup folder
+    /// entry, which older versions stored unquoted, is the same with or without them.
+    /// </summary>
+    [Fact]
+    public void SnapshotCountsLostQuotesExceptOnStartupFolderEntries()
+    {
+        StartupEntry Entry(StartupKind kind, string key, string command) => new(kind, "x", command, null, @"HKCU\Run", Hive.User, true, key);
+        var before = StartupSnapshot.Take(
+        [
+            Entry(StartupKind.RunKey, "run:User:Run:App", "\"C:\\a b\\x.exe\""),
+            Entry(StartupKind.StartupFolder, "folder:User:App.lnk", @"C:\a b\x.exe"),
+        ], DateTimeOffset.Parse("2026-10-01T10:00:00Z"));
+        var diff = StartupSnapshot.Compare(before,
+        [
+            Entry(StartupKind.RunKey, "run:User:Run:App", @"C:\a b\x.exe"),
+            Entry(StartupKind.StartupFolder, "folder:User:App.lnk", "\"C:\\a b\\x.exe\""),
+        ]);
+        Assert.Equal(["run:User:Run:App"], diff.NewKeys);
+    }
+
     [Fact]
     public void LogonTasksComeFromTheScheduler()
     {
@@ -248,6 +269,174 @@ public class StartupTests
         Assert.DoesNotContain(all, e => e.Target == @"\Microsoft\Windows\Fixture\Daily");
         // The startup check counts only what starts with Windows.
         Assert.DoesNotContain(scanner.LogonTasks(), e => e.Target == @"\Vendor\Daily");
+    }
+
+    /// <summary>
+    /// A COM handler next to a program gets a row of its own, as every further handler does: Task Scheduler allows mixed
+    /// actions, and a handler DLL behind a signed first program would otherwise never be shown.
+    /// </summary>
+    [Fact]
+    public void ATaskShowsItsComHandlerAlsoNextToAProgram()
+    {
+        using var fx = new EngineFixture();
+        const string first = "{12345678-1234-1234-1234-123456789ABC}", second = "{12345678-1234-1234-1234-123456789ABD}";
+        RegistryValue.Write(fx.Registry, Hive.Machine, $@"SOFTWARE\Classes\CLSID\{first}\InprocServer32", "", "string", @"C:\Users\Public\handler.dll");
+        fx.Tasks.Listed.Add(new ScheduledTaskInfo(@"\Vendor\Updater", true, "Vendor", @"C:\Windows\System32\notepad.exe", null, true, false, null,
+            [(@"C:\Vendor\up.exe", "/silent")], first, [second]));
+
+        var rows = new StartupScanner(fx.Registry, fx.Tasks, null).ScheduledTasks().Where(e => e.Target == @"\Vendor\Updater").ToList();
+        Assert.Equal([@"C:\Windows\System32\notepad.exe", @"C:\Vendor\up.exe", @"C:\Users\Public\handler.dll", null], rows.Select(e => e.ImagePath));
+        // A handler without a registered DLL still names what it runs; every row has its own key.
+        Assert.Equal(second, rows[3].Command);
+        Assert.Equal([@"task:\Vendor\Updater", @"task:\Vendor\Updater#2", @"task:\Vendor\Updater#com", @"task:\Vendor\Updater#com2"], rows.Select(e => e.Key));
+        Assert.Equal(["Vendor\\Updater", "Vendor\\Updater (2)", "Vendor\\Updater (3)", "Vendor\\Updater (4)"], rows.Select(e => e.Name));
+    }
+
+    /// <summary>
+    /// A class the signed-in user registered (HKCU\Software\Classes, no administrator rights) for a CLSID the machine
+    /// lists is what Explorer loads: the row shows that DLL, and one that replaces the machine's DLL is marked. Also for
+    /// Windows' own WebCheck, which has no server of the machine and would otherwise be hidden as Windows' own.
+    /// </summary>
+    [Fact]
+    public void TheUsersOwnComClassIsTheOneShown()
+    {
+        using var fx = new EngineFixture();
+        var r = fx.Registry;
+        const string webCheck = "{E6FB5E20-DE35-11CF-9C87-00AA005127ED}";
+        const string overlay = "{11111111-2222-3333-4444-555555555555}";
+        const string menu = "{23170F69-40C1-278A-1000-000100020000}";
+        RegistryValue.Write(r, Hive.Machine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\ShellServiceObjectDelayLoad", "WebCheck", "string", webCheck);
+        RegistryValue.Write(r, Hive.User, $@"Software\Classes\CLSID\{webCheck}\InprocServer32", "", "string", @"C:\Users\x\AppData\Roaming\x.dll");
+        RegistryValue.Write(r, Hive.Machine, $@"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\ShellIconOverlayIdentifiers\VendorSync", "", "string", overlay);
+        RegistryValue.Write(r, Hive.Machine, $@"SOFTWARE\Classes\CLSID\{overlay}\InprocServer32", "", "string", @"C:\Program Files\Vendor\overlay.dll");
+        RegistryValue.Write(r, Hive.Machine, @"SOFTWARE\Classes\*\shellex\ContextMenuHandlers\7-Zip", "", "string", menu);
+        RegistryValue.Write(r, Hive.Machine, $@"SOFTWARE\Classes\CLSID\{menu}\InprocServer32", "", "string", @"C:\Program Files\7-Zip\7-zip.dll");
+        RegistryValue.Write(r, Hive.User, $@"Software\Classes\CLSID\{menu}\InprocServer32", "", "string", @"C:\Users\x\AppData\Local\7-zip.dll");
+
+        var scanner = new StartupScanner(r, fx.Tasks, null);
+        var addOns = scanner.ExplorerAddOns().ToList();
+        var web = Assert.Single(addOns, e => e.Command == @"C:\Users\x\AppData\Roaming\x.dll");
+        Assert.Equal(@"C:\Users\x\AppData\Roaming\x.dll", web.ImagePath);
+        Assert.False(StartupScanner.IsWindowsShellServiceObjectWithoutServer(web));
+        // Only the machine's registration: shown as before, nothing to mark.
+        Assert.False(Assert.Single(addOns, e => e.ImagePath == @"C:\Program Files\Vendor\overlay.dll").Suspicious);
+        var shellExt = Assert.Single(scanner.ShellExtensions());
+        Assert.Equal(@"C:\Users\x\AppData\Local\7-zip.dll", shellExt.ImagePath);
+        Assert.Equal(@"C:\Users\x\AppData\Local\7-zip.dll", shellExt.Command);
+        Assert.True(shellExt.Suspicious);
+    }
+
+    /// <summary>
+    /// Explorer runs the Startup folders the User Shell Folders values name: a redirected one is read instead of the
+    /// default (whose items do not run) and marked for a look; a value that names no full path falls back to the default.
+    /// The scan only reads.
+    /// </summary>
+    [Fact]
+    public void StartupFoldersFollowTheUserShellFolders()
+    {
+        using var fx = new EngineFixture();
+        var profile = TestFolders.Create("profile");
+        try
+        {
+            var usual = Path.Combine(profile, @"AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup");
+            var moved = Path.Combine(profile, @"AppData\Local\x");
+            Directory.CreateDirectory(usual);
+            Directory.CreateDirectory(moved);
+            File.WriteAllText(Path.Combine(usual, "Usual.cmd"), "rem");
+            File.WriteAllText(Path.Combine(moved, "Moved.cmd"), "rem");
+            const string shellFolders = @"Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders";
+            StartupScanner Scanner() => new(fx.Registry, fx.Tasks, profile) { CommonStartupFolder = Path.Combine(profile, "no-startup") };
+
+            // Windows' own value: the default folder, nothing marked.
+            RegistryValue.Write(fx.Registry, Hive.User, shellFolders, "Startup", "expandString", @"%USERPROFILE%\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup");
+            var entry = Assert.Single(Scanner().StartupFolders());
+            Assert.Equal(("Usual", false), (entry.Name, entry.Suspicious));
+
+            RegistryValue.Write(fx.Registry, Hive.User, shellFolders, "Startup", "expandString", @"%LOCALAPPDATA%\x");
+            entry = Assert.Single(Scanner().StartupFolders());
+            Assert.Equal(("Moved", true, moved), (entry.Name, entry.Suspicious, entry.Location));
+            Assert.Null(StartupTweaks.Delete(entry)); // only from a Startup folder in its usual place
+
+            // A folder redirected to a network share is how folder redirection works: not marked.
+            RegistryValue.Write(fx.Registry, Hive.User, shellFolders, "Startup", "string", @"\\server\profiles\x\Startup");
+            Assert.Contains(Scanner().StartupFolderPaths(), f => f is { Dir: @"\\server\profiles\x\Startup", Moved: false });
+
+            RegistryValue.Write(fx.Registry, Hive.User, shellFolders, "Startup", "expandString", @"%NOT_A_VARIABLE%\x");
+            Assert.Equal("Usual", Assert.Single(Scanner().StartupFolders()).Name);
+        }
+        finally
+        {
+            TestFolders.Delete(profile);
+        }
+    }
+
+    /// <summary>A shortcut's %variables% expand with the signed-in user's folders, not with this process's own.</summary>
+    [Fact]
+    public void ShortcutTargetsExpandForTheSignedInUser()
+    {
+        using var fx = new EngineFixture();
+        var profile = TestFolders.Create("profile");
+        try
+        {
+            var folder = Path.Combine(profile, @"AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup");
+            Directory.CreateDirectory(folder);
+            var lnk = Path.Combine(folder, "PcoVar.lnk");
+            dynamic shell = Activator.CreateInstance(Type.GetTypeFromProgID("WScript.Shell")!)!;
+            var link = shell.CreateShortcut(lnk);
+            link.TargetPath = @"%LOCALAPPDATA%\TuneroTestFoo\foo.exe";
+            link.Save();
+
+            Assert.StartsWith("%LOCALAPPDATA%", ShellLinkFile.Read(lnk).Target, StringComparison.OrdinalIgnoreCase);
+            var entry = Assert.Single(new StartupScanner(fx.Registry, fx.Tasks, profile) { CommonStartupFolder = Path.Combine(profile, "no-startup") }.StartupFolders());
+            Assert.Equal(Path.Combine(profile, @"AppData\Local\TuneroTestFoo\foo.exe"), entry.ImagePath, ignoreCase: true);
+
+            // The Programs folders count a shortcut into Program Files as use, also one written with %ProgramFiles%.
+            link.TargetPath = @"%ProgramFiles%\TuneroTestVendor\app.exe";
+            link.Save();
+            Assert.Equal(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), @"TuneroTestVendor\app.exe"),
+                ProgramLeftovers.ShortcutTarget(lnk, PathExpander.Machine), ignoreCase: true);
+        }
+        finally
+        {
+            TestFolders.Delete(profile);
+        }
+    }
+
+    /// <summary>A policy Run value is read as stored: this app's own variables are not the ones the user's sign-in uses.</summary>
+    [Fact]
+    public void PolicyRunValuesAreReadUnexpanded()
+    {
+        const string name = "TUNERO_TEST_POLICY_DIR";
+        Environment.SetEnvironmentVariable(name, Environment.SystemDirectory);
+        try
+        {
+            using var fx = new EngineFixture();
+            RegistryValue.Write(fx.Registry, Hive.User, @"Software\Microsoft\Windows\CurrentVersion\Policies\Explorer\Run", "x", "expandString", $@"cmd.exe /c %{name}%\a.cmd");
+            var entry = Assert.Single(new StartupScanner(fx.Registry, fx.Tasks, null).RunKeys(), e => e.Kind == StartupKind.PolicyRun);
+            Assert.Equal($@"cmd.exe /c %{name}%\a.cmd", entry.Command);
+            Assert.True(entry.RunsScriptHost);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(name, null);
+        }
+    }
+
+    /// <summary>
+    /// A service at startup switches to Manual with the rule of Services &amp; tasks (moderate where the service catalog
+    /// warns, else safe), not as an Expert change; removing a program redirect stays Expert.
+    /// </summary>
+    [Fact]
+    public void AStartupServiceSwitchHasTheRiskOfTheServicesPage()
+    {
+        StartupEntry Service(string name) => new(StartupKind.Service, name, @"C:\x.exe", @"C:\x.exe", $@"HKLM\SYSTEM\CurrentControlSet\Services\{name}", Hive.Machine, true, $"service:{name}")
+        {
+            Target = name,
+        };
+        Assert.Equal(Risk.Safe, StartupTweaks.Set(Service("TuneroTestVendorService"), enabled: false)!.EffectiveRisk);
+        Assert.Equal(Risk.Safe, StartupTweaks.Set(Service("MapsBroker"), enabled: false)!.EffectiveRisk);
+        Assert.Equal(Risk.Moderate, StartupTweaks.Set(Service("Spooler"), enabled: false)!.EffectiveRisk);
+        Assert.Equal(Risk.Moderate, StartupTweaks.Set(Service("Spooler"), enabled: true)!.EffectiveRisk);
     }
 
     /// <summary>

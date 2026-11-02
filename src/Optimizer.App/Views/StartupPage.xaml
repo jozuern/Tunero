@@ -103,10 +103,10 @@
                 <ui:HyperlinkButton Content="{l:Tr Startup_ServicesLink}" Padding="0" VerticalAlignment="Center"
                                     Command="{Binding OpenServicesTabCommand}" CommandParameter="{Binding Startup.ServicesHintTab}" />
             </WrapPanel>
-            <!-- Advanced: what these places are, and that most are only listed -->
-            <DockPanel Margin="0,0,0,8" Visibility="{Binding Startup.IsAdvancedTab, Converter={StaticResource BoolToVisibility}}">
+            <!-- Advanced and Drivers: what these places are, and why they are only listed -->
+            <DockPanel Margin="0,0,0,8" Visibility="{Binding Startup.TabHintText, Converter={StaticResource NullToVisibility}}">
                 <ui:SymbolIcon DockPanel.Dock="Left" Symbol="Info16" FontSize="16" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" Margin="0,2,8,0" VerticalAlignment="Top" />
-                <ui:TextBlock FontTypography="Body" Text="{l:Tr Startup_AdvancedHint}" TextWrapping="Wrap" />
+                <ui:TextBlock FontTypography="Body" Text="{Binding Startup.TabHintText}" TextWrapping="Wrap" />
             </DockPanel>
         </StackPanel>
 
@@ -129,9 +129,17 @@
                                             </MultiBinding>
                                         </ui:ToggleSwitch.IsEnabled>
                                     </ui:ToggleSwitch>
+                                    <!-- Without a switch: whether it runs, in the switch's words, and below why there is no switch -->
+                                    <ui:TextBlock FontTypography="Body" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{Binding ReadOnlyState}" TextWrapping="Wrap"
+                                                  Visibility="{Binding ReadOnlyState, Converter={StaticResource NullToVisibility}}" />
                                     <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{Binding ReadOnlyNote}" TextWrapping="Wrap"
-                                                  ToolTip="{l:Tr Startup_ReadOnlyTip}" Background="Transparent"
+                                                  ToolTip="{Binding ReadOnlyTip}" Background="Transparent"
                                                   Visibility="{Binding ReadOnlyNote, Converter={StaticResource NullToVisibility}}" />
+                                    <!-- Tunero's own task is turned on and off in Settings -->
+                                    <ui:HyperlinkButton Content="{l:Tr Startup_OwnTaskLink}" Padding="0" HorizontalAlignment="Left" ToolTip="{l:Tr Startup_OwnTaskTip}"
+                                                        AutomationProperties.HelpText="{l:Tr Startup_OwnTaskTip}"
+                                                        Command="{Binding DataContext.OpenSettingsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        Visibility="{Binding IsOwnTask, Converter={StaticResource BoolToVisibility}}" />
                                 </StackPanel>
                                 <ui:Button Appearance="Transparent" Icon="{ui:SymbolIcon MoreHorizontal20}" Width="32" Height="32" Padding="0" BorderThickness="0" Margin="8,0,0,0" VerticalAlignment="Center"
                                            ToolTip="{l:Tr Startup_MoreOptions}" AutomationProperties.Name="{Binding MoreOptionsLabel}" Click="OnMoreOptions"
@@ -158,7 +166,7 @@
                                 <DockPanel>
                                     <ui:SymbolIcon DockPanel.Dock="Left" Symbol="Warning16" Filled="True" FontSize="16" Margin="0,2,8,0" VerticalAlignment="Top"
                                                    Foreground="{DynamicResource SystemFillColorCautionBrush}" Visibility="{Binding NeedsAttention, Converter={StaticResource BoolToVisibility}}" />
-                                    <ui:TextBlock FontTypography="BodyStrong" Text="{Binding Name}" TextWrapping="Wrap" />
+                                    <ui:TextBlock FontTypography="BodyStrong" Text="{Binding DisplayName}" TextWrapping="Wrap" />
                                 </DockPanel>
                                 <!-- Why it needs attention, in the caution color: not signed, runs a script, unusual place -->
                                 <v:ItemList ItemsSource="{Binding AttentionTags}" Focusable="False" Margin="0,2,0,0"
@@ -190,7 +198,7 @@
                                 </Border>
                                 <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource SystemFillColorCautionBrush}" Text="{Binding ScriptHostNote}" TextWrapping="Wrap"
                                               Margin="0,4,0,0" Visibility="{Binding ScriptHostNote, Converter={StaticResource NullToVisibility}}" />
-                                <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Text="{Binding Location}" TextWrapping="Wrap" Margin="0,4,0,0"
+                                <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{Binding Location}" TextWrapping="Wrap" Margin="0,4,0,0"
                                               Visibility="{Binding DataContext.ShowTechnical, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}" />
                                 <ui:HyperlinkButton Content="{Binding VirusTotalText}" Padding="0" Margin="0,4,0,0"
                                                     Visibility="{Binding VirusTotalText, Converter={StaticResource NullToVisibility}}"

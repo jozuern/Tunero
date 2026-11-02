@@ -35,7 +35,8 @@ public static class StartMenuShortcut
     {
         var path = AllFileNames.Select(name => Path.Combine(folder, name)).FirstOrDefault(File.Exists);
         if (path is null) return null;
-        return ShellLinkFile.Read(path).Target;
+        // Written with an absolute path; one with %variables% counts with the machine's (Program Files).
+        return PathExpander.Machine.Expand(ShellLinkFile.Read(path).Target);
     }
 
     /// <summary>

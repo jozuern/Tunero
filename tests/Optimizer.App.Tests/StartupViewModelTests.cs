@@ -154,7 +154,7 @@ public sealed class StartupViewModelTests
         // It leads with what the list shows, the number in the tab's header, and names the total only there.
         Assert.Equal(string.Join(" ",
             Loc.Instance.Format("Startup_Showing", 3, 4),
-            Loc.Instance.Format("Startup_OffOne", 1),
+            Loc.Instance.Format("Startup_OffOne", 4),
             Loc.Instance.Format("Startup_AttentionOne", 1)), vm.SummaryText);
         Assert.Equal(3, Counts(vm)[(int)StartupTab.SignIn]);
 
@@ -175,8 +175,8 @@ public sealed class StartupViewModelTests
             StartupViewModel.Summary(StartupTab.Tasks, 12, 4, 2, 0, checking: false));
         Assert.Equal(Loc.Instance.Format("Startup_SummaryCount", Count("Startup_CountAdvanced", 0)),
             StartupViewModel.Summary(StartupTab.Advanced, 0, 0, 0, 0, checking: false));
-        // With some hidden, the total is said once ("Showing 4 of 51."), followed by how many are off.
-        Assert.Equal(string.Join(" ", Loc.Instance.Format("Startup_Showing", 4, 51), Count("Startup_Off", 16), Count("Startup_AttentionOne", 1)),
+        // With some hidden, the total is said ("Showing 4 of 51."), followed by how many of all of them are off.
+        Assert.Equal(string.Join(" ", Loc.Instance.Format("Startup_Showing", 4, 51), Loc.Instance.Format("Startup_Off", 16, 51), Count("Startup_AttentionOne", 1)),
             StartupViewModel.Summary(StartupTab.SignIn, 51, 16, 1, 47, checking: false));
         Assert.Equal(Loc.Instance.Format("Startup_Showing", 4, 51), StartupViewModel.Summary(StartupTab.SignIn, 51, 0, 0, 47, checking: false));
         // While the signatures are checked, what needs attention and what is hidden are not counted yet.
@@ -307,6 +307,137 @@ public sealed class StartupViewModelTests
         Assert.Equal("", unsigned.SignatureText);
         Assert.Equal(Labels.Current.Get(Loc.Instance.Language, "signature.Unsigned"), unsigned.ExportSignatureText);
         Assert.Equal(Labels.Current.Get(Loc.Instance.Language, "signature.Signed"), Row(Entry(StartupKind.RunKey, "Discord"), Vendor).ExportSignatureText);
+    }
+
+    /// <summary>A row without a switch still says whether the entry runs, in the switch's words; an entry without a state says nothing.</summary>
+    [Fact]
+    public void ARowWithoutASwitchShowsItsState()
+    {
+        StartupRow WindowsTask(bool enabled) => Row(new StartupEntry(StartupKind.LogonTask, @"Microsoft\Windows\TextServicesFramework\MsCtfMonitor", null, null,
+            @"\Microsoft\Windows\TextServicesFramework\MsCtfMonitor", Hive.Machine, enabled, "task:x") { Target = @"\Microsoft\Windows\TextServicesFramework\MsCtfMonitor" }, Microsoft);
+
+        var off = WindowsTask(enabled: false);
+        Assert.False(off.CanToggle);
+        Assert.Equal((Loc.Instance["Startup_Disabled"], Loc.Instance["Startup_ReadOnly"]), (off.ReadOnlyState, off.ReadOnlyNote));
+        Assert.Equal(Loc.Instance["Startup_ReadOnlyTip"], off.ReadOnlyTip);
+        Assert.Equal(Loc.Instance["Startup_Enabled"], WindowsTask(enabled: true).ReadOnlyState);
+        // A Windows service the catalog keeps read-only: its start type.
+        var dhcp = Row(Entry(StartupKind.Service, "Dhcp"), Microsoft);
+        Assert.Equal((false, Labels.Current.Get(Loc.Instance.Language, "serviceStart.Automatic")), (dhcp.CanToggle, dhcp.ReadOnlyState));
+        var driver = Row(Entry(StartupKind.Driver, "Vendor Driver", enabled: null), Vendor);
+        Assert.Equal((null, Loc.Instance["Startup_ReadOnly"]), (driver.ReadOnlyState, driver.ReadOnlyNote));
+        // A row with a switch needs neither.
+        var steam = Row(Entry(StartupKind.RunKey, "Steam"), Vendor);
+        Assert.Equal((true, null, null), (steam.CanToggle, steam.ReadOnlyState, steam.ReadOnlyNote));
+    }
+
+    /// <summary>
+    /// Removing a program redirect is an Expert change: without Expert mode the row says so instead of showing a switch
+    /// that leads to a refusal, and the switch appears once Expert mode is on. A service of another vendor has its switch
+    /// without Expert mode, as on Services &amp; tasks.
+    /// </summary>
+    [Fact]
+    public void AnExpertSwitchFollowsExpertMode()
+    {
+        var entry = ProgramRedirect;
+        var row = new StartupRow(entry, Loc.Instance.Language, null!, null!);
+        row.SetSignature(Vendor, runsScriptHost: false, Loc.Instance.Language);
+        Assert.True(row.NeedsExpertMode);
+        Assert.Equal((false, Loc.Instance["Startup_NeedsExpert"], Loc.Instance["Startup_Enabled"]), (row.CanToggle, row.ReadOnlyNote, row.ReadOnlyState));
+        // The note's tooltip says how the switch appears, not that Tunero never switches the entry.
+        Assert.Equal(Loc.Instance["Startup_NeedsExpertTip"], row.ReadOnlyTip);
+        row.SetExpertMode(true);
+        Assert.Equal((true, null, null), (row.CanToggle, row.ReadOnlyNote, row.ReadOnlyState));
+        row.SetExpertMode(false);
+        Assert.False(row.CanToggle);
+        Assert.True(new StartupRow(entry, Loc.Instance.Language, null!, null!, expertMode: true).CanToggle);
+
+        var service = Row(Entry(StartupKind.Service, "Vendor Service"), Vendor);
+        Assert.False(service.NeedsExpertMode);
+        Assert.True(service.CanToggle);
+    }
+
+    /// <summary>A program redirect (IFEO Debugger value): removing it is an Expert change.</summary>
+    private static readonly StartupEntry ProgramRedirect = new(StartupKind.ImageHijack, "taskmgr.exe", @"C:\Tools\procexp64.exe", @"C:\Tools\procexp64.exe",
+        @"HKLM\IFEO\taskmgr.exe", Hive.Machine, true, "ifeo:taskmgr.exe")
+    {
+        Target = @"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\taskmgr.exe",
+        Suspicious = true,
+    };
+
+    /// <summary>Expert mode turned on or off in Settings while the page is loaded: its Expert switches follow without a new scan.</summary>
+    [Fact]
+    public void ThePageFollowsExpertModeInSettings()
+    {
+        var host = new FakePageHost();
+        var vm = new StartupViewModel(host, null!, null!);
+        vm.ShowRows([Row(ProgramRedirect, Vendor), Row(Entry(StartupKind.RunKey, "Steam"), Vendor)]);
+        vm.SelectedTab = (int)StartupTab.Advanced;
+        var redirect = Assert.Single(vm.Rows);
+        Assert.False(redirect.CanToggle);
+
+        host.ExpertMode = true;
+        Assert.Equal((true, null), (redirect.CanToggle, redirect.ReadOnlyNote));
+        host.ExpertMode = false;
+        Assert.Equal((false, Loc.Instance["Startup_NeedsExpert"]), (redirect.CanToggle, redirect.ReadOnlyNote));
+
+        // Rows built again (a reload or a language switch) follow as well, through the one subscription.
+        var again = Row(ProgramRedirect, Vendor);
+        vm.ShowRows([again]);
+        host.ExpertMode = true;
+        Assert.True(again.CanToggle);
+    }
+
+    /// <summary>
+    /// Tunero's own task is named in words and points to Settings, where it is turned on and off; the search, the export
+    /// and the snapshot keep its real name.
+    /// </summary>
+    [Fact]
+    public void TuneroOwnTaskIsNamedAndLinksToSettings()
+    {
+        var path = Optimizer.Core.Tweaks.ReapplyTask.TaskPath("S-1-5-21-1-2-3-1001");
+        var row = Row(new StartupEntry(StartupKind.LogonTask, path.TrimStart('\\'), "\"C:\\Program Files\\Tunero\\Tunero.exe\" --reapply", @"C:\Program Files\Tunero\Tunero.exe",
+            path, Hive.Machine, true, $"task:{path}") { Target = path }, Vendor);
+        Assert.True(row.IsOwnTask);
+        Assert.Equal(Loc.Instance["Startup_OwnTaskName"], row.DisplayName);
+        Assert.Equal(path.TrimStart('\\'), row.Name);
+        Assert.Equal(row.DisplayName, row.ToString());
+        Assert.False(row.CanToggle);
+        Assert.Null(row.ReadOnlyNote); // the link to Settings takes its place
+        Assert.Equal(Loc.Instance["Startup_Enabled"], row.ReadOnlyState);
+        Assert.False(Row(Entry(StartupKind.LogonTask, "Vendor Task"), Vendor).IsOwnTask);
+
+        var vm = new StartupViewModel(new FakePageHost(), null!, null!);
+        vm.ShowRows([row]);
+        vm.Search = "Apply changes again S-1-5-21";
+        Assert.Single(vm.Rows);
+        vm.Search = Loc.Instance["Startup_OwnTaskName"];
+        Assert.Single(vm.Rows);
+    }
+
+    /// <summary>The tabs whose entries are listed only say why under the card: Advanced what its places are, Drivers why they have no switch.</summary>
+    [Fact]
+    public void ListedOnlyTabsExplainThemselves()
+    {
+        var vm = Page();
+        Assert.Null(vm.TabHintText);
+        vm.SelectedTab = (int)StartupTab.Drivers;
+        Assert.Equal(Loc.Instance["Startup_DriversHint"], vm.TabHintText);
+        vm.SelectedTab = (int)StartupTab.Advanced;
+        Assert.Equal(Loc.Instance["Startup_AdvancedHint"], vm.TabHintText);
+        vm.SelectedTab = (int)StartupTab.Services;
+        Assert.Null(vm.TabHintText);
+    }
+
+    /// <summary>The simple view's line of a service: its state and publisher, without the internal service name.</summary>
+    [Fact]
+    public void AServiceLineLeavesItsInternalNameToTheTechnicalView()
+    {
+        var service = new Optimizer.Core.Services.ServiceRow("TuneroTestVendorUpdater", "Vendor Updater", "Keeps Vendor apps up to date.", ServiceStart.Automatic,
+            true, null, @"C:\Program Files\Vendor\updater.exe", null) { Signature = Vendor };
+        var row = new ServiceRowVm(service, Loc.Instance.Language, null!);
+        Assert.Equal($"{Loc.Instance["Svc_Running"]}, Valve Corp.", row.SimpleMetaText);
+        Assert.Equal($"TuneroTestVendorUpdater, {Loc.Instance["Svc_Running"]}, Valve Corp.", row.MetaText);
     }
 
     [Theory]

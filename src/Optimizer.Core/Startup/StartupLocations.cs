@@ -318,15 +318,14 @@ public sealed partial class StartupScanner
             if (clsid is null || !Guid.TryParse(clsid, out var g)) return null;
             var id = g.ToString("B").ToUpperInvariant();
             if (!seen.Add($"{what}:{id}")) return null;
-            var dll = ComServer(id, path.Contains("WOW6432Node", StringComparison.OrdinalIgnoreCase));
-            return new StartupEntry(StartupKind.ExplorerAddOn, $"{what}: {name}", dll ?? id, dll, $@"HKLM\{path}", Hive.Machine, null, $"exploreraddon:{what}:{id}");
+            // Loaded into Explorer, which runs as the signed-in user: that account's own registration wins.
+            var dll = UserComServer(id, path.Contains("WOW6432Node", StringComparison.OrdinalIgnoreCase), out var overridden).File;
+            return new StartupEntry(StartupKind.ExplorerAddOn, $"{what}: {name}", dll ?? id, dll, $@"HKLM\{path}", Hive.Machine, null, $"exploreraddon:{what}:{id}")
+            {
+                Suspicious = overridden,
+            };
         }
-        string? NameOf(string clsid)
-        {
-            if (!Guid.TryParse(clsid, out var g)) return null;
-            using var cls = Open(Hive.Machine, $@"SOFTWARE\Classes\CLSID\{g.ToString("B").ToUpperInvariant()}");
-            return cls?.GetValue("")?.ToString() is { Length: > 0 } n ? n : null;
-        }
+        string? NameOf(string clsid) => Guid.TryParse(clsid, out var g) ? ClassName(g.ToString("B").ToUpperInvariant()) : null;
 
         foreach (var path in new[] { @"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\ShellIconOverlayIdentifiers", @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Explorer\ShellIconOverlayIdentifiers" })
             foreach (var e in FromSubKeys(path, "Icon overlay")) yield return e;
@@ -355,11 +354,11 @@ public sealed partial class StartupScanner
                 var id = g.ToString("B").ToUpperInvariant();
                 if (!seen.Add(id)) continue;
                 // The account's own registration wins over the machine's: read its server first.
-                using var server = Open(Hive.User, $@"Software\Classes\CLSID\{id}\InprocServer32");
-                var dll = server?.GetValue("", null, Microsoft.Win32.RegistryValueOptions.DoNotExpandEnvironmentNames)?.ToString() is { Length: > 0 } own
-                    ? CommandLine.FilePath(own, _userExpand)
-                    : ComServer(id);
-                yield return new StartupEntry(StartupKind.ShellExtension, handler, dll ?? id, dll, $@"HKCU\Software\Classes\{handlerRoot}\{handler}", Hive.User, null, $"usershellext:{id}");
+                var dll = UserComServer(id, wow64: false, out var overridden).File;
+                yield return new StartupEntry(StartupKind.ShellExtension, handler, dll ?? id, dll, $@"HKCU\Software\Classes\{handlerRoot}\{handler}", Hive.User, null, $"usershellext:{id}")
+                {
+                    Suspicious = overridden,
+                };
             }
         }
     }
@@ -460,10 +459,14 @@ public sealed partial class StartupScanner
                 if (!Guid.TryParse(id, out var g)) continue;
                 using var sub = key!.OpenSubKey(id);
                 var name = sub?.GetValue("FriendlyName")?.ToString() is { Length: > 0 } n ? n : id;
-                // Filters for 32-bit players are registered under WOW6432Node, their classes too.
-                var dll = ComServer(g.ToString("B").ToUpperInvariant(), wow64: path != instance);
+                // Filters for 32-bit players are registered under WOW6432Node, their classes too. A player runs as the
+                // signed-in user, so that account's own registration of the class wins.
+                var dll = UserComServer(g.ToString("B").ToUpperInvariant(), wow64: path != instance, out var overridden).File;
                 if (dll is null) continue;
-                yield return new StartupEntry(StartupKind.Codec, name, dll, dll, $@"HKLM\{path}\{id}", Hive.Machine, null, $"directshow:{path}:{id}");
+                yield return new StartupEntry(StartupKind.Codec, name, dll, dll, $@"HKLM\{path}\{id}", Hive.Machine, null, $"directshow:{path}:{id}")
+                {
+                    Suspicious = overridden,
+                };
             }
         }
     }

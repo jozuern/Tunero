@@ -30,6 +30,10 @@ public class StartupDeleteTests
         Assert.Null(ScheduledTaskXml.Principal(TaskXml("<UserId>PC\\admin</UserId><LogonType>InteractiveTokenOrPassword</LogonType>")));
         Assert.Null(ScheduledTaskXml.Principal("not xml"));
         Assert.Equal("\"C:\\Vendor\\updater.exe\" /silent", ScheduledTaskXml.Command(TaskXml("<UserId>S-1-5-18</UserId>")));
+        // As the Startup page shows it: a program stored with quotes is quoted once, and one without arguments too.
+        Assert.Equal("\"C:\\Program Files\\Vendor\\updater.exe\" --wake",
+            ScheduledTaskXml.Command(TaskXml("<UserId>S-1-5-18</UserId>", "\"C:\\Program Files\\Vendor\\updater.exe\"", "--wake")));
+        Assert.Equal("\"C:\\Vendor\\updater.exe\"", ScheduledTaskXml.Command(TaskXml("<UserId>S-1-5-18</UserId>", args: null)));
     }
 
     [Fact]

@@ -1,7 +1,7 @@
-# Third-party service at startup (Expert)
+# Service at startup
 
 ## Summary
-Sets this service from another vendor to start on demand (Manual) instead of with Windows.
+Sets this service to start on demand (Manual) instead of with Windows. A Windows service only where Tunero explains it.
 
 ## How it works
 The start type is changed to Manual in the Service Control Manager [1]; the service is not disabled, so its program can still start it. Undo restores the previous start type.

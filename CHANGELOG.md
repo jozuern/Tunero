@@ -9,7 +9,7 @@
 - **Consistent pages:** empty lists say so the same way on every page, switches for settings show On or Off everywhere (also on Remove apps and in the install media's Expert options), and cards share one padding.
 - **Restore point question:** shorter buttons ("Turn on", "Continue without it") on one line at one height; dialog buttons always share their height.
 - **Details pane:** text keeps clear of the scroll bar, the impact shows its number once, registry paths keep the line spacing, and the "already set" note reads clearly.
-- **Changes:** the Move to another PC card has its buttons at the top right and the export options in a row below. **Startup** names the total once ("Showing 4 of 51. 16 are turned off."), and German reload buttons say "Neu laden" on every page.
+- **Changes:** the Move to another PC card has its buttons at the top right and the export options in a row below. **Startup** names the total once and says what the turned-off count refers to ("Showing 4 of 51. Of all 51, 16 are turned off."), and German reload buttons say "Neu laden" on every page.
 - **Navigation** group headings show whenever they fit, also after the start-up scan; a running scan takes the "Last scan" line instead of adding one.
 - **Windows install media:** the summary bar breaks only between items, the failure bar holds its Show why button, and the review names the keyboard layout.
 - **Remove apps:** note and info bars first, then the Remove selected card above a divider; **Graphics & DNS** has a Graphics section header; **Storage** treemap labels sit on the tiles in black or white.
@@ -35,6 +35,8 @@
 - **Markdig 1.5.0** for the explanation pages.
 - **Setting switches** read "Off" left of the switch, as in Windows Settings, so the switch ends at the card's edge; "Set outside Tunero" and a check's status line use the easier to read secondary text color.
 - **Tweaks:** in Select mode, rows that cannot be picked for no reason worth showing (on outside Tunero, not for this PC) show no check box that does nothing.
+- **Startup:** a row without a switch says whether the entry is enabled or disabled (Automatic or Manual for a service); a service of another vendor can be set to Manual without Expert mode, as on Services & tasks; a program redirect says "Needs Expert mode" and gets its switch as soon as Expert mode is on. The Drivers tab explains why drivers are listed only, and the menu says "Open file location" and "Copy entry location".
+- **Startup and Services & tasks:** Tunero's own task is called "Tunero: Apply my changes again" and links to Settings; Services & tasks shows a task's state without a switch, the warning icon and tags of the Startup page, and with Technical details off the service description, without the internal service name.
 
 ### Fixed
 
@@ -90,6 +92,9 @@
 - **Exports** (changes, Startup list, install media choices) replace the chosen file without following a link put in its place. A folder reached through a link is refused with a message that says so; choose the folder it points to.
 - **Screen readers:** Undo, Apply again, Details, Remove and Reinstall in lists name their item.
 - **Tabs** no longer make the search and sort boxes of the selected tab bold; sizes under 1 KB read 1 KB instead of "0 KB"; screen readers name the component list of the Licenses window.
+- **Startup:** Startup folders moved through User Shell Folders are read, and items in a moved folder are marked for a look; a per-user COM registration counts for shell extensions, Explorer add-ons, DirectShow filters and task COM handlers; a task lists every COM handler, also one next to a program.
+- **Services & tasks** checks every program a task runs, so an unsigned second action no longer hides behind a signed first one. Shortcut targets and Policy Run values are expanded with the signed-in user's variables, not those of the elevated app.
+- **Startup snapshots** flag a Run value that gains or loses its quotes; the delete preview of a task no longer doubles the quotes of a program stored quoted.
 
 ## 1.5.0
 

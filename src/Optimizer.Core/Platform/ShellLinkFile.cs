@@ -10,7 +10,12 @@ namespace Optimizer.Core.Platform;
 /// </summary>
 internal static class ShellLinkFile
 {
-    /// <summary>Program and arguments of a shortcut; the target is empty for a link to a non-file item.</summary>
+    /// <summary>
+    /// Program and arguments of a shortcut; the target is empty for a link to a non-file item. The target comes back as
+    /// stored, its %variables% not expanded (SLGP_RAWPATH): the shell would expand them with this process's environment,
+    /// which under a separate administrator account is not the signed-in user's. The caller expands it
+    /// (<see cref="PathExpander"/>).
+    /// </summary>
     public static (string Target, string Arguments) Read(string lnk)
     {
         var link = (IShellLinkW)new ShellLink();
@@ -18,7 +23,7 @@ internal static class ShellLinkFile
         {
             ((IPersistFile)link).Load(lnk, 0 /* STGM_READ */);
             var buffer = new StringBuilder(32768);
-            link.GetPath(buffer, buffer.Capacity, IntPtr.Zero, 0);
+            link.GetPath(buffer, buffer.Capacity, IntPtr.Zero, RawPath);
             var target = buffer.ToString();
             buffer.Clear();
             link.GetArguments(buffer, buffer.Capacity);
@@ -47,6 +52,9 @@ internal static class ShellLinkFile
             Marshal.FinalReleaseComObject(link);
         }
     }
+
+    /// <summary>SLGP_RAWPATH: the target as stored, %variables% and all.</summary>
+    private const uint RawPath = 0x4;
 
     [ComImport, Guid("00021401-0000-0000-C000-000000000046")]
     private class ShellLink;

@@ -426,7 +426,12 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Startup_ReadOnly" xml:space="preserve">
     <value>Listed only</value>
   </data>
-  <data name="Startup_ReadOnlyTip" xml:space="preserve"><value>Tunero does not switch this entry. More options can show its file or copy its location.</value></data>
+  <data name="Startup_NeedsExpert" xml:space="preserve"><value>Needs Expert mode</value></data>
+  <data name="Startup_NeedsExpertTip" xml:space="preserve"><value>An Expert change: turn on Expert mode in Settings to switch this entry.</value></data>
+  <data name="Startup_ReadOnlyTip" xml:space="preserve"><value>Tunero does not switch this entry. More options can open its file location or copy the entry's location.</value></data>
+  <data name="Startup_OwnTaskName" xml:space="preserve"><value>Tunero: Apply my changes again</value></data>
+  <data name="Startup_OwnTaskLink" xml:space="preserve"><value>In Settings</value></data>
+  <data name="Startup_OwnTaskTip" xml:space="preserve"><value>Tunero's own task. Turn it on or off with Apply my changes again in Settings.</value></data>
   <data name="Vt_Check" xml:space="preserve">
     <value>Check with VirusTotal</value>
   </data>
@@ -474,7 +479,7 @@ The files are deleted permanently. Files in use are skipped.</value>
     <value>Show all Windows services</value>
   </data>
   <data name="Svc_Rules" xml:space="preserve">
-    <value>Windows services are read-only unless the app explains them, and then only Manual is offered. Services from other vendors can be set to Manual or Disabled.</value>
+    <value>Windows services are read-only unless Tunero explains them, and then only Manual is offered. Services from other vendors can be set to any start type.</value>
   </data>
   <data name="Svc_ReadOnly" xml:space="preserve">
     <value>Not changed here</value>
@@ -1281,8 +1286,8 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Startup_SnapshotDiff" xml:space="preserve"><value>Compared with the snapshot from {0}: {1} new or changed, {2} removed.</value></data>
   <data name="Startup_SnapshotRemoved" xml:space="preserve"><value>Removed: {0}</value></data>
   <data name="Startup_New" xml:space="preserve"><value>New since the snapshot</value></data>
-  <data name="Startup_ShowFile" xml:space="preserve"><value>Show file</value></data>
-  <data name="Startup_CopyLocation" xml:space="preserve"><value>Copy location</value></data>
+  <data name="Startup_ShowFile" xml:space="preserve"><value>Open file location</value></data>
+  <data name="Startup_CopyLocation" xml:space="preserve"><value>Copy entry location</value></data>
   <data name="Startup_Delete" xml:space="preserve"><value>Delete entry</value></data>
   <data name="Startup_DeleteName" xml:space="preserve"><value>Delete {0}</value></data>
   <data name="Startup_DeleteHint" xml:space="preserve"><value>Removes this entry (the registry value, the file in the Startup folder or the task), as Autoruns does. It is backed up first: Undo on the Changes page puts it back.</value></data>
@@ -1690,6 +1695,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Startup_TabDrivers" xml:space="preserve"><value>Drivers</value></data>
   <data name="Startup_TabAdvanced" xml:space="preserve"><value>Advanced</value></data>
   <data name="Startup_AdvancedHint" xml:space="preserve"><value>Other places Windows and programs load code from, as Autoruns lists them. Most are listed only: change them in the program they belong to.</value></data>
+  <data name="Startup_DriversHint" xml:space="preserve"><value>Drivers are listed only: if one does not load, a device can stop working or Windows can fail to start. Update or remove drivers in Device Manager or with the device's own installer.</value></data>
   <data name="Startup_MoreOptions" xml:space="preserve"><value>More options</value></data>
   <data name="Startup_MoreOptionsName" xml:space="preserve"><value>More options for {0}</value></data>
   <data name="Startup_PlainRegistry" xml:space="preserve"><value>Registry</value></data>
@@ -1711,8 +1717,8 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Startup_SummaryCount" xml:space="preserve"><value>{0}.</value></data>
   <data name="Startup_SummaryCountOff" xml:space="preserve"><value>{0} (turned off).</value></data>
   <data name="Startup_SummaryCountSomeOff" xml:space="preserve"><value>{0}, {1} of them turned off.</value></data>
-  <data name="Startup_OffOne" xml:space="preserve"><value>1 is turned off.</value></data>
-  <data name="Startup_Off" xml:space="preserve"><value>{0} are turned off.</value></data>
+  <data name="Startup_OffOne" xml:space="preserve"><value>Of all {0}, 1 is turned off.</value></data>
+  <data name="Startup_Off" xml:space="preserve"><value>Of all {1}, {0} are turned off.</value></data>
   <data name="Startup_AttentionOne" xml:space="preserve"><value>1 needs attention.</value></data>
   <data name="Startup_Attention" xml:space="preserve"><value>{0} need attention.</value></data>
   <data name="Startup_Showing" xml:space="preserve"><value>Showing {0} of {1}.</value></data>

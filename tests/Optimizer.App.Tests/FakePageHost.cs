@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Optimizer.App.Services;
 using Optimizer.App.ViewModels;
@@ -14,7 +15,7 @@ namespace Optimizer.App.Tests;
 /// only runs page operations (<see cref="ChangeRunner.RunExclusiveAsync(string, Func{Task})"/>); with the services of an
 /// <see cref="AppFixture"/> it applies and undoes through the engine on fakes, and the catalog rows are detected there.
 /// </summary>
-internal sealed class FakePageHost : IPageHost
+internal sealed class FakePageHost : IPageHost, INotifyPropertyChanged
 {
     private readonly AppServices? _services;
 
@@ -61,7 +62,21 @@ internal sealed class FakePageHost : IPageHost
         set => _facts = value;
     }
 
-    public bool ExpertMode => false;
+    private bool _expertMode;
+
+    /// <summary>Off until a test turns it on; a change is announced as the window's Settings toggle announces it.</summary>
+    public bool ExpertMode
+    {
+        get => _expertMode;
+        set
+        {
+            if (_expertMode == value) return;
+            _expertMode = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ExpertMode)));
+        }
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
     public HashSet<string> AppliedIds() => [];
     public IReadOnlyList<TweakStatus> DeviceStates => [];
 
