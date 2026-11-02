@@ -110,6 +110,7 @@
   <data name="Banner_Restart" xml:space="preserve"><value>Änderungen, die nach einem Neustart wirken: {0}.</value></data>
   <data name="Settings_Expert" xml:space="preserve"><value>Expertenmodus</value></data>
   <data name="Settings_SectionTweaks" xml:space="preserve"><value>Tweaks</value></data>
+  <data name="Settings_SectionInstall" xml:space="preserve"><value>Installation</value></data>
   <data name="Settings_ExpertHint" xml:space="preserve"><value>Zeigt Änderungen, die Sicherheit gegen Leistung tauschen oder die Startkonfiguration bearbeiten. Sie werden nie automatisch empfohlen.</value></data>
   <data name="Settings_Reapply" xml:space="preserve"><value>Meine Änderungen erneut anwenden, wenn Windows sie zurücksetzt</value></data>
   <data name="Reapply_Hint" xml:space="preserve"><value>Zwei Minuten nach deiner Anmeldung wendet Tunero erneut an, was ein Update zurückgesetzt hat (eine geplante Aufgabe mit Administratorrechten; nichts läuft weiter). Expertenänderungen bleiben dir überlassen.</value></data>
@@ -851,7 +852,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
     <value>Live-Messwerte</value>
   </data>
   <data name="Sensors_Hint" xml:space="preserve">
-    <value>Temperaturen, Auslastung, Takte, Leistung und Lüfter alle zwei Sekunden (LibreHardwareMonitor), dazu, welche Programme Prozessor, Arbeitsspeicher, Grafikkarte und jedes Laufwerk nutzen. Höchstwert ist der höchste Wert seit dem Einschalten.</value>
+    <value>Temperaturen, Auslastung, Takte, Leistung und Lüfter alle zwei Sekunden (LibreHardwareMonitor), dazu, welche Programme Prozessor, Arbeitsspeicher, Grafikkarte und jedes Laufwerk nutzen. Höchstwert ist der höchste Wert, seit du die Messwerte eingeschaltet hast.</value>
   </data>
   <data name="Sensors_PawnIoOn" xml:space="preserve">
     <value>PawnIO-Treiber installiert: CPU- und Mainboard-Sensoren sind verfügbar.</value>
@@ -1242,8 +1243,9 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Result_FailedPartly" xml:space="preserve"><value>Nicht angewendet: {0}. Ein Teil ließ sich nicht zurücksetzen und ist noch geändert, deshalb steht er auf der Seite Änderungen. Nutze dort Rückgängig. Grund: {1}</value></data>
   <data name="Quick_ExplorerTitle" xml:space="preserve"><value>Datei-Explorer neu starten?</value></data>
   <data name="Quick_ExplorerText" xml:space="preserve"><value>Taskleiste, Startmenü und geöffnete Explorer-Fenster schließen sich kurz und öffnen sich wieder. Kopier- und Verschiebevorgänge, die im Explorer noch laufen, brechen ab. Andere an diesem PC angemeldete Benutzer sind nicht betroffen.</value></data>
-  <data name="Bench_Low" xml:space="preserve"><value>1-%-Low {0}</value></data>
+  <data name="Bench_Low" xml:space="preserve"><value>1-%-Low {0} FPS</value></data>
   <data name="Bench_Fps" xml:space="preserve"><value>{0} FPS</value></data>
+  <data name="Bench_Frames" xml:space="preserve"><value>{0:N0} Frames</value></data>
   <data name="Bench_Stopped" xml:space="preserve"><value>Aufzeichnung gestoppt. Dieser Durchlauf wurde nicht übernommen.</value></data>
   <data name="Bench_TimedOut" xml:space="preserve"><value>PresentMon hat sich nach der Aufzeichnungszeit nicht beendet und wurde gestoppt. Dieser Durchlauf wurde nicht übernommen.</value></data>
   <data name="Quick_IpRenew" xml:space="preserve"><value>IP-Adresse erneuern</value></data>
@@ -1255,7 +1257,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Quick_TcpIpResetConfirm" xml:space="preserve"><value>Laut Microsoft wirkt das wie Entfernen und Neuinstallieren von TCP/IP: Die TCP/IP- und DHCP-Einstellungen in der Registry werden überschrieben. Dort gespeicherte Einstellungen wie eine feste IP-Adresse können verloren gehen und müssen neu gesetzt werden. Ein Neustart ist nötig.</value></data>
   <data name="Quick_TcpIpResetDone" xml:space="preserve"><value>TCP/IP zurückgesetzt. Starte den PC neu.</value></data>
   <data name="Quick_AudioRestart" xml:space="preserve"><value>Windows-Audio neu starten</value></data>
-  <data name="Quick_AudioRestartHint" xml:space="preserve"><value>Startet den Dienst Windows-Audio neu. Hilft, wenn nach dem Wechsel von Kopfhörer oder Lautsprecher kein Ton mehr kommt.</value></data>
+  <data name="Quick_AudioRestartHint" xml:space="preserve"><value>Startet den Dienst Windows-Audio neu. Hilft, wenn nach einem Wechsel der Kopfhörer oder Lautsprecher kein Ton mehr kommt.</value></data>
   <data name="Quick_AudioRestartDone" xml:space="preserve"><value>Windows-Audio neu gestartet. Apps, die Ton abgespielt haben, brauchen eventuell auch einen Neustart.</value></data>
   <data name="Quick_BluetoothRestart" xml:space="preserve"><value>Bluetooth neu starten</value></data>
   <data name="Quick_BluetoothRestartHint" xml:space="preserve"><value>Startet den Bluetooth-Unterstützungsdienst neu. Hilft, wenn Headsets oder Controller sich nicht mehr verbinden.</value></data>
@@ -1336,9 +1338,10 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Drv_CleanOpen" xml:space="preserve"><value>DDU-Seite öffnen</value></data>
   <data name="Drv_CleanSafeModeLink" xml:space="preserve"><value>„In die erweiterten Startoptionen neu starten“ unter Tools</value></data>
   <data name="Prio_Title" xml:space="preserve"><value>Startprioritäten für Programme</value></data>
-  <data name="Prio_Hint" xml:space="preserve"><value>Windows startet das Programm jedes Mal mit dieser CPU-Priorität, ohne Hintergrundprogramm. Sinnvoll für ein Spiel, das mit beschäftigten Hintergrundprogrammen konkurriert, oder damit ein Backup- oder Download-Tool sich zurückhält.</value></data>
+  <data name="Prio_Hint" xml:space="preserve"><value>Windows startet das gewählte Programm jedes Mal mit dieser CPU-Priorität; Tunero muss dafür nicht laufen. Sinnvoll für ein Spiel, das mit beschäftigten Hintergrundprogrammen konkurriert, oder damit ein Backup- oder Download-Tool sich zurückhält.</value></data>
+  <data name="Prio_Program" xml:space="preserve"><value>Programmdatei</value></data>
   <data name="Prio_Warning" xml:space="preserve"><value>Microsoft dokumentiert diese Werte nicht, deshalb tragen die Regeln das Etikett „Undokumentierter Wert“; ein Test in einer virtuellen Maschine mit Windows 11 hat gezeigt, dass Windows sie anwendet. Manche Anti-Cheat-Systeme prüfen diesen Teil der Registry.</value></data>
-  <data name="Prio_ExePlaceholder" xml:space="preserve"><value>Programmdatei, zum Beispiel game.exe</value></data>
+  <data name="Prio_ExePlaceholder" xml:space="preserve"><value>Zum Beispiel game.exe</value></data>
   <data name="Prio_LowIoOption" xml:space="preserve"><value>Niedrige Datenträgerpriorität</value></data>
   <data name="Prio_LowMemoryOption" xml:space="preserve"><value>Niedrige Speicherpriorität</value></data>
   <data name="Prio_LowMemoryHint" xml:space="preserve"><value>Wird der Arbeitsspeicher knapp, nimmt Windows ihn zuerst diesem Programm weg, damit andere ihren behalten. Für Hintergrundprogramme, nicht für Spiele.</value></data>
@@ -1440,7 +1443,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Uninstall_Text" xml:space="preserve"><value>Tunero schließt sich und löscht seine exe, seine Sicherungen, Protokolle und Einstellungen und seinen Eintrag im Startmenü.</value></data>
   <data name="Uninstall_WarningTitle" xml:space="preserve"><value>Noch aktive Änderungen: {0}</value></data>
   <data name="Uninstall_Warning" xml:space="preserve"><value>Die Sicherungen dieser Änderungen werden mit Tunero gelöscht. Behaltene Änderungen lassen sich danach nicht mehr rückgängig machen.</value></data>
-  <data name="Uninstall_Details" xml:space="preserve"><value>Bleibt auf dem PC: Wiederherstellungspunkte, Apps, die du über Tunero installiert hast (entfernen unter Einstellungen &gt; Apps &gt; Installierte Apps), und der PawnIO-Treiber (deinstallierst du ihn dort, kann der Treiber in Windows bleiben: pnputil /delete-driver mit seiner oem-Datei entfernt auch ihn).</value></data>
+  <data name="Uninstall_Details" xml:space="preserve"><value>Bleibt auf dem PC: Wiederherstellungspunkte, Apps, die du über Tunero installiert hast, und der PawnIO-Treiber. Diese Apps und PawnIO entfernst du unter Einstellungen &gt; Apps &gt; Installierte Apps; bleibt der PawnIO-Treiber danach in Windows, entfernt ihn pnputil /delete-driver mit seiner oem-Datei.</value></data>
   <data name="Uninstall_DataFolder" xml:space="preserve"><value>Datenordner: {0}</value></data>
   <data name="Uninstall_UndoFirst" xml:space="preserve"><value>Rückgängig machen und deinstallieren</value></data>
   <data name="Uninstall_Keep" xml:space="preserve"><value>Deinstallieren</value></data>
@@ -1484,7 +1487,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Apps_FoundConfirmTitle" xml:space="preserve"><value>{0} installieren?</value></data>
   <data name="Apps_FoundConfirmText" xml:space="preserve"><value>{0} ({1}) steht nicht auf Tuneros geprüfter Liste. winget lädt und installiert es so, wie sein Eintrag im Community-Verzeichnis es angibt, für den ganzen PC, wo das Paket das anbietet, sonst für dein Konto. Installiere es nur, wenn du dem Hersteller vertraust.</value></data>
   <data name="Quick_TabFixes" xml:space="preserve"><value>Reparaturen</value></data>
-  <data name="Tag_Restart" xml:space="preserve"><value>Neustart nötig</value></data>
+  <data name="Tag_Restart" xml:space="preserve"><value>Wirkt nach einem Neustart</value></data>
   <data name="Tag_RestartsNow" xml:space="preserve"><value>Startet den PC sofort neu</value></data>
   <data name="Scroll_Up" xml:space="preserve"><value>Nach oben scrollen</value></data>
   <data name="Scroll_Down" xml:space="preserve"><value>Nach unten scrollen</value></data>
@@ -1517,10 +1520,10 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Quick_WingetSourceReset" xml:space="preserve"><value>winget-Quellen zurücksetzen</value></data>
   <data name="Quick_WingetSourceResetHint" xml:space="preserve"><value>Wenn die Seite „Installieren &amp; aktualisieren“ den winget-Katalog nicht erreicht: stellt die Standardquellen von winget wieder her (winget source reset). Selbst hinzugefügte Quellen werden entfernt.</value></data>
   <data name="Quick_WingetSourceResetAction" xml:space="preserve"><value>Zurücksetzen</value></data>
-  <data name="Quick_WingetSourceResetConfirm" xml:space="preserve"><value>Entfernt alle Quellen außer den Standardquellen von winget (msstore, winget, winget-font) und richtet diese neu ein. Quellen, die du oder deine Firma hinzugefügt habt, musst du neu hinzufügen. Beim nächsten Mal fragt winget wieder nach der Zustimmung zu den Quellenvereinbarungen.</value></data>
+  <data name="Quick_WingetSourceResetConfirm" xml:space="preserve"><value>Entfernt alle Quellen außer den Standardquellen von winget (msstore, winget, winget-font) und richtet diese neu ein. Quellen, die du oder deine Firma hinzugefügt hat, musst du neu hinzufügen. Beim nächsten Mal fragt winget wieder nach der Zustimmung zu den Quellenvereinbarungen.</value></data>
   <data name="Quick_WingetSourceResetDone" xml:space="preserve"><value>winget-Quellen zurückgesetzt. winget meldet:</value></data>
   <data name="Quick_AdvancedStartup" xml:space="preserve"><value>In die erweiterten Startoptionen neu starten</value></data>
-  <data name="Quick_AdvancedStartupHint" xml:space="preserve"><value>Für den abgesicherten Modus, zum Beispiel für DDU: startet in das blaue Menü der erweiterten Startoptionen neu. Wähle dort Problembehandlung &gt; Erweiterte Optionen &gt; Starteinstellungen &gt; Neu starten und dann 4 für den abgesicherten Modus. An den Starteinstellungen ändert sich nichts, der Start danach ist wieder normal.</value></data>
+  <data name="Quick_AdvancedStartupHint" xml:space="preserve"><value>Für den abgesicherten Modus, zum Beispiel für DDU: startet in das blaue Menü der erweiterten Startoptionen neu. Wähle dort Problembehandlung &gt; Erweiterte Optionen &gt; Starteinstellungen &gt; Neu starten und dann 4 für den abgesicherten Modus. An der Startkonfiguration ändert sich nichts, der Start danach ist wieder normal.</value></data>
   <data name="Quick_AdvancedStartupAction" xml:space="preserve"><value>Jetzt neu starten</value></data>
   <data name="Quick_AdvancedStartupConfirm" xml:space="preserve"><value>Der PC startet sofort neu. Speichere vorher deine Arbeit und schließe deine Programme. Ist BitLocker oder die Geräteverschlüsselung an, halte den Wiederherstellungsschlüssel bereit, falls das Menü danach fragt.</value></data>
   <data name="Quick_AdvancedStartupDone" xml:space="preserve"><value>Neustart in die erweiterten Startoptionen.</value></data>
@@ -1549,7 +1552,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Intro_Text" xml:space="preserve"><value>Der Scan liest nur: Nichts ändert sich, bevor du es bestätigst, und geänderte Einstellungen lassen sich auf der Seite Änderungen rückgängig machen.</value></data>
   <data name="Intro_Dismiss" xml:space="preserve"><value>Verstanden</value></data>
   <data name="Settings_Technical" xml:space="preserve"><value>Technische Details</value></data>
-  <data name="Settings_TechnicalHint" xml:space="preserve"><value>Pfade, Registry-Orte und Paketnamen auf Autostart, Bereinigen, Dienste &amp; Aufgaben und Apps entfernen, dazu IDs und Rohwerte unter Systeminfo. Aus ergibt eine einfachere Ansicht; der Detailbereich und jede Bestätigung zeigen sie weiterhin.</value></data>
+  <data name="Settings_TechnicalHint" xml:space="preserve"><value>Pfade, Registry-Orte und Paketnamen auf den Seiten Autostart, Bereinigen, Dienste &amp; Aufgaben und Apps entfernen, dazu IDs und Rohwerte unter Systeminfo. Aus ergibt eine einfachere Ansicht; der Detailbereich und jede Bestätigung zeigen sie weiterhin.</value></data>
   <data name="TweakView_Label" xml:space="preserve"><value>Zeigen</value></data>
   <data name="TweakView_Profile" xml:space="preserve"><value>Für dieses Profil relevant</value></data>
   <data name="TweakView_Recommended" xml:space="preserve"><value>Für diesen PC empfohlen</value></data>
@@ -1640,7 +1643,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Bench_Game" xml:space="preserve"><value>Spiel</value></data>
   <data name="Bench_Duration" xml:space="preserve"><value>Dauer</value></data>
   <data name="Bench_PerRun" xml:space="preserve"><value>Pro Durchlauf</value></data>
-  <data name="Settings_ReportShort" xml:space="preserve"><value>Problem melden öffnet einen vorausgefüllten Fehlerbericht auf GitHub; gesendet wird erst, wenn du ihn dort abschickst.</value></data>
+  <data name="Settings_ReportShort" xml:space="preserve"><value>Problem melden öffnet einen Fehlerbericht auf GitHub mit App-Version und Windows-Build im Link, GitHub erhält beides also beim Öffnen der Seite; der Bericht selbst wird erst gesendet, wenn du ihn dort abschickst.</value></data>
   <data name="About_Shortcuts" xml:space="preserve"><value>Tastatur: Strg+F sucht in der App, F5 liest die Seite oder den PC neu ein, Esc schließt die Details.</value></data>
   <data name="Startup_TagUnsigned" xml:space="preserve"><value>Nicht signiert</value></data>
   <data name="Startup_TagBadSignature" xml:space="preserve"><value>Ungültige Signatur</value></data>

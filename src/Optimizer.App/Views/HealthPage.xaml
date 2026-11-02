@@ -32,7 +32,7 @@
 
             <!-- Benchmark -->
             <ui:TextBlock Style="{StaticResource SectionHeader}" Text="{l:Tr Bench_Title}" />
-            <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Bench_Hint}" Margin="0,0,0,4" />
+            <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Bench_Hint}" Margin="0,0,0,8" />
 
             <ui:Card Padding="{StaticResource CardPadding}">
                 <StackPanel>
@@ -172,7 +172,7 @@
                     <StackPanel>
                         <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Sensors_Live}" />
                         <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Sensors_Hint}" Margin="0,4,0,0" />
-                        <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{Binding Health.PawnIoText}" Margin="0,4,0,0" />
+                        <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding Health.PawnIoText}" Margin="0,4,0,0" />
                     </StackPanel>
                 </ui:CardControl.Header>
                 <StackPanel Orientation="Horizontal">
@@ -187,18 +187,21 @@
             <v:ItemList ItemsSource="{Binding Health.SensorGroups}" Margin="0,8,0,0">
                 <v:ItemList.ItemTemplate>
                     <DataTemplate>
-                        <!-- The chevron beside the title row, not in the middle of the values below it -->
-                        <ui:CardExpander Margin="{StaticResource CardRowMargin}" IsExpanded="{Binding IsExpanded}" HorizontalContentAlignment="Stretch" v:ExpanderChevron.Top="6"
+                        <!-- The chevron beside the title row, not in the middle of the values below it. The card padding (WPF-UI's
+                             expander default is 14 px at the sides, 16 at the top) and 16 px for the folded part keep everything
+                             in line with the Live readings card above. -->
+                        <ui:CardExpander Margin="{StaticResource CardRowMargin}" Padding="{StaticResource CardPadding}" ContentPadding="16" IsExpanded="{Binding IsExpanded}" HorizontalContentAlignment="Stretch" v:ExpanderChevron.Top="6"
                                          AutomationProperties.Name="{Binding Name}">
                             <ui:CardExpander.Header>
-                                <StackPanel Margin="0,4,0,4">
+                                <!-- Icon 24 + 14 px as in a card control: the title and the values start where the Live readings card above starts its text -->
+                                <StackPanel>
                                     <DockPanel>
-                                        <ui:SymbolIcon Symbol="{Binding Icon}" FontSize="20" Margin="0,0,12,0" VerticalAlignment="Center"
+                                        <ui:SymbolIcon Symbol="{Binding Icon}" FontSize="24" Margin="0,0,14,0" VerticalAlignment="Center"
                                                        Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
                                         <ui:TextBlock DockPanel.Dock="Right" Style="{StaticResource Caption}" Text="{Binding Kind}" VerticalAlignment="Center" Margin="16,0,16,0" />
                                         <ui:TextBlock FontTypography="BodyStrong" Text="{Binding Name}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" VerticalAlignment="Center" />
                                     </DockPanel>
-                                    <v:ItemList ItemsSource="{Binding Tiles}" Margin="32,12,0,0" Focusable="False">
+                                    <v:ItemList ItemsSource="{Binding Tiles}" Margin="38,12,0,0" Focusable="False">
                                         <v:ItemList.ItemsPanel>
                                             <ItemsPanelTemplate>
                                                 <WrapPanel />
@@ -231,13 +234,13 @@
                                                     </Border>
                                                     <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{Binding Source}"
                                                                   TextTrimming="CharacterEllipsis" ToolTip="{Binding Source}" />
-                                                    <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{Binding Peak}" />
+                                                    <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding Peak}" />
                                                 </StackPanel>
                                             </DataTemplate>
                                         </v:ItemList.ItemTemplate>
                                     </v:ItemList>
                                     <!-- The three programs using this component most right now -->
-                                    <StackPanel Margin="32,8,0,4" Width="560" HorizontalAlignment="Left">
+                                    <StackPanel Margin="38,8,0,4" Width="560" HorizontalAlignment="Left">
                                         <StackPanel.Style>
                                             <Style TargetType="StackPanel">
                                                 <Style.Triggers>
@@ -281,12 +284,12 @@
                                         <ui:TextBlock FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{Binding Activity.UnavailableText}" TextWrapping="Wrap"
                                                       Visibility="{Binding Activity.UnavailableText, Converter={StaticResource NullToVisibility}}" />
                                     </StackPanel>
-                                    <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding AllTitle}" Margin="32,4,0,0" />
+                                    <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding AllTitle}" Margin="38,4,0,0" />
                                 </StackPanel>
                             </ui:CardExpander.Header>
                             <StackPanel>
                             <!-- Every program that used this component since the readings were switched on, sortable -->
-                            <StackPanel Width="560" HorizontalAlignment="Left" Margin="32,0,0,16">
+                            <StackPanel Width="560" HorizontalAlignment="Left" Margin="38,0,0,16">
                                 <StackPanel.Style>
                                     <Style TargetType="StackPanel">
                                         <Style.Triggers>
@@ -456,7 +459,7 @@
                                               Visibility="{Binding Activity.OtherText, Converter={StaticResource NullToVisibility}}" />
                             </StackPanel>
                             <!-- Every reading, by kind: name, value now, peak since the readings were switched on -->
-                            <v:ItemList ItemsSource="{Binding Sections}" Width="560" HorizontalAlignment="Left" Margin="32,0,0,0" Focusable="False">
+                            <v:ItemList ItemsSource="{Binding Sections}" Width="560" HorizontalAlignment="Left" Margin="38,0,0,0" Focusable="False">
                                 <v:ItemList.ItemTemplate>
                                     <DataTemplate>
                                         <StackPanel Margin="0,0,0,12">

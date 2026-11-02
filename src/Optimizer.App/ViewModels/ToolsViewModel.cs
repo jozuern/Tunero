@@ -78,7 +78,9 @@ public sealed partial class ToolsViewModel(IPageHost owner, AppServices services
         QuickFixRows = QuickFixes.All.Select(f => new QuickFixRow(f)).ToList();
     }
 
-    [ObservableProperty] private string _newPriorityExe = "";
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(AddPriorityRuleCommand))]
+    private string _newPriorityExe = "";
 
     /// <summary>From Live readings: the rule form with this program filled in (nothing is applied).</summary>
     public void PrefillPriorityRule(string exe) => NewPriorityExe = exe;
@@ -119,8 +121,11 @@ public sealed partial class ToolsViewModel(IPageHost owner, AppServices services
         if (dialogs.PickOpenFile(Loc.Instance["Prio_ProgramFiles"], ".exe") is { } path) NewPriorityExe = System.IO.Path.GetFileName(path);
     }
 
+    /// <summary>Add rule waits for a program: with an empty field there is nothing to add.</summary>
+    private bool CanAddPriorityRule() => NewPriorityExe.Trim().Length > 0;
+
     /// <summary>Adds a start priority rule through the engine (confirmation, backup, Changes page).</summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanAddPriorityRule))]
     private async Task AddPriorityRuleAsync()
     {
         var exe = NewPriorityExe.Trim();

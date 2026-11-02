@@ -62,6 +62,22 @@ public class HardwareReportTests
         Assert.Equal("1920×1080,\u00A060\u00A0Hz", tile.Detail);
     }
 
+    /// <summary>
+    /// The battery capacity names both numbers: a bare "67.5 / 64.0 Wh" reads as a charge out of a capacity, more than
+    /// full, a row below the charge in percent.
+    /// </summary>
+    [Fact]
+    public void BatteryCapacityNamesTheFullChargeAndTheDesignCapacity()
+    {
+        var power = new PowerInfo(Guid.Empty, "Balanced", PowerPersonality.Balanced, 100, 5, null, null, false, false, false, 11);
+        var sections = HardwareReport.Build(new HardwareProfile { Os = Os, Power = power, Battery = new BatteryHealth(64000, 67500) }, Loc.Instance);
+        var label = Optimizer.Core.Docs.Labels.Current.Get(Loc.Instance.Language, "hw.batteryCapacity");
+        var item = Assert.Single(sections.SelectMany(s => s.Items), i => i.Label == label);
+        var format = Optimizer.Core.Docs.Labels.Current.Get(Loc.Instance.Language, "hw.batteryCapacityValue");
+        Assert.Equal(string.Format(System.Globalization.CultureInfo.CurrentCulture, format, 67.5, 64.0, 105.0), item.Value);
+        Assert.DoesNotContain(" / ", item.Value);
+    }
+
     [Fact]
     public void SectionTitleNamesTheDisplay()
     {

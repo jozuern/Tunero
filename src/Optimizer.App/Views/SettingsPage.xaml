@@ -38,19 +38,6 @@
             </ui:CardControl>
             <ui:CardControl Padding="{StaticResource CardPadding}" Margin="{StaticResource CardRowMargin}">
                 <ui:CardControl.Icon>
-                    <ui:SymbolIcon Symbol="Search24" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
-                </ui:CardControl.Icon>
-                <ui:CardControl.Header>
-                    <StackPanel>
-                        <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr StartMenu_Setting}" />
-                        <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding StartMenuHint}" Margin="0,4,0,0" />
-                    </StackPanel>
-                </ui:CardControl.Header>
-                <ui:ToggleSwitch Style="{StaticResource SettingSwitch}" AutomationProperties.Name="{l:Tr StartMenu_Setting}" IsChecked="{Binding StartMenuEntry}" IsEnabled="{Binding CanAddToStartMenu}" />
-            </ui:CardControl>
-
-            <ui:CardControl Padding="{StaticResource CardPadding}" Margin="{StaticResource CardRowMargin}">
-                <ui:CardControl.Icon>
                     <ui:SymbolIcon Symbol="Code24" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
                 </ui:CardControl.Icon>
                 <ui:CardControl.Header>
@@ -60,6 +47,34 @@
                     </StackPanel>
                 </ui:CardControl.Header>
                 <ui:ToggleSwitch Style="{StaticResource SettingSwitch}" AutomationProperties.Name="{l:Tr Settings_Technical}" IsChecked="{Binding ShowTechnical}" />
+            </ui:CardControl>
+
+            <!-- Where Tunero lives on this PC: Program Files and the Start menu entry, apart from the tweak settings -->
+            <ui:TextBlock Style="{StaticResource SectionHeader}" Text="{l:Tr Settings_SectionInstall}" />
+            <!-- A downloaded, signed copy that was not installed: the first start's setup again (MainViewModel.Setup) -->
+            <ui:CardControl Padding="{StaticResource CardPadding}" Margin="{StaticResource CardRowMargin}" Visibility="{Binding CanInstall, Converter={StaticResource BoolToVisibility}}">
+                <ui:CardControl.Icon>
+                    <ui:SymbolIcon Symbol="Folder24" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+                </ui:CardControl.Icon>
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Settings_Install}" />
+                        <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Settings_InstallHint}" Margin="0,4,0,0" />
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:Button Content="{l:Tr Settings_InstallButton}" Command="{Binding OpenSetupCommand}" />
+            </ui:CardControl>
+            <ui:CardControl Padding="{StaticResource CardPadding}" Margin="{StaticResource CardRowMargin}">
+                <ui:CardControl.Icon>
+                    <ui:SymbolIcon Symbol="Search24" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+                </ui:CardControl.Icon>
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr StartMenu_Setting}" />
+                        <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding StartMenuHint}" Margin="0,4,0,0" />
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:ToggleSwitch Style="{StaticResource SettingSwitch}" AutomationProperties.Name="{l:Tr StartMenu_Setting}" IsChecked="{Binding StartMenuEntry}" IsEnabled="{Binding CanAddToStartMenu}" />
             </ui:CardControl>
 
             <!-- The section names what Expert mode is about; the card itself is called Expert mode -->
@@ -75,19 +90,6 @@
                     </StackPanel>
                 </ui:CardControl.Header>
                 <ui:ToggleSwitch Style="{StaticResource SettingSwitch}" AutomationProperties.Name="{l:Tr Settings_Expert}" IsChecked="{Binding ExpertMode}" />
-            </ui:CardControl>
-            <!-- A downloaded, signed copy that was not installed: the first start's setup again (MainViewModel.Setup) -->
-            <ui:CardControl Padding="{StaticResource CardPadding}" Margin="0,4,0,0" Visibility="{Binding CanInstall, Converter={StaticResource BoolToVisibility}}">
-                <ui:CardControl.Icon>
-                    <ui:SymbolIcon Symbol="Folder24" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
-                </ui:CardControl.Icon>
-                <ui:CardControl.Header>
-                    <StackPanel>
-                        <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Settings_Install}" />
-                        <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Settings_InstallHint}" Margin="0,4,0,0" />
-                    </StackPanel>
-                </ui:CardControl.Header>
-                <ui:Button Content="{l:Tr Settings_InstallButton}" Command="{Binding OpenSetupCommand}" />
             </ui:CardControl>
             <!-- Opt-in: a scheduled task applies the changes Windows reset again after sign-in (ReapplyTask) -->
             <ui:CardControl Padding="{StaticResource CardPadding}" Margin="0,4,0,0">
@@ -114,13 +116,14 @@
             <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Vt_SettingsHint}" Margin="0,0,0,8" />
             <ui:Card Padding="{StaticResource CardPadding}">
                 <StackPanel>
-                    <WrapPanel>
-                        <ui:PasswordBox x:Name="VtKey" PasswordChanged="VtKey_PasswordChanged" PlaceholderText="{l:Tr Vt_KeyPlaceholder}" AutomationProperties.Name="{l:Tr Vt_KeyPlaceholder}" MinWidth="320" Margin="0,0,8,0" />
+                    <!-- The bottom margins keep 8 px between wrapped rows; the panel's cancels the last row's -->
+                    <WrapPanel Margin="0,0,0,-8">
+                        <ui:PasswordBox x:Name="VtKey" PasswordChanged="VtKey_PasswordChanged" PlaceholderText="{l:Tr Vt_KeyPlaceholder}" AutomationProperties.Name="{l:Tr Vt_KeyPlaceholder}" MinWidth="320" Margin="0,0,8,8" />
                         <!-- Waits for a key: with an empty box it would do nothing -->
-                        <ui:Button x:Name="SaveKeyButton" Content="{l:Tr Common_Save}" Click="SaveKey_Click" IsEnabled="False" Margin="0,0,8,0" />
-                        <ui:Button Content="{l:Tr Common_Remove}" Appearance="Transparent" Click="RemoveKey_Click" Margin="0,0,8,0" IsEnabled="{Binding VirusTotalConfigured}" />
+                        <ui:Button x:Name="SaveKeyButton" Content="{l:Tr Common_Save}" Click="SaveKey_Click" IsEnabled="False" Margin="0,0,8,8" />
+                        <ui:Button Content="{l:Tr Common_Remove}" Appearance="Transparent" Click="RemoveKey_Click" Margin="0,0,8,8" IsEnabled="{Binding VirusTotalConfigured}" />
                         <ui:Button Content="{l:Tr Vt_GetKey}" Icon="{ui:SymbolIcon Open20}" Appearance="Transparent"
-                                   Command="{Binding OpenLinkCommand}" CommandParameter="https://docs.virustotal.com/docs/please-give-me-an-api-key" />
+                                   Command="{Binding OpenLinkCommand}" CommandParameter="https://docs.virustotal.com/docs/please-give-me-an-api-key" Margin="0,0,0,8" />
                     </WrapPanel>
                     <!-- The saved key is visible at a glance: a check mark and a line, not only a faint caption -->
                     <StackPanel Orientation="Horizontal" Margin="0,8,0,0" Visibility="{Binding VirusTotalConfigured, Converter={StaticResource BoolToVisibility}}">
@@ -146,9 +149,9 @@
                         <TextBlock Style="{StaticResource Mono}" Text="{Binding DataFolder}" VerticalAlignment="Center" />
                     </DockPanel>
                     <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Settings_ReportShort}" ToolTip="{l:Tr Settings_ReportHint}" Margin="0,12,0,0" TextWrapping="Wrap" />
-                    <WrapPanel Margin="0,8,0,0">
-                        <ui:Button Content="{l:Tr Settings_Report}" Icon="{ui:SymbolIcon Open20}" Command="{Binding ReportProblemCommand}" Margin="0,0,8,0" />
-                        <ui:Button Content="{l:Tr Settings_CopyLog}" Appearance="Transparent" Command="{Binding CopyLogCommand}" />
+                    <WrapPanel Margin="0,8,0,-8">
+                        <ui:Button Content="{l:Tr Settings_Report}" Icon="{ui:SymbolIcon Open20}" Command="{Binding ReportProblemCommand}" Margin="0,0,8,8" />
+                        <ui:Button Content="{l:Tr Settings_CopyLog}" Appearance="Transparent" Command="{Binding CopyLogCommand}" Margin="0,0,0,8" />
                     </WrapPanel>
                 </StackPanel>
             </ui:Card>
@@ -165,13 +168,13 @@
                             <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Update_Hint}" Margin="0,4,0,0" />
                         </StackPanel>
                     </DockPanel>
-                    <WrapPanel Margin="40,12,0,0">
-                        <ui:Button Content="{l:Tr Update_CheckNow}" Command="{Binding CheckUpdatesNowCommand}" Margin="0,0,8,0" />
-                        <ui:Button Content="{l:Tr Update_Install}" Icon="{ui:SymbolIcon ArrowDownload20}" Appearance="Primary" Command="{Binding UpdateNowCommand}" Margin="0,0,8,0"
+                    <WrapPanel Margin="40,12,0,-8">
+                        <ui:Button Content="{l:Tr Update_CheckNow}" Command="{Binding CheckUpdatesNowCommand}" Margin="0,0,8,8" />
+                        <ui:Button Content="{l:Tr Update_Install}" Icon="{ui:SymbolIcon ArrowDownload20}" Appearance="Primary" Command="{Binding UpdateNowCommand}" Margin="0,0,8,8"
                                    Visibility="{Binding CanUpdateInApp, Converter={StaticResource BoolToVisibility}}" />
-                        <ui:Button Content="{l:Tr Update_Open}" Icon="{ui:SymbolIcon Open20}" Command="{Binding OpenReleasePageCommand}" Margin="0,0,8,0"
+                        <ui:Button Content="{l:Tr Update_Open}" Icon="{ui:SymbolIcon Open20}" Command="{Binding OpenReleasePageCommand}" Margin="0,0,8,8"
                                    Visibility="{Binding UpdateAvailable, Converter={StaticResource BoolToVisibility}}" />
-                        <ui:TextBlock FontTypography="Body" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{Binding UpdateStatus}" VerticalAlignment="Center" TextWrapping="Wrap" />
+                        <ui:TextBlock FontTypography="Body" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{Binding UpdateStatus}" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,0,8" />
                     </WrapPanel>
                 </StackPanel>
             </ui:Card>
@@ -196,15 +199,15 @@
                     <ui:TextBlock FontTypography="Body" Text="{Binding AboutText}" TextWrapping="Wrap" />
                     <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr About_License}" Margin="0,4,0,0" />
                     <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr About_Shortcuts}" Margin="0,4,0,0" />
-                    <WrapPanel Margin="0,12,0,0">
-                        <ui:Button Content="{l:Tr About_Licenses}" Icon="{ui:SymbolIcon DocumentText20}" Click="Licenses_Click" Margin="0,0,8,0" />
+                    <WrapPanel Margin="0,12,0,-8">
+                        <ui:Button Content="{l:Tr About_Licenses}" Icon="{ui:SymbolIcon DocumentText20}" Click="Licenses_Click" Margin="0,0,8,8" />
                         <ui:Button Content="{l:Tr About_Privacy}" Icon="{ui:SymbolIcon ShieldCheckmark20}" Appearance="Transparent"
-                                   Command="{Binding OpenLinkCommand}" CommandParameter="https://github.com/jozuern/Tunero/blob/main/docs/PRIVACY.md" Margin="0,0,8,0" />
+                                   Command="{Binding OpenLinkCommand}" CommandParameter="https://github.com/jozuern/Tunero/blob/main/docs/PRIVACY.md" Margin="0,0,8,8" />
                         <ui:Button Content="{l:Tr About_Source}" Icon="{ui:SymbolIcon Code20}" Appearance="Transparent"
-                                   Command="{Binding OpenLinkCommand}" CommandParameter="https://github.com/jozuern/Tunero" Margin="0,0,8,0" />
+                                   Command="{Binding OpenLinkCommand}" CommandParameter="https://github.com/jozuern/Tunero" Margin="0,0,8,8" />
                         <!-- Donations: one quiet link here, nowhere else in the app. -->
                         <ui:Button Content="{l:Tr About_Support}" Icon="{ui:SymbolIcon Heart20}" Appearance="Transparent"
-                                   Command="{Binding OpenLinkCommand}" CommandParameter="https://ko-fi.com/jozuern" />
+                                   Command="{Binding OpenLinkCommand}" CommandParameter="https://ko-fi.com/jozuern" Margin="0,0,0,8" />
                     </WrapPanel>
                 </StackPanel>
             </ui:Card>

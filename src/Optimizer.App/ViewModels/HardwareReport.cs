@@ -164,7 +164,7 @@ public static class HardwareReport
                 .. p.Battery is null && pw.BatteryPercent is null ? (SummaryItem[])[] :
                 [
                     f.I("battery", pw.BatteryPercent is { } b ? $"{b} %" : null),
-                    f.I("batteryCapacity", p.Battery is { } bh ? $"{bh.FullChargedMwh / 1000.0:0.0} / {bh.DesignedMwh / 1000.0:0.0} Wh ({Math.Round(bh.Health * 100)} %)" : null),
+                    f.I("batteryCapacity", p.Battery is { } bh ? f.F("batteryCapacityValue", bh.FullChargedMwh / 1000.0, bh.DesignedMwh / 1000.0, Math.Round(bh.Health * 100)) : null),
                 ],
             ])
             {

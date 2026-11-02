@@ -47,6 +47,9 @@
 - **Windows install media:** the setup card labels the region format ("Account Anna, format German (Austria)"), and German switches say "Ein" in the review too.
 - **Remove apps, Installed programs:** Uninstall selected and Quietly where possible sit on a card that is always shown, so the first tick no longer pushes the list down; the count reads "76 programs." or "Showing 5 of 76.", as on Startup.
 - **Install & update:** a graphics, network or audio driver older than two years says "check for an update" in words, not only in color; driver groups are headed "Update source: Intel"; the DDU card links to the Advanced startup restart in Tools; app rows lose the repeated category icon; clearer subtitle and hints.
+- **Settings:** a new Installation section holds Install in Program Files and the Start menu entry; the Technical details hint uses the page names of the navigation. **Tools:** the start priority form has a Program file label and Add rule stays off until a program is entered; the restart tag of quick fixes reads "Takes effect after a restart".
+- **System info:** Battery capacity names both numbers (full charge and design capacity). **Health:** saved benchmark runs label the frame count and give the 1 % low its FPS unit; the component cards line up with Live readings, and drive cards show their icon again.
+- **Uninstall question:** clearer text about what stays on the PC, with the buttons in line with the text; German wording in the winget source reset, Advanced startup, Windows Audio and Live readings texts.
 
 ### Fixed
 
@@ -113,6 +116,8 @@
 - **Windows install media:** your own ISO is no longer checked on the window's thread, so an ISO on a share that went away no longer freezes the window; Resume checks the free space it still needs and stops before Unpack or the ISO stage if the drive is too full, keeping the saved build. Resume, Build and Load choices no longer run into each other while one of them looks at the ISO.
 - **Graphics & DNS:** a PC whose graphics card read failed no longer says "No NVIDIA graphics card found"; the compact row details and the package names on Remove apps are easier to read.
 - **Install & update:** the output boxes of installs, updates and Update all share one buffer, so a progress line can no longer get lost between threads.
+- **Settings:** the Report a problem caption says that the app version and Windows build are in the link, so GitHub receives them when the page opens, as the privacy notes say. Before, it said nothing was sent before you submit.
+- **Health:** after Stop, SFC and DISM keep "Stopped" as the last output line, also when a late progress line arrives.
 
 ## 1.5.0
 

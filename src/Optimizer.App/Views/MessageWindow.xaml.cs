@@ -14,12 +14,13 @@ namespace Optimizer.App.Views;
 /// </summary>
 public partial class MessageWindow : FluentWindow
 {
-    // The footer's padding, the widest the dialog grows for long button labels, and the space a button needs around its
-    // label (padding, border, gap).
+    // The footer's padding, the widest the dialog grows for long button labels, the space a button needs around its
+    // label (padding, border) and the gap between two buttons.
     private const double FooterPadding = 24;
     private const double WidestDialog = 720;
     private static readonly Thickness ButtonPadding = new(16, 5, 16, 6);
-    private const double ButtonChrome = 2 * 16 + 2 + 8;
+    private const double ButtonChrome = 2 * 16 + 2;
+    private const double ButtonGap = 8;
 
     public MessageWindow(string title, string body, params string[] buttons)
     {
@@ -30,18 +31,21 @@ public partial class MessageWindow : FluentWindow
         BodyText.Text = body;
         // The order of a Windows 11 content dialog: the primary (accent) button first, then the secondary one, Cancel last.
         // The callers list them the other way round (Cancel first, primary last). The buttons share the footer in equal
-        // columns when every label fits on one line that way; otherwise each takes the width of its label, right aligned,
-        // so no label wraps. Labels too long even for that widen the dialog (up to WidestDialog), and only beyond that
-        // share equal columns and wrap. Every button keeps the height of the tallest.
+        // columns when every label fits on one line that way; otherwise each takes the width of its label, so no label
+        // wraps, and the primary one also takes what is left, so the row still spans the footer and starts in line with
+        // the text above it. Labels too long even for that widen the dialog (up to WidestDialog), and only beyond
+        // that share equal columns and wrap. Every button keeps the height of the tallest.
         var widths = buttons.Select(b => LabelWidth(b) + ButtonChrome).ToList();
-        if (widths.Sum() > Width - 2 * FooterPadding)
-            Width = Math.Min(WidestDialog, Math.Ceiling(widths.Sum() + 2 * FooterPadding));
+        // n buttons have n - 1 gaps between them.
+        var row = widths.Sum() + (buttons.Length - 1) * ButtonGap;
+        if (row > Width - 2 * FooterPadding)
+            Width = Math.Min(WidestDialog, Math.Ceiling(row + 2 * FooterPadding));
         var footerWidth = Width - 2 * FooterPadding;
-        var equal = buttons.Length * widths.Max() <= footerWidth || widths.Sum() > footerWidth;
-        var wrap = widths.Sum() > footerWidth;
-        if (!equal) Buttons.HorizontalAlignment = System.Windows.HorizontalAlignment.Right;
-        foreach (var _ in buttons)
-            Buttons.ColumnDefinitions.Add(new ColumnDefinition { Width = equal ? new GridLength(1, GridUnitType.Star) : GridLength.Auto });
+        // An equal column holds its button and up to a whole gap (4 px on each inner side).
+        var equal = buttons.Length * (widths.Max() + ButtonGap) <= footerWidth || row > footerWidth;
+        var wrap = row > footerWidth;
+        for (var c = 0; c < buttons.Length; c++)
+            Buttons.ColumnDefinitions.Add(new ColumnDefinition { Width = equal || c == 0 ? new GridLength(1, GridUnitType.Star) : GridLength.Auto });
         for (var i = 0; i < buttons.Length; i++)
         {
             var index = i;
@@ -49,7 +53,7 @@ public partial class MessageWindow : FluentWindow
             var column = buttons.Length - 1 - i;
             // A wrapping label breaks between words only: its column is at least as wide as its longest word
             // ("Wiederherstellungspunkt"), and the other columns share the rest.
-            if (wrap) Buttons.ColumnDefinitions[column].MinWidth = buttons[i].Split(' ').Max(LabelWidth) + ButtonChrome;
+            if (wrap) Buttons.ColumnDefinitions[column].MinWidth = buttons[i].Split(' ').Max(LabelWidth) + ButtonChrome + ButtonGap;
             var b = new Wpf.Ui.Controls.Button
             {
                 Content = wrap ? new System.Windows.Controls.TextBlock { Text = buttons[i], TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center } : buttons[i],

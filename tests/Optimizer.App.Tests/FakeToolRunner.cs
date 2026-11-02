@@ -31,6 +31,17 @@ internal sealed class FakeToolRunner : IProcessRunner
     /// <summary>Completes once a hanging run has started.</summary>
     public Task Hanging => _hanging.Task;
 
+    /// <summary>
+    /// Lines a stopped hanging run reports a moment after it ended, as the real runner can when the output pipe closes
+    /// after the kill and hands over the last line without a line break (a progress line of sfc or DISM).
+    /// </summary>
+    public string[] LinesAfterStop { get; set; } = [];
+
+    private readonly TaskCompletionSource _reportedAfterStop = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    /// <summary>Completes once <see cref="LinesAfterStop"/> were reported.</summary>
+    public Task ReportedAfterStop => _reportedAfterStop.Task;
+
     public (int ExitCode, string Output) Run(string file, string arguments, TimeSpan? timeout = null) =>
         throw new NotSupportedException($"{Path.GetFileName(file)} {arguments}: only streaming runs in these tests");
 
@@ -52,6 +63,13 @@ internal sealed class FakeToolRunner : IProcessRunner
         catch (OperationCanceledException)
         {
             Ended++;
+            if (LinesAfterStop.Length > 0)
+                _ = Task.Run(async () =>
+                {
+                    await Task.Delay(100);
+                    foreach (var line in LinesAfterStop) lines?.Report(line);
+                    _reportedAfterStop.TrySetResult();
+                });
             throw;
         }
         Ended++;

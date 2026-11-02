@@ -110,6 +110,7 @@
   <data name="Banner_Restart" xml:space="preserve"><value>Changes that take effect after a restart: {0}.</value></data>
   <data name="Settings_Expert" xml:space="preserve"><value>Expert mode</value></data>
   <data name="Settings_SectionTweaks" xml:space="preserve"><value>Tweaks</value></data>
+  <data name="Settings_SectionInstall" xml:space="preserve"><value>Installation</value></data>
   <data name="Settings_ExpertHint" xml:space="preserve"><value>Shows changes that trade security for performance or edit the boot configuration. They are never recommended automatically.</value></data>
   <data name="Settings_Reapply" xml:space="preserve"><value>Apply my changes again when Windows resets them</value></data>
   <data name="Reapply_Hint" xml:space="preserve"><value>Two minutes after you sign in, Tunero applies again what an update reset (a scheduled task with administrator rights; nothing keeps running). Expert changes are left for you.</value></data>
@@ -1242,8 +1243,9 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Result_FailedPartly" xml:space="preserve"><value>Not applied: {0}. Part of it could not be put back and is still changed, so it is listed on the Changes page; use Undo there. Reason: {1}</value></data>
   <data name="Quick_ExplorerTitle" xml:space="preserve"><value>Restart File Explorer?</value></data>
   <data name="Quick_ExplorerText" xml:space="preserve"><value>The taskbar, the Start menu and open File Explorer windows close for a moment and open again. Copy and move operations that are still running in File Explorer stop. Other users signed in to this PC are not affected.</value></data>
-  <data name="Bench_Low" xml:space="preserve"><value>1 % low {0}</value></data>
+  <data name="Bench_Low" xml:space="preserve"><value>1 % low {0} FPS</value></data>
   <data name="Bench_Fps" xml:space="preserve"><value>{0} FPS</value></data>
+  <data name="Bench_Frames" xml:space="preserve"><value>{0:N0} frames</value></data>
   <data name="Bench_Stopped" xml:space="preserve"><value>Capture stopped. This run was not kept.</value></data>
   <data name="Bench_TimedOut" xml:space="preserve"><value>PresentMon did not end after the capture time and was stopped. This run was not kept.</value></data>
   <data name="Quick_IpRenew" xml:space="preserve"><value>Renew IP address</value></data>
@@ -1336,9 +1338,10 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Drv_CleanOpen" xml:space="preserve"><value>Open DDU page</value></data>
   <data name="Drv_CleanSafeModeLink" xml:space="preserve"><value>Restart to Advanced startup in Tools</value></data>
   <data name="Prio_Title" xml:space="preserve"><value>Program start priorities</value></data>
-  <data name="Prio_Hint" xml:space="preserve"><value>Windows starts the program with this CPU priority every time, without a background program. Useful for a game that competes with busy background programs, or to keep a backup or download tool out of the way.</value></data>
+  <data name="Prio_Hint" xml:space="preserve"><value>Windows starts the chosen program with this CPU priority every time; Tunero does not need to run for that. Useful for a game that competes with busy background programs, or to keep a backup or download tool out of the way.</value></data>
+  <data name="Prio_Program" xml:space="preserve"><value>Program file</value></data>
   <data name="Prio_Warning" xml:space="preserve"><value>Microsoft does not document these values, so the rules carry the Undocumented value tag; a test in a Windows 11 virtual machine showed that Windows applies them. Some anti-cheat systems check this part of the registry.</value></data>
-  <data name="Prio_ExePlaceholder" xml:space="preserve"><value>Program file, for example game.exe</value></data>
+  <data name="Prio_ExePlaceholder" xml:space="preserve"><value>For example game.exe</value></data>
   <data name="Prio_LowIoOption" xml:space="preserve"><value>Low disk priority</value></data>
   <data name="Prio_LowMemoryOption" xml:space="preserve"><value>Low memory priority</value></data>
   <data name="Prio_LowMemoryHint" xml:space="preserve"><value>Windows takes memory from this program first when memory runs short, so other programs keep theirs. For background programs, not for games.</value></data>
@@ -1440,7 +1443,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Uninstall_Text" xml:space="preserve"><value>Tunero closes and deletes its exe, its backups, logs and settings, and its Start menu entry.</value></data>
   <data name="Uninstall_WarningTitle" xml:space="preserve"><value>Changes still active: {0}</value></data>
   <data name="Uninstall_Warning" xml:space="preserve"><value>Their backups are deleted with Tunero, so changes you keep can no longer be undone.</value></data>
-  <data name="Uninstall_Details" xml:space="preserve"><value>Stays on the PC: restore points, apps you installed through Tunero (remove them under Settings &gt; Apps &gt; Installed apps) and the PawnIO driver (uninstalling it there can leave the driver in Windows: pnputil /delete-driver with its oem file removes it too).</value></data>
+  <data name="Uninstall_Details" xml:space="preserve"><value>Stays on the PC: restore points, apps you installed through Tunero and the PawnIO driver. Remove those apps and PawnIO under Settings &gt; Apps &gt; Installed apps; if the PawnIO driver stays in Windows after that, pnputil /delete-driver with its oem file removes it.</value></data>
   <data name="Uninstall_DataFolder" xml:space="preserve"><value>Data folder: {0}</value></data>
   <data name="Uninstall_UndoFirst" xml:space="preserve"><value>Undo and uninstall</value></data>
   <data name="Uninstall_Keep" xml:space="preserve"><value>Uninstall</value></data>
@@ -1484,7 +1487,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Apps_FoundConfirmTitle" xml:space="preserve"><value>Install {0}?</value></data>
   <data name="Apps_FoundConfirmText" xml:space="preserve"><value>{0} ({1}) is not on Tunero's reviewed list. winget downloads and installs it as its listing in the community repository says, for the whole PC where the package offers that, else for your account. Install it only if you trust the vendor.</value></data>
   <data name="Quick_TabFixes" xml:space="preserve"><value>Fixes and repair</value></data>
-  <data name="Tag_Restart" xml:space="preserve"><value>Restart needed</value></data>
+  <data name="Tag_Restart" xml:space="preserve"><value>Takes effect after a restart</value></data>
   <data name="Tag_RestartsNow" xml:space="preserve"><value>Restarts the PC now</value></data>
   <data name="Scroll_Up" xml:space="preserve"><value>Scroll up</value></data>
   <data name="Scroll_Down" xml:space="preserve"><value>Scroll down</value></data>
@@ -1549,7 +1552,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Intro_Text" xml:space="preserve"><value>The scan only reads: nothing changes until you confirm it, and changed settings can be undone on the Changes page.</value></data>
   <data name="Intro_Dismiss" xml:space="preserve"><value>Got it</value></data>
   <data name="Settings_Technical" xml:space="preserve"><value>Technical details</value></data>
-  <data name="Settings_TechnicalHint" xml:space="preserve"><value>Paths, registry locations and package names on Startup, Cleanup, Services &amp; tasks and Remove apps, and IDs and raw values on System info. Off gives a simpler view; the details pane and every confirmation still show them.</value></data>
+  <data name="Settings_TechnicalHint" xml:space="preserve"><value>Paths, registry locations and package names on the Startup, Cleanup, Services &amp; tasks and Remove apps pages, and IDs and raw values on System info. Off gives a simpler view; the details pane and every confirmation still show them.</value></data>
   <data name="TweakView_Label" xml:space="preserve"><value>Show</value></data>
   <data name="TweakView_Profile" xml:space="preserve"><value>Relevant to this profile</value></data>
   <data name="TweakView_Recommended" xml:space="preserve"><value>Recommended for this PC</value></data>
@@ -1640,7 +1643,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Bench_Game" xml:space="preserve"><value>Game</value></data>
   <data name="Bench_Duration" xml:space="preserve"><value>Duration</value></data>
   <data name="Bench_PerRun" xml:space="preserve"><value>Per run</value></data>
-  <data name="Settings_ReportShort" xml:space="preserve"><value>Report a problem opens a prefilled bug report on GitHub; nothing is sent until you submit it there.</value></data>
+  <data name="Settings_ReportShort" xml:space="preserve"><value>Report a problem opens a bug report on GitHub with the app version and Windows build in its link, so GitHub receives both when the page opens; the report itself is sent only when you submit it there.</value></data>
   <data name="About_Shortcuts" xml:space="preserve"><value>Keyboard: Ctrl+F searches the app, F5 reads the page or the PC again, Esc closes the details.</value></data>
   <data name="Startup_TagUnsigned" xml:space="preserve"><value>Not signed</value></data>
   <data name="Startup_TagBadSignature" xml:space="preserve"><value>Invalid signature</value></data>

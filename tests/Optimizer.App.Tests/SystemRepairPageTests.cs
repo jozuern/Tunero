@@ -64,4 +64,29 @@ public sealed class SystemRepairPageTests
         Assert.Same(ToolEncoding.Oem, run.Options?.Encoding);
         Assert.Null(run.Timeout);
     }
+
+    /// <summary>
+    /// The last progress line of a stopped run can arrive after the run ended (the pipe closes after the kill): it does
+    /// not push the Stopped line out of the output, which would look as if the tool were still running.
+    /// </summary>
+    [Fact]
+    public async Task ALineAfterStopKeepsTheStoppedLineLast()
+    {
+        _tools.Hangs = true;
+        _tools.Respond = (_, _) => (0, ["[=====                      10.0%                          ]"]);
+        _tools.LinesAfterStop = ["[==========                 20.0%                          ]"];
+        var page = Page();
+        var running = page.DismRestoreCommand.ExecuteAsync(null);
+        await _tools.Hanging.WaitAsync(TimeSpan.FromSeconds(10));
+        await WaitFor(() => page.ToolOutput.Contains("10.0%", StringComparison.Ordinal));
+
+        page.StopToolCommand.Execute(null);
+        await running.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.EndsWith(Loc.Instance["Health_Stopped"], page.ToolOutput);
+        await _tools.ReportedAfterStop.WaitAsync(TimeSpan.FromSeconds(10));
+        // The late line's callback is posted to the thread pool: give it time to run.
+        await Task.Delay(500);
+        Assert.EndsWith(Loc.Instance["Health_Stopped"], page.ToolOutput);
+        Assert.DoesNotContain("20.0%", page.ToolOutput);
+    }
 }

@@ -45,6 +45,20 @@ public sealed class ToolsViewModelTests : IDisposable
         Assert.Empty(ProgramPriority.Read(_fx.Pc.Registry));
     }
 
+    /// <summary>Add rule waits for a program name: with an empty field it would only show a note about a folder.</summary>
+    [Fact]
+    public async Task AddRuleWaitsForAProgram()
+    {
+        var page = await Page();
+        Assert.False(page.AddPriorityRuleCommand.CanExecute(null));
+        page.NewPriorityExe = "   ";
+        Assert.False(page.AddPriorityRuleCommand.CanExecute(null));
+        page.NewPriorityExe = "game.exe";
+        Assert.True(page.AddPriorityRuleCommand.CanExecute(null));
+        page.NewPriorityExe = "";
+        Assert.False(page.AddPriorityRuleCommand.CanExecute(null));
+    }
+
     [Fact]
     public async Task ARuleIsAddedListedAndRemovedByItsUndo()
     {

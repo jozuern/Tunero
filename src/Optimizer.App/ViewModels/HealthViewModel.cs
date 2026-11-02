@@ -210,14 +210,17 @@ public sealed partial class HealthViewModel(IPageHost owner, IDialogs dialogs, A
         var token = _toolCancel.Token;
         IsToolRunning = true;
         var lines = new List<string>();
+        // Set with the Stopped line: a line the tool printed before it was ended can arrive after that line and is dropped.
+        var stopped = false;
         Services.WorkProgress.Scope? banner = null;
         var progress = new Progress<string>(l =>
         {
-            // sfc and dism print how far they are; other lines (the phase) keep the last percentage.
-            if (ToolProgress.Percent(l) is { } percent) banner?.Report(percent, l);
             // Locked: in the app this runs on the window's thread, without a context (tests) on the thread pool.
             lock (lines)
             {
+                if (stopped) return;
+                // sfc and dism print how far they are; other lines (the phase) keep the last percentage.
+                if (ToolProgress.Percent(l) is { } percent) banner?.Report(percent, l);
                 OutputLines.Add(lines, l);
                 ToolOutput = string.Join("\n", lines);
             }
@@ -239,7 +242,12 @@ public sealed partial class HealthViewModel(IPageHost owner, IDialogs dialogs, A
                 }
                 catch (OperationCanceledException) when (token.IsCancellationRequested)
                 {
-                    ToolOutput += "\n" + Loc.Instance["Health_Stopped"];
+                    lock (lines)
+                    {
+                        stopped = true;
+                        lines.Add(Loc.Instance["Health_Stopped"]);
+                        ToolOutput = string.Join("\n", lines);
+                    }
                 }
             }, _toolCancel, duration: Durations.Servicing);
         }
@@ -364,7 +372,7 @@ public sealed partial class HealthViewModel(IPageHost owner, IDialogs dialogs, A
                 return;
             }
             set.Add(stats);
-            Runs.Add(new RunRow($"{label}{set.Count}", Loc.Instance.Format("Bench_Fps", $"{stats.AverageFps:0.0}"), Loc.Instance.Format("Bench_Low", $"{stats.OnePercentLowFps:0.0}"), stats.Frames.ToString()));
+            Runs.Add(new RunRow($"{label}{set.Count}", Loc.Instance.Format("Bench_Fps", $"{stats.AverageFps:0.0}"), Loc.Instance.Format("Bench_Low", $"{stats.OnePercentLowFps:0.0}"), Loc.Instance.Format("Bench_Frames", stats.Frames)));
             BenchmarkStatus = Loc.Instance["Bench_Done"];
             Compare();
             UpdateBenchmarkStep();
@@ -736,7 +744,7 @@ public sealed partial class HealthViewModel(IPageHost owner, IDialogs dialogs, A
         "GpuNvidia" or "GpuAmd" or "GpuIntel" => (Loc.Instance["Hw_Gpu"], Wpf.Ui.Controls.SymbolRegular.DesktopPulse24, 1),
         "Memory" => ("", Wpf.Ui.Controls.SymbolRegular.Ram20, 2), // the card is already called memory (MergeMemory)
         "Motherboard" or "SuperIO" or "EmbeddedController" => (Loc.Instance["Hw_Board"], Wpf.Ui.Controls.SymbolRegular.DeveloperBoardLightning20, 3),
-        "Storage" => (Loc.Instance["Sensors_Drive"], Wpf.Ui.Controls.SymbolRegular.HardDrive24, 4),
+        "Storage" => (Loc.Instance["Sensors_Drive"], Wpf.Ui.Controls.SymbolRegular.Storage24, 4),
         "Battery" => (Loc.Instance["Sensors_Battery"], Wpf.Ui.Controls.SymbolRegular.Battery1024, 5),
         _ => ("", Wpf.Ui.Controls.SymbolRegular.Gauge24, 6),
     };
