@@ -1,134 +1,26 @@
 # Changelog
 
-## Unreleased
+## 1.6.0
+
+Clearer, more consistent pages, ratings that follow the measurements, and a closer look at what starts with Windows.
 
 ### Changed
 
-- **.NET runtime 10.0.14:** the exe carries the .NET and Windows Desktop runtime of Microsoft's out-of-band security release of October 25, 2026, which fixes a Brotli decoder flaw ([release notes](https://github.com/dotnet/core/blob/main/release-notes/10.0/10.0.14/10.0.14.md)), instead of 10.0.13.
-- **Tabs** stay in one row at every window width (the German Startup tabs wrapped); **System info** shows each display's resolution and refresh rate next to its name; **Health** sensor cards keep the expand arrow beside the title; the install media summary reads as one sentence.
-- **Consistent pages:** empty lists say so the same way on every page, switches for settings show On or Off left of the switch everywhere (also on Remove apps and on every install media card), and cards share one padding.
-- **Restore point question:** shorter buttons ("Turn on", "Continue without it") on one line at one height; dialog buttons always share their height.
-- **Details pane:** text keeps clear of the scroll bar, the impact shows its number once, registry paths keep the line spacing, and the "already set" note reads clearly.
-- **Changes:** the Move to another PC card has its buttons at the top right and the export options in a row below. **Startup** names the total once and says what the turned-off count refers to ("Showing 4 of 51. Of all 51, 16 are turned off."), and German reload buttons say "Neu laden" on every page.
-- **Navigation** group headings show whenever they fit, also after the start-up scan; a running scan takes the "Last scan" line instead of adding one.
-- **Windows install media:** the summary bar breaks only between items, the failure bar holds its Show why button, and the review names the keyboard layout.
-- **Remove apps:** note and info bars first, then the Remove selected card above a divider; **Graphics & DNS** has a Graphics section header; **Storage** treemap labels sit on the tiles in black or white.
-- **Windows install media:** a failed build scrolls to its reason, and the bottom bar says the last build failed. The bar shows the image and the changes on two lines, names Allow unsupported PCs, unreviewed apps and apps to install, and gives the real reason Build is off. Card headers are shorter, with the details in the expanded cards; the Expert options fold like the other cards, and the Preview tag reads "Not yet tested", with a tooltip. During a build Stop is only in the window banner, which counts the stages (4 of 8).
-- **Drivers:** each driver's age lines up on the right of its card; the DDU card moved below the list.
-- **Tools:** Restart to Advanced startup says it restarts the PC now; start priority rules show their tags, the warning in an info bar, a labeled form and an empty state; the German tab is Reparaturen.
-- **Install & update:** the reload button is Neu laden in German, so it no longer reads like an update.
-- **Graphics & DNS:** without an NVIDIA card, a card says why there are no driver settings; the network links moved to Related settings at the end of the page.
-- **Remove apps:** preinstalled apps under a header per group, a bar that always shows Remove selected, and OneDrive and Edge in one section.
-- **Storage:** before an analysis the page explains Analyze; the folder list is wider than the treemap, larger tiles carry names, and the legend lists only the types on the map.
-- **Cleanup** sizes read "157 MB in 1,566 files".
-- **System info:** unnamed displays show as Built-in display or Display 2; the processor card says L3 cache and names its core types; its Technical details switch is the one from Settings.
-- **Settings** switches show On and Off; **Health** duration boxes have labels; **Changes** keeps the extra export options in the Move to another PC card.
-- **Overview:** the verdict names settings that work against the profile instead of saying nothing holds the PC back, and the readiness line counts unknown checks.
-- **Tweaks:** every group opens when the list has 15 tweaks or fewer; a tweak that works against the profile says why under its title.
-- **Navigation:** group headings show whenever they fit, thin lines between groups when they do not; the headings line up with the item icons.
-- **Wording:** profile and drift banners, the works-against hint, the Expert link, the Modern Standby block, the ignore button, the Manual checks summary; search results no longer repeat the title.
-- **Startup:** "Show Windows entries" (off by default) replaces "Hide Windows entries", as on Services & tasks, and also hides Windows tasks, Known DLLs and Active Setup stubs whose file is gone. Service switches say Automatic or Manual, the start types they set. The second tab is Other scheduled tasks, and the summary starts with the count the tab shows.
-- **Services & tasks:** task commands show once, on one line and only with Technical details; Windows tasks show "Listed only" instead of a grey switch; notes no longer repeat the service's name.
-- **Ratings follow the evidence:** the power mode check is rated 1 on desktops (2 on laptops), NVIDIA Prefer maximum performance (global and per game) and Power throttling off (also on laptops and hybrid CPUs) 0, as no measurement shows an effect on frame times, the Balanced plan rates for gaming only when coming from Power saver, and HAGS on RTX 40 and 50 no longer says it is needed to start games.
-- **Inking and typing personalization off** is rated Moderate, is marked Permanent and says up front that it deletes the personal dictionary, which Undo does not bring back.
-- **Silent app installs off** no longer sets three undocumented Preinstalled values that no source carries; the Windows Search tweak is called Windows Search: web search and location policies.
-- **Markdig 1.5.0** for the explanation pages.
-- **Setting switches** read "Off" left of the switch, as in Windows Settings, so the switch ends at the card's edge; "Set outside Tunero" and a check's status line use the easier to read secondary text color.
-- **Tweaks:** in Select mode, rows that cannot be picked for no reason worth showing (on outside Tunero, not for this PC) show no check box that does nothing.
-- **Startup:** a row without a switch says whether the entry is enabled or disabled (Automatic or Manual for a service); a service of another vendor can be set to Manual without Expert mode, as on Services & tasks; a program redirect says "Needs Expert mode" and gets its switch as soon as Expert mode is on. The Drivers tab explains why drivers are listed only, and the menu says "Open file location" and "Copy entry location".
-- **Startup and Services & tasks:** Tunero's own task is called "Tunero: Apply my changes again" and links to Settings; Services & tasks shows a task's state without a switch, the warning icon and tags of the Startup page, and with Technical details off the service description, without the internal service name.
-- **Tweaks:** the Expert mode link says how many Expert changes the list hides and shows only when it hides some; the default filter is called "Relevant to this profile"; with nothing left the page says "Nothing matches the search or the filters". The details pane names a setting made before Tunero "Already on", as its row does.
-- **Overview:** the works-against hint says the settings are "in effect" and explains Undo or Details only when a row shows that button; the readiness line and the score hint say that settings against the profile are not counted. The graphics card name drops trademark signs, as the processor name does.
-- **Restore point question:** with System Protection on and no restore point created, it says so and offers Continue without it and Cancel instead of Turn on.
-- **Wording:** clearer New accounts text, German impact filter tooltip and Expert mode question; About names the license GPL-3.0-only.
-- **Page headers:** Refresh and the other page commands sit next to the title, so the intro uses the full width. Settings card titles are semibold as on the other pages, and row check boxes sit 8 px from their titles, as on Cleanup.
-- **Light mode:** state and location lines ("Unknown", "Not supported", startup locations) use the easier to read secondary text color.
-- **Wording:** the app calls itself Tunero everywhere, and links use the names of the pages they open.
-- **Windows install media:** the setup card labels the region format ("Account Anna, format German (Austria)"), and German switches say "Ein" in the review too.
-- **Remove apps, Installed programs:** Uninstall selected and Quietly where possible sit on a card that is always shown, so the first tick no longer pushes the list down; the count reads "76 programs." or "Showing 5 of 76.", as on Startup.
-- **Install & update:** a graphics, network or audio driver older than two years says "check for an update" in words, not only in color; driver groups are headed "Update source: Intel"; the DDU card links to the Advanced startup restart in Tools; app rows lose the repeated category icon; clearer subtitle and hints.
-- **Settings:** a new Installation section holds Install in Program Files and the Start menu entry; the Technical details hint uses the page names of the navigation. **Tools:** the start priority form has a Program file label and Add rule stays off until a program is entered; the restart tag of quick fixes reads "Takes effect after a restart".
-- **System info:** Battery capacity names both numbers (full charge and design capacity). **Health:** saved benchmark runs label the frame count and give the 1 % low its FPS unit; the component cards line up with Live readings, and drive cards show their icon again.
-- **Uninstall question:** clearer text about what stays on the PC, with the buttons in line with the text; German wording in the winget source reset, Advanced startup, Windows Audio and Live readings texts.
-- **Storage:** folders on the treemap have a frame with their name and size above their tiles, so you can see where each folder ends; links show a link icon and "Link" in the folder list instead of an empty 0 KB folder, and folders that could not be read say "Not readable"; during the first analysis the page names the drive it reads; file rows line up with the card's edge.
-- **Cleanup:** each category's check box sits beside its title, with the size on the title line, so folder paths get the full width; Clean selected is off while nothing with a size is ticked.
-- **Clipboard history on** carries the Undocumented value and Not yet tested badges; until a test proves it, Apply recommended in the Office profile leaves it out.
+- **Runtime:** .NET 10.0.14, Microsoft's security release of October 25, 2026.
+- **Pages:** tabs in one row, commands next to the title, On or Off beside every switch, the same empty states everywhere and easier to read text in light mode.
+- **Ratings follow the evidence:** power mode, NVIDIA Prefer maximum performance and Power throttling off are rated lower; Inking and typing personalization off says that it deletes the dictionary.
+- **Startup:** Show Windows entries, as on Services & tasks; Tunero's own task has a name and links to Settings.
+- **Storage:** the treemap frames each folder with its name and size.
 
 ### Fixed
 
-- **Windows install media:** an ISO replaced by one without the chosen edition names that edition instead of saying saved choices no longer fit. **Screen readers** name the Edge button on Remove apps "Open Installed apps to remove Microsoft Edge" and the Settings folder links by their visible text. Only Tunero's own task, not one with a similar name, is called "Tunero: Apply my changes again".
-- **Remove apps:** the administrator note says that removing apps needs administrator rights, and the OneDrive and Edge cards match while the page loads.
-- **Pages read in the background:** a list that cannot be read (Windows cancels a WMI query now and then) no longer shows "Did not work" on the page you are on; it reads again when you open its page, names the page if it fails there, and a cancelled WMI query is tried once more.
-- **Startup:** Windows' leftover shell service object WebCheck counts as a Windows entry; **Services & tasks** notes no longer repeat the name when only hyphens or spaces differ; the priority form's check boxes line up.
-- **Ignore:** a result ignored while a scan runs no longer leaves a change recommended for it until the next scan; the note that all changes survived a Windows update follows a language switch.
-- **German:** a few sentences that could read as formal address now say what they mean (the storage protection notice, three explanation pages).
-- **Windows install media:** Build and Resume stay off while another change or an update runs, and a saved build is no longer deleted when a build could not start. A partly ticked app group ticks the whole group on click; choices loaded while your ISO is read keep their edition; German text uses "du" throughout.
-- **Install & update:** the app list follows installs and removals since the last scan; one unreadable uninstall entry no longer hides the whole program list; Signal no longer shows as installed when only SignalRGB is; Update all says when winget cannot open its window for per-user programs.
-- **Rebuild the icon cache** also deletes the `iconcache_*.db` files Windows 10 and 11 use.
-- **Benchmark:** a stopped or timed-out capture no longer leaves its CSV file behind.
-- **Graphics & DNS:** links and benchmark columns are no longer cut off in narrow windows; switching DNS servers no longer waits for an extra full scan.
-- **Remove apps:** the Left behind card scrolls on short windows, and a page opened during the first scan loads once.
-- **Cleanup:** Temporary files keeps empty folders created in the last day, which a running installer may still need.
-- **Storage:** with a separate administrator account, the signed-in user's own Documents, Desktop and other personal folders stay protected, also when moved to another drive; picking a file type again no longer lists each file twice.
-- **System info:** HDR shows as on only when Windows runs the display in HDR, not for Auto Color Management on an SDR display.
-- **Live readings:** a svchost's name and services follow what it runs now; two Tunero copies in different sessions no longer stop each other's disk trace, and a trace that stops on its own says so; Tunero stops its trace by its own session name, so a trace another tool ended can no longer take a different program's session down with it.
-- **Setup screen** says why Install is refused while other work runs; the VirusTotal Save button waits for a key.
-- **Wording:** counts read right for one item, the hint after a failed restore point quotes the real button, "Continue without it", and the uninstall dialog explains that the PawnIO driver can stay.
-- **Details and search** always open the tweak, also when filters, a not-applicable state or Expert mode would hide it.
-- **Dialogs and the window** fit the monitor they open on, not the primary one; a confirmation with nothing to apply only offers Close and shows no red reasons or warnings.
-- **Show in Explorer** says so when the file is gone or File Explorer did not start.
-- **Startup and Services:** services and drivers from driver packages show their real names instead of `@oem19.inf,%...%;` strings.
-- **Startup:** Startup folder files, shortcut targets, Explorer extensions and service DLLs are checked as the file itself, so a planted program in a folder with a space cannot pass as signed; rundll32 lines with a quoted DLL are flagged when they start something else. The CSV export names every signature and the current switch state.
-- **SysMain** is changed only by its tweak, so the Services page and the tweak never keep two different originals.
-- **Memory speed advice** recognizes Z590 and micro-ATX Z boards (Z390M and similar), so their 8th to 10th gen Intel PCs get the XMP advice again, and so do ASUS ROG Maximus X to XIII boards; on locked boards it compares memory with the speed Intel specifies for that processor. Memory module mix, AMD chipset and X3D core parking advice no longer show in virtual machines.
-- **NVIDIA global settings:** the G-SYNC frame cap follows the G-SYNC display's refresh rate, not a faster second monitor.
-- **Explanation pages:** the recovery command for the platform clock, the editions of the web search policy, current page names and German wording; Auto HDR, XMP, APO, the power plan, the NVIDIA frame cap and game profile undo corrected.
-- **Remove apps:** Windows App Runtime packages (main, singleton, DDLM) are no longer offered in the unreviewed list. **German:** Power saver labels, Steps Recorder, Math Recognizer, Datenträger and several service notes use the terms Windows uses.
-- **`--apply-recommended`** picks the profile as the window does: a saved profile this PC does not offer (a laptop profile on a desktop) falls back to Gaming, as on the Overview.
-- **Conflicts:** two changes that write the same setting (a registry value, an NVIDIA driver setting, one side of a power setting) now conflict even without a declared conflict, so batch applies, Undo all and the "changes reset" notice stay right.
-- **NVIDIA global settings:** with G-SYNC and V-Sync forced on, the quick fix sets the frame rate limit 3 FPS below the refresh rate instead of removing it.
-- **Apply again before a restart** no longer reports a failure when another program holds the undo record; the change is in place.
-- **Command line:** a sign-out or shutdown during `--apply`, `--undo-all`, the sign-in reapply task or `--build-media` no longer ends it halfway; Windows waits and says "Tunero is still working", as for changes made in the window.
-- **Install media:** an app that installs at the first sign-in no longer reports winget 0x00041303 while its one-time task still waits to start.
-- **Two copies:** a copy under another file name, such as `Tunero (1).exe`, no longer unloads the Default profile or install media hives of a copy that still runs.
-- **Undo:** a registry key that Tunero could delete only in part (a subkey Windows protects) comes back in full on Undo. Before, Undo took what was left for a key Windows had made again, reported success and did not restore the deleted values.
-- **Uninstall leftovers:** Move to Recycle Bin asks first, and checks each folder again right before it moves it, with the same evidence as Find unused program folders (autostart entries, services, scheduled tasks, running programs, taskbar pins). A folder something uses by now, such as a program installed again into it, stays and says why.
-- **Storage:** a file or folder right below a drive root (such as `D:\Old backups`) moves to the Recycle Bin. Before, the move always ended as "not moved".
-- **Scan:** the check for leftovers of other tools finds the forced platform timer on German Windows too, where bcdedit prints "Ja".
-- **Screen readers:** the result of a change, a cleanup or another task is read out also when the result bar had closed by itself before.
-- **Remove apps:** the warning for an app that is not on the reviewed list says that its data in every account goes with it (for a Linux distribution of WSL: all its files).
-- **Startup:** the CSV export uses the separator Excel expects for your regional settings, also when the app language differs from them (an English app on German regional settings).
-- **Apply my changes again:** a change you turned back in Windows yourself, after a Windows update had left it in place, stays turned back. Before, the task applied it again at every sign-in and the Changes page blamed the update. The task now also applies the mains and battery side of one power setting again, and skips only changes the apply itself would refuse.
-- **DNS servers: automatic** leaves network adapters with a fixed IP address alone. Before, it cleared their DNS servers, and no router hands them new ones.
-- **Uninstall leftovers:** a folder another installed program still uses is not offered when its uninstall entry or service names it with an 8.3 short name (`C:\PROGRA~2\...`).
-- **Update in the app:** works for a Tunero.exe in a drive root, such as a USB stick. A failed update no longer leaves the downloaded copy (`Tunero.exe.new`) beside the exe.
-- **Services & tasks:** a scheduled task you switched keeps its new state when you then search or filter the task list.
-- **Startup:** Check with VirusTotal waits until the signatures are read, so no hashes of files signed by Microsoft are sent.
-- **Graphics & DNS:** the link to the other network settings opens the Network group of the Tweaks page, also with a search or filter set. Before, it could open Security and system.
-- **Install & update:** an Update all or Update that cannot start while another change runs keeps the result of Check for updates. Refresh or a language switch during an install keeps the row's progress and result.
-- **Exports** (changes, Startup list, install media choices) replace the chosen file without following a link put in its place. A folder reached through a link is refused with a message that says so; choose the folder it points to.
-- **Screen readers:** Undo, Apply again, Details, Remove and Reinstall in lists name their item. The fold buttons of expandable cards (Package managers, the install media options, Health sensor cards) have names; buttons that only said "Clean up", "Restart", "Repair", "Details" or "Open folder" say what they act on, ignore buttons name their setting and banner buttons read the banner's sentence.
-- **Tabs** no longer make the search and sort boxes of the selected tab bold; sizes under 1 KB read 1 KB instead of "0 KB", and sizes just under 1 MB or 1 GB read 1 MB or 1 GB instead of "1024 KB" or "1024 MB"; screen readers name the component list of the Licenses window.
-- **Startup:** Startup folders moved through User Shell Folders are read, and items in a moved folder are marked for a look; a per-user COM registration counts for shell extensions, Explorer add-ons, DirectShow filters and task COM handlers, and one that replaces the machine's class is marked for a look, also on Services & tasks; a task lists every COM handler, also one next to a program.
-- **Services & tasks** checks every program a task runs, so an unsigned second action no longer hides behind a signed first one. Shortcut targets, Policy Run values and the old Load and Run values are expanded with the signed-in user's variables, not those of the elevated app.
-- **Startup snapshots** flag a Run value that gains or loses its quotes; the delete preview of a task no longer doubles the quotes of a program stored quoted.
-- **Search:** opening a check no longer turns on Show passed checks or switches the Tweaks view; a check without a result on this PC says so, and one the profile hides opens in the details pane. Search no longer matches every tweak under a registry folder such as "windows", and results no longer repeat a service name that only drops the spaces of its title.
-- **Show passed checks** on the Overview and Manual checks no longer changes the Tweaks list, and the Tweaks Show filter no longer turns it off.
-- **Graphics & DNS:** the details pane of a row shows the new state after a change and stays open.
-- **Screen readers:** the title bar buttons of the confirmation, question and Licenses windows have names.
-- **Keyboard:** on pages with tabs, the tabs come right after the page's command in Tab order; navigation badges are no Tab stops; in the confirmation and the question dialogs, Tab follows the buttons on screen, and in the confirmation a long list of exact changes scrolls with the keyboard.
-- **Windows install media:** your own ISO is no longer checked on the window's thread, so an ISO on a share that went away no longer freezes the window; Resume checks the free space it still needs and stops before Unpack or the ISO stage if the drive is too full, keeping the saved build. Resume, Build and Load choices no longer run into each other while one of them looks at the ISO.
-- **Windows install media:** while Build, Resume, Load choices or Discard gets ready, the choices are locked and the note says "Checking the choices." An ISO that comes back or is replaced is read again and keeps its chosen edition, and Build then goes on to the review; a missing one is named as missing, and the review no longer says twice that unsupported PCs may not get updates.
-- **Graphics & DNS:** a PC whose graphics card read failed no longer says "No NVIDIA graphics card found"; the compact row details and the package names on Remove apps are easier to read.
-- **Install & update:** the output boxes of installs, updates and Update all share one buffer, so a progress line can no longer get lost between threads.
-- **Settings:** the Report a problem caption says that the app version and Windows build are in the link, so GitHub receives them when the page opens, as the privacy notes say. Before, it said nothing was sent before you submit.
-- **Health:** after Stop, SFC and DISM keep "Stopped" as the last output line, also when a late progress line arrives.
-- **Wording:** the Changes export note is clearer; in German the folder list's expand button says "Ordner auf- oder zuklappen" and the Cleanup intro says "Links".
-- **Memory in single channel:** a single module that may be soldered (result Unknown) no longer gets the single channel summary or the advice to add a second module.
-- **Explanation pages:** Ryzen memory speed (where AMD's official speed applies), Leftovers, Memory integrity, Power saver plan, Widgets, the NVIDIA frame limit (what Undo restores), the NVIDIA global reset and the restore point limit say what holds.
-- **German explanation pages** match the English ones more closely (automatic DNS, the network adapter power setting, the anti-cheat checks, location off, "at most" for the latency gain) and use the names Windows shows (Energieverwaltung, Aggressiv, Details zur Kernisolierung; Laufwerk where SSDs count too).
-- **Secure Boot certificates:** the page says that the 2011 certificates have expired (June and October 2026), not that they will; the virtualization check says that memory integrity and VBS need virtualization and that installed anti-cheats can require either one.
-- **Third-party notices:** the PawnIO driver is listed as GPL-2.0-or-later with its exception, the PawnIO modules notice names release 0.1.6 so the LGPL source can be found, and the PresentMon notice carries cereal's BSD-3-Clause license, which the embedded PresentMon contains.
+- **Startup and Services & tasks:** every program a task runs is checked, per-user COM registrations and moved Startup folders count, and paths use the signed-in user's variables.
+- **Undo** restores a registry key in full when Tunero could delete it only in part.
+- **DNS servers: automatic** leaves adapters with a fixed IP address alone.
+- **Apply my changes again** no longer applies a change again that you turned back yourself.
+- **Windows install media:** a missing or replaced ISO is noticed before Build and no longer freezes the window; Resume checks the free space first.
+- **Uninstall leftovers** asks first and checks each folder again right before moving it.
+- **Screen readers and keyboard:** buttons name what they act on, and Tab follows the order on screen.
 
 ## 1.5.0
 
