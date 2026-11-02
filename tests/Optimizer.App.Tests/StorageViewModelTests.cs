@@ -332,22 +332,40 @@ public sealed class StorageViewModelTests : IDisposable
         Assert.Equal(-1, storage.SelectedEntry);
     }
 
+    /// <summary>
+    /// Two identical files make one group: the first copy carries the group note, no copy is ticked, and with every copy
+    /// ticked Recycle is off (one copy always stays). The temp folder lies in AppData, so the view model is told not to
+    /// refuse AppData, as for every other test here; nothing reaches the recorder.
+    /// </summary>
     [Fact]
     public async Task FindDuplicatesKeepsTheFirstCopyWithoutATick()
     {
-        // Duplicates in the temp folder (under AppData) are protected, so this checks the list, not the Recycle Bin.
         var bytes = (int)Optimizer.Core.Tools.StorageAnalyzer.DuplicateMinBytes;
         File("a.bin", bytes);
         File("b.bin", bytes);
         var storage = Storage();
         await storage.AnalyzeFolderAsync(_root);
-        storage.Tab = 3;
+        storage.Tab = StorageViewModel.TabDuplicates;
         Assert.Empty(storage.Duplicates);
         await storage.FindDuplicatesCommand.ExecuteAsync(null);
-        // Protected (AppData): the analysis never offers these, so no group is listed.
-        Assert.Empty(storage.Duplicates);
         Assert.True(storage.DuplicatesSearched);
         Assert.False(_host.Runner.Work.IsActive);
+
+        Assert.Equal(2, storage.Duplicates.Count);
+        Assert.Equal(Loc.Instance.Format("Storage_DuplicateOf", 2), storage.Duplicates[0].Meta);
+        Assert.Equal("", storage.Duplicates[1].Meta);
+        Assert.All(storage.Duplicates, r => Assert.False(r.Selected));
+        Assert.False(storage.RecycleCommand.CanExecute(null));
+
+        // One copy may go; both may not.
+        storage.Duplicates[1].Selected = true;
+        Assert.Null(storage.SelectionBlock);
+        Assert.True(storage.RecycleCommand.CanExecute(null));
+        storage.Duplicates[0].Selected = true;
+        Assert.Equal(Loc.Instance.Format("Storage_KeepOneCopy", storage.Duplicates[0].Path), storage.SelectionBlock);
+        Assert.False(storage.RecycleCommand.CanExecute(null));
+        await storage.RecycleCommand.ExecuteAsync(null);
+        Assert.Empty(_recycled);
     }
 
     /// <summary>
@@ -693,6 +711,38 @@ public sealed class StorageViewModelTests : IDisposable
         Assert.Equal([small], storage.TypeFiles.Select(f => f.Path));
         Assert.Contains(storage.TypeGroups.Single().Extensions, t => t.Extension == "zzz");
         Assert.Null(storage.TypeGroups.Single().Show("none"));
+    }
+
+    /// <summary>
+    /// While the first analysis runs, the empty state says what is being read instead of asking for Analyze, and goes
+    /// back to its request when the analysis ends without a result.
+    /// </summary>
+    [Fact]
+    public async Task TheEmptyStateSaysWhatIsReadWhileTheFirstAnalysisRuns()
+    {
+        var release = new TaskCompletionSource();
+        var storage = Storage(async (_, _, ct) =>
+        {
+            await release.Task;
+            throw new OperationCanceledException(ct);
+        });
+        await storage.EnsureLoadedAsync();
+        var before = storage.EmptyHint;
+        Assert.Equal(Loc.Instance.Format("Storage_EmptyHint", storage.SelectedDrive?.Root ?? ""), before);
+        var changed = new List<string?>();
+        storage.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        var analysis = storage.AnalyzeFolderAsync(_root);
+        Assert.True(storage.IsAnalyzing);
+        Assert.True(storage.NoResult);
+        Assert.Equal(Loc.Instance.Format("Storage_Analyzing", _root), storage.EmptyHint);
+        Assert.Contains(nameof(StorageViewModel.EmptyHint), changed);
+
+        release.SetResult();
+        await analysis;
+        Assert.False(storage.IsAnalyzing);
+        Assert.Null(storage.Tree);
+        Assert.Equal(before, storage.EmptyHint);
     }
 
     /// <summary>"No" in the confirmation: nothing reaches the recorder and the tree stays as it was.</summary>

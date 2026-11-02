@@ -50,6 +50,8 @@
 - **Settings:** a new Installation section holds Install in Program Files and the Start menu entry; the Technical details hint uses the page names of the navigation. **Tools:** the start priority form has a Program file label and Add rule stays off until a program is entered; the restart tag of quick fixes reads "Takes effect after a restart".
 - **System info:** Battery capacity names both numbers (full charge and design capacity). **Health:** saved benchmark runs label the frame count and give the 1 % low its FPS unit; the component cards line up with Live readings, and drive cards show their icon again.
 - **Uninstall question:** clearer text about what stays on the PC, with the buttons in line with the text; German wording in the winget source reset, Advanced startup, Windows Audio and Live readings texts.
+- **Storage:** folders on the treemap have a frame with their name and size above their tiles, so you can see where each folder ends; links show a link icon and "Link" in the folder list instead of an empty 0 KB folder, and folders that could not be read say "Not readable"; during the first analysis the page names the drive it reads; file rows line up with the card's edge.
+- **Cleanup:** each category's check box sits beside its title, with the size on the title line, so folder paths get the full width; Clean selected is off while nothing with a size is ticked.
 
 ### Fixed
 
@@ -67,7 +69,7 @@
 - **Cleanup:** Temporary files keeps empty folders created in the last day, which a running installer may still need.
 - **Storage:** with a separate administrator account, the signed-in user's own Documents, Desktop and other personal folders stay protected, also when moved to another drive; picking a file type again no longer lists each file twice.
 - **System info:** HDR shows as on only when Windows runs the display in HDR, not for Auto Color Management on an SDR display.
-- **Live readings:** a svchost's name and services follow what it runs now; two Tunero copies in different sessions no longer stop each other's disk trace, and a trace that stops on its own says so.
+- **Live readings:** a svchost's name and services follow what it runs now; two Tunero copies in different sessions no longer stop each other's disk trace, and a trace that stops on its own says so; Tunero stops its trace by its own session name, so a trace another tool ended can no longer take a different program's session down with it.
 - **Setup screen** says why Install is refused while other work runs; the VirusTotal Save button waits for a key.
 - **Wording:** counts read right for one item, the hint after a failed restore point quotes the real button, "Continue without it", and the uninstall dialog explains that the PawnIO driver can stay.
 - **Details and search** always open the tweak, also when filters, a not-applicable state or Expert mode would hide it.
@@ -118,6 +120,7 @@
 - **Install & update:** the output boxes of installs, updates and Update all share one buffer, so a progress line can no longer get lost between threads.
 - **Settings:** the Report a problem caption says that the app version and Windows build are in the link, so GitHub receives them when the page opens, as the privacy notes say. Before, it said nothing was sent before you submit.
 - **Health:** after Stop, SFC and DISM keep "Stopped" as the last output line, also when a late progress line arrives.
+- **Wording:** the Changes export note is clearer; in German the folder list's expand button says "Ordner auf- oder zuklappen" and the Cleanup intro says "Links".
 
 ## 1.5.0
 

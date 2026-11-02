@@ -23,7 +23,7 @@ namespace Optimizer.App.ViewModels;
 /// Recycle Bin. Default: <see cref="StorageAnalyzer.RecycleItems"/> with the protected roots and kept folders of the
 /// last analysis, which checks every item again at the moment of the move and always refuses AppData.
 /// </param>
-/// <param name="appData">Refuse every AppData folder in the selection check; off only in tests, whose temp folder lies there.</param>
+/// <param name="appData">Refuse every AppData folder in the selection check and leave it out of Find duplicates; off only in tests, whose temp folder lies there.</param>
 public sealed partial class StorageViewModel(IPageHost owner, AppServices services, IDialogs dialogs,
     Func<string, IProgress<ScanProgress>?, CancellationToken, Task<DiskTree>>? scanner = null,
     Func<IReadOnlyList<(string Path, bool Folder)>, IReadOnlyList<string>>? recycle = null, bool appData = true) : PageViewModel(owner)
@@ -96,8 +96,16 @@ public sealed partial class StorageViewModel(IPageHost owner, AppServices servic
     [NotifyPropertyChangedFor(nameof(EmptyHint))]
     private DriveRow? _selectedDrive;
 
-    /// <summary>Before an analysis: "Select Analyze to read C:\." for the drive picked.</summary>
-    public string EmptyHint => Loc.Instance.Format("Storage_EmptyHint", SelectedDrive?.Root ?? "");
+    /// <summary>
+    /// Before an analysis: "Select Analyze to read C:\." for the drive picked; while the first one runs: "Reading C:\.",
+    /// not a request for the action that already runs.
+    /// </summary>
+    public string EmptyHint => IsAnalyzing
+        ? Loc.Instance.Format("Storage_Analyzing", _analyzingRoot ?? SelectedDrive?.Root ?? "")
+        : Loc.Instance.Format("Storage_EmptyHint", SelectedDrive?.Root ?? "");
+
+    /// <summary>The drive or folder the running analysis reads (for <see cref="EmptyHint"/>).</summary>
+    private string? _analyzingRoot;
 
     /// <summary>The extension whose files <see cref="TypeFiles"/> lists.</summary>
     [ObservableProperty]
@@ -119,7 +127,7 @@ public sealed partial class StorageViewModel(IPageHost owner, AppServices servic
     [ObservableProperty] private int _tab;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsBusy))]
+    [NotifyPropertyChangedFor(nameof(IsBusy), nameof(EmptyHint))]
     private bool _isAnalyzing;
 
     [ObservableProperty]
@@ -286,6 +294,7 @@ public sealed partial class StorageViewModel(IPageHost owner, AppServices servic
             return;
         }
         _cancel = new CancellationTokenSource();
+        _analyzingRoot = root;
         IsAnalyzing = true;
         try
         {
@@ -627,7 +636,7 @@ public sealed partial class StorageViewModel(IPageHost owner, AppServices servic
         {
             using var work = Owner.Runner.Work.Begin(Loc.Instance["Work_FindDuplicates"], stop);
             var entries = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-            var groups = await Task.Run(() => StorageAnalyzer.FindDuplicates(StorageAnalyzer.DuplicateCandidates(tree, protectedRoots, entries: entries, ct: stop.Token), stop.Token));
+            var groups = await Task.Run(() => StorageAnalyzer.FindDuplicates(StorageAnalyzer.DuplicateCandidates(tree, protectedRoots, appData, entries: entries, ct: stop.Token), stop.Token));
             Log.Info("storage", "duplicates found", new { groups = groups.Count, files = groups.Sum(g => g.Paths.Count) });
             // A new analysis or Close result meanwhile: these belong to the old tree.
             if (!ReferenceEquals(tree, Tree)) return;

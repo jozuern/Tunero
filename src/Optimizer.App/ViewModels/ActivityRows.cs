@@ -458,15 +458,19 @@ internal sealed class DemoActivitySources : IActivitySources
     private const long Create = 133_000_000_000_000_000;
     private int _tick;
 
+    /// <summary>
+    /// <c>CpuPerTick</c> is a share of all logical processors together (1.0 is 100 %, as the processor column shows it),
+    /// so the shares add up to well under 1: a screenshot never shows a program above what the whole processor can do.
+    /// </summary>
     private static readonly (int Pid, string Image, string Path, string Description, int Thread, long Memory, double CpuPerTick)[] Programs =
     [
-        (4, "System", "", "", 41, 0, 0.02),
-        (100, "steam.exe", @"C:\Program Files (x86)\Steam\steam.exe", "Steam", 1001, 412L << 20, 0.18),
-        (200, "MsMpEng.exe", "", "", 2001, 188L << 20, 0.09),
-        (300, "SearchIndexer.exe", @"C:\Windows\System32\SearchIndexer.exe", "Microsoft Windows Search Indexer", 3001, 64L << 20, 0.03),
-        (400, "Cyberpunk2077.exe", @"D:\Games\Cyberpunk 2077\bin\x64\Cyberpunk2077.exe", "Cyberpunk 2077", 4001, 7340L << 20, 1.6),
-        (500, "chrome.exe", @"C:\Program Files\Google\Chrome\Application\chrome.exe", "Google Chrome", 5001, 920L << 20, 0.12),
-        (501, "chrome.exe", @"C:\Program Files\Google\Chrome\Application\chrome.exe", "Google Chrome", 5011, 610L << 20, 0.05),
+        (4, "System", "", "", 41, 0, 0.005),
+        (100, "steam.exe", @"C:\Program Files (x86)\Steam\steam.exe", "Steam", 1001, 412L << 20, 0.04),
+        (200, "MsMpEng.exe", "", "", 2001, 188L << 20, 0.02),
+        (300, "SearchIndexer.exe", @"C:\Windows\System32\SearchIndexer.exe", "Microsoft Windows Search Indexer", 3001, 64L << 20, 0.01),
+        (400, "Cyberpunk2077.exe", @"D:\Games\Cyberpunk 2077\bin\x64\Cyberpunk2077.exe", "Cyberpunk 2077", 4001, 7340L << 20, 0.30),
+        (500, "chrome.exe", @"C:\Program Files\Google\Chrome\Application\chrome.exe", "Google Chrome", 5001, 920L << 20, 0.03),
+        (501, "chrome.exe", @"C:\Program Files\Google\Chrome\Application\chrome.exe", "Google Chrome", 5011, 610L << 20, 0.01),
         (60, "Memory Compression", "", "", 61, 540L << 20, 0),
     ];
 

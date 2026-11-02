@@ -223,13 +223,15 @@ public class MftParserTests
     {
         const ulong ext41 = 0x0002_0000_0000_0029, ext42 = 0x0003_0000_0000_002A, ext43 = 0x0001_0000_0000_002B;
         const ulong self = 0x0001_0000_0000_0028;
+        // A well-formed resident list of several entries: the walk only checks its shape. Extension records are joined
+        // to their file by their base reference in MftTreeBuilder (ReadsTheBaseReferenceOfAnExtensionRecord).
         var list = new AttributeListBuilder()
             .Entry(0x10, self)
             .Entry(0x30, ext41)
             .Entry(0x80, ext42)
-            .Entry(0x80, ext41, lowestVcn: 4096) // a later part of the same stream: listed once
-            .Entry(0x80, ext43, name: "ads")     // named stream: not needed for the size
-            .Entry(0x90, ext43)                   // index root: not needed
+            .Entry(0x80, ext41, lowestVcn: 4096)
+            .Entry(0x80, ext43, name: "ads")
+            .Entry(0x90, ext43)
             .Build();
 
         var r = Parse(new RecordBuilder()

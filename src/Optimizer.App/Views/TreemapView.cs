@@ -17,9 +17,11 @@ namespace Optimizer.App.Views;
 /// The treemap of one folder of a <see cref="DiskTree"/>: every file a rectangle in proportion to its size, colored by its
 /// file group, folders laid out inside their own rectangle (squarified, <see cref="SquarifiedLayout"/>). A drive has
 /// millions of files, so it is one element that draws one geometry per group; the layout is cached and built again only
-/// when the size, the tree or the folder changes. The shown folder's own entries carry their name and size where the
-/// tile has room, in black or white by the tile's luminance (a translucent plate only where the label lies on tiles of
-/// several colors), readable on every group color in both themes. Screen readers get one name; the folder list is the accessible way to the same data.
+/// when the size, the tree or the folder changes. The shown folder's own files carry their name and size where the tile
+/// has room, in black or white by the tile's luminance (a translucent plate only where the label lies on tiles of
+/// several colors), readable on every group color in both themes. Its folders with room for it are framed: name and
+/// size in a header strip above their tiles and a gutter round them, so a folder's extent shows. Screen readers get one
+/// name; the folder list is the accessible way to the same data.
 /// </summary>
 public sealed class TreemapView : FrameworkElement
 {
@@ -28,6 +30,12 @@ public sealed class TreemapView : FrameworkElement
 
     /// <summary>A tile of the shown folder gets its name from this size on, its size too from <see cref="TwoLineHeight"/>.</summary>
     private const double LabelMinWidth = 80, LabelMinHeight = 32, TwoLineHeight = 52;
+
+    /// <summary>
+    /// A framed folder of the shown one: the header strip that carries its name and size, and the gutter round its tiles.
+    /// Folders too small for a frame, down to two levels, keep a 1 px gutter from <see cref="GroupInsetMin"/> on.
+    /// </summary>
+    private const double HeaderHeight = 24, FrameGutter = 2, GroupInsetMin = 8;
 
     public static readonly DependencyProperty TreeProperty = DependencyProperty.Register(nameof(Tree), typeof(DiskTree), typeof(TreemapView),
         new FrameworkPropertyMetadata(null, (d, _) => ((TreemapView)d).Rebuild()));
@@ -56,6 +64,10 @@ public sealed class TreemapView : FrameworkElement
     private static readonly DependencyProperty LabelPlateBrushProperty = DependencyProperty.Register("LabelPlateBrush", typeof(Brush), typeof(TreemapView),
         new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
 
+    /// <summary>The size beside a framed folder's name in its header strip (secondary text on the map's background).</summary>
+    private static readonly DependencyProperty LabelSecondaryBrushProperty = DependencyProperty.Register("LabelSecondaryBrush", typeof(Brush), typeof(TreemapView),
+        new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
+
     /// <summary>One brush per <see cref="FileGroup"/>, by resource reference (Treemap*Brush), so a theme switch redraws.</summary>
     private static readonly DependencyProperty[] GroupBrushProperties = Enum.GetNames<FileGroup>()
         .Select(g => DependencyProperty.Register(g + "Brush", typeof(Brush), typeof(TreemapView),
@@ -68,8 +80,11 @@ public sealed class TreemapView : FrameworkElement
     private readonly TreemapCells _cells = new();
     private readonly StreamGeometry?[] _groups = new StreamGeometry?[GroupCount];
 
-    /// <summary>The shown folder's entries with room for a label, with their rectangle.</summary>
-    private readonly List<(LayoutRect Rect, int Entry)> _labels = [];
+    /// <summary>
+    /// The shown folder's entries with room for a label, with their rectangle; <c>Framed</c>: a folder whose label goes in
+    /// its header strip.
+    /// </summary>
+    private readonly List<(LayoutRect Rect, int Entry, bool Framed)> _labels = [];
     private readonly DrawingVisual _selection = new();
     private readonly ToolTip _tip = new() { Placement = PlacementMode.Mouse };
     private readonly DispatcherTimer _tipDelay = new() { Interval = TimeSpan.FromMilliseconds(400) };
@@ -86,6 +101,7 @@ public sealed class TreemapView : FrameworkElement
         SetResourceReference(SelectionBrushProperty, "TextFillColorPrimaryBrush");
         SetResourceReference(LabelBrushProperty, "TextFillColorPrimaryBrush");
         SetResourceReference(LabelPlateBrushProperty, "SolidBackgroundFillColorBaseBrush");
+        SetResourceReference(LabelSecondaryBrushProperty, "TextFillColorSecondaryBrush");
         AddVisualChild(_selection);
         _tip.PlacementTarget = this;
         _resizeDelay.Tick += (_, _) =>
@@ -181,11 +197,13 @@ public sealed class TreemapView : FrameworkElement
     /// <summary>
     /// Name, and size where there is room, at the top left of each labeled tile, cut to the tile's width. On one color the
     /// text is drawn straight on the tile, black or white by the tile's luminance; on tiles of several colors (a folder's
-    /// small files) on a translucent plate of the page's background, which keeps the tiles visible under it.
+    /// small files) on a translucent plate of the page's background, which keeps the tiles visible under it. A framed
+    /// folder's label goes in its header strip instead, on the map's background.
     /// </summary>
     private void DrawLabels(DrawingContext dc)
     {
         if (_labels.Count == 0 || Tree is not { } tree || GetValue(LabelBrushProperty) is not Brush text || GetValue(LabelPlateBrushProperty) is not Brush plate) return;
+        var secondary = GetValue(LabelSecondaryBrushProperty) as Brush ?? text;
         var typeface = new Typeface(TextElement.GetFontFamily(this), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
         var pixelsPerDip = VisualTreeHelper.GetDpi(this).PixelsPerDip;
         var culture = System.Globalization.CultureInfo.CurrentUICulture;
@@ -195,9 +213,14 @@ public sealed class TreemapView : FrameworkElement
             MaxLineCount = 1,
             Trimming = TextTrimming.CharacterEllipsis,
         };
-        foreach (var (r, entry) in _labels)
+        foreach (var (r, entry, framed) in _labels)
         {
             if (entry >= tree.Count || tree.IsRemoved(entry)) continue;
+            if (framed)
+            {
+                DrawHeader(r, entry);
+                continue;
+            }
             var width = r.Width - 16;
             var name = Line(tree.Name(entry), width);
             var size = r.Height >= TwoLineHeight ? Line(CleanupViewModel.Size(tree.Size(entry)), width) : null;
@@ -224,7 +247,24 @@ public sealed class TreemapView : FrameworkElement
             dc.DrawText(name, new Point(r.X + 8, r.Y + 6));
             if (size is not null) dc.DrawText(size, new Point(r.X + 8, r.Y + 6 + name.Height));
         }
+
+        // A framed folder: name, then size where both fit, on one line in the header strip (the map's background).
+        void DrawHeader(LayoutRect r, int entry)
+        {
+            var room = r.Width - 16;
+            var size = Line(CleanupViewModel.Size(tree.Size(entry)), room);
+            size.SetForegroundBrush(secondary);
+            var withSize = room - size.WidthIncludingTrailingWhitespace - 8 >= HeaderNameMin;
+            var name = Line(tree.Name(entry), withSize ? room - size.WidthIncludingTrailingWhitespace - 8 : room);
+            name.SetFontWeight(FontWeights.SemiBold);
+            var y = r.Y + (HeaderHeight - name.Height) / 2;
+            dc.DrawText(name, new Point(r.X + 8, y));
+            if (withSize) dc.DrawText(size, new Point(r.X + 8 + name.WidthIncludingTrailingWhitespace + 8, y));
+        }
     }
+
+    /// <summary>Narrowest the name in a folder's header strip is cut to before its size is left out.</summary>
+    private const double HeaderNameMin = 32;
 
     /// <summary>The plate under a label on tiles of several colors: translucent, so it reads as part of the map.</summary>
     private const double PlateOpacity = 0.75;
@@ -318,7 +358,7 @@ public sealed class TreemapView : FrameworkElement
         try
         {
             var area = new LayoutRect(0, 0, RenderSize.Width, RenderSize.Height);
-            if (tree.IsFolder(folder)) LayOut(folder, area);
+            if (tree.IsFolder(folder)) LayOut(folder, area, 1);
             else Add(folder, area);
         }
         finally
@@ -333,7 +373,8 @@ public sealed class TreemapView : FrameworkElement
         }
         DrawSelection();
 
-        void LayOut(int parent, LayoutRect area)
+        // depth: how far the parent's children lie below the shown folder (1 for its own entries).
+        void LayOut(int parent, LayoutRect area, int depth)
         {
             var n = tree.ChildCount(parent);
             if (n == 0 || area.Width < MinSide || area.Height < MinSide) return;
@@ -357,15 +398,36 @@ public sealed class TreemapView : FrameworkElement
                 var r = rects[k];
                 if (r.Width < MinSide || r.Height < MinSide) continue;
                 var c = tree.Child(parent, k);
-                if (parent == folder && r.Width >= LabelMinWidth && r.Height >= LabelMinHeight) _labels.Add((r, c));
                 if (tree.IsFolder(c))
                 {
+                    // The folder's cell keeps its whole rectangle, so a click on its header strip or gutter selects it.
                     var cell = _cells.BeginFolder(r, c);
-                    LayOut(c, r);
+                    LayOut(c, Inner(r, c, depth), depth + 1);
                     _cells.EndFolder(cell);
                 }
-                else Add(c, r);
+                else
+                {
+                    if (depth == 1 && r.Width >= LabelMinWidth && r.Height >= LabelMinHeight) _labels.Add((r, c, false));
+                    Add(c, r);
+                }
             }
+        }
+
+        // Where a folder's contents go. A folder of the shown one with room for it gets a frame: its name and size in a
+        // header strip and a gutter round its tiles, both in the map's background, so its extent shows and its label does
+        // not sit on its largest file. Smaller ones, and folders one level further down, keep a 1 px gutter, so groups of
+        // tiles stay apart; deeper folders are laid out edge to edge.
+        // depth: 1 for the shown folder's own entries.
+        LayoutRect Inner(LayoutRect r, int c, int depth)
+        {
+            if (depth == 1 && r.Width >= LabelMinWidth && r.Height >= HeaderHeight + FrameGutter + MinSide)
+            {
+                _labels.Add((r, c, true));
+                return new LayoutRect(r.X + FrameGutter, r.Y + HeaderHeight, r.Width - 2 * FrameGutter, r.Height - HeaderHeight - FrameGutter);
+            }
+            return depth <= 2 && r.Width >= GroupInsetMin && r.Height >= GroupInsetMin
+                ? new LayoutRect(r.X + 1, r.Y + 1, r.Width - 2, r.Height - 2)
+                : r;
         }
 
         void Add(int file, LayoutRect r)

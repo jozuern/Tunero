@@ -1045,12 +1045,20 @@ public sealed partial class CleanupViewModel(IPageHost owner, AppServices servic
         return Rows.ToList();
     }
 
-    private void UpdateTotal() => TotalText = Loc.Instance.Format("Cleanup_Total", Size(Rows.Where(r => r.Selected).Sum(r => r.Bytes)));
+    /// <summary>The total of the ticked categories, and whether Clean selected has anything to do (after every change of either).</summary>
+    private void UpdateTotal()
+    {
+        TotalText = Loc.Instance.Format("Cleanup_Total", Size(Rows.Where(r => r.Selected).Sum(r => r.Bytes)));
+        CleanCommand.NotifyCanExecuteChanged();
+    }
 
     [RelayCommand]
     private void SelectionChanged() => UpdateTotal();
 
-    [RelayCommand]
+    /// <summary>Something with a size is ticked: otherwise the button is off beside "Selected: 0 KB", which says why.</summary>
+    private bool CanClean() => Rows.Any(r => r.Selected && r.Bytes > 0);
+
+    [RelayCommand(CanExecute = nameof(CanClean))]
     private async Task CleanAsync()
     {
         var selected = Rows.Where(r => r.Selected && r.Bytes > 0).ToList();

@@ -364,7 +364,7 @@ Diese Apps werden für alle Benutzer und neue Konten entfernt. Was der Microsoft
     <value>Bereinigen</value>
   </data>
   <data name="Cleanup_Hint" xml:space="preserve">
-    <value>Temporäre Dateien und Caches mit ihrer Größe. Gelöscht wird erst, wenn du es auswählst. Dateien in Benutzung und Verknüpfungen zu anderen Ordnern werden immer übersprungen.</value>
+    <value>Temporäre Dateien und Caches mit ihrer Größe. Gelöscht wird erst, wenn du es auswählst. Dateien in Benutzung und Links auf andere Ordner werden immer übersprungen.</value>
   </data>
   <data name="Cleanup_Size" xml:space="preserve">
     <value>{0} in {1:N0} Dateien</value>
@@ -622,6 +622,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Storage_DriveSpace" xml:space="preserve"><value>{0} frei von {1}</value></data>
   <data name="Storage_EmptyTitle" xml:space="preserve"><value>Analysiere ein Laufwerk, um zu sehen, was Platz belegt</value></data>
   <data name="Storage_EmptyHint" xml:space="preserve"><value>Wähle „Analysieren“, um {0} zu lesen. Vorher wird nichts vom Laufwerk gelesen.</value></data>
+  <data name="Storage_Analyzing" xml:space="preserve"><value>{0} wird gelesen. Das Ergebnis erscheint hier, sobald die Analyse fertig ist.</value></data>
   <data name="Storage_NoExtension" xml:space="preserve"><value>Ohne Endung</value></data>
   <data name="Storage_TypesHint" xml:space="preserve"><value>Öffne eine Gruppe und wähle einen Dateityp, um seine größten Dateien zu sehen.</value></data>
   <data name="Storage_MoreTypes" xml:space="preserve"><value>{0} weitere Typen</value></data>
@@ -637,7 +638,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Storage_ColFiles" xml:space="preserve"><value>Dateien</value></data>
   <data name="Storage_ColChanged" xml:space="preserve"><value>Geändert</value></data>
   <data name="Storage_FolderList" xml:space="preserve"><value>Ordner und Dateien</value></data>
-  <data name="Storage_ToggleFolder" xml:space="preserve"><value>Ordner öffnen oder schließen</value></data>
+  <data name="Storage_ToggleFolder" xml:space="preserve"><value>Ordner auf- oder zuklappen</value></data>
   <data name="Storage_ShownFolder" xml:space="preserve"><value>Angezeigter Ordner</value></data>
   <data name="Storage_TreemapName" xml:space="preserve"><value>Treemap von {0}, {1}</value></data>
   <data name="Storage_TreemapHint" xml:space="preserve"><value>Wähle eine Kachel, um sie in der Liste zu finden. Ein Doppelklick zeigt den Ordner, in dem sie liegt.</value></data>
@@ -669,6 +670,8 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Storage_BlockName" xml:space="preserve"><value>Sein Name oder der eines Ordners darüber endet mit einem Punkt oder Leerzeichen. Windows würde einen anderen Namen lesen, daher wird es nicht verschoben.</value></data>
   <data name="Storage_BlockLink" xml:space="preserve"><value>Ein Link auf eine andere Datei oder einen anderen Ordner: Entferne ihn im Explorer.</value></data>
   <data name="Storage_BlockUnreadable" xml:space="preserve"><value>Dieser Ordner konnte nicht gelesen werden, daher lässt er sich vor dem Verschieben nicht prüfen.</value></data>
+  <data name="Storage_LinkRow" xml:space="preserve"><value>Link</value></data>
+  <data name="Storage_UnreadableRow" xml:space="preserve"><value>Nicht lesbar</value></data>
   <data name="Storage_BlockCloud" xml:space="preserve"><value>In OneDrive oder einem anderen Cloud-Ordner: Entferne es im Explorer.</value></data>
   <data name="Storage_BlockReparse" xml:space="preserve"><value>Dieses Element oder ein Ordner darüber ist ein besonderes Windows-Element (ein Analysepunkt, etwa eine komprimierte Datei): Entferne es im Explorer.</value></data>
   <data name="Storage_Missing" xml:space="preserve"><value>{0} existiert nicht mehr. Analysiere erneut, um das Ergebnis zu aktualisieren.</value></data>
@@ -1417,7 +1420,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Changes_ExportApps" xml:space="preserve"><value>Entfernte Apps</value></data>
   <data name="Changes_ExportServices" xml:space="preserve"><value>Dienst-Starttypen</value></data>
   <data name="Changes_ExportStartup" xml:space="preserve"><value>Ausgeschaltete Autostart-Einträge</value></data>
-  <data name="Changes_ExportAlsoHint" xml:space="preserve"><value>Beim Import werden Apps erst nach einer eigenen Frage entfernt (Entfernen lässt sich nicht rückgängig machen), ein Dienst ändert sich nur, wo seine Regeln auf dem PC das erlauben, und ein Autostart-Eintrag wird nur ausgeschaltet, wo es ihn gibt.</value></data>
+  <data name="Changes_ExportAlsoHint" xml:space="preserve"><value>Beim Import fragt Tunero, bevor es Apps entfernt, denn Entfernen lässt sich nicht rückgängig machen. Den Starttyp eines Dienstes ändert es nur, wo Dienste &amp; Aufgaben das auf dem PC erlaubt, und es schaltet nur Autostart-Einträge aus, die es dort gibt.</value></data>
   <data name="Transfer_AppsTitle" xml:space="preserve"><value>Die Apps aus der Datei entfernen?</value></data>
   <data name="Transfer_AppsText" xml:space="preserve"><value>Apps, die die Datei als entfernt nennt und die auf diesem PC sind ({0}): {1}. Entfernen lässt sich in Tunero nicht rückgängig machen; Apps, die der Microsoft Store noch anbietet, lassen sich dort wieder installieren.</value></data>
   <data name="Transfer_AppsRemoved" xml:space="preserve"><value>Entfernte Apps: {0}.</value></data>

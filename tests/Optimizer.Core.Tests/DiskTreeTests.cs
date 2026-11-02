@@ -88,7 +88,7 @@ public class DiskTreeTests
     [Fact]
     public void RemoveSubtractsFromEveryAncestor()
     {
-        var t = Sample(out var a, out _, out var big, out _);
+        var t = Sample(out var a, out var small, out var big, out var b);
 
         t.Remove(big);
 
@@ -98,7 +98,9 @@ public class DiskTreeTests
         Assert.Equal(4096, t.Allocated(a));
         Assert.DoesNotContain(big, t.Children(a));
         Assert.DoesNotContain(big, t.LargestFiles(10));
-        Assert.DoesNotContain(t.TypeTotals(), x => x.Bytes == 30);
+        // The type lists skip removed files: 65 bytes in 3 .bin files before, 35 in 2 after.
+        Assert.Equal(new[] { new TypeTotal("bin", FileTypes.GroupOf("bin"), 35, 2) }, t.TypeTotals().ToArray());
+        Assert.Equal(new[] { b, small }, t.LargestFilesOfType("bin", 10).ToArray());
     }
 
     [Fact]

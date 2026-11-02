@@ -33,23 +33,29 @@
                 <v:ItemList.ItemTemplate>
                     <DataTemplate>
                         <ui:Card x:Name="Card" Margin="{StaticResource CardRowMargin}" Padding="{StaticResource CardPadding}">
-                            <DockPanel>
-                                <ui:TextBlock x:Name="Size" DockPanel.Dock="Right" FontTypography="Body" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{Binding SizeText}" VerticalAlignment="Center" Margin="16,0,0,0" />
-                                <CheckBox x:Name="Pick" IsChecked="{Binding Checked}" VerticalAlignment="Top" AutomationProperties.Name="{Binding Title}"
+                            <StackPanel>
+                                <!-- The box holds only the title line, so it sits beside the title and at the card's edge, and
+                                     the size shares that line: the folders below get the card's whole width -->
+                                <CheckBox x:Name="Pick" IsChecked="{Binding Checked}" Padding="0" MinWidth="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                          AutomationProperties.Name="{Binding Title}"
                                           Command="{Binding DataContext.Cleanup.SelectionChangedCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
-                                    <StackPanel>
-                                        <ui:TextBlock FontTypography="BodyStrong" Text="{Binding Title}" />
-                                        <!-- Exactly where it deletes: every folder, one per line ("and 2 more" with the rest in a
-                                             tooltip could not be read without a mouse) -->
-                                        <!-- The folders in the technical view (the outer element), and only when there is something in them (the trigger) -->
-                                        <Border Visibility="{Binding DataContext.ShowTechnical, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}">
-                                            <TextBlock x:Name="Folders" Style="{StaticResource Mono}" Text="{Binding FoldersText}" Margin="0,4,0,0" />
-                                        </Border>
-                                        <ui:TextBlock x:Name="Note" Style="{StaticResource Caption}" Text="{Binding Warning}" Margin="0,4,0,0"
-                                                      Visibility="{Binding Warning, Converter={StaticResource NullToVisibility}}" />
-                                    </StackPanel>
+                                    <DockPanel>
+                                        <ui:TextBlock x:Name="Size" DockPanel.Dock="Right" FontTypography="Body" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{Binding SizeText}" VerticalAlignment="Center" Margin="16,0,0,0" />
+                                        <ui:TextBlock FontTypography="BodyStrong" Text="{Binding Title}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                    </DockPanel>
                                 </CheckBox>
-                            </DockPanel>
+                                <!-- Indented to the title (box and its gap) -->
+                                <StackPanel Margin="28,0,0,0">
+                                    <!-- Exactly where it deletes: every folder, one per line ("and 2 more" with the rest in a
+                                         tooltip could not be read without a mouse) -->
+                                    <!-- The folders in the technical view (the outer element), and only when there is something in them (the trigger) -->
+                                    <Border Visibility="{Binding DataContext.ShowTechnical, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}">
+                                        <TextBlock x:Name="Folders" Style="{StaticResource Mono}" Text="{Binding FoldersText}" Margin="0,4,0,0" />
+                                    </Border>
+                                    <ui:TextBlock x:Name="Note" Style="{StaticResource Caption}" Text="{Binding Warning}" Margin="0,4,0,0"
+                                                  Visibility="{Binding Warning, Converter={StaticResource NullToVisibility}}" />
+                                </StackPanel>
+                            </StackPanel>
                         </ui:Card>
                         <!-- Nothing to clean: the card is left out; the line under the list names these categories -->
                         <DataTemplate.Triggers>

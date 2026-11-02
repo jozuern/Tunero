@@ -1,3 +1,4 @@
+using Optimizer.App.Services;
 using Optimizer.App.ViewModels;
 using Optimizer.Core.Storage;
 
@@ -120,6 +121,44 @@ public sealed class StorageTreeRowsTests
         Assert.Equal(["video.mp4", "docs", "a.txt", "tools", "empty"], rows.Rows.Select(r => r.Name));
         Assert.True(rows.Rows[1].IsExpanded);
         Assert.Equal(1.0, rows.Rows[2].Share, 6);
+    }
+
+    /// <summary>
+    /// A link is not followed, so it would read as an empty folder ("0 KB", "0 files"): it shows no size and says it is a
+    /// link. A folder that could not be read keeps what was counted and says so; a plain folder shows its file count.
+    /// </summary>
+    [Fact]
+    public void LinksAndUnreadableFoldersSayWhatTheyAre()
+    {
+        var b = new DiskTree.Builder(@"C:\root");
+        var plain = b.AddFolder(b.Root, "plain", When, EntryFlags.None);
+        b.AddFile(plain, "a.txt", 100, -1, When, EntryFlags.None);
+        var locked = b.AddFolder(b.Root, "locked", When, EntryFlags.Unreadable);
+        b.AddFile(locked, "seen.txt", 50, -1, When, EntryFlags.None);
+        b.AddFolder(b.Root, "junction", When, EntryFlags.ReparsePoint);
+        b.AddFile(b.Root, "file link.txt", 0, -1, When, EntryFlags.ReparsePoint);
+        var rows = new StorageTreeRows();
+        rows.Reset(b.Build(ScanReader.Folders, TimeSpan.Zero));
+
+        var byName = rows.Rows.ToDictionary(r => r.Name);
+        Assert.False(byName["plain"].IsLink);
+        Assert.False(byName["plain"].IsUnreadable);
+        Assert.Equal("1", byName["plain"].FilesText);
+
+        Assert.True(byName["locked"].IsUnreadable);
+        Assert.False(byName["locked"].IsLink);
+        Assert.Equal(CleanupViewModel.Size(50), byName["locked"].SizeText);
+        Assert.Equal(Loc.Instance["Storage_UnreadableRow"], byName["locked"].FilesText);
+
+        foreach (var name in new[] { "junction", "file link.txt" })
+        {
+            Assert.True(byName[name].IsLink);
+            Assert.False(byName[name].IsUnreadable);
+            Assert.Equal("", byName[name].SizeText);
+            Assert.Equal(Loc.Instance["Storage_LinkRow"], byName[name].FilesText);
+            Assert.Equal($"{name}, {Loc.Instance["Storage_LinkRow"]}", byName[name].ToString());
+        }
+        Assert.Equal($"plain, {CleanupViewModel.Size(100)}", byName["plain"].ToString());
     }
 
     [Fact]

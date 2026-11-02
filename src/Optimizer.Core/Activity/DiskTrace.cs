@@ -145,7 +145,10 @@ public sealed unsafe class DiskTrace : IDisposable
     private GCHandle _self;
     private ulong _traceHandle = Etw.InvalidProcessTraceHandle;
 
-    /// <summary>This copy's session: Dispose stops it by handle, so it can never stop another copy's session.</summary>
+    /// <summary>
+    /// This copy's session; Dispose stops it by its own name (the process ID makes it unique), never by handle: a handle
+    /// is a logger ID that Windows hands to the next session once this one is stopped from outside.
+    /// </summary>
     private ulong _sessionHandle;
     private Thread? _thread;
     private int _disposed, _ended;
@@ -242,13 +245,15 @@ public sealed unsafe class DiskTrace : IDisposable
 
     public IReadOnlyList<DiskIoTotal> Drain() => _accumulator.Drain();
 
-    /// <summary>Stops a session by its handle, or by name when the handle is 0; no error when there is none.</summary>
-    private static void Stop(ulong session, string? name = null)
+    /// <summary>
+    /// Stops a session by its name, never by handle (see <see cref="_sessionHandle"/>); no error when there is none.
+    /// </summary>
+    private static void Stop(string name)
     {
         var buffer = Properties(withFlags: false);
         fixed (byte* p = buffer)
         {
-            var error = Etw.ControlTrace(session, session == 0 ? name : null, p, Etw.EventTraceControlStop);
+            var error = Etw.ControlTrace(0, name, p, Etw.EventTraceControlStop);
             if (error is not (0 or Etw.ErrorWmiInstanceNotFound)) Log.Warn("activity", $"disk trace not stopped: {error}");
         }
     }
@@ -259,9 +264,9 @@ public sealed unsafe class DiskTrace : IDisposable
     /// </summary>
     private static void StopLeftovers(string own)
     {
-        Stop(0, own);
+        Stop(own);
         foreach (var name in SessionNames().Where(n => IsLeftover(n, own, ProcessRuns)))
-            Stop(0, name);
+            Stop(name);
     }
 
     /// <summary>
@@ -354,7 +359,8 @@ public sealed unsafe class DiskTrace : IDisposable
     public void Dispose()
     {
         if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
-        if (_sessionHandle != 0) Stop(_sessionHandle);
+        // By name: after an outside stop the handle may belong to another program's session by now.
+        if (_sessionHandle != 0) Stop(_name);
         if (_traceHandle != Etw.InvalidProcessTraceHandle) Etw.CloseTrace(_traceHandle);
         // The callback reads the handle until ProcessTrace returns: a thread that did not end keeps it (a small leak, no crash).
         if ((_thread?.Join(TimeSpan.FromSeconds(2)) ?? true) && _self.IsAllocated) _self.Free();

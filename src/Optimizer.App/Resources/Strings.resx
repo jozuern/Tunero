@@ -622,6 +622,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Storage_DriveSpace" xml:space="preserve"><value>{0} free of {1}</value></data>
   <data name="Storage_EmptyTitle" xml:space="preserve"><value>Analyze a drive to see what takes up space</value></data>
   <data name="Storage_EmptyHint" xml:space="preserve"><value>Select Analyze to read {0}. Nothing on the drive is read before that.</value></data>
+  <data name="Storage_Analyzing" xml:space="preserve"><value>Reading {0}. The result shows here when the analysis is done.</value></data>
   <data name="Storage_NoExtension" xml:space="preserve"><value>No extension</value></data>
   <data name="Storage_TypesHint" xml:space="preserve"><value>Open a group and select a file type to see its largest files.</value></data>
   <data name="Storage_MoreTypes" xml:space="preserve"><value>{0} more types</value></data>
@@ -669,6 +670,8 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Storage_BlockName" xml:space="preserve"><value>Its name, or the name of a folder above it, ends in a dot or space. Windows would read it as another name, so it is not moved.</value></data>
   <data name="Storage_BlockLink" xml:space="preserve"><value>A link to another file or folder: remove it in File Explorer.</value></data>
   <data name="Storage_BlockUnreadable" xml:space="preserve"><value>This folder could not be read, so it cannot be checked before a move.</value></data>
+  <data name="Storage_LinkRow" xml:space="preserve"><value>Link</value></data>
+  <data name="Storage_UnreadableRow" xml:space="preserve"><value>Not readable</value></data>
   <data name="Storage_BlockCloud" xml:space="preserve"><value>In OneDrive or another cloud folder: remove it in File Explorer.</value></data>
   <data name="Storage_BlockReparse" xml:space="preserve"><value>This item, or a folder above it, is a special Windows item (a reparse point, such as a compressed file): remove it in File Explorer.</value></data>
   <data name="Storage_Missing" xml:space="preserve"><value>{0} no longer exists. Analyze again to update the result.</value></data>
@@ -1417,7 +1420,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Changes_ExportApps" xml:space="preserve"><value>Removed apps</value></data>
   <data name="Changes_ExportServices" xml:space="preserve"><value>Service start types</value></data>
   <data name="Changes_ExportStartup" xml:space="preserve"><value>Startup entries turned off</value></data>
-  <data name="Changes_ExportAlsoHint" xml:space="preserve"><value>On import, apps are removed only after their own question (removing cannot be undone), a service changes only where its rules on that PC allow it, and a startup entry is turned off only where it exists.</value></data>
+  <data name="Changes_ExportAlsoHint" xml:space="preserve"><value>On import, Tunero asks before it removes apps, because removing cannot be undone. It changes a service's start type only where Services &amp; tasks allows it on that PC, and turns off only startup entries that exist there.</value></data>
   <data name="Transfer_AppsTitle" xml:space="preserve"><value>Remove the apps from the file?</value></data>
   <data name="Transfer_AppsText" xml:space="preserve"><value>Apps the file lists as removed that are on this PC ({0}): {1}. Removing cannot be undone in Tunero; apps the Microsoft Store still offers can be installed from there again.</value></data>
   <data name="Transfer_AppsRemoved" xml:space="preserve"><value>Apps removed: {0}.</value></data>

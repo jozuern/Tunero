@@ -82,9 +82,26 @@ public sealed class RecycleRulesTests : IDisposable
     {
         var home = Path.Combine(_root, "home");
         Directory.CreateDirectory(Path.Combine(home, "AppData"));
-        // %TEMP% lies in AppData itself, so with the check on the folder is Protected before the contents are looked at.
+        // %TEMP% lies in AppData itself, so with the check on this folder is refused as Protected before its contents are
+        // looked at; the rule for an AppData folder inside is tried below on a path outside AppData.
         Assert.NotNull(RecycleRules.Check(home, folder: true, systemFile: false, [], [], appData: true));
         Assert.Null(RecycleRules.Check(home, folder: true, systemFile: false, [], [], appData: false));
+    }
+
+    /// <summary>
+    /// A folder such as D:\Backup\OldProfile that holds an AppData folder is refused as a whole. The path lies outside
+    /// AppData and never exists: the existence test is passed in, so nothing is created or read there.
+    /// </summary>
+    [Fact]
+    public void FolderOutsideAppDataThatHoldsOneIsRefused()
+    {
+        var old = Path.Combine(Path.GetPathRoot(_root)!, "tunero-no-such-folder-" + Guid.NewGuid().ToString("N"), "Backup", "OldProfile");
+        static bool HasAppData(string p) => p.EndsWith(@"\OldProfile\AppData", StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(RecycleBlock.ContainsProtected, RecycleRules.CheckNormalized(old, folder: true, systemFile: false, [], [], appData: true, HasAppData));
+        Assert.Null(RecycleRules.CheckNormalized(old, folder: true, systemFile: false, [], [], appData: false, HasAppData));
+        // A file of that name is not looked into, and a folder without AppData is offered.
+        Assert.Null(RecycleRules.CheckNormalized(old, folder: false, systemFile: false, [], [], appData: true, HasAppData));
+        Assert.Null(RecycleRules.CheckNormalized(Path.Combine(Path.GetDirectoryName(old)!, "Other"), folder: true, systemFile: false, [], [], appData: true, HasAppData));
     }
 
     [Fact]
@@ -101,7 +118,7 @@ public sealed class RecycleRulesTests : IDisposable
     [Fact]
     public void RootsAndKeptFoldersInAnotherSpellingStillMatch()
     {
-        // The same folders spelled with a ".." segment and other case (an 8.3 name cannot be forced here).
+        // The same folders spelled with a ".." segment and other case (8.3 names: ShortNameOfAKeptFolderIsStillKept).
         var games = Path.Combine(_root, "x", "..", "GAMES") + "\\";
         var kept = Path.Combine(_root, "y", "..", "KEPT") + "\\";
         Assert.Equal(RecycleBlock.Protected, RecycleRules.Check(Path.Combine(_root, "games", "g.pak"), folder: false, systemFile: false, [games], [], appData: false));
@@ -109,16 +126,29 @@ public sealed class RecycleRulesTests : IDisposable
         Assert.Equal(RecycleBlock.ContainsProtected, RecycleRules.Check(_root, folder: true, systemFile: false, [games], [], appData: false));
     }
 
+    /// <summary>
+    /// A kept folder spelled with its 8.3 short name still matches its long form, both ways round: Normalize expands it.
+    /// Skipped on a volume without short names.
+    /// </summary>
     [Fact]
     public void ShortNameOfAKeptFolderIsStillKept()
     {
-        // The long name of the temp folder differs from its 8.3 form on most machines; where it does not, the test still holds.
         var kept = Path.Combine(_root, "Long Folder Name For Kept");
         Directory.CreateDirectory(kept);
-        var set = new[] { RecycleRules.Normalize(kept) + "\\" };
-        Assert.Equal(RecycleBlock.KeptFolder, RecycleRules.Check(kept, folder: true, systemFile: false, [], set, appData: false));
         Assert.Equal(RecycleRules.Normalize(kept), RecycleRules.Normalize(kept + @"\sub\.."));
+        var buffer = new char[1024];
+        var length = GetShortPathNameW(kept, buffer, (uint)buffer.Length);
+        var shortForm = new string(buffer, 0, (int)length);
+        if (length == 0 || !Path.GetFileName(shortForm).Contains('~')) return;
+
+        Assert.Equal(RecycleBlock.KeptFolder, RecycleRules.Check(shortForm, folder: true, systemFile: false, [], [kept + "\\"], appData: false));
+        Assert.Equal(RecycleBlock.KeptFolder, RecycleRules.Check(kept, folder: true, systemFile: false, [], [shortForm + "\\"], appData: false));
+        Assert.Equal(RecycleRules.Normalize(kept), RecycleRules.Normalize(shortForm));
+        Assert.DoesNotContain('~', Path.GetFileName(RecycleRules.Normalize(shortForm)));
     }
+
+    [System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode, SetLastError = true)]
+    private static extern uint GetShortPathNameW(string longPath, char[] shortPath, uint length);
 
     [Fact]
     public void HoldsFolderLinkFindsAJunctionAtAnyDepth()

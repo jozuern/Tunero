@@ -103,7 +103,16 @@ public static class RecycleRules
     /// else refused it.
     /// </summary>
     public static RecycleBlock? CheckNormalized(string path, bool folder, bool systemFile, IReadOnlyList<string> protectedRoots,
-        IReadOnlyCollection<string> keptFolders, bool appData)
+        IReadOnlyCollection<string> keptFolders, bool appData) =>
+        CheckNormalized(path, folder, systemFile, protectedRoots, keptFolders, appData, Directory.Exists);
+
+    /// <summary>
+    /// <see cref="CheckNormalized(string, bool, bool, IReadOnlyList{string}, IReadOnlyCollection{string}, bool)"/> with the
+    /// test for an existing folder passed in (Directory.Exists there): tests pass their own, so the rule for a folder with
+    /// an AppData folder inside can be tried on a path outside AppData without creating anything.
+    /// </summary>
+    internal static RecycleBlock? CheckNormalized(string path, bool folder, bool systemFile, IReadOnlyList<string> protectedRoots,
+        IReadOnlyCollection<string> keptFolders, bool appData, Func<string, bool> folderExists)
     {
         if (systemFile) return RecycleBlock.SystemFile;
         if (HasTrimmedName(path)) return RecycleBlock.NameMismatch;
@@ -117,7 +126,7 @@ public static class RecycleRules
         {
             bool Under(string other) => other.Length > full.Length && other.StartsWith(full, StringComparison.OrdinalIgnoreCase);
             if (protectedRoots.Any(Under) || keptFolders.Any(Under)) return RecycleBlock.ContainsProtected;
-            if (appData && Directory.Exists(Path.Combine(full, "AppData"))) return RecycleBlock.ContainsProtected;
+            if (appData && folderExists(Path.Combine(full, "AppData"))) return RecycleBlock.ContainsProtected;
         }
         return ResolvesAsWritten(path, normalized) ? null : RecycleBlock.NameMismatch;
     }

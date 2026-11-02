@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Optimizer.App.Services;
 using Optimizer.Core.Storage;
 
 namespace Optimizer.App.ViewModels;
@@ -25,13 +26,20 @@ public sealed partial class TreeRow(int entry, int depth, string name, string si
     public bool IsFolder { get; } = isFolder;
     /// <summary>A folder with something in it: the row shows a chevron.</summary>
     public bool CanExpand { get; init; }
+    /// <summary>
+    /// A link (junction, symbolic link, mount point): the scan does not follow it, so it shows no size and "Link" where
+    /// the file count goes, not "0 KB" and "0" like an empty folder.
+    /// </summary>
+    public bool IsLink { get; init; }
+    /// <summary>A folder the scan could not look into: "Not readable" where the file count goes, beside what was counted.</summary>
+    public bool IsUnreadable { get; init; }
     /// <summary>Indentation of the name, 16 px per level.</summary>
     public double Indent => Depth * 16;
 
     [ObservableProperty] private bool _isExpanded = isExpanded;
 
-    // What screen readers announce for this item in a list.
-    public override string ToString() => $"{Name}, {SizeText}";
+    // What screen readers announce for this item in a list: for a link or a folder that could not be read, that too.
+    public override string ToString() => string.Join(", ", new[] { Name, SizeText, IsLink || IsUnreadable ? FilesText : "" }.Where(s => s.Length > 0));
 }
 
 /// <summary>
@@ -161,11 +169,17 @@ public sealed class StorageTreeRows
     {
         var folder = tree.IsFolder(i);
         var size = tree.Size(i);
-        return new TreeRow(i, depth, tree.Name(i), CleanupViewModel.Size(size), parentSize > 0 ? (double)size / parentSize : 0,
-            folder ? tree.Files(i).ToString("N0", CultureInfo.CurrentCulture) : "",
+        var flags = tree.Flags(i);
+        // A link is not followed, so its size says nothing; a folder that could not be read keeps what was counted.
+        var link = (flags & EntryFlags.ReparsePoint) != 0;
+        var unreadable = !link && folder && (flags & EntryFlags.Unreadable) != 0;
+        return new TreeRow(i, depth, tree.Name(i), link ? "" : CleanupViewModel.Size(size), parentSize > 0 ? (double)size / parentSize : 0,
+            link ? Loc.Instance["Storage_LinkRow"]
+            : unreadable ? Loc.Instance["Storage_UnreadableRow"]
+            : folder ? tree.Files(i).ToString("N0", CultureInfo.CurrentCulture) : "",
             tree.LastWriteUtc(i) == default ? "" : tree.LastWriteUtc(i).ToLocalTime().ToString("d", CultureInfo.CurrentCulture),
             folder, expanded)
-        { CanExpand = tree.ChildCount(i) > 0 };
+        { CanExpand = tree.ChildCount(i) > 0, IsLink = link, IsUnreadable = unreadable };
     }
 
     /// <summary>
