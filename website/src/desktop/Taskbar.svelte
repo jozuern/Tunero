@@ -370,6 +370,18 @@
     line-height: 1.3;
   }
 
+  /* A full taskbar keeps only three app icons in the tray, as Windows moves the others behind the chevron: with every
+     startup app's slot reserved, the tray pushed Start over the Classic page link where fonts run wider (Linux). */
+  @media (max-width: 1023px) {
+    .tray {
+      min-width: calc(min(var(--tray-slots), 6) * 28px);
+    }
+
+    .tray-icon.app:nth-child(n + 4 of .app) {
+      display: none;
+    }
+  }
+
   @media (max-width: 899px) {
     .taskbar {
       grid-template-columns: auto 1fr;
