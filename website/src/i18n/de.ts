@@ -114,7 +114,7 @@ const de: Strings = {
     some: (base) => `auf manchen PCs, sonst ${base}`,
     when: {
       'impact.turboCapped': 'Höher, wo der CPU-Boost blockiert ist: Die CPU bleibt unter Last beim Basistakt.',
-      'impact.fromPowerSaver': 'Höher auf einem PC, der einen Energiesparplan nutzt.',
+      'impact.fromPowerSaver': 'Höher auf einem PC, der einen Energiesparplan vom Typ „Energiesparmodus“ nutzt.',
       'impact.hagsFrameGen': 'Höher auf Grafikkarten mit DLSS Frame Generation, die diese Einstellung voraussetzt.',
       'impact.x3dGameMode': 'Höher auf einem Ryzen X3D mit zwei CCDs: AMDs Treiber braucht den Spielmodus, um Spiele auf den Kernen mit dem zusätzlichen Cache zu halten.',
       'impact.backgroundRecording': 'Höher, solange die Hintergrundaufnahme an ist.',
