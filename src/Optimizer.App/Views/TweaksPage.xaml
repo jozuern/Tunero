@@ -68,9 +68,12 @@
                     <WrapPanel Margin="0,4,0,0">
                         <ui:HyperlinkButton Content="{Binding TweaksProfileLink}" Padding="0" Margin="0,0,16,0" ToolTip="{l:Tr Profile_Hint}"
                                             Command="{Binding OpenOverviewCommand}" />
-                        <!-- Expert changes are hidden until Expert mode is on: a way there from this page -->
-                        <ui:HyperlinkButton Content="{l:Tr Tweaks_ExpertLink}" Padding="0" Command="{Binding OpenSettingsCommand}"
-                                            Visibility="{Binding ExpertMode, Converter={StaticResource InverseBoolToVisibility}}" />
+                        <!-- Expert changes are hidden until Expert mode is on: how many this list hides, and the way there. Its
+                             text wraps: next to the details pane the German one is wider than the card. -->
+                        <ui:HyperlinkButton Padding="0" Command="{Binding OpenSettingsCommand}" AutomationProperties.Name="{Binding TweaksExpertLink}"
+                                            Visibility="{Binding TweaksExpertLink, Converter={StaticResource NullToVisibility}}">
+                            <TextBlock Text="{Binding TweaksExpertLink}" TextWrapping="Wrap" />
+                        </ui:HyperlinkButton>
                     </WrapPanel>
                     <!-- What the picked rows get: one confirmation each for turning on and for undoing -->
                     <StackPanel Visibility="{Binding TweakSelectMode, Converter={StaticResource BoolToVisibility}}">
@@ -89,7 +92,7 @@
                     </StackPanel>
                 </StackPanel>
             </ui:Card>
-            <ui:TextBlock Style="{StaticResource EmptyState}" Text="{l:Tr Empty_List}" Visibility="{Binding Tweaks.Count, Converter={StaticResource EmptyToVisibility}}" />
+            <ui:TextBlock Style="{StaticResource EmptyState}" Text="{l:Tr List_NoMatch}" Visibility="{Binding TweaksNoMatch, Converter={StaticResource BoolToVisibility}}" />
         </StackPanel>
         <!-- One list for the group headings and the tweaks of the open groups, so only the cards in view are built. The
              tweaks are indented under their heading. -->

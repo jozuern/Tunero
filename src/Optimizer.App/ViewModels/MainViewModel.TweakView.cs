@@ -21,6 +21,23 @@ public enum TweakView
     Everything,
 }
 
+/// <summary>
+/// The filters a view of the Tweaks page stands for. Only the Everything view lists what does not apply to this PC, and
+/// no view reads or writes "Show passed checks" of the Overview and Manual checks.
+/// </summary>
+internal readonly record struct TweakViewFlags(bool OnlyRecommended, bool OnlyChanged, bool OnlyProfile, bool ShowAll)
+{
+    public static TweakViewFlags For(TweakView view) =>
+        new(view == TweakView.Recommended, view == TweakView.Changed, view == TweakView.Profile, view == TweakView.Everything);
+
+    /// <summary>The view the filters show; a narrower filter wins over a wider one.</summary>
+    public TweakView View => OnlyRecommended ? TweakView.Recommended
+        : OnlyChanged ? TweakView.Changed
+        : OnlyProfile ? TweakView.Profile
+        : ShowAll ? TweakView.Everything
+        : TweakView.Applicable;
+}
+
 public sealed record TweakViewOption(TweakView View, string Text)
 {
     // What screen readers announce for this item in a list or combo box.
@@ -43,6 +60,12 @@ public sealed partial class MainViewModel
 
     /// <summary>Only tweaks this app changed (the Changed view).</summary>
     private bool _onlyChanged;
+
+    /// <summary>
+    /// The Everything view: tweaks that do not apply to this PC are listed too. A setting of the Tweaks page only; "Show
+    /// passed checks" on the Overview and Manual checks is another one, so neither switch changes the other page's list.
+    /// </summary>
+    private bool _tweaksShowAll;
 
     /// <summary>The choices in the current language (built again after a language switch; the combo box binds the value).</summary>
     public IReadOnlyList<TweakViewOption> TweakViewOptions =>
@@ -79,35 +102,29 @@ public sealed partial class MainViewModel
     private int _tweakImpactMin;
 
     /// <summary>
-    /// The view as the switches it replaces: Recommended, Profile and the "does not apply" list keep their own properties
-    /// (the overview, the search and the developer switches use them), so the choice is read from and written to them.
+    /// The view as the switches it replaces: Recommended and Profile keep their own properties (the overview, the search
+    /// and the developer switches use them), so the choice is read from and written to them.
     /// </summary>
     public TweakView TweakViewMode
     {
-        get => OnlyRecommended ? TweakView.Recommended
-            : _onlyChanged ? TweakView.Changed
-            : OnlyProfile ? TweakView.Profile
-            : ShowPassed ? TweakView.Everything
-            : TweakView.Applicable;
+        get => new TweakViewFlags(OnlyRecommended, _onlyChanged, OnlyProfile, _tweaksShowAll).View;
         set
         {
             if (value == TweakViewMode) return;
-            var showPassed = value == TweakView.Everything;
-            var rebuild = showPassed != ShowPassed;
+            var flags = TweakViewFlags.For(value);
             // The fields directly, then one refill: each property would rebuild the list on its own.
 #pragma warning disable MVVMTK0034
-            _onlyRecommended = value == TweakView.Recommended;
-            _onlyProfile = value == TweakView.Profile;
-            _showPassed = showPassed;
+            _onlyRecommended = flags.OnlyRecommended;
+            _onlyProfile = flags.OnlyProfile;
 #pragma warning restore MVVMTK0034
-            _onlyChanged = value == TweakView.Changed;
+            _onlyChanged = flags.OnlyChanged;
+            _tweaksShowAll = flags.ShowAll;
             OnPropertyChanged(nameof(OnlyRecommended));
             OnPropertyChanged(nameof(OnlyProfile));
-            OnPropertyChanged(nameof(ShowPassed));
             OnPropertyChanged();
-            // "Does not apply" also changes the overview's passed checks (one setting for both): a full rebuild then.
-            if (rebuild) Rebuild();
-            else RefillTweaks();
+            RefillTweaks();
+            // The Overview's link counts the ignored recommendations of the view it opens.
+            UpdateIgnoredTweaksText();
         }
     }
 }

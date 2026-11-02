@@ -118,7 +118,7 @@
   <data name="Reapply_UserFolder" xml:space="preserve"><value>Verfügbar, wenn Tunero im Ordner Programme installiert ist (In Programme installieren, oben) oder mit winget bzw. Chocolatey für alle Benutzer: Die Aufgabe startet es ohne Nachfrage mit Administratorrechten.</value></data>
   <data name="Settings_Data" xml:space="preserve"><value>Datenordner</value></data>
   <data name="Expert_ConfirmTitle" xml:space="preserve"><value>Expertenmodus einschalten?</value></data>
-  <data name="Expert_ConfirmText" xml:space="preserve"><value>Der Expertenmodus zeigt Änderungen, die die Sicherheit von Windows schwächen oder ändern können, wie Windows startet. Jede wird gesichert und erklärt.</value></data>
+  <data name="Expert_ConfirmText" xml:space="preserve"><value>Der Expertenmodus zeigt Änderungen, die die Sicherheit von Windows schwächen oder den Start von Windows verändern können. Jede wird gesichert und erklärt.</value></data>
   <data name="Expert_ConfirmWarningTitle" xml:space="preserve"><value>Manche Anti-Cheats starten ohne diese Schutzfunktionen nicht</value></data>
   <data name="Expert_ConfirmWarning" xml:space="preserve"><value>Zum Beispiel Speicherintegrität oder der Schutz vor Spectre. Lies jede Änderung, bevor du sie anwendest.</value></data>
   <data name="Expert_ConfirmButton" xml:space="preserve"><value>Einschalten</value></data>
@@ -138,6 +138,8 @@
   <data name="Rp_AskText" xml:space="preserve"><value>Windows kann keinen Wiederherstellungspunkt erstellen, weil der Computerschutz für das Systemlaufwerk aus ist. Die eigene Sicherung der App stellt trotzdem jeden geänderten Wert wieder her. Computerschutz jetzt einschalten?</value></data>
   <data name="Rp_Enable" xml:space="preserve"><value>Einschalten</value></data>
   <data name="Rp_Continue" xml:space="preserve"><value>Ohne ihn fortfahren</value></data>
+  <data name="Rp_FailedTitle" xml:space="preserve"><value>Kein Wiederherstellungspunkt</value></data>
+  <data name="Rp_FailedText" xml:space="preserve"><value>Windows hat keinen Wiederherstellungspunkt erstellt, obwohl der Computerschutz an ist. Die eigene Sicherung der App stellt trotzdem jeden geänderten Wert wieder her. Ohne ihn fortfahren?</value></data>
   <data name="UndoAll_Title" xml:space="preserve"><value>Alle Änderungen rückgängig machen?</value></data>
   <data name="UndoAll_Text" xml:space="preserve"><value>Änderungen, die rückgängig gemacht werden: {0}. Werte, die Windows seitdem geändert hat, bleiben wie sie sind.</value></data>
   <data name="Busy" xml:space="preserve"><value>Wird ausgeführt</value></data>
@@ -1083,7 +1085,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
     <value>Startet einen Skript-Host (PowerShell, cmd, mshta oder ähnlich). Das Programm selbst ist von Microsoft signiert, aber die Befehlszeile bestimmt, was ausgeführt wird: Schadsoftware startet oft so, manche seriösen Tools auch. Prüfe den Befehl.</value>
   </data>
   <data name="Result_NoRestorePoint" xml:space="preserve">
-    <value>Es konnte kein Wiederherstellungspunkt erstellt werden, daher wurde nichts geändert. Versuche es gleich noch einmal oder wähle „Ohne Wiederherstellungspunkt weiter“ (die Sicherung der Originalwerte wird in jedem Fall angelegt).</value>
+    <value>Es konnte kein Wiederherstellungspunkt erstellt werden, daher wurde nichts geändert. Versuche es gleich noch einmal oder wähle „Ohne ihn fortfahren“ (die Sicherung der Originalwerte wird in jedem Fall angelegt).</value>
   </data>
   <data name="Storage_RecycleOtherAccount" xml:space="preserve">
     <value>Diese App läuft unter einem anderen Konto ({0}). Dateien und Ordner landen im Papierkorb dieses Kontos, den du von deinem eigenen Konto aus eventuell nicht öffnen kannst. Geh davon aus, dass sie endgültig gelöscht sind.</value>
@@ -1165,14 +1167,16 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
     <value>Wirkt gegen das Profil {0}</value>
   </data>
   <data name="Rec_AgainstHint" xml:space="preserve">
-    <value>Diese Einstellungen sind an und wirken gegen das, wofür dieses Profil da ist. „Rückgängig“ nimmt eine Änderung von Tunero zurück; bei einer anderswo gesetzten Einstellung erklärt „Details“, wie du sie änderst.</value>
+    <value>Diese Einstellungen gelten auf diesem PC und wirken gegen das, wofür dieses Profil da ist.</value>
   </data>
+  <data name="Rec_AgainstHintUndo" xml:space="preserve"><value>„Rückgängig“ nimmt eine Änderung von Tunero zurück.</value></data>
+  <data name="Rec_AgainstHintDetails" xml:space="preserve"><value>Bei einer außerhalb von Tunero gesetzten Einstellung erklärt „Details“, wie du sie änderst.</value></data>
   <data name="Rec_AgainstOutside" xml:space="preserve"><value>Außerhalb von Tunero gesetzt</value></data>
   <data name="Rec_AgainstIgnore" xml:space="preserve"><value>Diese Einstellung ignorieren</value></data>
   <data name="Dash_ScoreHintGoal" xml:space="preserve">
-    <value>Zählt die gefundenen Probleme, gewichtet nach ihrer Wirkung auf {0}. Der Wert steigt, wenn du sie behebst; eingeschaltete Tweaks bringen für sich keine Punkte.</value>
+    <value>Zählt die gefundenen Probleme, gewichtet nach ihrer Wirkung auf {0}. Der Wert steigt, wenn du sie behebst; eingeschaltete Tweaks bringen für sich keine Punkte, und Einstellungen, die gegen das Profil wirken, ziehen keine ab.</value>
   </data>
-  <data name="About_License" xml:space="preserve"><value>Freie Software unter der GNU General Public License Version 3 (GPL-3.0). Du darfst sie nach ihren Bedingungen nutzen, ändern und weitergeben. Ohne Gewährleistung.</value></data>
+  <data name="About_License" xml:space="preserve"><value>Freie Software unter der GNU General Public License, nur Version 3 (GPL-3.0-only). Du darfst sie nach ihren Bedingungen nutzen, ändern und weitergeben. Ohne Gewährleistung.</value></data>
   <data name="About_Licenses" xml:space="preserve"><value>Lizenzen</value></data>
   <data name="About_Privacy" xml:space="preserve"><value>Datenschutz</value></data>
   <data name="About_Support" xml:space="preserve"><value>Auf Ko-fi unterstützen</value></data>
@@ -1395,7 +1399,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Changes_Transfer" xml:space="preserve"><value>Auf einen anderen PC übertragen</value></data>
   <data name="Changes_TransferText" xml:space="preserve"><value>Exportieren speichert die Tweaks, die du eingeschaltet hast, und deine Programmprioritäten in eine Datei. Importieren wendet so eine Datei hier an, etwa nach einer Neuinstallation von Windows. Geräteeinstellungen bleiben bei diesem PC; entfernte Apps, Dienst-Starttypen und Autostart-Einträge kommen nur mit, wenn du sie unten wählst.</value></data>
   <data name="NewUsers_Title" xml:space="preserve"><value>Neue Konten auf diesem PC</value></data>
-  <data name="NewUsers_Text" xml:space="preserve"><value>Übernimmt die eingeschalteten Tweaks für dein Konto (Explorer, Taskleiste, Datenschutz und andere, die nur aus Registrierungswerten bestehen) ins Standardprofil, damit später angelegte Konten mit ihnen starten. Bestehende Konten behalten ihre Einstellungen. Rückgängig machen kannst du es auf dieser Seite.</value></data>
+  <data name="NewUsers_Text" xml:space="preserve"><value>Übernimmt die Tweaks, die du für dein Konto eingeschaltet hast, für Konten, die später auf diesem PC angelegt werden, sofern diese Tweaks nur Registrierungswerte ändern (Explorer, Taskleiste, Datenschutz und andere). Bestehende Konten behalten ihre Einstellungen. Rückgängig machen kannst du das auf dieser Seite.</value></data>
   <data name="NewUsers_Copy" xml:space="preserve"><value>Für neue Konten übernehmen</value></data>
   <data name="NewUsers_Nothing" xml:space="preserve"><value>Keiner der eingeschalteten Tweaks kann zu neuen Konten: Schalte zuerst Tweaks für dein Konto ein (Explorer, Taskleiste, Datenschutz).</value></data>
   <data name="Changes_ExportAlso" xml:space="preserve"><value>Zusätzlich in den Export aufnehmen</value></data>
@@ -1517,7 +1521,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Tweaks_GroupApplyTip" xml:space="preserve"><value>Schaltet die Tweaks dieser Gruppe ein, die aus sind und sich gefahrlos zusammen anwenden lassen: Risiko Sicher, vollständig umkehrbar, keine Vorschau. Alternativen, die sich ausschließen, etwa die Energiepläne, bleiben draußen, damit du wählst. Du siehst vorher jede Änderung.</value></data>
   <data name="Tweaks_GroupApplyTitle" xml:space="preserve"><value>Einschalten: {0}</value></data>
   <data name="Tweaks_GroupApplyIntro" xml:space="preserve"><value>Die Tweaks dieser Gruppe, die aus sind und sich gefahrlos zusammen anwenden lassen. Jeder lässt sich auf der Seite Änderungen rückgängig machen.</value></data>
-  <data name="Tweaks_ExpertLink" xml:space="preserve"><value>Expertenmodus in den Einstellungen einschalten</value></data>
+  <data name="Tweaks_ExpertLink" xml:space="preserve"><value>Ausgeblendete Expertenänderungen: {0}. Expertenmodus in den Einstellungen einschalten</value></data>
   <data name="Vt_AddKey" xml:space="preserve"><value>Mit VirusTotal prüfen: Schlüssel in den Einstellungen eintragen</value></data>
   <data name="Startup_Enabled" xml:space="preserve"><value>Aktiviert</value></data>
   <data name="Startup_Disabled" xml:space="preserve"><value>Deaktiviert</value></data>
@@ -1530,12 +1534,13 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Search_Empty" xml:space="preserve"><value>Nichts gefunden. Versuch ein anderes Wort, zum Beispiel eine Einstellung, ein Programm oder einen Dienst.</value></data>
   <data name="Search_Results" xml:space="preserve"><value>Suchergebnisse</value></data>
   <data name="Search_NotIncluded" xml:space="preserve"><value>Nicht in Tunero enthalten</value></data>
+  <data name="Search_NoResultHere" xml:space="preserve"><value>Diese Prüfung gilt nicht für diesen PC und hat hier kein Ergebnis.</value></data>
   <data name="Intro_Text" xml:space="preserve"><value>Der Scan liest nur: Nichts ändert sich, bevor du es bestätigst, und geänderte Einstellungen lassen sich auf der Seite Änderungen rückgängig machen.</value></data>
   <data name="Intro_Dismiss" xml:space="preserve"><value>Verstanden</value></data>
   <data name="Settings_Technical" xml:space="preserve"><value>Technische Details</value></data>
   <data name="Settings_TechnicalHint" xml:space="preserve"><value>Pfade, Registry-Orte und Paketnamen auf Autostart, Bereinigen, Dienste und Apps entfernen, dazu IDs und Rohwerte unter Systeminfo. Aus ergibt eine einfachere Ansicht; der Detailbereich und jede Bestätigung zeigen sie weiterhin.</value></data>
   <data name="TweakView_Label" xml:space="preserve"><value>Zeigen</value></data>
-  <data name="TweakView_Profile" xml:space="preserve"><value>Für dieses Profil</value></data>
+  <data name="TweakView_Profile" xml:space="preserve"><value>Für dieses Profil relevant</value></data>
   <data name="TweakView_Recommended" xml:space="preserve"><value>Für diesen PC empfohlen</value></data>
   <data name="TweakView_Changed" xml:space="preserve"><value>Von dieser App geändert</value></data>
   <data name="TweakView_Applicable" xml:space="preserve"><value>Alle, die zu diesem PC passen</value></data>
@@ -1544,7 +1549,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="TweakImpact_Any" xml:space="preserve"><value>Jede Wirkung</value></data>
   <data name="TweakImpact_AtLeast" xml:space="preserve"><value>Wirkung ab {0}</value></data>
   <data name="TweakImpact_Five" xml:space="preserve"><value>Wirkung 5</value></data>
-  <data name="TweakImpact_Tip" xml:space="preserve"><value>Nur Tweaks, die für das Ziel des Profils mindestens so hoch bewertet sind, wie es die Marke an jeder Zeile zeigt.</value></data>
+  <data name="TweakImpact_Tip" xml:space="preserve"><value>Nur Tweaks, die für das Ziel des Profils mindestens so hoch bewertet sind. Die Marke an jeder Zeile zeigt die Bewertung.</value></data>
   <data name="Tweaks_Select" xml:space="preserve"><value>Auswählen</value></data>
   <data name="Tweaks_SelectTip" xml:space="preserve"><value>Mehrere Tweaks mit Kontrollkästchen auswählen und dann zusammen einschalten oder rückgängig machen.</value></data>
   <data name="Tweaks_Picked" xml:space="preserve"><value>Ausgewählt: {0}</value></data>
@@ -1737,6 +1742,8 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Details_NoPage" xml:space="preserve"><value>Zu dieser Prüfung gibt es in dieser Version keine Erklärungsseite.</value></data>
   <data name="Dash_Readiness" xml:space="preserve"><value>Eignung für {0}: {1} von 100. Bestandene Prüfungen: {2}.</value></data>
   <data name="Dash_ReadinessUnknown" xml:space="preserve"><value>Eignung für {0}: {1} von 100. Bestandene Prüfungen: {2}, unbekannt: {3}.</value></data>
+  <data name="Dash_ReadinessAgainst" xml:space="preserve"><value>Eignung für {0}: {1} von 100, ohne die Einstellungen, die dagegen wirken. Bestandene Prüfungen: {2}.</value></data>
+  <data name="Dash_ReadinessAgainstUnknown" xml:space="preserve"><value>Eignung für {0}: {1} von 100, ohne die Einstellungen, die dagegen wirken. Bestandene Prüfungen: {2}, unbekannt: {3}.</value></data>
   <data name="Dash_AdvisorLink" xml:space="preserve"><value>Von Hand im BIOS oder an der Hardware zu ändern: {0}</value></data>
   <data name="Dash_VerdictNoneOneChange" xml:space="preserve"><value>Keine Probleme gefunden. Eine empfohlene Änderung kann noch helfen.</value></data>
   <data name="Dash_VerdictNoneChanges" xml:space="preserve"><value>Keine Probleme gefunden. {0} empfohlene Änderungen können noch helfen.</value></data>
@@ -1762,7 +1769,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Hint_TakesMinutesServicingSentence" xml:space="preserve"><value>Das kann mehrere Minuten dauern, bei laufenden Windows-Updates auch länger.</value></data>
   <data name="Hint_TakesMinutesSentence" xml:space="preserve"><value>Das kann mehrere Minuten dauern.</value></data>
   <data name="Hint_TakesHalfHour" xml:space="preserve"><value>Kann eine halbe Stunde oder länger dauern</value></data>
-  <data name="Badge_TipMinutes" xml:space="preserve"><value>Das Ein- oder Ausschalten kann mehrere Minuten dauern, länger, wenn Windows gerade Updates installiert. Das Banner oben zeigt, dass es noch läuft.</value></data>
+  <data name="Badge_TipMinutes" xml:space="preserve"><value>Das Ein- oder Ausschalten kann mehrere Minuten dauern, bei laufenden Windows-Updates auch länger. Das Banner oben zeigt, dass es noch läuft.</value></data>
   <data name="Result_BatchStopped" xml:space="preserve"><value>Angehalten. {0} angewendet, {1} fehlgeschlagen, {2} übersprungen, {3} nicht begonnen.</value></data>
   <data name="Setup_Title" xml:space="preserve"><value>Tunero einrichten</value></data>
   <data name="Setup_Location" xml:space="preserve"><value>Tunero läuft gerade aus {0}.</value></data>

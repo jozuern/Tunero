@@ -20,6 +20,16 @@ public class ExtrasHardwareTests(ITestOutputHelper output)
     [InlineData("CPU", "CPU")]
     public void CpuShortNameDropsTheBrandStringExtras(string name, string expected) => Assert.Equal(expected, CpuInfo.Shorten(name));
 
+    /// <summary>A graphics adapter's name in headings and tiles loses its trademark signs, as the processor's does, and nothing else.</summary>
+    [Theory]
+    [InlineData("Intel(R) Graphics", "Intel Graphics")]
+    [InlineData("Intel(R) UHD Graphics 630", "Intel UHD Graphics 630")]
+    [InlineData("AMD Radeon(TM) Graphics", "AMD Radeon Graphics")]
+    [InlineData("NVIDIA GeForce RTX 4070 Ti SUPER", "NVIDIA GeForce RTX 4070 Ti SUPER")]
+    [InlineData("Qualcomm\u00AE Adreno\u2122 X1-85 GPU", "Qualcomm Adreno X1-85 GPU")]
+    [InlineData("(R)", "(R)")]
+    public void GpuShortNameDropsOnlyTheTrademarkSigns(string name, string expected) => Assert.Equal(expected, HardwareNames.WithoutTrademarks(name));
+
     [Fact]
     [Trait("Category", "Hardware")]
     public async Task ExtrasOnThisPc()

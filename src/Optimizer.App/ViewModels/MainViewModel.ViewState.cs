@@ -32,6 +32,9 @@ public sealed partial class MainViewModel
         BuildBanners();
         BuildChanges();
         BuildHardware();
+        // Graphics & DNS shows tweak rows too: built before the selection is looked up again, so a row selected there is
+        // found among the new rows (with the new state) and not kept as the old one.
+        Network.Rebuild();
 
         RestoreSelection(selectedKey);
         OnPropertyChanged(nameof(AboutText));
@@ -68,9 +71,12 @@ public sealed partial class MainViewModel
         RestoreSelection(selectedKey);
     }
 
+    /// <summary>The row with this key among the rows of every list that opens the details pane (the Graphics &amp; DNS ones included).</summary>
     private void RestoreSelection(string? key) =>
         SelectedItem = key is null ? null :
-            Findings.Cast<InspectorItem>().Concat(AdvisorItems).Concat(IgnoredItems).Concat(Tweaks).Concat(Network.DeviceTweaks).Append(GameAccess).FirstOrDefault(i => i?.Key == key);
+            Findings.Cast<InspectorItem>().Concat(AdvisorItems).Concat(IgnoredItems).Concat(Tweaks)
+                .Concat(Network.DeviceTweaks).Concat(Network.GameProfiles).Concat(Network.GpuTweaks).Concat(Network.DnsOptions)
+                .Append(GameAccess).FirstOrDefault(i => i?.Key == key);
 
     /// <summary>The finding and advisor lists, the score and the counts on the overview.</summary>
     private void BuildFindingLists()
@@ -100,18 +106,28 @@ public sealed partial class MainViewModel
         // Checks that could not be answered are named: "100 of 100" next to a "?" card needs the count to make sense.
         var passedChecks = _state.ProfiledFindings.Count(f => f.Status == FindingStatus.Ok);
         var unknownChecks = _state.ProfiledFindings.Count(f => f.Status == FindingStatus.Unknown);
-        ReadinessLine = unknownChecks > 0
-            ? Loc.Instance.Format("Dash_ReadinessUnknown", ProfileName(_state.Usage), Score, passedChecks, unknownChecks)
-            : Loc.Instance.Format("Dash_Readiness", ProfileName(_state.Usage), Score, passedChecks);
+        // Settings that work against the profile (listed below with a warning) are no problems the scan found and do not
+        // lower the score: next to them, "100 of 100" says so instead of reading as "nothing to worry about".
+        var against = _state.Profiled.Any(p => p.Flagged);
+        ReadinessLine = Loc.Instance.Format(ReadinessKey(against, unknownChecks > 0), ProfileName(_state.Usage), Score, passedChecks, unknownChecks);
         AdvisorLinkText = advisorProblems > 0 ? Loc.Instance.Format("Dash_AdvisorLink", advisorProblems) : null;
         // The navigation shows where something waits: problems on the overview, things to change by hand.
         OverviewBadge = findingProblems > 0 ? findingProblems.ToString() : null;
         AdvisorBadge = advisorProblems > 0 ? advisorProblems.ToString() : null;
         LastScanText = _state.LastScanTime is { } t ? Loc.Instance.Format("LastScan", t.ToString("HH:mm")) : "";
         if (Profile is { } prof)
-            Headline = string.Join(", ", new[] { prof.Cpu?.ShortName, prof.Gpus?.FirstOrDefault(g => g.Kind == GpuKind.Discrete)?.Name ?? prof.Gpus?.FirstOrDefault()?.Name,
+            Headline = string.Join(", ", new[] { prof.Cpu?.ShortName, (prof.Gpus?.FirstOrDefault(g => g.Kind == GpuKind.Discrete) ?? prof.Gpus?.FirstOrDefault())?.ShortName,
                 $"Windows 11 {prof.Os.DisplayVersion}" }.Where(x => !string.IsNullOrEmpty(x)));
     }
+
+    /// <summary>The resource key of the line under the score: it names settings against the profile and unanswered checks.</summary>
+    internal static string ReadinessKey(bool against, bool unknown) => (against, unknown) switch
+    {
+        (true, true) => "Dash_ReadinessAgainstUnknown",
+        (true, false) => "Dash_ReadinessAgainst",
+        (false, true) => "Dash_ReadinessUnknown",
+        _ => "Dash_Readiness",
+    };
 
     private void Fill(ObservableCollection<FindingItemViewModel> target, IEnumerable<Finding> source, string lang)
     {
@@ -136,10 +152,19 @@ public sealed partial class MainViewModel
             : _state.Profiled.FirstOrDefault(p => p.CanFix(f.Id) && (ExpertMode || p.Tweak.EffectiveRisk != Risk.Expert))?.Tweak;
 
     /// <param name="profileFilter">Tweaks page: only what the active profile rates (unless "Only this profile" is off).</param>
-    private IEnumerable<ProfiledTweak> VisibleTweaks(bool profileFilter = true) =>
-        _state.Profiled.Where(p => ExpertMode || p.Tweak.EffectiveRisk != Risk.Expert || p.Status.HasBackup)
-                 .Where(p => p.Status.State != TweakState.NotApplicable || ShowPassed)
+    private IEnumerable<ProfiledTweak> VisibleTweaks(bool profileFilter = true) => InView(profileFilter).Where(p => !HiddenAsExpert(p, ExpertMode));
+
+    /// <summary>The tweaks of the view, the Expert ones included (what does not apply, and what the profile rates).</summary>
+    private IEnumerable<ProfiledTweak> InView(bool profileFilter) =>
+        _state.Profiled.Where(p => p.Status.State != TweakState.NotApplicable || _tweaksShowAll)
                  .Where(p => !profileFilter || !OnlyProfile || p.Relevant);
+
+    /// <summary>An Expert change is hidden until Expert mode is on, unless this app made it (it can always be undone).</summary>
+    internal static bool HiddenAsExpert(ProfiledTweak p, bool expertMode) => !expertMode && p.Tweak.EffectiveRisk == Risk.Expert && !p.Status.HasBackup;
+
+    /// <summary>How many tweaks of the view Expert mode would add to the list (those the page's filters keep).</summary>
+    internal static int HiddenExpertCount(IEnumerable<ProfiledTweak> inView, bool expertMode, Func<ProfiledTweak, bool> filtered) =>
+        expertMode ? 0 : inView.Where(p => HiddenAsExpert(p, expertMode)).Count(filtered);
 
     private const string RecommendedGroup = "recommended";
     private const string AgainstGroup = "against";
@@ -198,16 +223,19 @@ public sealed partial class MainViewModel
             _ => Array.FindIndex(TweakSections, s => s.Key == key),
         };
 
+        bool Filtered(ProfiledTweak p) =>
+            (!OnlyRecommended || p.Recommended)
+            && (!_onlyChanged || p.Status.HasBackup)
+            // "Works against the profile" (a negative impact) has no rating: an impact filter leaves it out.
+            && (_tweakImpactMin == 0 || p.Impact >= _tweakImpactMin)
+            // DNS servers are one choice, made on Graphics & DNS: not a second list of tweaks here.
+            && !p.Tweak.Id.StartsWith("network.dns.", StringComparison.Ordinal)
+            && Matches(p);
+
         Tweaks.Clear();
         _tweakGroups.Clear();
         var groups = VisibleTweaks()
-            .Where(p => !OnlyRecommended || p.Recommended)
-            .Where(p => !_onlyChanged || p.Status.HasBackup)
-            // "Works against the profile" (a negative impact) has no rating: an impact filter leaves it out.
-            .Where(p => _tweakImpactMin == 0 || p.Impact >= _tweakImpactMin)
-            // DNS servers are one choice, made on Graphics & DNS: not a second list of tweaks here.
-            .Where(p => !p.Tweak.Id.StartsWith("network.dns.", StringComparison.Ordinal))
-            .Where(Matches)
+            .Where(Filtered)
             .GroupBy(p => p.Ignored ? IgnoredGroup : p.Recommended ? RecommendedGroup : p.Flagged ? AgainstGroup : TweakSections[SectionIndex(p.Tweak.Category)].Key)
             .OrderBy(g => Order(g.Key))
             .ToList();
@@ -235,6 +263,10 @@ public sealed partial class MainViewModel
         }
         ShowTweakRows();
         UpdatePicks();
+        OnPropertyChanged(nameof(TweaksNoMatch));
+        // The link to Expert mode says what it would add to this list: none, no link (it read like a general shortcut).
+        var hiddenExpert = HiddenExpertCount(InView(profileFilter: true), ExpertMode, Filtered);
+        TweaksExpertLink = hiddenExpert > 0 ? Loc.Instance.Format("Tweaks_ExpertLink", hiddenExpert) : null;
         var visible = VisibleTweaks().ToList();
         // "On" alone would count settings that were already that way as changes of this app. Counts of zero are left out:
         // "202 tweaks: 91 already set" reads, "0 changed by this app, 0 recommended" was noise.
@@ -413,9 +445,7 @@ public sealed partial class MainViewModel
         RecommendationsExcluded.Clear();
         foreach (var i in _state.Plan.Excluded)
             RecommendationsExcluded.Add(WithIgnore(new RecommendationLine(Runner.Title(i.Tweak), Excluded(i), i.Impact, i.Tweak), i));
-        // As many as the Tweaks page lists in the view the link opens.
-        var ignoredTweaks = VisibleTweaks(profileFilter: false).Count(p => p.Ignored);
-        IgnoredTweaksText = ignoredTweaks > 0 ? Loc.Instance.Format("Tweaks_IgnoredCount", ignoredTweaks) : null;
+        UpdateIgnoredTweaksText();
         HasRecommendations = _state.Plan.Items.Count > 0;
         // Nothing to apply in one click, but fixes that need something first: say so instead of "nothing to recommend".
         RecommendationsEmptyText = _state.Plan.Excluded.Count > 0 ? Loc.Instance["Rec_EmptyButExcluded"] : Loc.Instance["Rec_Empty"];
@@ -428,8 +458,28 @@ public sealed partial class MainViewModel
             AgainstProfile.Add(new AgainstLine(p.Tweak.Id, Runner.Title(p.Tweak), p.ReasonKey is { } k ? Labels.Current.Get(lang, k) : "", p.Status.HasBackup));
         HasAgainst = AgainstProfile.Count > 0;
         AgainstTitle = Loc.Instance.Format("Rec_AgainstTitle", ProfileName(_state.Usage));
+        AgainstHint = AgainstHintText(AgainstProfile);
         // After the lines against the profile: the verdict names them when no problem is found.
         UpdateVerdict();
+    }
+
+    /// <summary>
+    /// The hint over the works-against lines. "In effect", not "on": a line can name a protection that is off. A button is
+    /// explained only when a line shows it: Undo for a change of this app, Details for a setting made elsewhere.
+    /// </summary>
+    internal static string AgainstHintText(IReadOnlyCollection<AgainstLine> lines) =>
+        string.Join(" ", new[]
+        {
+            Loc.Instance["Rec_AgainstHint"],
+            lines.Any(l => l.CanUndo) ? Loc.Instance["Rec_AgainstHintUndo"] : null,
+            lines.Any(l => l.SetOutside) ? Loc.Instance["Rec_AgainstHintDetails"] : null,
+        }.OfType<string>());
+
+    /// <summary>"Ignored recommendations: 2": as many as the Tweaks page lists in the view the link opens.</summary>
+    private void UpdateIgnoredTweaksText()
+    {
+        var ignoredTweaks = VisibleTweaks(profileFilter: false).Count(p => p.Ignored);
+        IgnoredTweaksText = ignoredTweaks > 0 ? Loc.Instance.Format("Tweaks_IgnoredCount", ignoredTweaks) : null;
     }
 
     /// <summary>Opens a tweak in the details pane on the Tweaks page, as the search does.</summary>

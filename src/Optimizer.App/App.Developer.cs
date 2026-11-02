@@ -215,8 +215,9 @@ public partial class App
             dlg.Close();
         }
 
-        // Developer aid: render the question dialog with two buttons (update), with three (restore point), the uninstall
-        // question with and without active changes, and the Expert mode question.
+        // Developer aid: render the question dialog with two buttons (update), with three (restore point, System Protection
+        // off), the restore point question with System Protection on, the uninstall question with and without active
+        // changes, and the Expert mode question.
         if (args.Value("--message-shot") is { } messageShot)
         {
             var version = AppInfo.Version.ToString(3);
@@ -224,8 +225,8 @@ public partial class App
             {
                 (messageShot, new MessageWindow(Loc.Instance.Format("Update_ConfirmTitle", version), Loc.Instance.Format("Update_ConfirmText", version),
                     Loc.Instance["Confirm_Cancel"], Loc.Instance["Update_Restart"])),
-                (System.IO.Path.ChangeExtension(messageShot, null) + "-3.png", new MessageWindow(Loc.Instance["Rp_AskTitle"], Loc.Instance["Rp_AskText"],
-                    Loc.Instance["Confirm_Cancel"], Loc.Instance["Rp_Continue"], Loc.Instance["Rp_Enable"])),
+                (System.IO.Path.ChangeExtension(messageShot, null) + "-3.png", Dialogs.RestorePointDialog(protectionOn: false)),
+                (System.IO.Path.ChangeExtension(messageShot, null) + "-restorepoint.png", Dialogs.RestorePointDialog(protectionOn: true)),
                 (System.IO.Path.ChangeExtension(messageShot, null) + "-uninstall.png", Dialogs.UninstallDialog(3, DataPaths.Root)),
                 (System.IO.Path.ChangeExtension(messageShot, null) + "-uninstall-0.png", Dialogs.UninstallDialog(0, DataPaths.Root)),
                 (System.IO.Path.ChangeExtension(messageShot, null) + "-expert.png", Dialogs.ExpertDialog()),
@@ -332,7 +333,7 @@ public partial class App
         foreach (var page in Enum.GetValues<Page>()) await Measure($"open {page} (again)", () => vm.CurrentPage = page);
         lines.Add($"rows: apps {vm.Apps.Apps.Count}, drivers {vm.Apps.Drivers.Count}, startup {vm.Startup.Rows.Count}, services {vm.ServicesPage.Rows.Count}, tasks {vm.ServicesPage.Tasks.Count}");
         vm.CurrentPage = Page.Tweaks;
-        await Measure("Tweaks: rebuild after a scan", () => { vm.Rebuild(); vm.Network.Rebuild(); });
+        await Measure("Tweaks: rebuild after a scan", vm.Rebuild);
         await Measure("Tweaks: expand all groups", () => vm.OpenAllTweakGroupsCommand.Execute(null));
         await Measure("Tweaks: collapse all groups", () => vm.CloseAllTweakGroupsCommand.Execute(null));
         if (vm.TweakRows.OfType<TweakGroupRow>().MaxBy(g => g.Items.Count) is { } largest)

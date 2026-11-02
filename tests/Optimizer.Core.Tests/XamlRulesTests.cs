@@ -100,6 +100,19 @@ public partial class XamlRulesTests
     }
 
     /// <summary>
+    /// WPF-UI's title bar buttons carry an icon only: every window with one names them once loaded (IconButtonNames), not
+    /// only the main window, so a screen reader and Voice Access do not meet a nameless Close button in a dialog.
+    /// </summary>
+    [Fact]
+    public void EveryTitleBarGetsButtonNames()
+    {
+        var windows = AppXaml().Where(x => x.Doc.Descendants().Any(e => e.Name.LocalName == "TitleBar")).Select(x => x.Relative).ToList();
+        Assert.True(windows.Count >= 4, $"only {windows.Count} windows with a title bar found");
+        var missing = windows.Where(w => !File.ReadAllText(Path.Combine(RepoPaths.App, w + ".cs")).Contains("IconButtonNames.Apply(this)", StringComparison.Ordinal)).ToList();
+        Assert.Empty(missing);
+    }
+
+    /// <summary>
     /// The line a list shows when it is empty or nothing matches uses the EmptyState style (App.xaml), so empty states
     /// look the same on every page. A text counts as one when its text key or the property that shows it ends in Empty,
     /// NoMatch or _None, or its text is bound to an EmptyText property: name new empty states that way. Not a list's empty

@@ -30,6 +30,27 @@ public sealed class ChangeRunner(AppServices services, IDialogs dialogs, Func<Fa
 
     private ChangeSession Session => session ?? services.Session;
 
+    private RestorePointChoice AskRestorePoint() => AskRestorePoint(dialogs, services.RestorePoints);
+
+    /// <summary>
+    /// The question after no restore point came of it, in the words that fit: the engine asks both when System Protection
+    /// is off and when it is on but Windows refused to create one (a WMI or VSS error, the 24 hour limit), and "System
+    /// Protection is off" with "Turn on" was wrong in the second case. Unknown counts as off, as before.
+    /// </summary>
+    internal static RestorePointChoice AskRestorePoint(IDialogs dialogs, Optimizer.Core.Backup.IRestorePoints points)
+    {
+        bool on;
+        try
+        {
+            on = points.IsEnabled() == true;
+        }
+        catch (Exception)
+        {
+            on = false;
+        }
+        return dialogs.AskRestorePoint(on);
+    }
+
     /// <summary>The scan that runs now, or a completed task: a change waits for it (see <see cref="ExclusiveAsync"/>).</summary>
     public Func<Task> ScanInProgress { get; init; } = () => Task.CompletedTask;
 
@@ -191,7 +212,7 @@ public sealed class ChangeRunner(AppServices services, IDialogs dialogs, Func<Fa
         using var work = Work.Begin(Loc.Instance["Work_ApplyOne"], duration: Durations.For(t));
         work.Indeterminate(request.Title);
         var options = new ApplyOptions { ExpertMode = expertMode(), AcknowledgeAntiCheat = confirm.AcknowledgedAntiCheat, RestorePointStarting = RestorePointNote(work) };
-        if (await Session.ApplyAsync(t, currentFacts, options, dialogs.AskRestorePoint) is not { } result) return false;
+        if (await Session.ApplyAsync(t, currentFacts, options, AskRestorePoint) is not { } result) return false;
         Report(ResultText(t, request.Title, result), SeverityOf(result));
         var written = result.Outcome is ApplyOutcome.Applied or ApplyOutcome.AppliedIneffective;
         // A failed apply can leave a backup behind (a rollback that did not work): the pages show it as a change.
@@ -386,7 +407,7 @@ public sealed class ChangeRunner(AppServices services, IDialogs dialogs, Func<Fa
                 work.Step(s.Done, s.Total, s.Tweak is { } t ? Title(t) : null);
             }
         });
-        var outcome = await Session.ApplyBatchAsync(tweaks, facts(), new ApplyOptions { ExpertMode = expertMode() }, dialogs.AskRestorePoint,
+        var outcome = await Session.ApplyBatchAsync(tweaks, facts(), new ApplyOptions { ExpertMode = expertMode() }, AskRestorePoint,
             steps, stop.Token);
         // Cancelled at the restore point question: nothing was changed, like a cancelled confirmation (Import then stops too).
         if (outcome.Results.Count == 0 && !outcome.Stopped) return [];

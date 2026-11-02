@@ -105,6 +105,8 @@ public sealed class TweakItemViewModel : InspectorItem
         // Already on before this app: there is no original value to restore, so a switch could never be turned off.
         // Say that in words instead of showing a switch that looks broken.
         IsSetOutside = outside is not null;
+        // The details pane names the state in the row's words ("Already on", not "On"): the note under it says why.
+        if (IsSetOutside) StatusText = Loc.Instance["Tweak_AlreadyOnShort"];
         // On and off are what the switch shows, and "Already on" next to it says the rest (its tooltip explains it): the
         // row's line names a state only when it is something else (partly applied, reset by Windows, set by a policy).
         var stateShown = IsSetOutside || status.State is TweakState.NotApplied or TweakState.Applied;

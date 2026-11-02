@@ -25,9 +25,15 @@ public sealed record SearchResultItem(SearchResult Result, string Where, string?
     };
 
     public string Title => Result.Title;
-    /// <summary>The line under the title, or null when it would only repeat the title (a service without a description).</summary>
-    public string? Snippet => (LiveSnippet ?? Result.Snippet) is { } s && !string.IsNullOrWhiteSpace(s)
-        && !string.Equals(s.Trim(), Title.Trim(), StringComparison.OrdinalIgnoreCase) ? s : null;
+    /// <summary>
+    /// The line under the title, or null when it would only repeat the title: a service without a description shows its
+    /// service name, which is often the title without spaces ("GameInputRedistService" under "GameInput Redist Service").
+    /// </summary>
+    public string? Snippet => (LiveSnippet ?? Result.Snippet) is { } s && !string.IsNullOrWhiteSpace(s) && Plain(s) != Plain(Title) ? s : null;
+
+    /// <summary>Without case, spaces, hyphens and underscores.</summary>
+    private static string Plain(string s) =>
+        new(s.Where(c => !char.IsWhiteSpace(c) && c is not ('-' or '_' or '\u2010' or '\u2011')).Select(char.ToLowerInvariant).ToArray());
 
     // What screen readers announce for this item in a list.
     public override string ToString() => $"{Title}, {Where}";
@@ -128,19 +134,7 @@ public sealed partial class MainViewModel
                 RevealTweak(r.ItemId);
                 return;
             case SearchKind.Finding:
-                // An ignored result is listed under "Ignored results" on the Overview, not among the passed checks.
-                if (r.ItemId is { } ignoredId && Findings.Concat(AdvisorItems).All(f => f.Finding.Id != ignoredId)
-                    && IgnoredItems.FirstOrDefault(f => f.Finding.Id == ignoredId) is { } ignored)
-                {
-                    CurrentPage = Page.Overview;
-                    ShowIgnored = true;
-                    SelectedItem = ignored;
-                    return;
-                }
-                CurrentPage = page;
-                // The game access check has its own card, shown whatever "Show passed checks" says.
-                if (r.ItemId is { } id && Findings.Concat(AdvisorItems).Append(GameAccess).All(f => f?.Finding.Id != id)) ShowPassed = true;
-                SelectedItem = Findings.Concat(AdvisorItems).Append(GameAccess).FirstOrDefault(f => f?.Finding.Id == r.ItemId);
+                OpenFinding(page, r.ItemId);
                 return;
             case SearchKind.Service:
                 ServicesTab = 0;
@@ -170,6 +164,44 @@ public sealed partial class MainViewModel
                 break;
         }
         CurrentPage = page;
+    }
+
+    /// <summary>
+    /// A check from the search, where its result shows (<see cref="ScanState.PlaceOf"/>). "Show passed checks" is turned on
+    /// only for a passed check, the one row it adds. A check the profile hides opens in the details pane only, as a tweak the
+    /// Expert filter hides does. The index lists every check, also those without a result on this PC (a battery check on
+    /// a desktop): the result bar says so instead of opening an empty page.
+    /// </summary>
+    private void OpenFinding(Page page, string? id)
+    {
+        if (id is null) return;
+        FindingItemViewModel? Listed() => Findings.Concat(AdvisorItems).Append(GameAccess).FirstOrDefault(f => f?.Finding.Id == id);
+        // Before the first scan there is no result to show yet: the page, which says that the scan is running.
+        var place = Profile is null ? FindingPlace.Listed : _state.PlaceOf(id);
+        switch (place)
+        {
+            case FindingPlace.Ignored:
+                CurrentPage = Page.Overview;
+                ShowIgnored = true;
+                SelectedItem = IgnoredItems.FirstOrDefault(f => f.Finding.Id == id);
+                break;
+            case FindingPlace.Passed:
+                CurrentPage = page;
+                ShowPassed = true;
+                SelectedItem = Listed();
+                break;
+            case FindingPlace.HiddenByProfile:
+                CurrentPage = page;
+                SelectedItem = new FindingItemViewModel(_state.Findings.First(f => f.Id == id), Loc.Instance.Language, null, _state.Usage.Goal);
+                break;
+            case FindingPlace.NoResult:
+                ShowResult(Loc.Instance["Search_NoResultHere"]);
+                break;
+            default:
+                CurrentPage = page;
+                SelectedItem = Listed();
+                break;
+        }
     }
 
     /// <summary>A tool or setting on a page with tabs: the tab that holds it (the item id is its title's string key).</summary>

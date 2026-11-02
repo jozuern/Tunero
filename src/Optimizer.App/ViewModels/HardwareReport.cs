@@ -248,7 +248,7 @@ public static class HardwareReport
         {
             var main = gpus.FirstOrDefault(g => g.Kind == GpuKind.Discrete) ?? gpus[0];
             var detail = string.Join(", ", new[] { main.VramBytes is { } v ? f.Gb(v) : "", (main.NvidiaDriverVersion ?? main.DriverVersion) is { } dv ? f.F("driverValue", dv) : "" }.Where(s => s.Length > 0));
-            tiles.Add(new HwTile(l["Hw_Gpu"], string.Join("\n", gpus.Select(g => g.Name)), detail, SymbolRegular.DesktopPulse24));
+            tiles.Add(new HwTile(l["Hw_Gpu"], string.Join("\n", gpus.Select(g => g.ShortName)), detail, SymbolRegular.DesktopPulse24));
         }
         if (p.Memory is { } m)
         {

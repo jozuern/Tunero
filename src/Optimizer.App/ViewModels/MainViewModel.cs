@@ -84,7 +84,6 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
         Loc.Instance.LanguageChanged += (_, _) =>
         {
             Rebuild();
-            Network.Rebuild();
             OnPropertyChanged(nameof(ReapplyHint));
             OnPropertyChanged(nameof(StartMenuHint));
             foreach (var page in new PageViewModel[] { Debloat, Cleanup, Storage, Startup, ServicesPage, Apps, Tools, InstallMedia, Health }) page.OnLanguageChanged();
@@ -176,6 +175,9 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
     /// <summary>The safety net card's icon follows the state: a check only when System Protection is known to be on.</summary>
     [ObservableProperty] private SymbolRegular _restorePointIcon = SymbolRegular.Shield24;
     [ObservableProperty] private string _tweaksSummary = "";
+
+    /// <summary>"Hidden Expert changes: 3", the Tweaks page's link to Expert mode; null when the filters hide none.</summary>
+    [ObservableProperty] private string? _tweaksExpertLink;
     [ObservableProperty] private string? _resultText;
 
     /// <summary>The result is about a change: the bar offers the way to the Changes page.</summary>
@@ -215,6 +217,9 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
     [ObservableProperty] private bool _hasAgainst;
     [ObservableProperty] private string _againstTitle = "";
 
+    /// <summary>The line under the works-against title: what the settings do, and only the buttons their rows show.</summary>
+    [ObservableProperty] private string _againstHint = "";
+
     public ObservableCollection<ProfileOption> ProfileOptions { get; } = [];
     public ObservableCollection<AgainstLine> AgainstProfile { get; } = [];
 
@@ -245,6 +250,10 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
     public IReadOnlyList<TweakStatus> DeviceStates => _state.DeviceStates;
 
     public bool FindingsEmpty => Profile is not null && Findings.Count == 0;
+
+    /// <summary>Tweaks page: the search, the view or the impact filter leave nothing (not while the first scan runs).</summary>
+    public bool TweaksNoMatch => Profile is not null && Tweaks.Count == 0;
+
     /// <summary>The list is empty and no summary card says why (the card names the passed checks and the switch).</summary>
     public bool AdvisorEmpty => Profile is not null && AdvisorItems.Count == 0 && AdvisorSummaryTitle is null;
 
@@ -293,18 +302,16 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
     public string DataFolder => AppServices.DataFolder;
     public string? VirusTotalKey => Optimizer.Core.Startup.Dpapi.Unprotect(_settings.VirusTotalKey);
 
-    partial void OnShowPassedChanged(bool value)
-    {
-        // Set from elsewhere (the overview, the search): the Changed view no longer holds.
-        if (value) _onlyChanged = false;
-        OnPropertyChanged(nameof(TweakViewMode));
-        Rebuild();
-    }
+    /// <summary>
+    /// "Show passed checks" on the Overview and Manual checks: only their finding lists change. The Tweaks page has its
+    /// own view for what does not apply (<see cref="TweakView.Everything"/>), so its list and view stay as they are.
+    /// </summary>
+    partial void OnShowPassedChanged(bool value) => RebuildFindings();
 
     partial void OnOnlyRecommendedChanged(bool value)
     {
-        // Set from elsewhere (the overview, the search): the Changed view no longer holds.
-        if (value) _onlyChanged = false;
+        // Set from elsewhere (the overview, the search): the Changed and Everything views no longer hold.
+        if (value) (_onlyChanged, _tweaksShowAll) = (false, false);
         OnPropertyChanged(nameof(TweakViewMode));
         RefillTweaks();
     }
@@ -313,8 +320,8 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
 
     partial void OnOnlyProfileChanged(bool value)
     {
-        // Set from elsewhere (the overview, the search): the Changed view no longer holds.
-        if (value) _onlyChanged = false;
+        // Set from elsewhere (the overview, the search): the Changed and Everything views no longer hold.
+        if (value) (_onlyChanged, _tweaksShowAll) = (false, false);
         OnPropertyChanged(nameof(TweakViewMode));
         RefillTweaks();
     }
@@ -333,7 +340,6 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
         if (value is null || value.Id == _state.Usage.Id) return;
         _state.SetProfile(value.Id, save: true);
         Rebuild();
-        Network.Rebuild();
     }
 
     /// <summary>Developer aid (--perf): switches the profile as the picker does, without saving it.</summary>
@@ -346,7 +352,6 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
         OnPropertyChanged(nameof(SelectedProfile));
         _state.SetProfile(option.Id, save: false);
         Rebuild();
-        Network.Rebuild();
     }
 
     [RelayCommand]
@@ -396,7 +401,6 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
         _settings.ExpertMode = value;
         _settings.Save();
         Rebuild();
-        Network.Rebuild();
     }
 
     /// <summary>Developer aid (--perf): switches Expert mode for this session as the switch does, without the question and without saving.</summary>
@@ -407,7 +411,6 @@ public sealed partial class MainViewModel : ObservableObject, IPageHost
 #pragma warning restore MVVMTK0034
         OnPropertyChanged(nameof(ExpertMode));
         Rebuild();
-        Network.Rebuild();
     }
 
     /// <summary>Score and counts only after a finished scan: during a scan the cards keep their layout but show "--".</summary>

@@ -197,8 +197,11 @@ public interface IDialogs
     /// <summary>Shows the exact changes; returns null when cancelled, otherwise whether the anti-cheat warning was acknowledged.</summary>
     ConfirmResult? ConfirmApply(ConfirmRequest request);
 
-    /// <summary>System Protection is off: Enable / Continue / Cancel.</summary>
-    RestorePointChoice AskRestorePoint();
+    /// <summary>
+    /// No restore point came of it. System Protection is off (<paramref name="protectionOn"/> false): Enable / Continue /
+    /// Cancel. It is on and Windows did not create one: Continue / Cancel (turning it on would change nothing).
+    /// </summary>
+    RestorePointChoice AskRestorePoint(bool protectionOn);
 
     bool ConfirmExpertMode();
 

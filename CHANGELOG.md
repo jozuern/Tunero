@@ -25,7 +25,7 @@
 - **Settings** switches show On and Off; **Health** duration boxes have labels; **Changes** keeps the extra export options in the Move to another PC card.
 - **Overview:** the verdict names settings that work against the profile instead of saying nothing holds the PC back, and the readiness line counts unknown checks.
 - **Tweaks:** every group opens when the list has 15 tweaks or fewer; a tweak that works against the profile says why under its title.
-- **Navigation:** group headings show whenever they fit, thin lines between groups when they do not.
+- **Navigation:** group headings show whenever they fit, thin lines between groups when they do not; the headings line up with the item icons.
 - **Wording:** profile and drift banners, the works-against hint, the Expert link, the Modern Standby block, the ignore button, the Manual checks summary; search results no longer repeat the title.
 - **Startup:** "Show Windows entries" (off by default) replaces "Hide Windows entries", as on Services & tasks, and also hides Windows tasks, Known DLLs and Active Setup stubs whose file is gone. Service switches say Automatic or Manual, the start types they set. The second tab is Other scheduled tasks, and the summary starts with the count the tab shows.
 - **Services & tasks:** task commands show once, on one line and only with Technical details; Windows tasks show "Listed only" instead of a grey switch; notes no longer repeat the service's name.
@@ -37,6 +37,10 @@
 - **Tweaks:** in Select mode, rows that cannot be picked for no reason worth showing (on outside Tunero, not for this PC) show no check box that does nothing.
 - **Startup:** a row without a switch says whether the entry is enabled or disabled (Automatic or Manual for a service); a service of another vendor can be set to Manual without Expert mode, as on Services & tasks; a program redirect says "Needs Expert mode" and gets its switch as soon as Expert mode is on. The Drivers tab explains why drivers are listed only, and the menu says "Open file location" and "Copy entry location".
 - **Startup and Services & tasks:** Tunero's own task is called "Tunero: Apply my changes again" and links to Settings; Services & tasks shows a task's state without a switch, the warning icon and tags of the Startup page, and with Technical details off the service description, without the internal service name.
+- **Tweaks:** the Expert mode link says how many Expert changes the list hides and shows only when it hides some; the default filter is called "Relevant to this profile"; with nothing left the page says "Nothing matches the search or the filters". The details pane names a setting made before Tunero "Already on", as its row does.
+- **Overview:** the works-against hint says the settings are "in effect" and explains Undo or Details only when a row shows that button; the readiness line and the score hint say that settings against the profile are not counted. The graphics card name drops trademark signs, as the processor name does.
+- **Restore point question:** with System Protection on and no restore point created, it says so and offers Continue without it and Cancel instead of Turn on.
+- **Wording:** clearer New accounts text, German impact filter tooltip and Expert mode question; About names the license GPL-3.0-only.
 
 ### Fixed
 
@@ -56,9 +60,9 @@
 - **System info:** HDR shows as on only when Windows runs the display in HDR, not for Auto Color Management on an SDR display.
 - **Live readings:** a svchost's name and services follow what it runs now; two Tunero copies in different sessions no longer stop each other's disk trace, and a trace that stops on its own says so.
 - **Setup screen** says why Install is refused while other work runs; the VirusTotal Save button waits for a key.
-- **Wording:** counts read right for one item, the restore point dialog says "Continue without a restore point", and the uninstall dialog explains that the PawnIO driver can stay.
+- **Wording:** counts read right for one item, the hint after a failed restore point quotes the real button, "Continue without it", and the uninstall dialog explains that the PawnIO driver can stay.
 - **Details and search** always open the tweak, also when filters, a not-applicable state or Expert mode would hide it.
-- **Dialogs and the window** fit the monitor they open on, not the primary one; a confirmation with nothing to apply only offers Close.
+- **Dialogs and the window** fit the monitor they open on, not the primary one; a confirmation with nothing to apply only offers Close and shows no red reasons or warnings.
 - **Show in Explorer** says so when the file is gone or File Explorer did not start.
 - **Startup and Services:** services and drivers from driver packages show their real names instead of `@oem19.inf,%...%;` strings.
 - **Startup:** Startup folder files, shortcut targets, Explorer extensions and service DLLs are checked as the file itself, so a planted program in a folder with a space cannot pass as signed; rundll32 lines with a quoted DLL are flagged when they start something else. The CSV export names every signature and the current switch state.
@@ -95,6 +99,10 @@
 - **Startup:** Startup folders moved through User Shell Folders are read, and items in a moved folder are marked for a look; a per-user COM registration counts for shell extensions, Explorer add-ons, DirectShow filters and task COM handlers; a task lists every COM handler, also one next to a program.
 - **Services & tasks** checks every program a task runs, so an unsigned second action no longer hides behind a signed first one. Shortcut targets and Policy Run values are expanded with the signed-in user's variables, not those of the elevated app.
 - **Startup snapshots** flag a Run value that gains or loses its quotes; the delete preview of a task no longer doubles the quotes of a program stored quoted.
+- **Search:** opening a check no longer turns on Show passed checks or switches the Tweaks view; a check without a result on this PC says so, and one the profile hides opens in the details pane. Search no longer matches every tweak under a registry folder such as "windows", and results no longer repeat a service name that only drops the spaces of its title.
+- **Show passed checks** on the Overview and Manual checks no longer changes the Tweaks list, and the Tweaks Show filter no longer turns it off.
+- **Graphics & DNS:** the details pane of a row shows the new state after a change and stays open.
+- **Screen readers:** the title bar buttons of the confirmation, question and Licenses windows have names.
 
 ## 1.5.0
 

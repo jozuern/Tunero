@@ -15,12 +15,13 @@
         <!-- The last scan's line keeps its room while a scan shows in it -->
         <v:BoolToVisibilityConverter x:Key="IdleToVisible" Invert="True" Off="Hidden" />
         <!-- Group headings in the pane: small, semibold and in the secondary text color, so they read as labels of the
-             items below and not as items themselves (as in Windows Settings). -->
+             items below and not as items themselves (as in Windows Settings). The text starts on the items' icon column, as
+             WinUI's item headers do (measured: the template counts the left margin twice, so 7 puts it at 18 px). -->
         <Style x:Key="NavGroupHeader" TargetType="v:NavHeader" BasedOn="{StaticResource {x:Type ui:NavigationViewItemHeader}}">
             <Setter Property="FontSize" Value="12" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
-            <Setter Property="Margin" Value="4,8,0,0" />
+            <Setter Property="Margin" Value="7,8,0,0" />
             <!-- A label, not a Tab stop; a screen reader reads its text, not the control's type name -->
             <Setter Property="Focusable" Value="False" />
             <Setter Property="AutomationProperties.Name" Value="{Binding Text, RelativeSource={RelativeSource Self}}" />

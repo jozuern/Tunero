@@ -38,7 +38,7 @@ public partial class MainWindow : FluentWindow, IServiceProvider
         // The title bar lays out its parts after the window: center the search box once that is done.
         Loaded += (_, _) => Dispatcher.BeginInvoke(CenterSearchBox, System.Windows.Threading.DispatcherPriority.Loaded);
         Loaded += (_, _) => SetTitleBarIcon(System.Windows.Media.VisualTreeHelper.GetDpi(this).DpiScaleX);
-        Loaded += (_, _) => NameIconButtons();
+        Loaded += (_, _) => IconButtonNames.Apply(this);
         DpiChanged += (_, e) => SetTitleBarIcon(e.NewDpi.DpiScaleX);
         vm.PropertyChanged += OnViewModelChanged;
         SizeChanged += (_, _) =>
@@ -106,30 +106,6 @@ public partial class MainWindow : FluentWindow, IServiceProvider
                 e.Handled = true;
             }
         };
-    }
-
-    /// <summary>
-    /// The pane button and the window buttons come from WPF-UI's templates with an icon only, so a screen reader said
-    /// "button": they get names in the app language (bound, so a language switch renames them).
-    /// </summary>
-    private void NameIconButtons()
-    {
-        var names = new Dictionary<string, string>
-        {
-            ["PART_ToggleButton"] = "Nav_Toggle",
-            ["TitleBarMinimizeButton"] = "Window_Minimize",
-            ["TitleBarMaximizeButton"] = "Window_Maximize",
-            ["TitleBarCloseButton"] = "Common_Close",
-        };
-        var pending = new Stack<DependencyObject>([this]);
-        while (pending.Count > 0)
-        {
-            var element = pending.Pop();
-            if (element is FrameworkElement fe && (names.TryGetValue(fe.Name, out var key) || names.TryGetValue(System.Windows.Automation.AutomationProperties.GetAutomationId(fe), out key)))
-                fe.SetBinding(System.Windows.Automation.AutomationProperties.NameProperty,
-                    new System.Windows.Data.Binding($"[{key}]") { Source = Loc.Instance, Mode = System.Windows.Data.BindingMode.OneWay });
-            for (var i = 0; i < VisualTreeHelper.GetChildrenCount(element); i++) pending.Push(VisualTreeHelper.GetChild(element, i));
-        }
     }
 
     private void SearchBox_SizeChanged(object sender, SizeChangedEventArgs e) => CenterSearchBox();

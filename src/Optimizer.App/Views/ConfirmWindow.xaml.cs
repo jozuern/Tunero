@@ -44,6 +44,7 @@ public partial class ConfirmWindow : FluentWindow
     {
         InitializeComponent();
         Loaded += (_, _) => FitToWorkArea();
+        Loaded += (_, _) => IconButtonNames.Apply(this);
         TitleText.Text = request.Title;
         Title = request.Title;
         SummaryText.Text = request.Summary;
@@ -52,8 +53,14 @@ public partial class ConfirmWindow : FluentWindow
         BadgeList.Visibility = request.Badges.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
         DurationNote.Content = request.Duration;
         DurationNote.Visibility = request.Duration is null ? Visibility.Collapsed : Visibility.Visible;
-        BlockList.ItemsSource = request.Blocks;
-        WarningList.ItemsSource = request.AntiCheatWarning is null ? request.Warnings : request.Warnings.Append(request.AntiCheatWarning).ToList();
+        // Every value already is what the change writes: applying would only save a backup of the same values. The blue bar
+        // then says it all: no red reasons why it cannot be applied, no warnings about what it would do.
+        var nothingToDo = NothingToApply(request);
+        var (blocks, warnings) = Notes(request, nothingToDo);
+        BlockList.ItemsSource = blocks;
+        BlockList.Visibility = blocks.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+        WarningList.ItemsSource = warnings;
+        WarningList.Visibility = warnings.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
         // A value that already is what the change writes says so instead of repeating the number, and goes below the real
         // changes: "0" under Now and New read like a change.
         var rows = request.Changes
@@ -71,8 +78,6 @@ public partial class ConfirmWindow : FluentWindow
         }
         NewHeader.Text = Loc.Instance[request.IsUndo ? "Confirm_Restore" : "Confirm_New"];
         ApplyButton.Content = request.Primary ?? Loc.Instance[request.IsUndo ? "Confirm_Undo" : "Confirm_Apply"];
-        // Every value already is what the change writes: applying would only save a backup of the same values.
-        var nothingToDo = !request.IsUndo && rows.Count > 0 && rows.All(r => r.Unchanged);
         NothingToDo.IsOpen = nothingToDo;
         _canApply = request.Blocks.Count == 0 && !nothingToDo;
         ApplyButton.Visibility = nothingToDo ? Visibility.Collapsed : Visibility.Visible;
@@ -87,6 +92,15 @@ public partial class ConfirmWindow : FluentWindow
         AntiCheatAck.Visibility = _needsAck && _canApply ? Visibility.Visible : Visibility.Collapsed;
         ApplyButton.IsEnabled = _canApply && !_needsAck;
     }
+
+    /// <summary>A change (not an undo) whose every line writes the value that is already there.</summary>
+    internal static bool NothingToApply(ConfirmRequest request) =>
+        !request.IsUndo && request.Changes.Count > 0 && request.Changes.All(IsUnchanged);
+
+    /// <summary>The reasons it cannot be applied and the warnings, the anti-cheat one last; none when there is nothing to apply.</summary>
+    internal static (IReadOnlyList<string> Blocks, IReadOnlyList<string> Warnings) Notes(ConfirmRequest request, bool nothingToDo) =>
+        nothingToDo ? ([], [])
+            : (request.Blocks, request.AntiCheatWarning is null ? request.Warnings : [.. request.Warnings, request.AntiCheatWarning]);
 
     /// <summary>
     /// The line writes the value that is already there. Lines without a readable current value (a command, an unknown

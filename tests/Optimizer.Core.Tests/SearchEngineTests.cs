@@ -83,6 +83,16 @@ public class SearchEngineTests
     public void CatalogItemsAreFound(string lang, string query, string id) =>
         Assert.Contains(CatalogEngine(lang).Search(query), r => r.ItemId == id);
 
+    /// <summary>
+    /// A key path gives its last part only: the target key and the key removed on undo repeat the whole path, and every
+    /// folder in it ("CurrentVersion", "Explorer") made each tweak below it a whole-word match.
+    /// </summary>
+    [Theory]
+    [InlineData("currentversion")]
+    [InlineData("dword")]
+    public void FoldersAndValueTypesOfAKeyAreNoSearchWords(string query) =>
+        Assert.DoesNotContain(CatalogEngine("en").Search(query, 200), r => r.Kind == SearchKind.Tweak);
+
     [Theory]
     [InlineData("en", "defender")]
     [InlineData("en", "core parking")]

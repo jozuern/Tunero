@@ -502,6 +502,46 @@ public sealed class ScanStateTests
         Assert.Equal([key], _settings.IgnoredFindings);
     });
 
+    // Where the search opens a check.
+
+    /// <summary>
+    /// The search lists every check, also those without a result here: only a passed check needs "Show passed checks"
+    /// (it was turned on for every check in no list, and the details pane then stayed empty).
+    /// </summary>
+    [Fact]
+    public void TheSearchOpensACheckWhereItsResultShows() => SingleThread.Run(async () =>
+    {
+        var note = new Finding { Id = "F10.x3d", Kind = FindingKind.Finding, Status = FindingStatus.Info };
+        var access = new Finding { Id = "G.access", Kind = FindingKind.GameAccess, Status = FindingStatus.Ok };
+        _source.Findings = _ => [SamplePc.Turbo, SamplePc.Passed, note, access];
+        _settings.IgnoredFindings.Add(IgnoredResults.Key(SamplePc.Turbo));
+        var state = State();
+        Assert.Equal(FindingPlace.NoResult, state.PlaceOf(SamplePc.Passed.Id));
+        await state.ScanAsync();
+
+        Assert.Equal(FindingPlace.Listed, state.PlaceOf(note.Id));
+        // The game access card shows a passed result too.
+        Assert.Equal(FindingPlace.Listed, state.PlaceOf(access.Id));
+        Assert.Equal(FindingPlace.Passed, state.PlaceOf(SamplePc.Passed.Id));
+        Assert.Equal(FindingPlace.Ignored, state.PlaceOf(SamplePc.Turbo.Id));
+        // A battery check on a desktop has no result at all.
+        Assert.Equal(FindingPlace.NoResult, state.PlaceOf("F29.onBattery"));
+    });
+
+    [Fact]
+    public void ACheckTheProfileHidesIsNamedAsSuch() => SingleThread.Run(async () =>
+    {
+        // The Office profile shows only the checks it lists.
+        var hidden = new Finding { Id = "F10.x3d", Kind = FindingKind.Finding, Status = FindingStatus.Problem, Impact = 2 };
+        _settings.Profile = "office";
+        _source.Findings = _ => [hidden, SamplePc.Turbo];
+        var state = State();
+        await state.ScanAsync();
+        Assert.Equal("office", state.Usage.Id);
+        Assert.Equal(FindingPlace.HiddenByProfile, state.PlaceOf(hidden.Id));
+        Assert.Equal(FindingPlace.Listed, state.PlaceOf(SamplePc.Turbo.Id));
+    });
+
     [Fact]
     public void APassedCheckCannotBeIgnored() => SingleThread.Run(async () =>
     {

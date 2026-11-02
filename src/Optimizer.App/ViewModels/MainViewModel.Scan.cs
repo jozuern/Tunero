@@ -35,7 +35,6 @@ public sealed partial class MainViewModel
             case ScanUpdate.Scanned:
                 var rows = System.Diagnostics.Stopwatch.StartNew();
                 Rebuild();
-                Network.Rebuild();
                 foreach (var page in new PageViewModel[] { Debloat, Apps, Tools, Health }) page.OnProfileChanged();
                 Log.Debug("scan", "rows built", new { ms = rows.ElapsedMilliseconds });
                 break;
@@ -50,7 +49,6 @@ public sealed partial class MainViewModel
                 break;
             case ScanUpdate.TweaksRead:
                 Rebuild();
-                Network.Rebuild();
                 break;
             case ScanUpdate.FindingsChanged:
                 RebuildFindings();

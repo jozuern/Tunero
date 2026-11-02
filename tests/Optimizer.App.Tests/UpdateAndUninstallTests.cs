@@ -255,7 +255,14 @@ internal sealed class FakeDialogs : IDialogs
         ConfirmApplyRequests.Add(request);
         return ConfirmApplyResult;
     }
-    public RestorePointChoice AskRestorePoint() => RestorePointChoice.Cancel;
+    /// <summary>What each restore point question was told: was System Protection on?</summary>
+    public List<bool> RestorePointQuestions { get; } = [];
+
+    public RestorePointChoice AskRestorePoint(bool protectionOn)
+    {
+        RestorePointQuestions.Add(protectionOn);
+        return RestorePointChoice.Cancel;
+    }
     public bool ConfirmExpertMode() => false;
     public bool ConfirmUndoAll(int count) => false;
 

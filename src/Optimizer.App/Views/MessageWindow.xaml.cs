@@ -24,6 +24,7 @@ public partial class MessageWindow : FluentWindow
     public MessageWindow(string title, string body, params string[] buttons)
     {
         InitializeComponent();
+        Loaded += (_, _) => IconButtonNames.Apply(this);
         TitleText.Text = title;
         Title = title;
         BodyText.Text = body;
@@ -125,14 +126,21 @@ public sealed class Dialogs(Func<string?>? documentsFolder = null) : IDialogs
         return w.ShowDialog() == true ? new ConfirmResult(w.Acknowledged) : null;
     }
 
-    public RestorePointChoice AskRestorePoint() =>
-        MessageWindow.Show(Owner, Loc.Instance["Rp_AskTitle"], Loc.Instance["Rp_AskText"],
-                Loc.Instance["Confirm_Cancel"], Loc.Instance["Rp_Continue"], Loc.Instance["Rp_Enable"]) switch
+    public RestorePointChoice AskRestorePoint(bool protectionOn) =>
+        MessageWindow.Show(Owner, RestorePointDialog(protectionOn)) switch
         {
             2 => RestorePointChoice.Enable,
             1 => RestorePointChoice.Continue,
             _ => RestorePointChoice.Cancel,
         };
+
+    /// <summary>
+    /// No restore point came of it (also rendered by the --message-shot developer switch). With System Protection off the
+    /// question offers to turn it on; with it on, Windows refused to create one, and only Continue and Cancel are left.
+    /// </summary>
+    public static MessageWindow RestorePointDialog(bool protectionOn) => protectionOn
+        ? new MessageWindow(Loc.Instance["Rp_FailedTitle"], Loc.Instance["Rp_FailedText"], Loc.Instance["Confirm_Cancel"], Loc.Instance["Rp_Continue"])
+        : new MessageWindow(Loc.Instance["Rp_AskTitle"], Loc.Instance["Rp_AskText"], Loc.Instance["Confirm_Cancel"], Loc.Instance["Rp_Continue"], Loc.Instance["Rp_Enable"]);
 
     public bool ConfirmExpertMode() => MessageWindow.Show(Owner, ExpertDialog()) == 1;
 

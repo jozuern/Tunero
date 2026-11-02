@@ -196,12 +196,19 @@ public sealed partial class SearchEngine
     [GeneratedRegex(@"\r?\n[ \t]*\r?\n")]
     private static partial Regex ParagraphBreak();
 
-    /// <summary>The names an action works on (registry value and key names, services, tasks): the words people search for.</summary>
+    /// <summary>
+    /// The names an action works on (registry value and key names, services, tasks): the words people search for. Left
+    /// out: the target key and the key removed on undo, which repeat the whole path (every folder in it became a word,
+    /// so "windows" or "explorer" listed every tweak below such a key), and the value type and refresh, which are
+    /// internal words ("dword", "settings").
+    /// </summary>
     private static IEnumerable<string> ActionWords(object action)
     {
         foreach (var p in action.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance))
         {
             if (p.PropertyType != typeof(string) || p.GetIndexParameters().Length > 0) continue;
+            if (p.Name is nameof(Actions.TweakAction.TargetKey) or nameof(Actions.RegistryAction.RemoveKeyOnUndo)
+                or nameof(Actions.RegistryAction.Kind) or nameof(Actions.RegistryAction.Notify)) continue;
             if (p.GetValue(action) is not string { Length: > 0 and < 200 } value) continue;
             // A key path contributes its last part ("Advanced"), not every folder above it.
             yield return p.Name == "Path" ? value.TrimEnd('\\').Split('\\')[^1] : value;

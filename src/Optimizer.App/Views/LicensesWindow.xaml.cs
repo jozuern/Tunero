@@ -15,6 +15,7 @@ public partial class LicensesWindow : FluentWindow
     {
         _openLink = openLink;
         InitializeComponent();
+        Loaded += (_, _) => IconButtonNames.Apply(this);
         Title = Loc.Instance["Licenses_Title"];
         ComponentList.ItemsSource = Licenses.Components;
         ComponentList.SelectedIndex = 0;

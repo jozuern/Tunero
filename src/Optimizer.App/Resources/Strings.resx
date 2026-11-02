@@ -138,6 +138,8 @@
   <data name="Rp_AskText" xml:space="preserve"><value>Windows cannot create a restore point because System Protection is off for the system drive. The app's own backup still restores every value it changes. Turn System Protection on now?</value></data>
   <data name="Rp_Enable" xml:space="preserve"><value>Turn on</value></data>
   <data name="Rp_Continue" xml:space="preserve"><value>Continue without it</value></data>
+  <data name="Rp_FailedTitle" xml:space="preserve"><value>No restore point</value></data>
+  <data name="Rp_FailedText" xml:space="preserve"><value>Windows did not create a restore point, although System Protection is on. The app's own backup still restores every value it changes. Continue without it?</value></data>
   <data name="UndoAll_Title" xml:space="preserve"><value>Undo all changes?</value></data>
   <data name="UndoAll_Text" xml:space="preserve"><value>Changes to undo: {0}. Values Windows has changed since are left as they are.</value></data>
   <data name="Busy" xml:space="preserve"><value>Working</value></data>
@@ -1083,7 +1085,7 @@ The files are deleted permanently. Files in use are skipped.</value>
     <value>Starts a script host (PowerShell, cmd, mshta or similar). The program itself is signed by Microsoft, but the command line decides what runs: malware often starts this way, some legitimate tools do too. Check the command.</value>
   </data>
   <data name="Result_NoRestorePoint" xml:space="preserve">
-    <value>No restore point could be created, so nothing was changed. Try again in a moment, or choose "Continue without a restore point" (the backup of the original values is made either way).</value>
+    <value>No restore point could be created, so nothing was changed. Try again in a moment, or choose “Continue without it” (the backup of the original values is made either way).</value>
   </data>
   <data name="Storage_RecycleOtherAccount" xml:space="preserve">
     <value>This app runs as a different account ({0}). Files and folders go to that account's Recycle Bin, which you may not be able to open from your own account. Treat this as a permanent delete.</value>
@@ -1165,14 +1167,16 @@ The files are deleted permanently. Files in use are skipped.</value>
     <value>Works against the {0} profile</value>
   </data>
   <data name="Rec_AgainstHint" xml:space="preserve">
-    <value>These settings are on and work against what this profile is for. Undo reverses a change made by Tunero; for a setting made elsewhere, Details explains how to change it.</value>
+    <value>These settings are in effect on this PC and work against what this profile is for.</value>
   </data>
+  <data name="Rec_AgainstHintUndo" xml:space="preserve"><value>“Undo” takes back a change made by Tunero.</value></data>
+  <data name="Rec_AgainstHintDetails" xml:space="preserve"><value>For a setting made outside Tunero, “Details” explains how to change it.</value></data>
   <data name="Rec_AgainstOutside" xml:space="preserve"><value>Set outside Tunero</value></data>
   <data name="Rec_AgainstIgnore" xml:space="preserve"><value>Ignore this setting</value></data>
   <data name="Dash_ScoreHintGoal" xml:space="preserve">
-    <value>Counts the problems the scan found, weighted by their impact on {0}. It rises when you fix them; turning on tweaks adds no points by itself.</value>
+    <value>Counts the problems the scan found, weighted by their impact on {0}. It rises when you fix them; turning on tweaks adds no points by itself, and settings that work against the profile take none away.</value>
   </data>
-  <data name="About_License" xml:space="preserve"><value>Free software under the GNU General Public License version 3 (GPL-3.0). You may use, change and share it under its terms. It comes without warranty.</value></data>
+  <data name="About_License" xml:space="preserve"><value>Free software under the GNU General Public License version 3 only (GPL-3.0-only). You may use, change and share it under its terms. It comes without warranty.</value></data>
   <data name="About_Licenses" xml:space="preserve"><value>Licenses</value></data>
   <data name="About_Privacy" xml:space="preserve"><value>Privacy</value></data>
   <data name="About_Support" xml:space="preserve"><value>Support on Ko-fi</value></data>
@@ -1395,7 +1399,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Changes_Transfer" xml:space="preserve"><value>Move to another PC</value></data>
   <data name="Changes_TransferText" xml:space="preserve"><value>Export saves the tweaks you turned on and your program priorities to a file. Import applies such a file here, for example after reinstalling Windows. Device settings stay with this PC; removed apps, service start types and startup entries go along only when you choose them below.</value></data>
   <data name="NewUsers_Title" xml:space="preserve"><value>New accounts on this PC</value></data>
-  <data name="NewUsers_Text" xml:space="preserve"><value>Copies your account's tweaks that are on and only set registry values (Explorer, taskbar, privacy and others) to the Default profile, so accounts created later start with them. Existing accounts keep their settings. You can undo it on this page.</value></data>
+  <data name="NewUsers_Text" xml:space="preserve"><value>Copies the tweaks you turned on for your account to accounts created later on this PC, if those tweaks only change registry values (Explorer, taskbar, privacy and others). Existing accounts keep their settings. You can undo this on this page.</value></data>
   <data name="NewUsers_Copy" xml:space="preserve"><value>Copy to new accounts</value></data>
   <data name="NewUsers_Nothing" xml:space="preserve"><value>None of the tweaks that are on can go to new accounts: turn on tweaks for your account first (Explorer, taskbar, privacy).</value></data>
   <data name="Changes_ExportAlso" xml:space="preserve"><value>Also include in the export</value></data>
@@ -1517,7 +1521,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Tweaks_GroupApplyTip" xml:space="preserve"><value>Turns on the tweaks of this group that are off and safe to apply together: Safe risk, fully reversible, not a preview. Alternatives that exclude each other, such as the power plans, are left out for you to choose. You see every change first.</value></data>
   <data name="Tweaks_GroupApplyTitle" xml:space="preserve"><value>Turn on: {0}</value></data>
   <data name="Tweaks_GroupApplyIntro" xml:space="preserve"><value>The tweaks of this group that are off and safe to apply together. Each one can be undone on the Changes page.</value></data>
-  <data name="Tweaks_ExpertLink" xml:space="preserve"><value>Turn on Expert mode in Settings</value></data>
+  <data name="Tweaks_ExpertLink" xml:space="preserve"><value>Hidden Expert changes: {0}. Turn on Expert mode in Settings</value></data>
   <data name="Vt_AddKey" xml:space="preserve"><value>Check with VirusTotal: add a key in Settings</value></data>
   <data name="Startup_Enabled" xml:space="preserve"><value>Enabled</value></data>
   <data name="Startup_Disabled" xml:space="preserve"><value>Disabled</value></data>
@@ -1530,12 +1534,13 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Search_Empty" xml:space="preserve"><value>Nothing found. Try another word, for example a setting, a program or a service.</value></data>
   <data name="Search_Results" xml:space="preserve"><value>Search results</value></data>
   <data name="Search_NotIncluded" xml:space="preserve"><value>Not included in Tunero</value></data>
+  <data name="Search_NoResultHere" xml:space="preserve"><value>This check does not apply to this PC, so it has no result here.</value></data>
   <data name="Intro_Text" xml:space="preserve"><value>The scan only reads: nothing changes until you confirm it, and changed settings can be undone on the Changes page.</value></data>
   <data name="Intro_Dismiss" xml:space="preserve"><value>Got it</value></data>
   <data name="Settings_Technical" xml:space="preserve"><value>Technical details</value></data>
   <data name="Settings_TechnicalHint" xml:space="preserve"><value>Paths, registry locations and package names on Startup, Cleanup, Services and Remove apps, and IDs and raw values on System info. Off gives a simpler view; the details pane and every confirmation still show them.</value></data>
   <data name="TweakView_Label" xml:space="preserve"><value>Show</value></data>
-  <data name="TweakView_Profile" xml:space="preserve"><value>For this profile</value></data>
+  <data name="TweakView_Profile" xml:space="preserve"><value>Relevant to this profile</value></data>
   <data name="TweakView_Recommended" xml:space="preserve"><value>Recommended for this PC</value></data>
   <data name="TweakView_Changed" xml:space="preserve"><value>Changed by this app</value></data>
   <data name="TweakView_Applicable" xml:space="preserve"><value>All that apply to this PC</value></data>
@@ -1737,6 +1742,8 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Details_NoPage" xml:space="preserve"><value>This check has no explanation page in this version.</value></data>
   <data name="Dash_Readiness" xml:space="preserve"><value>Readiness for {0}: {1} of 100. Checks passed: {2}.</value></data>
   <data name="Dash_ReadinessUnknown" xml:space="preserve"><value>Readiness for {0}: {1} of 100. Checks passed: {2}, unknown: {3}.</value></data>
+  <data name="Dash_ReadinessAgainst" xml:space="preserve"><value>Readiness for {0}: {1} of 100, not counting the settings that work against it. Checks passed: {2}.</value></data>
+  <data name="Dash_ReadinessAgainstUnknown" xml:space="preserve"><value>Readiness for {0}: {1} of 100, not counting the settings that work against it. Checks passed: {2}, unknown: {3}.</value></data>
   <data name="Dash_AdvisorLink" xml:space="preserve"><value>To change by hand in the BIOS or on the hardware: {0}</value></data>
   <data name="Dash_VerdictNoneOneChange" xml:space="preserve"><value>No problems found. One recommended change can still help.</value></data>
   <data name="Dash_VerdictNoneChanges" xml:space="preserve"><value>No problems found. {0} recommended changes can still help.</value></data>

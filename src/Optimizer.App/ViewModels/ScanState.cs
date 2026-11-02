@@ -34,6 +34,25 @@ internal enum ScanUpdate
     FindingsChanged,
 }
 
+/// <summary>Where a check's result shows after the last scan (<see cref="ScanState.PlaceOf"/>), for the search.</summary>
+internal enum FindingPlace
+{
+    /// <summary>In a list whatever "Show passed checks" says: a problem, a note, an unknown result, or the game access card.</summary>
+    Listed,
+
+    /// <summary>Under "Ignored results" on the Overview.</summary>
+    Ignored,
+
+    /// <summary>Passed (or not for this hardware): listed only with "Show passed checks".</summary>
+    Passed,
+
+    /// <summary>The scan has a result, but the active profile does not show the check.</summary>
+    HiddenByProfile,
+
+    /// <summary>No result on this PC (the check does not apply, such as a battery check on a desktop), or no scan yet.</summary>
+    NoResult,
+}
+
 /// <summary>The data of the "all changes survived the Windows update" notice.</summary>
 internal sealed record WindowsUpdateNotice(string Last, string Current, int Backups);
 
@@ -121,6 +140,19 @@ internal sealed class ScanState(CatalogData catalog, AppSettings settings, Actio
 
     /// <summary>The ids of the tweaks whose recommendation the user ignores.</summary>
     public IReadOnlySet<string> IgnoredTweakIds() => settings.IgnoredTweaks.ToHashSet(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Where the result of check <paramref name="id"/> shows: the search opens it there. A check with several results (one
+    /// per drive) counts as listed when one of them is.
+    /// </summary>
+    public FindingPlace PlaceOf(string id)
+    {
+        var shown = ProfiledFindings.Where(f => f.Id == id).ToList();
+        if (shown.Any(f => f.Kind == FindingKind.GameAccess || f.Status is not (FindingStatus.Ok or FindingStatus.Unsupported))) return FindingPlace.Listed;
+        if (IgnoredFindings.Any(f => f.Id == id)) return FindingPlace.Ignored;
+        if (shown.Count > 0) return FindingPlace.Passed;
+        return Findings.Any(f => f.Id == id) ? FindingPlace.HiddenByProfile : FindingPlace.NoResult;
+    }
 
     /// <summary>
     /// One scan at a time. A call while a scan runs asks for one more scan after it (the running one may have read the

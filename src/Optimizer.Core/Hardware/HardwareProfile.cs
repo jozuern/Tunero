@@ -85,13 +85,28 @@ public sealed record CpuInfo(
     /// </summary>
     public static string Shorten(string name)
     {
-        var s = name.Replace("(R)", "", StringComparison.OrdinalIgnoreCase).Replace("(TM)", "", StringComparison.OrdinalIgnoreCase)
-            .Replace("\u00AE", "").Replace("\u2122", "");
+        var s = HardwareNames.WithoutTrademarks(name);
         var at = s.IndexOf('@');
         if (at >= 0) s = s[..at];
         s = string.Join(' ', s.Split(' ', StringSplitOptions.RemoveEmptyEntries)
             .Where(w => !w.Equals("CPU", StringComparison.OrdinalIgnoreCase) && !w.Equals("Processor", StringComparison.OrdinalIgnoreCase)
                 && !(w.EndsWith("-Core", StringComparison.OrdinalIgnoreCase) && char.IsDigit(w[0]))));
+        return s.Length > 0 ? s : name.Trim();
+    }
+}
+
+/// <summary>What brand strings of processors and graphics adapters add to the model name.</summary>
+public static class HardwareNames
+{
+    /// <summary>
+    /// Without trademark signs ("(R)", "(TM)", the registered and trade mark characters), with single spaces: "Intel(R)
+    /// Graphics" reads "Intel Graphics". A name that would come out empty stays as it is.
+    /// </summary>
+    public static string WithoutTrademarks(string name)
+    {
+        var s = name.Replace("(R)", " ", StringComparison.OrdinalIgnoreCase).Replace("(TM)", " ", StringComparison.OrdinalIgnoreCase)
+            .Replace("\u00AE", " ").Replace("\u2122", " ");
+        s = string.Join(' ', s.Split(' ', StringSplitOptions.RemoveEmptyEntries));
         return s.Length > 0 ? s : name.Trim();
     }
 }
@@ -122,6 +137,9 @@ public sealed record GpuInfo(
     int SwitchHopsSkipped,
     TriState HagsEnabled)
 {
+    /// <summary>The name for headings and tiles, as the processor's: "Intel Graphics" instead of "Intel(R) Graphics".</summary>
+    public string ShortName => HardwareNames.WithoutTrademarks(Name);
+
     public string? NvidiaDriverVersion => Vendor == Vendor.Nvidia ? NvidiaVersion(DriverVersion) : null;
 
     /// <summary>Windows driver version -> NVIDIA version: 32.0.15.6094 -> 560.94 (last five digits).</summary>
