@@ -538,6 +538,17 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     /// <summary>The apps need the Tunero copy, which goes on the media with the profile.</summary>
     public bool CanInstallApps => ApplyProfile && CanApplyProfile;
 
+    /// <summary>
+    /// The Install apps switch: on only while the apps go on the media. With the profile off it is greyed and shows Off
+    /// (the note says why), keeping the choice for when the profile is on again: "On" there named apps the media would
+    /// not install.
+    /// </summary>
+    public bool InstallAppsSwitch
+    {
+        get => InstallApps && CanInstallApps;
+        set => InstallApps = value;
+    }
+
     public string? InstallNote => CanInstallApps ? null : Loc.Instance["Media_InstallNeedsProfile"];
 
     /// <summary>What the folded install card holds: "5 apps"; null while it is off (<see cref="InstallNote"/> says why it cannot be on).</summary>
@@ -784,7 +795,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         if (!WasLoaded) return;
         RefreshBuild();
         // Build and Resume look at the file themselves while they get ready.
-        if (!IsPreparing) _ = RefreshIsoFileAsync(fromPage: true);
+        if (!IsPreparing) RefreshIsoFileAsync(fromPage: true).Forget("look at the own ISO");
     }
 
     private void RefreshBuild()
@@ -885,6 +896,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         OnPropertyChanged(nameof(SetupSummary));
         OnPropertyChanged(nameof(ProfileSummary));
         OnPropertyChanged(nameof(CanInstallApps));
+        OnPropertyChanged(nameof(InstallAppsSwitch));
         OnPropertyChanged(nameof(InstallNote));
         OnPropertyChanged(nameof(InstallSummary));
         OnPropertyChanged(nameof(UnreviewedSourceText));
@@ -1584,8 +1596,11 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         try
         {
             // The own ISO may be gone or replaced since it was read: Build then says so (off the window's thread, as every
-            // look at it). The note says that Build checks meanwhile, and the choices stay as the review will show them.
+            // look at it). The note says that Build checks meanwhile, and the choices stay as the review will show them. A
+            // file that was replaced is read again first, as Resume waits for it, so the review shows the new image.
             await RefreshIsoFileAsync();
+            await IsoLoading;
+            await AppsLoading;
             if (Request() is not { } request || ReviewRequest() is not { } review) return;
             // The review shows every choice once more; cancelling it builds nothing.
             if (_dialogs.ConfirmApply(review) is null) return;

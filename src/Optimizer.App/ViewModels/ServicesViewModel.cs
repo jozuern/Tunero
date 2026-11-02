@@ -209,8 +209,11 @@ public sealed partial class ServicesViewModel(IPageHost owner, AppServices servi
         FillTasks();
     }
 
-    /// <summary>What a task runs and who signed it, read once per load in the background (the verifier caches the files).</summary>
-    internal sealed record TaskCheck(string? Command, string? Image, SignatureInfo Signature, bool RunsScriptHost);
+    /// <summary>
+    /// What a task runs and who signed it, read once per load in the background (the verifier caches the files).
+    /// <paramref name="UserOwnClass"/>: a COM handler the signed-in user's own registration replaces (<see cref="StartupScanner.TaskAction"/>).
+    /// </summary>
+    internal sealed record TaskCheck(string? Command, string? Image, SignatureInfo Signature, bool RunsScriptHost, bool UserOwnClass = false);
 
     /// <summary>
     /// Until the signatures are read, Windows' own tasks are told by their folder (\Microsoft\); after that by the rule
@@ -230,19 +233,19 @@ public sealed partial class ServicesViewModel(IPageHost owner, AppServices servi
 
     /// <summary>
     /// The check a task's row shows: every action is checked, as the Startup page lists each on its own, and the first one
-    /// that needs a look decides (not signed by Microsoft, or a script host), so a second program cannot hide behind a
-    /// signed first one. When all are Windows' own, the first action's.
+    /// that needs a look decides (not signed by Microsoft, a script host, or a COM handler the user's own registration
+    /// replaces), so a second program cannot hide behind a signed first one. When all are Windows' own, the first action's.
     /// </summary>
     internal static TaskCheck CheckTask(ScheduledTaskInfo t, IReadOnlyList<StartupScanner.TaskAction> actions, Func<string?, SignatureInfo> verify)
     {
         TaskCheck? first = null;
         foreach (var a in actions)
         {
-            var check = new TaskCheck(a.Command, a.Image, verify(a.Image), CommandLine.RunsUnverifiedScript(a.Command, PathExpander.Machine.Expand));
+            var check = new TaskCheck(a.Command, a.Image, verify(a.Image), CommandLine.RunsUnverifiedScript(a.Command, PathExpander.Machine.Expand), a.UserOwnClass);
             first ??= check;
             // The rule of StartupRow.IsPlainMicrosoft: Microsoft's file, or a file of Windows' own task that this PC lacks.
             var windows = check.Signature.IsMicrosoft || (check.Signature.Status == SignatureStatus.NotFound && StartupScanner.IsWindowsTask(t.Path));
-            if (!windows || check.RunsScriptHost) return check;
+            if (!windows || check.RunsScriptHost || check.UserOwnClass) return check;
         }
         return first ?? new TaskCheck(null, null, verify(null), false);
     }
@@ -290,6 +293,7 @@ public sealed partial class ServicesViewModel(IPageHost owner, AppServices servi
                 t.AtLogon ? Loc.Instance["Task_AtLogon"] : t.AtBoot ? Loc.Instance["Task_AtBoot"] : Loc.Instance["Task_Other"], Hive.Machine, t.Enabled, $"task:{t.Path}")
             {
                 Target = t.Path,
+                Suspicious = check?.UserOwnClass == true,
             };
             var path = t.Path;
             var row = new StartupRow(entry, lang, services, runner, on => TaskSwitched(path, on));

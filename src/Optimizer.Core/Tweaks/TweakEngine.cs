@@ -459,8 +459,15 @@ public sealed class TweakEngine(ActionContext ctx, BackupStore store, IRestorePo
             }
             var done = results.Count;
             progress?.Report(new BatchStep(done, list.Count, t));
-            var r = await ApplyAsync(t, facts,
-                progress is null ? options : options with { RestorePointStarting = () => progress.Report(new BatchStep(done, list.Count, t, RestorePoint: true)) });
+            // The step says the restore point starts; the caller's own hook still runs (the window reads System Protection there).
+            var r = await ApplyAsync(t, facts, progress is null ? options : options with
+            {
+                RestorePointStarting = () =>
+                {
+                    progress.Report(new BatchStep(done, list.Count, t, RestorePoint: true));
+                    options.RestorePointStarting?.Invoke();
+                },
+            });
             results.Add(new BatchItemResult(t, r));
             if (r.Outcome == ApplyOutcome.NeedsRestorePointDecision) break;
         }

@@ -55,5 +55,8 @@ public sealed class FindingItemViewModel : InspectorItem
     public bool OffersIgnore => CanIgnore && !IsIgnored;
 
     public string IgnoreText => Loc.Instance["Findings_Ignore"];
-    public override string Key => "finding:" + Finding.Key;
+    public override string Key => KeyOf(Finding);
+
+    /// <summary>The <see cref="Key"/> of the row for <paramref name="finding"/>.</summary>
+    internal static string KeyOf(Finding finding) => "finding:" + finding.Key;
 }

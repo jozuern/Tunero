@@ -12,7 +12,11 @@ public class ByteSizeTests
     [InlineData(1023L, "1 KB")]
     [InlineData(1024L, "1 KB")]
     [InlineData(12L * 1024, "12 KB")]
+    [InlineData(1023L * 1024, "1023 KB")]
+    [InlineData((1L << 20) - 1, "1 MB")] // read "1024 KB" before
     [InlineData(512L << 20, "512 MB")]
+    [InlineData(1023L << 20, "1023 MB")]
+    [InlineData((1L << 30) - 1, "1 GB")] // read "1024 MB" before
     [InlineData(2L << 30, "2 GB")]
     public void ASizeIsNeverZeroForSomething(long bytes, string text) => Assert.Equal(text, ByteSize.Format(bytes));
 }

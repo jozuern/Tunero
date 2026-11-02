@@ -39,6 +39,28 @@ public class ProgressReportTests
         ], steps.Items);
     }
 
+    /// <summary>
+    /// The batch's own restore point step does not replace the caller's hook: the window reads System Protection there, off
+    /// its own thread, for the question that follows when no restore point came of it.
+    /// </summary>
+    [Fact]
+    public async Task ABatchStillRunsTheCallersRestorePointHook()
+    {
+        using var fx = new EngineFixture();
+        fx.RestorePoints.CreateFails = true;
+        var steps = new Collect<BatchStep>();
+        var calls = new List<string>();
+        var outcome = await new ChangeSession(fx.Engine, fx.RestorePoints, fx.ChangeLock).ApplyBatchAsync([T("gpu.hags")], Facts(),
+            new ApplyOptions { RestorePointStarting = () => calls.Add(steps.Items.LastOrDefault()?.RestorePoint == true ? "after the step" : "before the step") },
+            () =>
+            {
+                calls.Add("question");
+                return RestorePointChoice.Cancel;
+            }, steps);
+        Assert.Same(BatchOutcome.Cancelled, outcome);
+        Assert.Equal(["after the step", "question"], calls);
+    }
+
     [Fact]
     public async Task StopEndsTheBatchBetweenTwoChanges()
     {

@@ -293,6 +293,30 @@ public class StartupTests
     }
 
     /// <summary>
+    /// A task of the signed-in user loads its COM handler as that account sees it: a class the user registered (no
+    /// administrator rights) that replaces the machine's DLL of one of Windows' own tasks, or names one the machine lacks,
+    /// is the DLL shown, marked for a look, instead of the machine's that would hide it as Windows' own.
+    /// </summary>
+    [Fact]
+    public void ATasksHandlerReplacedByTheUsersOwnClassIsShownAndMarked()
+    {
+        using var fx = new EngineFixture();
+        const string replaced = "{0358B920-0AC7-461F-98F4-58E32CD89148}", missing = "{0358B920-0AC7-461F-98F4-58E32CD89149}", plain = "{0358B920-0AC7-461F-98F4-58E32CD8914A}";
+        foreach (var id in new[] { replaced, plain })
+            RegistryValue.Write(fx.Registry, Hive.Machine, $@"SOFTWARE\Classes\CLSID\{id}\InprocServer32", "", "string", @"C:\Windows\System32\wininet.dll");
+        RegistryValue.Write(fx.Registry, Hive.User, $@"Software\Classes\CLSID\{replaced}\InprocServer32", "", "string", @"C:\Users\x\AppData\Local\cache.dll");
+        RegistryValue.Write(fx.Registry, Hive.User, $@"Software\Classes\CLSID\{missing}\InprocServer32", "", "string", @"C:\Users\x\AppData\Local\phantom.dll");
+        foreach (var (name, id) in new[] { ("Replaced", replaced), ("Missing", missing), ("Plain", plain) })
+            fx.Tasks.Listed.Add(new ScheduledTaskInfo($@"\Microsoft\Windows\Wininet\{name}", true, "Microsoft", null, null, true, false, null, ComHandler: id));
+
+        var rows = new StartupScanner(fx.Registry, fx.Tasks, null).ScheduledTasks().Where(e => e.Target!.StartsWith(@"\Microsoft\Windows\Wininet\", StringComparison.Ordinal))
+            .ToDictionary(e => e.Target!.Split('\\')[^1], StringComparer.Ordinal);
+        Assert.Equal((@"C:\Users\x\AppData\Local\cache.dll", true), (rows["Replaced"].ImagePath, rows["Replaced"].Suspicious));
+        Assert.Equal((@"C:\Users\x\AppData\Local\phantom.dll", true), (rows["Missing"].ImagePath, rows["Missing"].Suspicious));
+        Assert.Equal((@"C:\Windows\System32\wininet.dll", false), (rows["Plain"].ImagePath, rows["Plain"].Suspicious));
+    }
+
+    /// <summary>
     /// A class the signed-in user registered (HKCU\Software\Classes, no administrator rights) for a CLSID the machine
     /// lists is what Explorer loads: the row shows that DLL, and one that replaces the machine's DLL is marked. Also for
     /// Windows' own WebCheck, which has no server of the machine and would otherwise be hidden as Windows' own.
@@ -415,6 +439,29 @@ public class StartupTests
             var entry = Assert.Single(new StartupScanner(fx.Registry, fx.Tasks, null).RunKeys(), e => e.Kind == StartupKind.PolicyRun);
             Assert.Equal($@"cmd.exe /c %{name}%\a.cmd", entry.Command);
             Assert.True(entry.RunsScriptHost);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(name, null);
+        }
+    }
+
+    /// <summary>
+    /// The user's old Load value, as the Policy Run values: read as stored, not expanded with this process's environment
+    /// (another account's under a separate administrator), so the row shows what the user's sign-in runs.
+    /// </summary>
+    [Fact]
+    public void LoadValuesAreReadUnexpanded()
+    {
+        const string name = "TUNERO_TEST_LOAD_DIR";
+        Environment.SetEnvironmentVariable(name, Environment.SystemDirectory);
+        try
+        {
+            using var fx = new EngineFixture();
+            RegistryValue.Write(fx.Registry, Hive.User, @"Software\Microsoft\Windows NT\CurrentVersion\Windows", "Load", "expandString", $@"%{name}%\x.exe");
+            var entry = Assert.Single(new StartupScanner(fx.Registry, fx.Tasks, null).LoadValues());
+            Assert.Equal($@"%{name}%\x.exe", entry.Command);
+            Assert.True(entry.Suspicious);
         }
         finally
         {

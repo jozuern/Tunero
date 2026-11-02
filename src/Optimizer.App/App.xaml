@@ -157,7 +157,8 @@
             </Style>
 
             <!-- Title and intro of a page with a command (Views/PageHeader.cs): the command beside the title only, so the intro
-                 gets the page's full width -->
+                 gets the page's full width. Both texts come through a ContentPresenter: UI Automation leaves out a TextBlock
+                 that sits straight in a control's template, so screen readers would skip the title and the intro. -->
             <Style TargetType="v:PageHeader">
                 <Setter Property="Template">
                     <Setter.Value>
@@ -171,9 +172,21 @@
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
-                                <ui:TextBlock Style="{StaticResource PageTitle}" Text="{TemplateBinding Title}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                <ContentPresenter Content="{TemplateBinding Title}" VerticalAlignment="Center">
+                                    <ContentPresenter.ContentTemplate>
+                                        <DataTemplate>
+                                            <ui:TextBlock Style="{StaticResource PageTitle}" Text="{Binding}" TextWrapping="Wrap" />
+                                        </DataTemplate>
+                                    </ContentPresenter.ContentTemplate>
+                                </ContentPresenter>
                                 <ContentPresenter Grid.Column="1" VerticalAlignment="Center" Margin="16,0,0,0" />
-                                <ui:TextBlock Grid.Row="1" Grid.ColumnSpan="2" Style="{StaticResource PageIntro}" Text="{TemplateBinding Intro}" />
+                                <ContentPresenter Grid.Row="1" Grid.ColumnSpan="2" Content="{TemplateBinding Intro}">
+                                    <ContentPresenter.ContentTemplate>
+                                        <DataTemplate>
+                                            <ui:TextBlock Style="{StaticResource PageIntro}" Text="{Binding}" />
+                                        </DataTemplate>
+                                    </ContentPresenter.ContentTemplate>
+                                </ContentPresenter>
                             </Grid>
                         </ControlTemplate>
                     </Setter.Value>

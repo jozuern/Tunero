@@ -257,6 +257,29 @@ public partial class XamlRulesTests
         Assert.Empty(offenders);
     }
 
+    /// <summary>
+    /// UI Automation leaves out a TextBlock that sits straight in a control's template (TextBlockAutomationPeer counts only
+    /// one without a templated parent or one a ContentPresenter made), so screen readers skipped the title and the intro of
+    /// every page with a PageHeader. The app's own controls show their texts through a ContentPresenter and a DataTemplate.
+    /// </summary>
+    [Fact]
+    public void OwnControlsShowTheirTextsToScreenReaders()
+    {
+        var offenders = new List<string>();
+        var templates = 0;
+        foreach (var (relative, doc) in AppXaml())
+            foreach (var template in doc.Descendants(Presentation + "ControlTemplate")
+                         .Where(t => ((string?)t.Attribute("TargetType"))?.StartsWith("v:", StringComparison.Ordinal) == true))
+            {
+                templates++;
+                foreach (var text in template.Descendants().Where(e => e.Name.LocalName == "TextBlock"
+                             && !e.Ancestors().TakeWhile(a => a != template).Any(a => a.Name.LocalName == "DataTemplate")))
+                    offenders.Add($"{relative}:{((IXmlLineInfo)text).LineNumber}: a TextBlock straight in the template of {(string?)template.Attribute("TargetType")} (show it through a ContentPresenter)");
+            }
+        Assert.Empty(offenders);
+        Assert.True(templates >= 1, "the PageHeader template was not found");
+    }
+
     /// <summary>The app's XAML files with forward-slash paths relative to the app project, line numbers kept.</summary>
     private static IEnumerable<(string Relative, XDocument Doc)> AppXaml() =>
         Directory.EnumerateFiles(RepoPaths.App, "*.xaml", SearchOption.AllDirectories)

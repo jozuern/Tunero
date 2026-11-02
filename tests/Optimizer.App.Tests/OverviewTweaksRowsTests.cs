@@ -1,6 +1,7 @@
 using System.IO;
 using Optimizer.App.Services;
 using Optimizer.App.ViewModels;
+using Optimizer.Core.Docs;
 using Optimizer.Core.Profiles;
 using Optimizer.Core.Search;
 using Optimizer.Core.Tweaks;
@@ -61,6 +62,26 @@ public sealed class OverviewTweaksRowsTests
         Assert.Equal(Loc.Instance["Tweak_AlreadyOnShort"], outside.StatusText);
         var byApp = new TweakItemViewModel(new TweakStatus(Tweak, TweakState.Applied, 0, [], null, false, [], true), Loc.Instance.Language, null!, null);
         Assert.NotEqual(Loc.Instance["Tweak_AlreadyOnShort"], byApp.StatusText);
+
+        // Some of its values already set, none by this app: the pane says "Partly on" beside the row's Turn on.
+        var partly = new TweakItemViewModel(new TweakStatus(Tweak, TweakState.Partial, 0, [], null, false, [], false), Loc.Instance.Language, null!, null);
+        Assert.Equal(Labels.Current.Get(Loc.Instance.Language, "state.Partial"), partly.StatusText);
+        Assert.Equal(RowAction.Apply, partly.Action);
+    }
+
+    /// <summary>
+    /// After a rebuild the pane keeps the row of the open page: an NVIDIA setting is a row on Graphics &amp; DNS and on
+    /// Tweaks, and the Graphics card marks its own row as selected (by reference), not the Tweaks page's.
+    /// </summary>
+    [Fact]
+    public void TheSelectionComesBackAsTheOpenPagesRow()
+    {
+        TweakItemViewModel Row() => new(new TweakStatus(Tweak, TweakState.NotApplied, 0, [], null, false, [], false), Loc.Instance.Language, null!, null);
+        var onGraphics = Row();
+        var onTweaks = Row();
+        Assert.Same(onGraphics, MainViewModel.FindRow(onGraphics.Key, onNetwork: true, [onGraphics], [onTweaks]));
+        Assert.Same(onTweaks, MainViewModel.FindRow(onGraphics.Key, onNetwork: false, [onGraphics], [onTweaks]));
+        Assert.Null(MainViewModel.FindRow("tweak:none", onNetwork: true, [onGraphics], [onTweaks]));
     }
 
     /// <summary>

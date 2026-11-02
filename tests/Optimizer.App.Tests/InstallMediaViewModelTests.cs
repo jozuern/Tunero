@@ -355,6 +355,30 @@ public sealed class InstallMediaViewModelTests : IDisposable
         Assert.Equal(Loc.Instance["Media_NotX64"], media.BuildNote);
     }
 
+    /// <summary>A replaced ISO that passes the checks: the same click reviews it once the new read is done, as Resume does.</summary>
+    [Fact]
+    public async Task AReplacedIsoThatFitsIsReviewedByTheSameClick()
+    {
+        var reads = 0;
+        var media = await WithOwnIso(Media(system: System() with
+        {
+            ReadIso = (_, _) =>
+            {
+                reads++;
+                return Task.FromResult(_iso);
+            },
+        }));
+        media.Edition = media.Editions.Single(e => e.Key == "1");
+        File.WriteAllText(media.IsoPath!, "another, longer ISO");
+        _dialogs.ConfirmApplyResult = null;
+
+        await media.BuildCommand.ExecuteAsync(null);
+        Assert.Equal(2, reads);
+        Assert.Equal(1, _dialogs.ConfirmApplyCalls);
+        Assert.Equal("1", media.Edition?.Key);
+        Assert.Empty(_requests);
+    }
+
     /// <summary>A look at the own ISO that ends after the switch to the download reads nothing and leaves the download's edition.</summary>
     [Fact]
     public async Task ALookThatEndsAfterTheSwitchToTheDownloadReadsNothing()
@@ -781,11 +805,15 @@ public sealed class InstallMediaViewModelTests : IDisposable
         await media.BuildCommand.ExecuteAsync(null);
         Assert.Equal(["Valve.Steam"], _requests[^1].FirstSignIn!.Apps);
 
-        // Without the profile there is no Tunero copy to install them.
+        // Without the profile there is no Tunero copy to install them: the greyed switch says Off, and the choice stays.
         media.ApplyProfile = false;
         Assert.False(media.CanInstallApps);
+        Assert.False(media.InstallAppsSwitch);
+        Assert.True(media.InstallApps);
         await media.BuildCommand.ExecuteAsync(null);
         Assert.Null(_requests[^1].FirstSignIn);
+        media.ApplyProfile = true;
+        Assert.True(media.InstallAppsSwitch);
     }
 
     /// <summary>Expert: the own ISO's apps beyond the reviewed list, unticked; only ticked ones are removed, never for the download.</summary>

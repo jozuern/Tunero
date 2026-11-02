@@ -70,7 +70,9 @@ public partial class MessageWindow : FluentWindow
                 Result = index;
                 DialogResult = true;
             };
-            Buttons.Children.Add(b);
+            // In the order on screen, the primary button first: Tab follows the order of the children, not the columns,
+            // so it ran from Cancel on the right to the left.
+            Buttons.Children.Insert(0, b);
         }
         // Escape closes the dialog like the window's close button: no choice made (-1).
         PreviewKeyDown += (_, e) =>

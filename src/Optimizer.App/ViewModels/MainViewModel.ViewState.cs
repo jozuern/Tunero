@@ -71,12 +71,33 @@ public sealed partial class MainViewModel
         RestoreSelection(selectedKey);
     }
 
-    /// <summary>The row with this key among the rows of every list that opens the details pane (the Graphics &amp; DNS ones included).</summary>
-    private void RestoreSelection(string? key) =>
-        SelectedItem = key is null ? null :
-            Findings.Cast<InspectorItem>().Concat(AdvisorItems).Concat(IgnoredItems).Concat(Tweaks)
-                .Concat(Network.DeviceTweaks).Concat(Network.GameProfiles).Concat(Network.GpuTweaks).Concat(Network.DnsOptions)
-                .Append(GameAccess).FirstOrDefault(i => i?.Key == key);
+    /// <summary>
+    /// The row with this key among the rows of every list that opens the details pane (the Graphics &amp; DNS ones included).
+    /// The open page's lists come first: an NVIDIA setting is a row on Graphics &amp; DNS and on Tweaks, and the pane keeps
+    /// the row its page marks as selected. A check the profile hides, which the search opens in the pane only (no list
+    /// shows it), is built again from the new results instead of closing the pane.
+    /// </summary>
+    private void RestoreSelection(string? key)
+    {
+        if (key is null)
+        {
+            SelectedItem = null;
+            return;
+        }
+        var network = Network.DeviceTweaks.Cast<InspectorItem?>().Concat(Network.GameProfiles).Concat(Network.GpuTweaks).Concat(Network.DnsOptions);
+        var others = Findings.Cast<InspectorItem?>().Concat(AdvisorItems).Concat(IgnoredItems).Concat(Tweaks).Append(GameAccess);
+        SelectedItem = FindRow(key, CurrentPage == Page.Network, network, others) ?? HiddenByProfile(key);
+    }
+
+    /// <summary>The row with <paramref name="key"/>, the open page's rows first (<paramref name="onNetwork"/>: Graphics &amp; DNS).</summary>
+    internal static InspectorItem? FindRow(string key, bool onNetwork, IEnumerable<InspectorItem?> network, IEnumerable<InspectorItem?> others) =>
+        (onNetwork ? network.Concat(others) : others.Concat(network)).FirstOrDefault(i => i?.Key == key);
+
+    /// <summary>The pane's row for a check the active profile does not show, as the search opens it; null for any other key.</summary>
+    private FindingItemViewModel? HiddenByProfile(string key) =>
+        _state.Findings.FirstOrDefault(f => FindingItemViewModel.KeyOf(f) == key) is { } f && _state.PlaceOf(f.Id) == FindingPlace.HiddenByProfile
+            ? new FindingItemViewModel(f, Loc.Instance.Language, null, _state.Usage.Goal)
+            : null;
 
     /// <summary>The finding and advisor lists, the score and the counts on the overview.</summary>
     private void BuildFindingLists()

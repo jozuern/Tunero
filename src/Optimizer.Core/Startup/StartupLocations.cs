@@ -88,13 +88,17 @@ public sealed partial class StartupScanner
         }
     }
 
-    /// <summary>The old "Load" and "Run" values under Windows NT\CurrentVersion\Windows of the user; normally empty.</summary>
+    /// <summary>
+    /// The old "Load" and "Run" values under Windows NT\CurrentVersion\Windows of the user; normally empty. Read as stored
+    /// and expanded for the signed-in user: GetValue alone expands %variables% with this process's environment, which under
+    /// a separate administrator account is not the user's.
+    /// </summary>
     public IEnumerable<StartupEntry> LoadValues()
     {
         const string path = @"Software\Microsoft\Windows NT\CurrentVersion\Windows";
         using var key = Open(Hive.User, path);
         foreach (var name in new[] { "Load", "Run" })
-        foreach (var item in Strings(key?.GetValue(name), split: true))
+        foreach (var item in Strings(key?.GetValue(name, null, Microsoft.Win32.RegistryValueOptions.DoNotExpandEnvironmentNames), split: true))
             yield return new StartupEntry(StartupKind.LoadValue, $"{name}: {Path.GetFileName(item)}", item, CommandLine.ImagePath(item, _userExpand), $@"HKCU\{path}\{name}", Hive.User, null, $"load:{name}:{item}")
             {
                 Suspicious = true,

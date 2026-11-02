@@ -109,10 +109,15 @@ public static class AppInfo
 /// <summary>Sizes as people read them.</summary>
 public static class ByteSize
 {
-    /// <summary>"1.5 GB", "512 MB", "12 KB". Less than 1 KB that is not nothing reads as 1 KB, as in File Explorer, so a file is never "0 KB".</summary>
-    public static string Format(long bytes) =>
-        bytes >= 1L << 30 ? $"{bytes / (double)(1L << 30):0.#} GB"
-        : bytes >= 1L << 20 ? $"{bytes / (double)(1L << 20):0} MB"
-        : bytes is > 0 and < 1024 ? "1 KB"
-        : $"{bytes / 1024.0:0} KB";
+    /// <summary>
+    /// "1.5 GB", "512 MB", "12 KB". Less than 1 KB that is not nothing reads as 1 KB, as in File Explorer, so a file is
+    /// never "0 KB"; a size that would round to 1024 of a unit reads in the next one ("1 MB", not "1024 KB").
+    /// </summary>
+    public static string Format(long bytes)
+    {
+        const double kb = 1024, mb = 1L << 20, gb = 1L << 30;
+        if (bytes >= gb || Math.Round(bytes / mb) >= 1024) return $"{bytes / gb:0.#} GB";
+        if (bytes >= mb || Math.Round(bytes / kb) >= 1024) return $"{bytes / mb:0} MB";
+        return bytes is > 0 and < 1024 ? "1 KB" : $"{bytes / kb:0} KB";
+    }
 }

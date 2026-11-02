@@ -282,28 +282,32 @@ public sealed partial class StartupScanner(IRegistryRoots registry, ITaskSchedul
             var actions = TaskActions(t);
             for (var i = 0; i < actions.Count; i++)
             {
-                var (command, image, keySuffix) = actions[i];
+                var (command, image, keySuffix, userOwnClass) = actions[i];
                 var name = t.Path.TrimStart('\\') + (i == 0 ? "" : $" ({i + 1})");
                 yield return new StartupEntry(StartupKind.LogonTask, name, command, image, t.Path, Hive.Machine, t.Enabled, $"task:{t.Path}{keySuffix}")
                 {
                     Target = t.Path,
                     StartsWithWindows = t.AtLogon || t.AtBoot,
                     AtBootOnly = t.AtBoot && !t.AtLogon,
+                    Suspicious = userOwnClass,
                 };
             }
         }
     }
 
-    /// <summary>One action of a task: what the row shows as its command, the file it runs and the end of its entry's key.</summary>
-    public sealed record TaskAction(string? Command, string? Image, string KeySuffix);
+    /// <summary>
+    /// One action of a task: what the row shows as its command, the file it runs and the end of its entry's key.
+    /// <paramref name="UserOwnClass"/>: a COM handler the signed-in user's own registration replaces (marked for a look).
+    /// </summary>
+    public sealed record TaskAction(string? Command, string? Image, string KeySuffix, bool UserOwnClass = false);
 
     /// <summary>
     /// Everything a task runs, as the Startup page and Services &amp; tasks check it: each program (expanded for the
     /// signed-in user), then each COM handler with the DLL registered for it, so Windows' own handler tasks are recognized
     /// as Microsoft's and a handler next to a program is not left out. A task without a program starts with its first
     /// handler; a task with neither gets one action without a file. Reads the registry for a COM handler: not for every
-    /// row on each search. The machine's registration only: such a task often runs as another account, for which the
-    /// signed-in user's classes do not count.
+    /// row on each search. The machine's registration counts (such a task often runs as another account), unless the
+    /// signed-in user's own registration replaces it (<see cref="TaskComServer"/>).
     /// </summary>
     public IReadOnlyList<TaskAction> TaskActions(ScheduledTaskInfo t)
     {
@@ -312,8 +316,8 @@ public sealed partial class StartupScanner(IRegistryRoots registry, ITaskSchedul
         if (TaskCommand(t.Command, t.Arguments) is { } first) list.Add(new TaskAction(first, CommandLine.ImagePath(first, _userExpand), ""));
         else if (handlers.Count > 0)
         {
-            var dll = ComServer(handlers[0]);
-            list.Add(new TaskAction(dll, dll, ""));
+            var (dll, userOwn) = TaskComServer(handlers[0]);
+            list.Add(new TaskAction(dll, dll, "", userOwn));
             handlers.RemoveAt(0);
         }
         else list.Add(new TaskAction(null, null, ""));
@@ -326,10 +330,26 @@ public sealed partial class StartupScanner(IRegistryRoots registry, ITaskSchedul
         for (var i = 0; i < handlers.Count; i++)
         {
             // Next to a program: the CLSID when no DLL is registered for it, so the row still says what it runs.
-            var dll = ComServer(handlers[i]);
-            list.Add(new TaskAction(dll ?? handlers[i], dll, i == 0 ? "#com" : $"#com{i + 1}"));
+            var (dll, userOwn) = TaskComServer(handlers[i]);
+            list.Add(new TaskAction(dll ?? handlers[i], dll, i == 0 ? "#com" : $"#com{i + 1}", userOwn));
         }
         return list;
+    }
+
+    /// <summary>
+    /// The DLL of a task's COM handler. A task that runs as the signed-in user loads the class as that account sees it,
+    /// and its own registration (HKCU\Software\Classes, writable without administrator rights) wins over the machine's:
+    /// one that replaces the machine's DLL, or names a class the machine lacks, puts another program behind the task, also
+    /// behind one of Windows' own. That DLL is shown and marked (<c>UserOwn</c>), as for Explorer's add-ons; otherwise the
+    /// machine's, which a task of another account loads.
+    /// </summary>
+    private (string? Dll, bool UserOwn) TaskComServer(string clsid)
+    {
+        if (!Guid.TryParse(clsid, out var g)) return (null, false);
+        var id = g.ToString("B").ToUpperInvariant();
+        var machine = ComServer(id);
+        var (_, file) = UserComServer(id, wow64: false, out _);
+        return file is not null && !string.Equals(file, machine, StringComparison.OrdinalIgnoreCase) ? (file, true) : (machine, false);
     }
 
     /// <summary>

@@ -713,7 +713,7 @@
     "hw.batteryCapacity": "Akkukapazität",
     "hw.batteryCapacityValue": "Volle Ladung {0:0.0} Wh, Nennkapazität {1:0.0} Wh ({2} %)",
     "hw.disk": "Datenträger {0}",
-    "hw.volume": "{0}, {1} frei von {2}, Laufwerk {3}",
+    "hw.volume": "{0}, {1} frei von {2}, Datenträger {3}",
     "hw.disconnected": "getrennt",
     "hw.antiCheats": "Anti-Cheats",
     "hw.launchers": "Launcher",
