@@ -1,7 +1,7 @@
 # Reset limiting NVIDIA global settings
 
 ## Summary
-Resets the NVIDIA global settings that limit games (frame rate limit, power mode) to the driver defaults; with G-SYNC, the limit goes just below the refresh rate instead.
+Resets the NVIDIA global settings that limit games (frame rate limit, power mode) to the driver defaults; with G-SYNC and forced V-Sync, the limit goes just below the refresh rate instead.
 
 ## How it works
 NVIDIA stores driver settings in profiles: a global profile and one per game. The app removes the listed settings from the global profile through NVIDIA's driver settings API [1]. Game profiles stay as they are. Undo writes the previous values back.

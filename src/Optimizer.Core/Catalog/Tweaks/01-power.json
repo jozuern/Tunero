@@ -208,27 +208,9 @@
         "gaming": 0,
         "basis": "situational",
         "effect": [
-          "fps"
+          "none"
         ]
       },
-      "impactOverrides": [
-        {
-          "when": {
-            "any": [
-              {
-                "fact": "cpu.hybrid",
-                "eq": true
-              },
-              {
-                "fact": "system.laptop",
-                "eq": true
-              }
-            ]
-          },
-          "gaming": 1,
-          "reasonKey": "impact.hybridOrLaptop"
-        }
-      ],
       "risk": "safe",
       "restart": true,
       "actions": [

@@ -4,7 +4,7 @@
 Intern: Damit kann die App vor Änderungen einen Wiederherstellungspunkt anlegen, auch wenn in den letzten 24 Stunden schon einer erstellt wurde.
 
 ## So funktioniert es
-Windows überspringt neue Wiederherstellungspunkte innerhalb von 24 Stunden nach dem letzten. SystemRestorePointCreationFrequency = 0 hebt diese Grenze auf [1]. Die App setzt den Wert vor ihrer ersten Änderung in einer Sitzung selbst. „Alles rückgängig“ entfernt ihn wieder (er steht nicht als eigene Änderung in der Liste).
+Windows überspringt neue Wiederherstellungspunkte innerhalb von 24 Stunden nach dem letzten. SystemRestorePointCreationFrequency = 0 hebt diese Grenze auf [1]. Die App setzt den Wert vor ihrer ersten Änderung in einer Sitzung selbst. In der Liste der Tweaks steht er nicht, die Seite Änderungen zeigt ihn aber als eigenen Eintrag, und „Alles rückgängig“ entfernt ihn wieder.
 
 ## Warum es helfen kann
 Stellt sicher, dass es einen frischen Wiederherstellungspunkt gibt, bevor die App etwas ändert.

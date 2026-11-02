@@ -4,7 +4,7 @@
 Setzt das globale NVIDIA-FPS-Limit 3 FPS unter die Refresh-Rate des G-SYNC-Monitors, damit Spiele, die schneller als der Monitor laufen, keine V-Sync-Verzögerung bekommen.
 
 ## So funktioniert es
-NVIDIA speichert Treibereinstellungen in Profilen: einem globalen Profil und einem pro Spiel. Die App schreibt die dokumentierte Einstellung „Frame Rate Limiter“ (FRL_FPS) über NVIDIAs Schnittstelle für Treibereinstellungen in das globale Profil [1][2]. Spiele mit eigenem Wert in ihrem Profil behalten ihn. Rückgängig machen stellt den vorherigen Wert wieder her oder entfernt ihn, wenn das Profil keinen hatte.
+NVIDIA speichert Treibereinstellungen in Profilen: einem globalen Profil und einem pro Spiel. Die App schreibt die dokumentierte Einstellung „Frame Rate Limiter“ (FRL_FPS) über NVIDIAs Schnittstelle für Treibereinstellungen in das globale Profil [1][2]. Spiele mit eigenem Wert in ihrem Profil behalten ihn. Rückgängig machen stellt den vorherigen Zustand wieder her: kein Limit oder das Limit, das du auf oder über der Refresh-Rate gesetzt hattest.
 
 ## Warum es helfen kann
 Mit G-SYNC und erzwungenem V-Sync stößt ein Spiel, das schneller als die Refresh-Rate läuft, an die G-SYNC-Obergrenze, und V-Sync übernimmt. Blur Busters (eine unabhängige Testseite) hat mit einer Hochgeschwindigkeitskamera gemessen, dass doppelt gepuffertes V-Sync dann 2 bis 6 Bilder Verzögerung bringt [3]. Ein Limit 2 FPS unter der Refresh-Rate verhinderte das bei jeder getesteten Refresh-Rate, 3 FPS darunter ist der empfohlene Abstand [4].

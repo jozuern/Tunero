@@ -29,7 +29,7 @@
 - **Wording:** profile and drift banners, the works-against hint, the Expert link, the Modern Standby block, the ignore button, the Manual checks summary; search results no longer repeat the title.
 - **Startup:** "Show Windows entries" (off by default) replaces "Hide Windows entries", as on Services & tasks, and also hides Windows tasks, Known DLLs and Active Setup stubs whose file is gone. Service switches say Automatic or Manual, the start types they set. The second tab is Other scheduled tasks, and the summary starts with the count the tab shows.
 - **Services & tasks:** task commands show once, on one line and only with Technical details; Windows tasks show "Listed only" instead of a grey switch; notes no longer repeat the service's name.
-- **Ratings follow the evidence:** the power mode check is rated 1 on desktops (2 on laptops), NVIDIA Prefer maximum performance (global and per game) 0, as no measurement shows an effect on frame times, the Balanced plan rates for gaming only when coming from Power saver, and HAGS on RTX 40 and 50 no longer says it is needed to start games.
+- **Ratings follow the evidence:** the power mode check is rated 1 on desktops (2 on laptops), NVIDIA Prefer maximum performance (global and per game) and Power throttling off (also on laptops and hybrid CPUs) 0, as no measurement shows an effect on frame times, the Balanced plan rates for gaming only when coming from Power saver, and HAGS on RTX 40 and 50 no longer says it is needed to start games.
 - **Inking and typing personalization off** is rated Moderate, is marked Permanent and says up front that it deletes the personal dictionary, which Undo does not bring back.
 - **Silent app installs off** no longer sets three undocumented Preinstalled values that no source carries; the Windows Search tweak is called Windows Search: web search and location policies.
 - **Markdig 1.5.0** for the explanation pages.
@@ -52,6 +52,7 @@
 - **Uninstall question:** clearer text about what stays on the PC, with the buttons in line with the text; German wording in the winget source reset, Advanced startup, Windows Audio and Live readings texts.
 - **Storage:** folders on the treemap have a frame with their name and size above their tiles, so you can see where each folder ends; links show a link icon and "Link" in the folder list instead of an empty 0 KB folder, and folders that could not be read say "Not readable"; during the first analysis the page names the drive it reads; file rows line up with the card's edge.
 - **Cleanup:** each category's check box sits beside its title, with the size on the title line, so folder paths get the full width; Clean selected is off while nothing with a size is ticked.
+- **Clipboard history on** carries the Undocumented value and Not yet tested badges; until a test proves it, Apply recommended in the Office profile leaves it out.
 
 ### Fixed
 
@@ -121,6 +122,8 @@
 - **Settings:** the Report a problem caption says that the app version and Windows build are in the link, so GitHub receives them when the page opens, as the privacy notes say. Before, it said nothing was sent before you submit.
 - **Health:** after Stop, SFC and DISM keep "Stopped" as the last output line, also when a late progress line arrives.
 - **Wording:** the Changes export note is clearer; in German the folder list's expand button says "Ordner auf- oder zuklappen" and the Cleanup intro says "Links".
+- **Memory in single channel:** a single module that may be soldered (result Unknown) no longer gets the single channel summary or the advice to add a second module.
+- **Explanation pages:** Ryzen memory speed (where AMD's official speed applies), Leftovers, Memory integrity, Power saver plan, Widgets, the NVIDIA frame limit (what Undo restores), the NVIDIA global reset and the restore point limit say what holds.
 
 ## 1.5.0
 

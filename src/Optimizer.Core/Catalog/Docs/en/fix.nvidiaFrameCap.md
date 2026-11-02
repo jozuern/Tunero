@@ -4,7 +4,7 @@
 Sets the global NVIDIA frame rate limit 3 FPS below the refresh rate of the G-SYNC monitor, so games faster than the monitor do not get V-Sync delay.
 
 ## How it works
-NVIDIA stores driver settings in profiles: a global profile and one per game. The app writes the documented setting "Frame Rate Limiter" (FRL_FPS) into the global profile through NVIDIA's driver settings API [1][2]. Games with their own value in their profile keep it. Undo restores the previous value, or removes it if the profile had none.
+NVIDIA stores driver settings in profiles: a global profile and one per game. The app writes the documented setting "Frame Rate Limiter" (FRL_FPS) into the global profile through NVIDIA's driver settings API [1][2]. Games with their own value in their profile keep it. Undo puts back what was there before: no limit, or the limit you had set at or above the refresh rate.
 
 ## Why it can help
 With G-SYNC on and V-Sync forced on, a game that runs faster than the refresh rate hits the G-SYNC ceiling, and V-Sync takes over. Blur Busters (a third-party test site) measured with a high-speed camera that double-buffered V-Sync then adds 2 to 6 frames of delay [3]. A limit 2 FPS below the refresh rate avoided it at every refresh rate they tested, and 3 FPS below is their recommended margin [4].

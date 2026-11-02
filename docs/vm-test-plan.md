@@ -207,7 +207,7 @@ Preconditions, or there is nothing to change on a clean install: turn on memory 
 | `battery.pcieAspmMaxDc` | PCIe power saving on battery: maximum | safe |  | powerSetting |
 | `quiet.boostOff` | Processor boost off (quieter and cooler) | moderate |  | powerSetting |
 | `quiet.powerModeEfficiency` | Power mode: Best power efficiency | safe |  | powerMode |
-| `office.clipboardHistoryOn` | Clipboard history on | safe |  | registry |
+| `office.clipboardHistoryOn` | Clipboard history on | safe, preview |  | registry |
 | `office.launchToThisPc` | File Explorer opens to This PC | safe |  | registry |
 | `background.edgeBoostOff` | Microsoft Edge: no startup boost, no background mode | safe |  | registry |
 | `updates.driversExcluded` | Drivers not included with Windows Update | moderate |  | registry |
@@ -354,6 +354,7 @@ These tweaks use values Microsoft does not document and stay previews until a te
 | Tweak | Title | Check |
 |---|---|---|
 | `network.throttlingIndex` | Network throttling off (NetworkThrottlingIndex) | the effect the explanation page describes |
+| `office.clipboardHistoryOn` | Clipboard history on | Settings > System > Clipboard shows "Clipboard history" on after apply and off after undo; Windows + V opens the history |
 | `display.autoHdrOn` | Auto HDR on | the effect the explanation page describes |
 | `focus.lockScreenTipsOff` | Lock screen: no fun facts and tips | the effect the explanation page describes |
 | `display.vrrOn` | Variable refresh rate for older full screen games | the effect the explanation page describes |

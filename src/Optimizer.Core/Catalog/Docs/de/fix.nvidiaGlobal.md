@@ -1,7 +1,7 @@
 # Bremsende globale NVIDIA-Einstellungen zurücksetzen
 
 ## Zusammenfassung
-Setzt die globalen NVIDIA-Einstellungen, die Spiele begrenzen (FPS-Limit, Energiemodus), auf den Treiberstandard zurück; mit G-SYNC kommt das Limit knapp unter die Refresh-Rate.
+Setzt die globalen NVIDIA-Einstellungen, die Spiele begrenzen (FPS-Limit, Energiemodus), auf den Treiberstandard zurück; mit G-SYNC und erzwungenem V-Sync kommt das Limit knapp unter die Refresh-Rate.
 
 ## So funktioniert es
 NVIDIA speichert Treibereinstellungen in Profilen: einem globalen und einem pro Spiel. Die App entfernt die genannten Einstellungen über NVIDIAs Schnittstelle für Treibereinstellungen aus dem globalen Profil [1]. Spielprofile bleiben, wie sie sind. Rückgängig machen schreibt die vorherigen Werte zurück.

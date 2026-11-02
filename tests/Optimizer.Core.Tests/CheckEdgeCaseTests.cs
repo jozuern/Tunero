@@ -752,14 +752,22 @@ public class CheckEdgeCaseTests
         Assert.Empty(new RyzenMemoryCheck().Evaluate(Mem(mobile, Module(4800, "KF548S38IBK2-32", 34), Module(4800, "KF548S38IBK2-32", 34)), CatalogData.Current));
     }
 
+    /// <summary>
+    /// Only a socketed module proves single channel. The Unknown result keeps the default texts, so a PC with soldered memory
+    /// is not told it runs in single channel or to add a second module.
+    /// </summary>
     [Theory]
-    [InlineData(8, FindingStatus.Problem)]   // DIMM
-    [InlineData(12, FindingStatus.Problem)]  // SODIMM
-    [InlineData(7, FindingStatus.Unknown)]   // SIMM per Win32_PhysicalMemory, not a proof of one channel
-    [InlineData(0, FindingStatus.Unknown)]   // unknown, may be soldered
-    [InlineData(11, FindingStatus.Unknown)]
-    public void SingleModuleNeedsASocketedFormFactor(int formFactor, FindingStatus expected) =>
-        Assert.Equal(expected, One(new DualChannelCheck(), Mem(TestData.Cpu9700K(), Module(3200, "CMK16GX4M1E3200C16", 26, formFactor))).Status);
+    [InlineData(8, FindingStatus.Problem, "single")]   // DIMM
+    [InlineData(12, FindingStatus.Problem, "single")]  // SODIMM
+    [InlineData(7, FindingStatus.Unknown, null)]       // SIMM per Win32_PhysicalMemory, not a proof of one channel
+    [InlineData(0, FindingStatus.Unknown, null)]       // unknown, may be soldered
+    [InlineData(11, FindingStatus.Unknown, null)]
+    public void SingleModuleNeedsASocketedFormFactor(int formFactor, FindingStatus expected, string? variant)
+    {
+        var f = One(new DualChannelCheck(), Mem(TestData.Cpu9700K(), Module(3200, "CMK16GX4M1E3200C16", 26, formFactor)));
+        Assert.Equal((expected, variant), (f.Status, f.Variant));
+        AssertRenders(f);
+    }
 
     [Fact]
     public void FourDdr5ModulesOnRyzenRunSlowerByDesign()

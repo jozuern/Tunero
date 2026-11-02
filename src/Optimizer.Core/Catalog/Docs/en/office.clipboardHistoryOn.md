@@ -4,7 +4,7 @@
 Turns on clipboard history: Windows + V shows the items you copied earlier, so you can paste any of them again.
 
 ## How it works
-The app sets the same per-user value as Settings > System > Clipboard > Clipboard history [1].
+The app sets EnableClipboardHistory to 1, the per-user value behind Settings > System > Clipboard > Clipboard history [1]. Microsoft describes the switch [1] but does not document the registry value behind it; the app writes the value Windows itself stores for the switch. Until a test on real Windows confirms the effect, the tweak carries the badge "Not yet tested on a real PC".
 
 ## Why it can help
 Copying several things between documents no longer means switching windows back and forth. Pinned items stay available for text you paste often.

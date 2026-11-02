@@ -192,9 +192,10 @@ public sealed class DualChannelCheck : IPhysicalHardwareCheck
         if (modules.Count == 1)
         {
             // Only a socketed module (Win32_PhysicalMemory.FormFactor 8 = DIMM, 12 = SODIMM) proves single channel.
-            // Anything else may be soldered memory, which can be dual channel internally -> Unknown.
+            // Anything else may be soldered memory, which can be dual channel internally -> Unknown, with the default
+            // texts: the "single" summary and its "add a second module" steps hold only for the proven case.
             status = modules[0].FormFactor is 8 or 12 ? FindingStatus.Problem : FindingStatus.Unknown;
-            variant = "single";
+            variant = status == FindingStatus.Problem ? "single" : null;
         }
         else if (channels.Any(ch => ch is null))
         {

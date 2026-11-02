@@ -22,7 +22,7 @@ On AM5, testers commonly report that the memory controller clock (UCLK) runs 1:1
 AMD's official memory specification with two modules is DDR4-3200 for Ryzen 5000 [1], DDR5-5200 for Ryzen 7000 [2] and DDR5-5600 for Ryzen 9000 [3]. Faster speeds use an EXPO or XMP profile, which AMD describes as memory overclocking [4]. With four DDR5 modules, AMD specifies DDR5-3600 [2][3].
 
 ## How we detected it
-We read the configured memory speed and the rated speed from the module part numbers. The lower end of the range is AMD's official speed for two modules; the upper end is a typical 1:1 limit reported by testers. If the speed is below the range and the kit's rated speed is unknown, the result is "Unknown", because a slow kit and a memory profile that is off look the same. With four DDR5 modules there is no upgrade advice, because AMD specifies a lower speed for four modules. The actual FCLK or UCLK ratio cannot be read by Windows, so this is guidance, not a measurement.
+We read the configured memory speed and the rated speed from the module part numbers. The lower end of the range is AMD's official two-module speed for Ryzen 5000 (DDR4-3200) [1] and Ryzen 7000 (DDR5-5200) [2]; for other Ryzen processors it is a guide value (Ryzen 9000, for example, is specified for DDR5-5600 [3]). The upper end is a typical 1:1 limit reported by testers. If the speed is below the range and the kit's rated speed is unknown, the result is "Unknown", because a slow kit and a memory profile that is off look the same. With four DDR5 modules there is no upgrade advice, because AMD specifies a lower speed for four modules. The actual FCLK or UCLK ratio cannot be read by Windows, so this is guidance, not a measurement.
 
 ## How to fix
 ::: variant aboveSync

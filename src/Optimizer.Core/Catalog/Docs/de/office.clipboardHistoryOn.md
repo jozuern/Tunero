@@ -4,7 +4,7 @@
 Schaltet den Zwischenablageverlauf ein: Windows + V zeigt, was du vorher kopiert hast, und du kannst jeden Eintrag erneut einfügen.
 
 ## So funktioniert es
-Die App setzt denselben Benutzerwert wie Einstellungen > System > Zwischenablage > Zwischenablageverlauf [1].
+Die App setzt EnableClipboardHistory auf 1, den Benutzerwert hinter Einstellungen > System > Zwischenablage > Zwischenablageverlauf [1]. Microsoft beschreibt den Schalter [1], der Registry-Wert dahinter ist aber nicht dokumentiert; die App schreibt denselben Wert, den Windows beim Umlegen des Schalters speichert. Solange kein Test auf einer echten Windows-Installation die Wirkung bestätigt, trägt die Option das Etikett „Noch nicht auf einem echten PC getestet“.
 
 ## Warum es helfen kann
 Wer mehrere Dinge zwischen Dokumenten kopiert, muss nicht mehr ständig das Fenster wechseln. Angeheftete Einträge bleiben für Texte verfügbar, die du oft einfügst.

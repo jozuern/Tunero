@@ -735,8 +735,9 @@ public sealed class AmdFtpmCheck : IFindingCheck
 }
 
 /// <summary>
-/// Advisor: Ryzen memory speed relative to the fabric clock. The lower bounds are AMD's official two-module memory
-/// specification (DDR4-3200 for Ryzen 5000, DDR5-5200 for Ryzen 7000). The upper bounds are typical 1:1 limits reported
+/// Advisor: Ryzen memory speed relative to the fabric clock. One lower bound per memory type: AMD's official two-module
+/// memory specification for Ryzen 5000 (DDR4-3200) and Ryzen 7000 (DDR5-5200), a guide value for other Ryzen processors
+/// (Ryzen 9000, for example, is specified for DDR5-5600). The upper bounds are typical 1:1 limits reported
 /// by testers (AM4 FCLK, AM5 UCLK), not an AMD specification; they can differ per processor and BIOS. Slower kits or
 /// speeds above that range are information, never a problem.
 /// </summary>

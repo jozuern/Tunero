@@ -147,6 +147,8 @@
     },
     {
       "id": "office.clipboardHistoryOn",
+      "undocumented": true,
+      "preview": true,
       "category": "Productivity",
       "impact": {
         "gaming": 0,

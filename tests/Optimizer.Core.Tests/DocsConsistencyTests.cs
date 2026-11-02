@@ -105,6 +105,7 @@ public class DocsConsistencyTests
         ["explorer.classicContextMenu"] = "right-click a file in File Explorer after signing in again: the classic menu opens at once; after undo the new menu is back",
         ["gpu.hags"] = "Settings > System > Display > Graphics shows the switch on after the restart (needs a GPU with HAGS support)",
         ["gpu.gameDvrOff"] = "Settings > Gaming > Captures shows background recording off; Win+Alt+R records nothing",
+        ["office.clipboardHistoryOn"] = "Settings > System > Clipboard shows \"Clipboard history\" on after apply and off after undo; Windows + V opens the history",
         ["office.launchToThisPc"] = "a new File Explorer window opens to This PC; Folder Options shows \"Open File Explorer to: This PC\"",
         ["privacy.inkingTypingOff"] = "Settings > Privacy & security > Inking & typing personalization shows both switches off",
         ["privacy.suggestionsOff"] = "the three Settings switches named on the page show off",
