@@ -1,7 +1,7 @@
 # NVIDIA-Shader-Cache: unbegrenzt
 
 ## Zusammenfassung
-Lässt den NVIDIA-Shader-Cache auf der Festplatte ohne Größenlimit des Treibers wachsen, damit kompilierte Shader nicht gelöscht und neu kompiliert werden.
+Lässt den NVIDIA-Shader-Cache auf dem Laufwerk ohne Größenlimit des Treibers wachsen, damit kompilierte Shader nicht gelöscht und neu kompiliert werden.
 
 ## So funktioniert es
 Spiele kompilieren ihre Shader für deine Grafikkarte; der Treiber speichert das Ergebnis auf dem Datenträger und nutzt es beim nächsten Mal wieder. „Shader-Cache-Größe“ in der NVIDIA Systemsteuerung legt fest, wie viel Speicherplatz der Treiber dafür höchstens nutzen darf: deaktiviert, unbegrenzt oder eine Größe von 128 MB bis 100 GB [1]. Die App schreibt den Höchstwert, den NVIDIAs Header-Datei für diese Einstellung festlegt, ins globale Profil [3].

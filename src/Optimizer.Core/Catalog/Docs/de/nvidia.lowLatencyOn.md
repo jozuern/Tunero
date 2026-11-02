@@ -7,7 +7,7 @@ Begrenzt die Warteschlange auf ein Bild, das der Prozessor für die Grafikkarte 
 Normalerweise lässt der Treiber den Prozessor einige Bilder vorausplanen, damit die Grafikkarte nie wartet. „Modus für niedrige Latenz: Ein“ in der NVIDIA Systemsteuerung begrenzt die Warteschlange auf ein Bild, wie früher „Maximale Anzahl vorgerenderter Bilder“ = 1 [1][2]. Die App schreibt diesen Wert über NVIDIAs Schnittstelle für Treibereinstellungen ins globale Profil; die Einstellung steht in NVIDIAs öffentlicher Header-Datei der Treibereinstellungen [4]. DirectX-12- und Vulkan-Spiele steuern ihre Warteschlange selbst und sind nicht betroffen [1].
 
 ## Warum es helfen kann
-Ist die Grafikkarte der Engpass, verzögert jedes Bild in der Warteschlange den Weg von deiner Eingabe zum Bild um ein Bild. Mit einem statt mehreren Bildern sinkt die Verzögerung um die Dauer der weggefallenen Bilder.
+Ist die Grafikkarte der Engpass, verzögert jedes Bild in der Warteschlange den Weg von deiner Eingabe zum Bild um ein Bild. Mit einem statt mehreren Bildern sinkt die Verzögerung höchstens um die Dauer der weggefallenen Bilder.
 
 ## Belege
 Laut NVIDIA wirken die Latenzmodi am stärksten, wenn ein Spiel bei etwa 60 bis 100 FPS von der Grafikkarte begrenzt wird; DirectX-12- und Vulkan-Spiele steuern ihre Warteschlange selbst [1]. Für Spiele mit NVIDIA Reflex empfiehlt NVIDIA Reflex statt der Latenzeinstellung des Treibers [3].

@@ -40,7 +40,7 @@ Mit vier DDR5-Modulen gibt AMD für Ryzen 7000 und 9000 DDR5-3600 an [4][5]. Ein
 Mit zwei DDR5-Modulen pro Kanal (vier Modulen) geben Intels Datenblätter bei Core-Prozessoren der 13. und 14. Generation 4000 MT/s für Single-Rank- und 3600 MT/s für Dual-Rank-Module an [16], bei Core Ultra 200S 4800 und 4400 MT/s [17]. Eine niedrigere Geschwindigkeit als auf dem Kit ist also zu erwarten; XMP würde die Module über Intels Spezifikation betreiben.
 :::
 ::: variant intelLocked
-Für Intel-Core-Prozessoren der 8. bis 10. Generation führt Intel Chipsätze wie B360, H370, B460 und H470 ohne Unterstützung für Speicherübertaktung, Z370, Z390 und Z490 dagegen mit, ebenso den Z590, der auch Prozessoren der 10. Generation aufnimmt [9][10][11][12][13][19][20][21][22]. Auf so einem Mainboard läuft der Speicher mit der Geschwindigkeit, die für den Prozessor angegeben ist, zum Beispiel DDR4-2666 bei einem Core i5-9400F und DDR4-2933 bei einem Core i7-10700 [14][15], egal was das XMP-Profil des Kits sagt. Dein Mainboard ({{board}}) wurde nicht als Z370-, Z390-, Z490- oder Z590-Modell erkannt.
+Für Intel-Core-Prozessoren der 8. bis 10. Generation führt Intel Chipsätze wie B360, H370, B460 und H470 ohne Unterstützung für Speicherübertaktung, Z370, Z390 und Z490 dagegen mit, ebenso den Z590, der auch Prozessoren der 10. Generation unterstützt [9][10][11][12][13][19][20][21][22]. Auf so einem Mainboard läuft der Speicher mit der Geschwindigkeit, die für den Prozessor angegeben ist, zum Beispiel DDR4-2666 bei einem Core i5-9400F und DDR4-2933 bei einem Core i7-10700 [14][15], egal was das XMP-Profil des Kits sagt. Dein Mainboard ({{board}}) wurde nicht als Z370-, Z390-, Z490- oder Z590-Modell erkannt.
 :::
 
 ## Wie wir es erkennen

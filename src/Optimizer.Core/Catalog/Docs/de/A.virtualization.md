@@ -2,7 +2,7 @@
 
 ## Zusammenfassung
 ::: variant antiCheat
-Die Hardware-Virtualisierung ist im BIOS aus. {{antiCheats}} kann Speicherintegrität oder VBS verlangen, und beide brauchen die Virtualisierung. Spiele starten dann womöglich nicht.
+Die Hardware-Virtualisierung ist im BIOS aus. Speicherintegrität und VBS brauchen sie, und installierte Anti-Cheats können eines davon verlangen ({{antiCheats}}). Spiele starten dann womöglich nicht.
 :::
 ::: variant off
 Die Hardware-Virtualisierung (Intel VT-x oder AMD-V) ist im BIOS aus. Speicherintegrität sowie Linux- oder Android-Apps unter Windows brauchen sie.

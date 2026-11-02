@@ -6,7 +6,7 @@ Setzt die globalen NVIDIA-Einstellungen, die Spiele begrenzen (FPS-Limit, Energi
 ## So funktioniert es
 NVIDIA speichert Treibereinstellungen in Profilen: einem globalen und einem pro Spiel. Die App entfernt die genannten Einstellungen über NVIDIAs Schnittstelle für Treibereinstellungen aus dem globalen Profil [1]. Spielprofile bleiben, wie sie sind. Rückgängig machen schreibt die vorherigen Werte zurück.
 
-Ist G-SYNC an und V-Sync erzwungen, entfernt sie ein niedriges FPS-Limit nicht, sondern setzt es 3 FPS unter die Refresh-Rate: Ohne Limit bekäme ein Spiel, das schneller als der Monitor läuft, V-Sync-Verzögerung, und Blur Busters (eine unabhängige Testseite) fand 3 FPS unter der Refresh-Rate als sicherste Marge [4].
+Ist G-SYNC an und V-Sync erzwungen, entfernt sie ein niedriges FPS-Limit nicht, sondern setzt es 3 FPS unter die Refresh-Rate: Ohne Limit bekäme ein Spiel, das schneller als der Monitor läuft, V-Sync-Verzögerung, und Blur Busters (eine unabhängige Testseite) ermittelte 3 FPS unter der Refresh-Rate als sicherste Marge [4].
 
 ## Warum es helfen kann
 Ein globales FPS-Limit weit unter der Refresh-Rate oder ein auf Minimum gestellter Energiemodus bremst jedes Spiel. Ohne sie läuft jedes Spiel so, wie der Treiber es vorsieht.

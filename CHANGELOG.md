@@ -124,6 +124,8 @@
 - **Wording:** the Changes export note is clearer; in German the folder list's expand button says "Ordner auf- oder zuklappen" and the Cleanup intro says "Links".
 - **Memory in single channel:** a single module that may be soldered (result Unknown) no longer gets the single channel summary or the advice to add a second module.
 - **Explanation pages:** Ryzen memory speed (where AMD's official speed applies), Leftovers, Memory integrity, Power saver plan, Widgets, the NVIDIA frame limit (what Undo restores), the NVIDIA global reset and the restore point limit say what holds.
+- **German explanation pages** match the English ones more closely (automatic DNS, the network adapter power setting, the anti-cheat checks, location off, "at most" for the latency gain) and use the names Windows shows (Energieverwaltung, Aggressiv, Details zur Kernisolierung; Laufwerk where SSDs count too).
+- **Secure Boot certificates:** the page says that the 2011 certificates have expired (June and October 2026), not that they will; the virtualization check says that memory integrity and VBS need virtualization and that installed anti-cheats can require either one.
 
 ## 1.5.0
 

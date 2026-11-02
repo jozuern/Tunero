@@ -6,7 +6,7 @@ Ein installierter Anti-Cheat ({{antiCheats}}) braucht eine Sicherheitsfunktion, 
 :::
 ::: status Info
 ::: variant sometimes
-Alle Pflichtfunktionen sind an. {{antiCheats}} kann je nach Spiel oder Konto mehr verlangen, etwa UEFI-Start, Secure Boot, TPM 2.0, VBS, Speicherintegrität oder IOMMU. Die Details zeigen jede einzeln.
+Alle Pflichtfunktionen sind an. Mit {{antiCheats}} ist je nach Spiel, Modus oder Konto mehr nötig, etwa UEFI-Start, Secure Boot, TPM 2.0, VBS, Speicherintegrität oder IOMMU. Die Details zeigen jede einzeln.
 :::
 ::: variant baseline
 UEFI-Start, Secure Boot oder TPM 2.0 fehlt. Spiele mit strengen Anti-Cheats (Valorant, FACEIT, Battlefield 6, Call of Duty) starten nicht.
@@ -56,7 +56,7 @@ Wir lesen den Firmware-Typ (UEFI oder Legacy), den Secure-Boot-Status, die TPM-V
 3. **Secure Boot:** Stelle im BIOS auf der Seite für Start oder Sicherheit Secure Boot auf **Enabled** (bei ASUS-Mainboards: OS Type **Windows UEFI mode**). Manche Mainboards brauchen vorher „Install default Secure Boot keys“.
 4. **TPM 2.0:** Schalte im BIOS **Intel PTT** oder **AMD fTPM** ein, oft unter „Security“ oder „Trusted Computing“ [5].
 5. **Virtualisierung:** Schalte im BIOS **Intel Virtualization Technology (VT-x)** bzw. **SVM Mode** (AMD) ein. Speicherintegrität und VBS brauchen sie [6][13].
-6. **Speicherintegrität und VBS:** Windows-Sicherheit > Gerätesicherheit > **Details der Kernisolation** (je nach Version „Kernisolierung“) > **Speicherintegrität**, danach neu starten [13][14]. Die Speicherintegrität ist eine Funktion von VBS, damit schaltest du also auch VBS ein [14]. Manche Treiber vertragen sich nicht mit der Speicherintegrität und können Fehler oder selten einen Bluescreen verursachen [14].
+6. **Speicherintegrität und VBS:** Windows-Sicherheit > Gerätesicherheit > **Details zur Kernisolierung** > **Speicherintegrität**, danach neu starten [13][14]. Die Speicherintegrität ist eine Funktion von VBS, damit schaltest du also auch VBS ein [14]. Manche Treiber vertragen sich nicht mit der Speicherintegrität und können Fehler oder selten einen Bluescreen verursachen [14].
 7. **IOMMU:** Schalte im BIOS **VT-d** (Intel) bzw. **IOMMU** / **AMD-Vi** (AMD) ein [5].
 
 ## So prüfst du die Behebung

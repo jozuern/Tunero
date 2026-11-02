@@ -4,7 +4,7 @@
 Schaltet die Aufnahmen der Xbox Game Bar ab, auch „Aufzeichnen, was passiert ist“, das die letzten Spielminuten ständig im Hintergrund aufnimmt.
 
 ## So funktioniert es
-Ist die Hintergrundaufnahme an, kodiert Windows die letzten Spielminuten laufend mit dem Video-Encoder der GPU in einen Puffer. Die App schaltet Game DVR, App-Aufnahme und Hintergrundaufnahme für dein Benutzerkonto ab, mit denselben Werten wie WinUtil [2]. Microsoft dokumentiert diese Werte pro Benutzer nicht; unabhängige Anleitungen zeigen, dass sie die Game-Bar-Aufnahme [3][4] und „Aufzeichnen, was passiert ist“ [5] abschalten, und Microsofts Aufnahme-Schnittstelle nutzt dieselben Namen [6]. Die dokumentierte Richtlinie „AllowGameDVR“ schaltet die Aufnahme für den ganzen PC ab [1]; auf Pro, Enterprise und Education nutzt sie „Game-Bar-Aufnahme per Richtlinie aus“. Die Game Bar selbst bleibt installiert.
+Ist die Hintergrundaufnahme an, kodiert Windows die letzten Spielminuten laufend mit dem Video-Encoder der GPU in einen Puffer. Die App schaltet Game DVR, App-Aufnahme und Hintergrundaufnahme für dein Benutzerkonto ab, mit denselben Werten wie WinUtil [2]. Microsoft dokumentiert diese Werte pro Benutzer nicht; unabhängige Anleitungen zeigen, dass sie die Game-Bar-Aufnahme [3][4] und „Aufzeichnen, was passiert ist“ [5] abschalten, und Microsofts Aufnahme-Schnittstelle nutzt dieselben Namen [6]. Die dokumentierte Richtlinie „AllowGameDVR“ schaltet die Aufnahme für den ganzen PC ab [1]; auf Pro, Enterprise und Education setzt der Tweak „Game-Bar-Aufnahme per Richtlinie aus“ diese Richtlinie. Die Game Bar selbst bleibt installiert.
 
 ## Warum es helfen kann
 Die Daueraufnahme belegt Encoder-Zeit der GPU, RAM und Schreibzugriffe. Ohne sie fällt diese Last beim Spielen weg.

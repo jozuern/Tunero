@@ -9,7 +9,7 @@ Empfohlene Einstellungen in AMD Software fürs Spielen.
 :::
 
 ## Warum das wichtig ist
-Manche Radeon-Funktionen opfern Bildqualität oder FPS für weniger Verbrauch oder Lautstärke, und ihre Standardwerte hängen von der Treiberversion und dem bei der Installation gewählten Profil ab. AMDs Einstellungsbibliothek (ADLX) kann diese Werte ändern [1]. Sie ist aber eine native Bibliothek, die diese App nicht mitbringt. Deshalb erklärt die App die Einstellungen, statt sie zu ändern.
+Manche Radeon-Funktionen opfern Bildqualität oder FPS für weniger Verbrauch oder ein flüssigeres Bild, und ihre Standardwerte hängen von der Treiberversion und dem bei der Installation gewählten Profil ab. AMDs Einstellungsbibliothek (ADLX) kann diese Werte ändern [1]. Sie ist aber eine native Bibliothek, die diese App nicht mitbringt. Deshalb erklärt die App die Einstellungen, statt sie zu ändern.
 
 ## Wie wir es erkennen
 Wir haben eine Radeon-Grafikkarte mit AMD-Treiber gefunden. Workstation-Karten (Radeon Pro, FirePro, Instinct) lassen wir aus, weil diese Schritte für AMD Software: Adrenalin Edition gedacht sind.

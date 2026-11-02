@@ -31,7 +31,7 @@ Nothing to do.
 :::
 
 ## How to check the fix
-Run the scan again after the restart. Both lines under "What we found" should say no.
+Run the scan again after the restart. Both lines under "What we found" should show "No".
 
 ## Sources
 1. https://learn.microsoft.com/en-us/exchange/plan-and-deploy/deployment-ref/ms-exch-setupreadiness-pendingrebootwindowscomponents

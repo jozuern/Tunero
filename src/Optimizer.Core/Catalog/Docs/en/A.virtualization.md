@@ -2,7 +2,7 @@
 
 ## Summary
 ::: variant antiCheat
-Hardware virtualization is off in the BIOS. {{antiCheats}} can ask for memory integrity or virtualization-based security, which need it, so games may refuse to start.
+Hardware virtualization is off in the BIOS. Memory integrity and VBS need it, and installed anti-cheats can ask for either ({{antiCheats}}), so games may refuse to start.
 :::
 ::: variant off
 Hardware virtualization (Intel VT-x or AMD-V) is off in the BIOS. Memory integrity and Linux or Android apps on Windows need it.

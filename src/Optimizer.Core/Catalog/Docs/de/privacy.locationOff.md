@@ -13,7 +13,7 @@ Keine Standortabfragen im Hintergrund. Kein Effekt auf die Leistung.
 Eine Datenschutzeinstellung ohne Effekt auf die FPS.
 
 ## Nachteile & Risiken
-Die automatische Zeitzone und „Mein Gerät suchen“ verlieren den Gerätestandort [1]. Manche Funktionen, etwa das Wetter in der Taskleiste, können weiter deine IP-Adresse nutzen, und ein Notruf übermittelt deinen Standort trotzdem [1]. Der eigene WLAN-Band-Check der App zeigt danach „unbekannt“: Windows gibt WLAN-Details nur an Apps weiter, die den Standort nutzen dürfen [3].
+Apps, die automatische Zeitzone und „Mein Gerät suchen“ verlieren den Gerätestandort [1]. Manche Funktionen, etwa das Wetter in der Taskleiste, können weiter deine IP-Adresse nutzen, und ein Notruf übermittelt deinen Standort trotzdem [1]. Der eigene WLAN-Band-Check der App zeigt danach „unbekannt“: Windows gibt WLAN-Details nur an Apps weiter, die den Standort nutzen dürfen [3].
 
 ## Wann du es nicht nutzen solltest
 Lass den Standort an, wenn du Apps oder Funktionen nutzt, die ihn brauchen.

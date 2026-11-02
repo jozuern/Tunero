@@ -5,7 +5,7 @@
 Windows Update wartet auf einen Neustart, um Updates fertig zu installieren. Starte neu, bevor du Einstellungen änderst oder Leistung misst.
 :::
 ::: variant servicing
-Windows wartet auf einen Neustart, um ein Feature oder eine Komponente fertig hinzuzufügen oder zu entfernen. Starte vorher neu.
+Windows wartet auf einen Neustart, um ein Feature oder eine Komponente fertig hinzuzufügen oder zu entfernen. Starte neu, bevor du Einstellungen änderst oder misst.
 :::
 ::: variant default
 Prüft, ob Windows auf einen Neustart wartet, um Updates oder eine Feature-Änderung abzuschließen.
@@ -31,7 +31,7 @@ Nichts zu tun.
 :::
 
 ## So prüfst du die Behebung
-Starte den Scan nach dem Neustart erneut. Beide Zeilen unter "Was wir gefunden haben" sollten nein sagen.
+Starte den Scan nach dem Neustart erneut. Beide Zeilen unter „Was wir gefunden haben“ sollten „Nein“ zeigen.
 
 ## Quellen
 1. https://learn.microsoft.com/en-us/exchange/plan-and-deploy/deployment-ref/ms-exch-setupreadiness-pendingrebootwindowscomponents
