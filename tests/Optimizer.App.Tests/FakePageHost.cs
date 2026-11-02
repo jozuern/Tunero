@@ -78,7 +78,8 @@ internal sealed class FakePageHost : IPageHost, INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public HashSet<string> AppliedIds() => [];
-    public IReadOnlyList<TweakStatus> DeviceStates => [];
+    /// <summary>The last scan's device states; a test sets a new list for a new scan.</summary>
+    public IReadOnlyList<TweakStatus> DeviceStates { get; set; } = [];
 
     /// <summary>With services: the visible catalog tweaks the filter picks, as the engine detects them now.</summary>
     public IEnumerable<TweakItemViewModel> CatalogItems(Func<TweakDefinition, bool> filter) => _services is not { } s ? [] :

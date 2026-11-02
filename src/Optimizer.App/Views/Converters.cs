@@ -72,13 +72,11 @@ public sealed class StatusToSymbolConverter : IValueConverter
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotSupportedException();
 }
 
-/// <summary>Collection count -> visible when above zero (Invert: visible when empty).</summary>
+/// <summary>Collection count -> visible when above zero.</summary>
 public sealed class CountToVisibilityConverter : IValueConverter
 {
-    public bool Invert { get; set; }
-
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
-        (value is int n && n > 0) ^ Invert ? Visibility.Visible : Visibility.Collapsed;
+        value is int n && n > 0 ? Visibility.Visible : Visibility.Collapsed;
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotSupportedException();
 }

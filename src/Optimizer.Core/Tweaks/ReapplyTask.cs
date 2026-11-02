@@ -1,4 +1,5 @@
 using System.Security;
+using System.Text.RegularExpressions;
 using Optimizer.Core.Actions;
 
 namespace Optimizer.Core.Tweaks;
@@ -10,7 +11,7 @@ namespace Optimizer.Core.Tweaks;
 /// process stays running: the run ends when it is done. It is a change like any other (<see cref="OwnTaskAction"/>),
 /// listed on the Changes page; undo removes the task.
 /// </summary>
-public static class ReapplyTask
+public static partial class ReapplyTask
 {
     public const string TweakId = "app.reapplyTask";
     /// <summary>One task per account, named after its SID as Windows names per-user tasks: each administrator turns their own on and off.</summary>
@@ -18,8 +19,14 @@ public static class ReapplyTask
 
     private const string TaskPrefix = @"Tunero\Apply changes again ";
 
-    /// <summary>A scheduled task's path (with or without the leading backslash) is one of these tasks.</summary>
-    public static bool IsOwnTask(string taskPath) => taskPath.TrimStart('\\').StartsWith(TaskPrefix, StringComparison.OrdinalIgnoreCase);
+    /// <summary>
+    /// A scheduled task's path (with or without the leading backslash) is one of these tasks: the prefix and an account's
+    /// SID, nothing more. Another task whose name only starts the same way is not given Tunero's name.
+    /// </summary>
+    public static bool IsOwnTask(string taskPath) => OwnTaskPath().IsMatch(taskPath.TrimStart('\\'));
+
+    [GeneratedRegex(@"^Tunero\\Apply changes again S-1-\d+(-\d+)+$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex OwnTaskPath();
 
     public const string Argument = "--reapply";
 

@@ -209,21 +209,11 @@ public sealed partial class HealthViewModel(IPageHost owner, IDialogs dialogs, A
         _toolCancel = new CancellationTokenSource();
         var token = _toolCancel.Token;
         IsToolRunning = true;
-        var lines = new List<string>();
-        // Set with the Stopped line: a line the tool printed before it was ended can arrive after that line and is dropped.
-        var stopped = false;
         Services.WorkProgress.Scope? banner = null;
-        var progress = new Progress<string>(l =>
+        // sfc and dism print how far they are; other lines (the phase) keep the last percentage.
+        var output = new LiveOutput(text => ToolOutput = text, onLine: l =>
         {
-            // Locked: in the app this runs on the window's thread, without a context (tests) on the thread pool.
-            lock (lines)
-            {
-                if (stopped) return;
-                // sfc and dism print how far they are; other lines (the phase) keep the last percentage.
-                if (ToolProgress.Percent(l) is { } percent) banner?.Report(percent, l);
-                OutputLines.Add(lines, l);
-                ToolOutput = string.Join("\n", lines);
-            }
+            if (ToolProgress.Percent(l) is { } percent) banner?.Report(percent, l);
         });
         try
         {
@@ -233,21 +223,12 @@ public sealed partial class HealthViewModel(IPageHost owner, IDialogs dialogs, A
                 banner = work;
                 try
                 {
-                    var code = await run(ToolRunner, progress, token);
-                    lock (lines)
-                    {
-                        lines.Add(Loc.Instance.Format("Health_ExitCode", code));
-                        ToolOutput = string.Join("\n", lines);
-                    }
+                    var code = await run(ToolRunner, output.Progress, token);
+                    output.Add(Loc.Instance.Format("Health_ExitCode", code));
                 }
                 catch (OperationCanceledException) when (token.IsCancellationRequested)
                 {
-                    lock (lines)
-                    {
-                        stopped = true;
-                        lines.Add(Loc.Instance["Health_Stopped"]);
-                        ToolOutput = string.Join("\n", lines);
-                    }
+                    output.End(Loc.Instance["Health_Stopped"]);
                 }
             }, _toolCancel, duration: Durations.Servicing);
         }

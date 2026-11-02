@@ -357,6 +357,9 @@ Diese Apps werden für alle Benutzer und neue Konten entfernt. Was der Microsoft
   <data name="Debloat_EdgeOpen" xml:space="preserve">
     <value>Installierte Apps öffnen</value>
   </data>
+  <data name="Debloat_EdgeOpenName" xml:space="preserve">
+    <value>Installierte Apps öffnen, um Microsoft Edge zu entfernen</value>
+  </data>
   <data name="Debloat_EdgeOpened" xml:space="preserve">
     <value>Installierte Apps ist geöffnet: Wähle im Menü neben Microsoft Edge „Deinstallieren“. Windows entfernt Edge selbst und lässt das andere Programme nicht tun.</value>
   </data>
@@ -2017,6 +2020,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Media_ChoicesNotRequest" xml:space="preserve"><value>Die Datei wurde nicht geladen, nichts hat sich geändert. Es ist keine Tunero-Auswahldatei für Installationsmedien.</value></data>
   <data name="Media_ChoicesRefused" xml:space="preserve"><value>Die Datei wurde nicht geladen, nichts hat sich geändert. Problem bei: {0}.</value></data>
   <data name="Media_ChoicesDropped" xml:space="preserve"><value>Diese gespeicherten Angaben passen nicht mehr und bleiben auf ihrem Standard: {0}.</value></data>
+  <data name="Media_IsoEditionGone" xml:space="preserve"><value>Die geänderte ISO-Datei enthält {0} nicht, die zuvor gewählte Edition. Prüfe die Edition, bevor du erstellst.</value></data>
   <data name="Media_ChoicesReset" xml:space="preserve"><value>Die Auswahl ist wieder auf dem Standard, die gemerkte Auswahl ist gelöscht.</value></data>
   <data name="Media_Field_appLanguage" xml:space="preserve"><value>App-Sprache</value></data>
   <data name="Media_Field_theme" xml:space="preserve"><value>Design</value></data>

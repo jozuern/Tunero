@@ -84,6 +84,9 @@ public sealed record InstallMediaSystem
     /// <summary>Free bytes on the drive of a path, or null when that cannot be read.</summary>
     public Func<string, long?> FreeBytes { get; init; } = _ => null;
 
+    /// <summary>Whether a file is there; asked for the free output name, only in a folder on a local fixed drive.</summary>
+    public Func<string, bool> FileExists { get; init; } = File.Exists;
+
     /// <summary>Shows a file selected in Explorer (as the signed-in user).</summary>
     public Action<string> ShowInExplorer { get; init; } = _ => { };
 
@@ -321,6 +324,9 @@ public sealed partial class InstallMediaViewModel : PageViewModel
 
     /// <summary>A remembered or loaded download language the catalog has not shown yet, and an own ISO's edition its read has not shown yet.</summary>
     private string? _wantedLanguage, _wantedIsoEdition;
+
+    /// <summary>The edition chosen before the own ISO changed on disk and is read again, as the page showed it; named when the new file lacks it.</summary>
+    private string? _keptIsoEdition;
 
     private List<string> _droppedNames = [];
     private bool _rememberedApplied;
@@ -1323,11 +1329,11 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     /// The first name not taken in <paramref name="folder"/>. A folder that is not on a local fixed drive (Downloads
     /// redirected to a share) is not asked: this runs on every refresh, and Build refuses that output by its spelling anyway.
     /// </summary>
-    private static string FreeName(string folder, string stem)
+    private string FreeName(string folder, string stem)
     {
         var path = Path.Combine(folder, stem + ".iso");
         if (!MediaChoices.IsLocalOutput(path)) return path;
-        for (var n = 2; File.Exists(path) && n < 100; n++) path = Path.Combine(folder, $"{stem} ({n}).iso");
+        for (var n = 2; _system.FileExists(path) && n < 100; n++) path = Path.Combine(folder, $"{stem} ({n}).iso");
         return path;
     }
 
@@ -1359,10 +1365,10 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         string? problem = null;
         try
         {
-            // The demo's sample ISO is no file: nothing is looked at.
+            // The demo's sample ISO is no file: nothing is looked at. A look a refresh started at the same file is shared.
             if (!_demo)
             {
-                var bytes = await _system.IsoLength(path);
+                var bytes = await LookAtIso(path);
                 read.Token.ThrowIfCancellationRequested();
                 _isoBytes = bytes;
                 OnPropertyChanged(nameof(NeededText));
@@ -1424,8 +1430,12 @@ public sealed partial class InstallMediaViewModel : PageViewModel
             Changed();
             return;
         }
-        // A new read starts from this PC's edition: the one chosen now is asked for again.
-        _wantedIsoEdition ??= SelectedImage() is { } image ? image.Edition ?? image.Name : null;
+        // A new read starts from this PC's edition: the one chosen now is asked for again (unless loaded choices still wait for theirs).
+        if (_wantedIsoEdition is null && SelectedImage() is { } image)
+        {
+            _wantedIsoEdition = image.Edition ?? image.Name;
+            _keptIsoEdition = Edition?.Text;
+        }
         IsoLoading = ReadIsoAsync(path);
     }
 
@@ -1493,6 +1503,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     {
         if (_dialogs.PickOpenFile(Loc.Instance["Media_IsoFiles"], ".iso") is not { } path) return;
         _wantedIsoEdition = null;
+        _keptIsoEdition = null;
         UseDownload = false;
         if (string.Equals(path, IsoPath, StringComparison.OrdinalIgnoreCase))
         {
@@ -1645,6 +1656,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
                 started = true;
                 _stop = stop;
                 ChoicesNote = null;
+                _droppedNames = [];
                 IsBuilding = true;
                 ResultText = null;
                 ResultLogPath = null;
@@ -2124,8 +2136,10 @@ public sealed partial class InstallMediaViewModel : PageViewModel
 
     [ObservableProperty] private InfoBarSeverity _choicesNoteSeverity;
 
+    /// <summary>Shows a note; the names of dropped values belong to the note that listed them and end with it.</summary>
     private void ShowChoicesNote(string text, InfoBarSeverity severity)
     {
+        _droppedNames = [];
         ChoicesNote = text;
         ChoicesNoteSeverity = severity;
     }
@@ -2133,9 +2147,10 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     /// <summary>Names the values that could not be used (nothing to say when there are none).</summary>
     private void ShowDropped(IEnumerable<string> names)
     {
-        _droppedNames = names.ToList();
-        if (_droppedNames.Count > 0)
-            ShowChoicesNote(Loc.Instance.Format("Media_ChoicesDropped", string.Join(", ", _droppedNames)), InfoBarSeverity.Warning);
+        var list = names.ToList();
+        if (list.Count > 0)
+            ShowChoicesNote(Loc.Instance.Format("Media_ChoicesDropped", string.Join(", ", list)), InfoBarSeverity.Warning);
+        _droppedNames = list;
     }
 
     /// <summary>A value found unusable after the choices were applied (the catalog or the ISO's images were not there yet).</summary>
@@ -2208,6 +2223,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         var dropped = f.Dropped.Select(DroppedText).ToList();
         bool Given(string field) => !f.StandIns.Contains(field);
         _wantedIsoEdition = null;
+        _keptIsoEdition = null;
         _wantedLanguage = null;
 
         if (Given("source"))
@@ -2347,15 +2363,18 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     /// <summary>
     /// An own ISO's image by the edition a file named, once the ISO was read; if it holds none, the page keeps its default
     /// and says so. While no image list is known (the file is missing, or could not be attached) the edition waits for the
-    /// read that finds one.
+    /// read that finds one. An edition kept from before the file changed on disk is named as such, not as a saved choice.
     /// </summary>
     private void ApplyWantedIsoEdition()
     {
         if (_wantedIsoEdition is not { } wanted || _isoInfo is not { } info) return;
+        var kept = _keptIsoEdition;
         _wantedIsoEdition = null;
+        _keptIsoEdition = null;
         var image = info.Editions.FirstOrDefault(i => string.Equals(i.Edition, wanted, StringComparison.OrdinalIgnoreCase)
                                                       || string.Equals(i.Name, wanted, StringComparison.OrdinalIgnoreCase));
         if (image is not null && Pick(Editions, image.Index.ToString(CultureInfo.InvariantCulture)) is { } edition) Edition = edition;
+        else if (kept is not null) ShowChoicesNote(Loc.Instance.Format("Media_IsoEditionGone", kept), InfoBarSeverity.Warning);
         else AddDropped(FieldLabel("edition"));
     }
 
@@ -2445,6 +2464,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         _downloadEdition = null;
         _wantedLanguage = null;
         _wantedIsoEdition = null;
+        _keptIsoEdition = null;
         _outputFolder = null;
         _outputPicked = false;
         _droppedNames = [];

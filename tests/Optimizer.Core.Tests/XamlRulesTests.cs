@@ -280,6 +280,35 @@ public partial class XamlRulesTests
         Assert.True(templates >= 1, "the PageHeader template was not found");
     }
 
+    /// <summary>
+    /// A screen reader name contains the visible text it stands in for (WCAG 2.5.3, Label in Name), in both languages: voice
+    /// control users say what they see. Settings' "Show in folder" link was named "Show the log file in its folder".
+    /// </summary>
+    [Fact]
+    public void ScreenReaderNamesContainTheVisibleText()
+    {
+        var offenders = new List<string>();
+        var languages = new[] { "Strings.resx", "Strings.de.resx" }
+            .Select(f => (File: f, Texts: XDocument.Load(Path.Combine(RepoPaths.App, "Resources", f)).Descendants("data")
+                .ToDictionary(d => (string)d.Attribute("name")!, d => (string?)d.Element("value") ?? "")))
+            .ToList();
+        var pairs = 0;
+        foreach (var (relative, doc) in AppXaml())
+            foreach (var element in doc.Descendants())
+            {
+                if (TrKey().Match((string?)element.Attribute("Content") ?? "") is not { Success: true } shown
+                    || TrKey().Match((string?)element.Attribute("AutomationProperties.Name") ?? "") is not { Success: true } named)
+                    continue;
+                pairs++;
+                foreach (var (file, texts) in languages)
+                    if (texts.TryGetValue(shown.Groups[1].Value, out var visible) && texts.TryGetValue(named.Groups[1].Value, out var name)
+                        && !name.Contains(visible, StringComparison.OrdinalIgnoreCase))
+                        offenders.Add($"{relative}:{((IXmlLineInfo)element).LineNumber}: {file} names \"{visible}\" as \"{name}\"");
+            }
+        Assert.Empty(offenders);
+        Assert.True(pairs >= 2, "no element with both a translated Content and a translated screen reader name was found");
+    }
+
     /// <summary>The app's XAML files with forward-slash paths relative to the app project, line numbers kept.</summary>
     private static IEnumerable<(string Relative, XDocument Doc)> AppXaml() =>
         Directory.EnumerateFiles(RepoPaths.App, "*.xaml", SearchOption.AllDirectories)
@@ -301,6 +330,6 @@ public partial class XamlRulesTests
     [GeneratedRegex(@"^\{Binding\s+([\w.]+\.)?\w*EmptyText\}$")]
     private static partial Regex BoundToEmptyText();
 
-    [GeneratedRegex(@"^\{Binding\s+([\w.]+\.)?\w*(Empty|NoMatch),\s*Converter=\{StaticResource\s+BoolToVisibility\}\}$|Converter=\{StaticResource\s+EmptyToVisibility\}")]
+    [GeneratedRegex(@"^\{Binding\s+([\w.]+\.)?\w*(Empty|NoMatch),\s*Converter=\{StaticResource\s+BoolToVisibility\}\}$")]
     private static partial Regex ShownWhenEmpty();
 }

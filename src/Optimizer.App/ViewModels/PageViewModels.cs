@@ -477,9 +477,25 @@ public sealed partial class NetworkViewModel(IPageHost owner, AppServices servic
             ? (read.Any(g => g.Vendor == Optimizer.Core.Hardware.Vendor.Nvidia), read.All(g => g.Vendor != Optimizer.Core.Hardware.Vendor.Nvidia))
             : (false, false);
 
-    /// <summary>The DNS servers in use, read off the UI thread (it asks every network adapter).</summary>
+    /// <summary>The scan whose DNS servers were read (its device states), and those servers; null before the first read ended.</summary>
+    private IReadOnlyList<TweakStatus>? _dnsReadFor;
+
+    private IReadOnlyList<System.Net.IPAddress>? _dnsServers;
+
+    /// <summary>
+    /// The DNS servers in use, read off the UI thread (it asks every network adapter) once per scan: a DNS choice rescans,
+    /// and a switch, Ignore or the language only builds the rows again, which shows the servers already read.
+    /// </summary>
     private async Task ShowCurrentDnsAsync()
     {
+        if (ReferenceEquals(_dnsReadFor, Owner.DeviceStates) && _dnsServers is { } known)
+        {
+            ShowDns(known);
+            return;
+        }
+        var scan = Owner.DeviceStates;
+        _dnsReadFor = scan;
+        _dnsServers = null;
         IReadOnlyList<System.Net.IPAddress> servers;
         try
         {
@@ -489,6 +505,14 @@ public sealed partial class NetworkViewModel(IPageHost owner, AppServices servic
         {
             servers = [];
         }
+        // A read for an older scan that ends after a newer one started shows nothing.
+        if (!ReferenceEquals(_dnsReadFor, scan)) return;
+        _dnsServers = servers;
+        ShowDns(servers);
+    }
+
+    private void ShowDns(IReadOnlyList<System.Net.IPAddress> servers)
+    {
         // The router's own address (or a link-local one) means nothing to most people: "Your router", the addresses in the tooltip.
         var detail = string.Join(", ", servers);
         CurrentDns = servers.Count == 0 ? Loc.Instance["Net_NoDns"]

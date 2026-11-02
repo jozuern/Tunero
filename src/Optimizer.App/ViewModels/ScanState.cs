@@ -141,6 +141,9 @@ internal sealed class ScanState(CatalogData catalog, AppSettings settings, Actio
     /// <summary>The ids of the tweaks whose recommendation the user ignores.</summary>
     public IReadOnlySet<string> IgnoredTweakIds() => settings.IgnoredTweaks.ToHashSet(StringComparer.Ordinal);
 
+    /// <summary>Passed, or not for this hardware: the finding lists show it only with "Show passed checks".</summary>
+    public static bool IsPassed(Finding f) => f.Status is FindingStatus.Ok or FindingStatus.Unsupported;
+
     /// <summary>
     /// Where the result of check <paramref name="id"/> shows: the search opens it there. A check with several results (one
     /// per drive) counts as listed when one of them is.
@@ -148,7 +151,7 @@ internal sealed class ScanState(CatalogData catalog, AppSettings settings, Actio
     public FindingPlace PlaceOf(string id)
     {
         var shown = ProfiledFindings.Where(f => f.Id == id).ToList();
-        if (shown.Any(f => f.Kind == FindingKind.GameAccess || f.Status is not (FindingStatus.Ok or FindingStatus.Unsupported))) return FindingPlace.Listed;
+        if (shown.Any(f => f.Kind == FindingKind.GameAccess || !IsPassed(f))) return FindingPlace.Listed;
         if (IgnoredFindings.Any(f => f.Id == id)) return FindingPlace.Ignored;
         if (shown.Count > 0) return FindingPlace.Passed;
         return Findings.Any(f => f.Id == id) ? FindingPlace.HiddenByProfile : FindingPlace.NoResult;

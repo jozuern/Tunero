@@ -330,6 +330,25 @@ public sealed class InstallMediaViewModelTests : IDisposable
         Assert.Null(media.ChoicesNote);
     }
 
+    /// <summary>
+    /// An ISO replaced by one without the chosen edition says so by that edition's name: no saved choices were involved, so
+    /// it is not the note about saved choices that no longer fit.
+    /// </summary>
+    [Fact]
+    public async Task AReplacedIsoWithoutTheChosenEditionNamesIt()
+    {
+        var media = await WithOwnIso();
+        media.Edition = media.Editions.Single(e => e.Key == "1");
+        var chosen = media.Edition.Text;
+        _iso = Iso(Image(1, "Professional", "Windows 11 Pro"));
+        File.WriteAllText(media.IsoPath!, "another, longer ISO");
+
+        media.PageShown();
+        await media.IsoLoading;
+        Assert.Equal(InfoBarSeverity.Warning, media.ChoicesNoteSeverity);
+        Assert.Equal(Loc.Instance.Format("Media_IsoEditionGone", chosen), media.ChoicesNote);
+    }
+
     /// <summary>An ISO replaced by a file of another length is read again before Build reviews it: the checks see the new file.</summary>
     [Fact]
     public async Task AnIsoReplacedByAnotherFileIsReadAgainBeforeBuild()
@@ -442,7 +461,17 @@ public sealed class InstallMediaViewModelTests : IDisposable
     public async Task ADownloadsFolderOnAShareIsNotAskedForAFreeName()
     {
         const string share = @"\\tunero-test.invalid\home\Downloads";
-        var media = await WithCatalog(Media(system: System() with { ReadPc = () => new ThisPcFacts("Professional", false, "Anna", "de-AT", share) }));
+        var asked = new List<string>();
+        var media = await WithCatalog(Media(system: System() with
+        {
+            ReadPc = () => new ThisPcFacts("Professional", false, "Anna", "de-AT", share),
+            FileExists = path =>
+            {
+                asked.Add(path);
+                return true;
+            },
+        }));
+        Assert.Empty(asked);
         Assert.Equal(share, Path.GetDirectoryName(media.OutputPath));
         Assert.DoesNotContain("(2)", media.OutputPath);
         Assert.Equal(Loc.Instance["Media_OutputNotLocal"], media.BuildNote);

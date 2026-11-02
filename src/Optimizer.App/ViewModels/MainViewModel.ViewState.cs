@@ -112,7 +112,7 @@ public sealed partial class MainViewModel
         BuildIgnored(lang);
         var hidden = ProfileView.HiddenProblems(_state.Usage, IgnoredResults.Without(_state.Findings, _state.IgnoredKeys()));
         HiddenFindingsText = hidden > 0 ? Loc.Instance.Format("Findings_HiddenByProfile", hidden) : null;
-        var passed = ShowPassed ? 0 : _state.ProfiledFindings.Count(f => f.Kind == FindingKind.Advisor && f.Status is FindingStatus.Ok or FindingStatus.Unsupported);
+        var passed = ShowPassed ? 0 : _state.ProfiledFindings.Count(f => f.Kind == FindingKind.Advisor && ScanState.IsPassed(f));
         AdvisorPassedText = passed > 0 ? Loc.Instance.Format("Advisor_PassedHidden", passed) : null;
         BuildAdvisorSummary();
 
@@ -162,7 +162,7 @@ public sealed partial class MainViewModel
             FindingStatus.Ok => 3,
             _ => 4,
         };
-        foreach (var f in source.Where(f => ShowPassed || f.Status is not (FindingStatus.Ok or FindingStatus.Unsupported)).OrderBy(f => Rank(f.Status)))
+        foreach (var f in source.Where(f => ShowPassed || !ScanState.IsPassed(f)).OrderBy(f => Rank(f.Status)))
             target.Add(new FindingItemViewModel(f, lang, FixFor(f), _state.Usage.Goal));
     }
 

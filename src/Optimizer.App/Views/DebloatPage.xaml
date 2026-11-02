@@ -185,7 +185,7 @@
                                 </StackPanel>
                             </ui:CardControl.Header>
                             <ui:Button Content="{l:Tr Debloat_EdgeOpen}" Icon="{ui:SymbolIcon Open20}" Appearance="Secondary" IsEnabled="{Binding Debloat.CanRemoveEdge}" Command="{Binding Debloat.RemoveEdgeCommand}"
-                                       AutomationProperties.Name="{l:Tr Debloat_EdgeTitle}"
+                                       AutomationProperties.Name="{l:Tr Debloat_EdgeOpenName}"
                                        Visibility="{Binding Debloat.EdgeInstalled, Converter={StaticResource BoolToVisibility}}" />
                         </ui:CardControl>
 

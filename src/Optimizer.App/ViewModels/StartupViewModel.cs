@@ -169,18 +169,27 @@ public sealed partial class StartupRow : SwitchRow
     /// Hidden unless "Show Windows entries" is on: signed by Microsoft, or one of Windows' own entries whose file is not
     /// on this PC (<see cref="IsWindowsWithoutFile"/>), and nothing else needs a look.
     /// </summary>
-    public bool IsPlainMicrosoft => (IsMicrosoft || IsWindowsWithoutFile) && !Entry.Suspicious && !RunsScriptHost;
+    public bool IsPlainMicrosoft =>
+        (Entry.Kind == StartupKind.LogonTask ? IsWindowsTaskFile(IsMicrosoft, _signatureStatus, Entry.Target) : IsMicrosoft || IsWindowsWithoutFile)
+        && !Entry.Suspicious && !RunsScriptHost;
 
     /// <summary>
-    /// A place only Windows and administrators write to, naming a file this PC does not have: a task below
-    /// \Microsoft\Windows\ (ReconcileLanguageResources), a Known DLL of another architecture (_wowarmhw) or an Active
-    /// Setup component of the machine whose stub is no path at all ("U", "/UserInstall"), or Windows' own shell service
-    /// object WebCheck without its COM server. Nothing of another program
-    /// runs from it; a missing file of another program (a path in Program Files) still shows.
+    /// A task's file is Windows' own: signed by Microsoft, or the file of a task below \Microsoft\Windows\ that this PC
+    /// does not have (ReconcileLanguageResources). Services &amp; tasks hides tasks by this rule too
+    /// (<see cref="ServicesViewModel.CheckTask"/>), so both pages hide the same ones.
+    /// </summary>
+    internal static bool IsWindowsTaskFile(bool isMicrosoft, SignatureStatus? status, string? taskPath) =>
+        isMicrosoft || (status == SignatureStatus.NotFound && StartupScanner.IsWindowsTask(taskPath));
+
+    /// <summary>
+    /// A place only Windows and administrators write to, naming a file this PC does not have: a Known DLL of another
+    /// architecture (_wowarmhw) or an Active Setup component of the machine whose stub is no path at all ("U",
+    /// "/UserInstall"), or Windows' own shell service object WebCheck without its COM server (tasks:
+    /// <see cref="IsWindowsTaskFile"/>). Nothing of another program runs from it; a missing file of another program (a
+    /// path in Program Files) still shows.
     /// </summary>
     private bool IsWindowsWithoutFile => _signatureStatus == SignatureStatus.NotFound && Entry.Kind switch
     {
-        StartupKind.LogonTask => StartupScanner.IsWindowsTask(Entry.Target),
         StartupKind.KnownDll => true,
         StartupKind.ActiveSetup => Entry.Hive == Hive.Machine && Entry.Command is { } stub && stub.IndexOfAny(['\\', '.', ':']) < 0,
         StartupKind.ExplorerAddOn => StartupScanner.IsWindowsShellServiceObjectWithoutServer(Entry),

@@ -24,7 +24,6 @@
             <v:CountToVisibilityConverter x:Key="CountToVisibility" />
             <v:NullToBoolConverter x:Key="NullToBool" />
             <v:AllTrueConverter x:Key="AllTrue" />
-            <v:CountToVisibilityConverter x:Key="EmptyToVisibility" Invert="True" />
             <v:PageWidthConverter x:Key="PageWidth" />
             <v:EdgeMarginConverter x:Key="EdgeMargin" />
             <v:SameItemConverter x:Key="SameItem" />

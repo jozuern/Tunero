@@ -406,6 +406,14 @@ public sealed class StartupViewModelTests
         Assert.Null(row.ReadOnlyNote); // the link to Settings takes its place
         Assert.Equal(Loc.Instance["Startup_Enabled"], row.ReadOnlyState);
         Assert.False(Row(Entry(StartupKind.LogonTask, "Vendor Task"), Vendor).IsOwnTask);
+        // Only the prefix and a SID: a task that merely starts the same way keeps its own name.
+        foreach (var lookalike in new[] { @"\Tunero\Apply changes again Updater", path + " copy", path + @"\x" })
+        {
+            var other = Row(new StartupEntry(StartupKind.LogonTask, lookalike.TrimStart('\\'), @"C:\Users\Anna\x.exe", @"C:\Users\Anna\x.exe",
+                lookalike, Hive.Machine, true, $"task:{lookalike}") { Target = lookalike }, Vendor);
+            Assert.False(other.IsOwnTask, lookalike);
+            Assert.Equal(lookalike.TrimStart('\\'), other.DisplayName);
+        }
 
         var vm = new StartupViewModel(new FakePageHost(), null!, null!);
         vm.ShowRows([row]);

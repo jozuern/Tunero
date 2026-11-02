@@ -357,6 +357,9 @@ These apps are removed for all users and new accounts. Apps the Microsoft Store 
   <data name="Debloat_EdgeOpen" xml:space="preserve">
     <value>Open Installed apps</value>
   </data>
+  <data name="Debloat_EdgeOpenName" xml:space="preserve">
+    <value>Open Installed apps to remove Microsoft Edge</value>
+  </data>
   <data name="Debloat_EdgeOpened" xml:space="preserve">
     <value>Installed apps is open: choose Uninstall in the menu next to Microsoft Edge. Windows removes Edge itself; it does not let other programs do it.</value>
   </data>
@@ -1544,8 +1547,8 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Cleanup_RunClean" xml:space="preserve"><value>Clean up</value></data>
   <data name="Settings_ShowInFolder" xml:space="preserve"><value>Show in folder</value></data>
   <data name="Settings_OpenFolder" xml:space="preserve"><value>Open folder</value></data>
-  <data name="Settings_ShowLogName" xml:space="preserve"><value>Show the log file in its folder</value></data>
-  <data name="Settings_OpenDataName" xml:space="preserve"><value>Open the data folder</value></data>
+  <data name="Settings_ShowLogName" xml:space="preserve"><value>Show in folder: the log file</value></data>
+  <data name="Settings_OpenDataName" xml:space="preserve"><value>Open folder: the data folder</value></data>
   <data name="Changes_OtherPcs" xml:space="preserve"><value>Other PCs and new accounts</value></data>
   <data name="Search_Placeholder" xml:space="preserve"><value>Search the app (Ctrl+F)</value></data>
   <data name="Search_Empty" xml:space="preserve"><value>Nothing found. Try another word, for example a setting, a program or a service.</value></data>
@@ -2017,6 +2020,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Media_ChoicesNotRequest" xml:space="preserve"><value>The file was not loaded and nothing changed. It is not a Tunero install media choices file.</value></data>
   <data name="Media_ChoicesRefused" xml:space="preserve"><value>The file was not loaded and nothing changed. Problem with: {0}.</value></data>
   <data name="Media_ChoicesDropped" xml:space="preserve"><value>These saved choices no longer fit and stay at their defaults: {0}.</value></data>
+  <data name="Media_IsoEditionGone" xml:space="preserve"><value>The changed ISO file does not hold {0}, the edition chosen before. Check the edition before you build.</value></data>
   <data name="Media_ChoicesReset" xml:space="preserve"><value>The choices are back to the defaults, and the remembered ones are deleted.</value></data>
   <data name="Media_Field_appLanguage" xml:space="preserve"><value>App language</value></data>
   <data name="Media_Field_theme" xml:space="preserve"><value>Theme</value></data>

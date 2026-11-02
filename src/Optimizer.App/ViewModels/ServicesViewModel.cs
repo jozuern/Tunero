@@ -243,9 +243,8 @@ public sealed partial class ServicesViewModel(IPageHost owner, AppServices servi
         {
             var check = new TaskCheck(a.Command, a.Image, verify(a.Image), CommandLine.RunsUnverifiedScript(a.Command, PathExpander.Machine.Expand), a.UserOwnClass);
             first ??= check;
-            // The rule of StartupRow.IsPlainMicrosoft: Microsoft's file, or a file of Windows' own task that this PC lacks.
-            var windows = check.Signature.IsMicrosoft || (check.Signature.Status == SignatureStatus.NotFound && StartupScanner.IsWindowsTask(t.Path));
-            if (!windows || check.RunsScriptHost || check.UserOwnClass) return check;
+            if (!StartupRow.IsWindowsTaskFile(check.Signature.IsMicrosoft, check.Signature.Status, t.Path) || check.RunsScriptHost || check.UserOwnClass)
+                return check;
         }
         return first ?? new TaskCheck(null, null, verify(null), false);
     }

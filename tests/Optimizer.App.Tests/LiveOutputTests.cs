@@ -24,6 +24,19 @@ public sealed class LiveOutputTests
         Assert.Equal(2_000, lines.Distinct().Count());
     }
 
+    /// <summary>After the Stopped line nothing more is shown: a line the tool printed before it was ended can arrive late.</summary>
+    [Fact]
+    public void NothingFollowsTheLastLine()
+    {
+        var shown = "";
+        var output = new LiveOutput(text => shown = text);
+        output.Add("Verification 10.0% complete.");
+        output.End("Stopped.");
+        output.Add("late");
+        output.AddRange(["later"]);
+        Assert.Equal("Verification 10.0% complete.\nStopped.", shown);
+    }
+
     [Fact]
     public async Task ReportedLinesReachTheBoxWithTheLineCallback()
     {

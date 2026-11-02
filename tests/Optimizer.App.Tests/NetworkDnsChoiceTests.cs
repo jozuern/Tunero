@@ -51,6 +51,34 @@ public sealed class NetworkDnsChoiceTests : IDisposable
         await SingleThread.Until(() => Volatile.Read(ref notices) >= 2, "the DNS choice to end");
     }
 
+    /// <summary>
+    /// The servers in use are read once per scan: a rebuild for a switch, Ignore or the language shows the ones already
+    /// read (asking every adapter each time was the cost), and the next scan reads them again.
+    /// </summary>
+    [Fact]
+    public async Task TheServersInUseAreReadOncePerScan()
+    {
+        var reads = 0;
+        var page = new NetworkViewModel(_fx.Host, _fx.Services)
+        {
+            CurrentServers = () =>
+            {
+                Interlocked.Increment(ref reads);
+                return [System.Net.IPAddress.Parse("9.9.9.9")];
+            },
+        };
+        await page.EnsureLoadedAsync();
+        await SingleThread.Until(() => page.CurrentDns == "9.9.9.9", "the first read");
+        page.Rebuild();
+        page.Rebuild();
+        Assert.Equal(1, Volatile.Read(ref reads));
+        Assert.Equal("9.9.9.9", page.CurrentDns);
+
+        _fx.Host.DeviceStates = new List<TweakStatus>();   // a new scan's list (not [], which may be the same empty array)
+        page.Rebuild();
+        await SingleThread.Until(() => Volatile.Read(ref reads) == 2, "the read after the scan");
+    }
+
     [Fact]
     public async Task ChoosingAnotherPresetUndoesTheOldOneFirst()
     {
