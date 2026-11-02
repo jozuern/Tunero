@@ -279,8 +279,8 @@ public sealed class CommandLineMediaTests : IDisposable
         _catalog = () => throw new MediaDownloadException("cab", "products.cab is not signed by Microsoft.");
         Assert.Equal(CommandLineApply.MediaBuildFailed, await Run(Request()));
         Assert.Empty(_requests);
-        Assert.Contains("Catalog", _output.ToString());
-        Assert.Contains("cab", _output.ToString());
+        // The failure line itself names the stage and the step ("Catalog started" and the message alone would not).
+        Assert.Contains("Build failed at stage Catalog, step cab: products.cab is not signed by Microsoft.", _output.ToString());
     }
 
     [Fact]
@@ -299,7 +299,9 @@ public sealed class CommandLineMediaTests : IDisposable
         _build = (_, _) => throw new ArgumentException("deep inside the build");
         Assert.Equal(CommandLineApply.Error, await Run(Request()));
         Assert.Contains("deep inside the build", _output.ToString());
-        Assert.Contains(Log.Snapshot(Log.MaxEntries), e => e.Level == LogLevel.Error && e.Source == "cli" && e.Message == "build media failed");
+        // The entry of this run's exception: another test logs the same message into the process-wide log.
+        Assert.Contains(Log.Snapshot(Log.MaxEntries), e => e.Level == LogLevel.Error && e.Source == "cli" && e.Message == "build media failed"
+            && e.Data?.Contains("deep inside the build", StringComparison.Ordinal) == true);
     }
 
     [Fact]

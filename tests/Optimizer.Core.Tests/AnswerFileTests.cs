@@ -8,8 +8,9 @@ public class AnswerFileTests
 {
     private static readonly XNamespace Ns = "urn:schemas-microsoft-com:unattend";
 
+    /// <summary>Every language field with its own value, so a field written into another's element fails a test.</summary>
     private static AnswerChoices Choices(bool skip = false, bool unsupported = false, bool tunero = false, string? name = "Josh", string arch = "amd64") =>
-        new(arch, "de-DE", "0407:00000407", "de-DE", "de-DE", name, skip, unsupported, tunero);
+        new(arch, "en-US", "0407:00000407", "de-DE", "de-AT", name, skip, unsupported, tunero);
 
     private static XDocument Parse(AnswerChoices c) => XDocument.Parse(AnswerFile.Build(c));
 
@@ -27,8 +28,11 @@ public class AnswerFileTests
         Assert.Equal("windowsPE", (string?)pass.Attribute("pass"));
         var comp = Assert.Single(pass.Elements(Ns + "component"));
         Assert.Equal("Microsoft-Windows-International-Core-WinPE", (string?)comp.Attribute("name"));
-        Assert.Equal("de-DE", (string?)comp.Element(Ns + "SetupUILanguage")!.Element(Ns + "UILanguage"));
+        Assert.Equal("en-US", (string?)comp.Element(Ns + "SetupUILanguage")!.Element(Ns + "UILanguage"));
         Assert.Equal("0407:00000407", (string?)comp.Element(Ns + "InputLocale"));
+        Assert.Equal("de-DE", (string?)comp.Element(Ns + "SystemLocale"));
+        Assert.Equal("en-US", (string?)comp.Element(Ns + "UILanguage"));
+        Assert.Equal("de-AT", (string?)comp.Element(Ns + "UserLocale"));
     }
 
     [Fact]
@@ -73,8 +77,8 @@ public class AnswerFileTests
         var ic = Component(Pass(Parse(Choices(skip: true)), "oobeSystem"), "Microsoft-Windows-International-Core");
         Assert.Equal("0407:00000407", (string?)ic.Element(Ns + "InputLocale"));
         Assert.Equal("de-DE", (string?)ic.Element(Ns + "SystemLocale"));
-        Assert.Equal("de-DE", (string?)ic.Element(Ns + "UserLocale"));
-        Assert.Equal("de-DE", (string?)ic.Element(Ns + "UILanguage"));
+        Assert.Equal("de-AT", (string?)ic.Element(Ns + "UserLocale"));
+        Assert.Equal("en-US", (string?)ic.Element(Ns + "UILanguage"));
     }
 
     [Fact]

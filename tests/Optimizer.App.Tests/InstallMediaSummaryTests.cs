@@ -155,6 +155,8 @@ public sealed class InstallMediaSummaryTests
         Assert.Contains(review.Changes, l => l.Target == Loc.Instance["Media_ReservedTitle"] && l.After == Loc.Instance["Media_Review_On"]);
         Assert.Contains(review.Warnings, w => w.Contains(Loc.Instance["Media_EncryptionText"], StringComparison.Ordinal));
         Assert.Contains(review.Warnings, w => w.Contains(Loc.Instance["Media_ReservedText"], StringComparison.Ordinal));
+        // The review says what the folded card says too: the value is not documented and not yet tested.
+        Assert.Contains(review.Warnings, w => w.Contains(Loc.Instance["Media_ReservedDetail"], StringComparison.Ordinal));
     }
 
     [Fact]
@@ -168,6 +170,7 @@ public sealed class InstallMediaSummaryTests
         var review = InstallMediaSummary.Review(on, "Windows 11 Pro", null, 1);
         Assert.Contains(review.Changes, l => l.Target == Loc.Instance["Media_UpgradesTitle"] && l.After == Loc.Instance["Media_Review_On"]);
         Assert.Contains(review.Warnings, w => w.Contains(Loc.Instance["Media_UpgradesText"], StringComparison.Ordinal));
+        Assert.Contains(review.Warnings, w => w.Contains(Loc.Instance["Media_UpgradesDetail"], StringComparison.Ordinal));
     }
 
     [Fact]

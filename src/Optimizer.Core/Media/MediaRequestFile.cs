@@ -97,7 +97,9 @@ public sealed record MediaRequestFile(
 
     /// <summary>
     /// Reads and checks a request file. <paramref name="keyboards"/> are the ones the page offers (Windows' list). Throws
-    /// <see cref="MediaRequestFileException"/> naming the first field that is missing or wrong.
+    /// <see cref="MediaRequestFileException"/> naming the first field that is missing or wrong. Touches the file system
+    /// (whether an own ISO exists, which may lie on a network share, and the output's folder): the window calls it off its
+    /// thread.
     /// </summary>
     public static MediaRequestFile Parse(string json, IReadOnlyList<InputProfile> keyboards)
     {

@@ -55,6 +55,13 @@ public sealed record InstallMediaSystem
     /// <summary>Reads what an own ISO holds (attaches it read-only); throws <see cref="IsoAttachException"/>.</summary>
     public Func<string, CancellationToken, Task<IsoInfo>> ReadIso { get; init; } = (_, _) => throw new NotSupportedException();
 
+    /// <summary>
+    /// The length of the own ISO file, or null when it is not there or cannot be read; off the window's thread, since an
+    /// ISO on a share that went away blocks the caller until the SMB client gives up. The page asks once per read and when
+    /// it is shown, never while it refreshes.
+    /// </summary>
+    public Func<string, Task<long?>> IsoLength { get; init; } = path => Task.Run(() => LengthOf(path));
+
     /// <summary>The apps one image of an own ISO holds, as full package names (attaches it read-only and lists the image with DISM).</summary>
     public Func<string, int, CancellationToken, Task<IReadOnlyList<string>>> ReadIsoApps { get; init; } = (_, _, _) => throw new NotSupportedException();
 
@@ -151,6 +158,20 @@ public sealed record InstallMediaSystem
         if (!build.HasLeftovers(keepSaved)) return;
         await build.CleanLeftoversAsync(ct, keepSaved);
     }, ct);
+
+    /// <summary>The length of a file, or null when it is not there or cannot be read (the thread waits while a share answers).</summary>
+    internal static long? LengthOf(string path)
+    {
+        try
+        {
+            var file = new FileInfo(path);
+            return file.Exists ? file.Length : null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            return null;
+        }
+    }
 
     private static long? FreeBytesOf(string path)
     {
@@ -274,6 +295,16 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     private IsoInfo? _isoInfo;
     private string? _isoProblem;
     private CancellationTokenSource? _isoRead;
+
+    /// <summary>
+    /// The own ISO's length as the last look at the file found it (<see cref="InstallMediaSystem.IsoLength"/>, off the
+    /// window's thread); null when it is not there. Build, its note and the space use this, so no refresh asks the file
+    /// itself: on a share that went away each such call would hang the window.
+    /// </summary>
+    private long? _isoBytes;
+
+    /// <summary>Counts the reads of the own ISO: a look at the file that a newer pick overtook is dropped.</summary>
+    private int _isoGeneration;
 
     /// <summary>The apps of each own ISO image read so far, by path and index: package names, or null when the read failed.</summary>
     private readonly Dictionary<(string Iso, int Index), IReadOnlyList<string>?> _imageApps = [];
@@ -566,7 +597,7 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         Changed();
     }
 
-    /// <summary>Expert, Preview: PCs installed from the ISO accept later upgrades without the hardware checks (a registry value written into install.wim; needs <see cref="AllowUnsupported"/>).</summary>
+    /// <summary>Expert, not yet tested: PCs installed from the ISO accept later upgrades without the hardware checks (a registry value written into install.wim; needs <see cref="AllowUnsupported"/>).</summary>
     [ObservableProperty] private bool _allowUnsupportedUpgrades;
 
     partial void OnAllowUnsupportedUpgradesChanged(bool value) => Changed();
@@ -732,10 +763,12 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     /// <summary>The start cleanup of earlier builds is still running (a build waits for it).</summary>
     private bool IsCleaning => _cleanup is { IsCompleted: false };
 
-    /// <summary>The page was shown: the free space may have changed since (one drive query).</summary>
+    /// <summary>The page was shown: the free space may have changed since (one drive query), and the own ISO file too (looked at off the window's thread).</summary>
     public void PageShown()
     {
-        if (WasLoaded) RefreshBuild();
+        if (!WasLoaded) return;
+        RefreshBuild();
+        _ = RefreshIsoFileAsync();
     }
 
     private void RefreshBuild()
@@ -865,7 +898,9 @@ public sealed partial class InstallMediaViewModel : PageViewModel
 
     /// <summary>
     /// The Strings key of the first thing that keeps Build off, or null. Without <paramref name="space"/> the free space is
-    /// not compared with a whole build's: Resume goes on in the saved build, which already holds most of it.
+    /// not compared with a whole build's: a resume needs only what the saved build still has to write, which the engine
+    /// checks once it has opened the saved build (MediaBuild's CheckResumeSpace). Never touches the own ISO file: that was
+    /// looked at off the window's thread (<see cref="_isoBytes"/>).
     /// </summary>
     private string? Problem(bool space = true)
     {
@@ -881,8 +916,10 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         }
         else
         {
-            if (IsoPath is not { } iso || (!_demo && !File.Exists(iso))) return "Media_NeedsIso";
+            if (IsoPath is null) return "Media_NeedsIso";
             if (IsReadingIso || IsReadingApps) return "Media_ReadingIso";
+            // The read found no file there (the demo's sample ISO is no file).
+            if (!_demo && _isoBytes is null) return "Media_NeedsIso";
             if (_isoProblem is { } problem) return problem;
             // An install image without a readable image list: the read failed, nothing says the media is wrong.
             if (_isoInfo is { ImageFile: not null, Images.Count: 0 }) return "Media_IsoReadFailed";
@@ -951,15 +988,8 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         if (Source() is not { } source) return null;
         var compression = SmallerIso ? MediaCompression.Recovery : MediaCompression.Wim;
         if (source.Download is { } esd) return MediaBuild.NeededBytes(source, esd.Size, compression);
-        try
-        {
-            var info = new FileInfo(source.IsoPath!);
-            return info.Exists ? MediaBuild.NeededBytes(source, info.Length, compression) : null;
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
-        {
-            return null;
-        }
+        // The length the read found, never the file itself (this runs on every refresh).
+        return _isoBytes is { } length ? MediaBuild.NeededBytes(source, length, compression) : null;
     }
 
     // ---- loading and lists ----
@@ -1261,9 +1291,14 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         OutputPath = path;
     }
 
+    /// <summary>
+    /// The first name not taken in <paramref name="folder"/>. A folder that is not on a local fixed drive (Downloads
+    /// redirected to a share) is not asked: this runs on every refresh, and Build refuses that output by its spelling anyway.
+    /// </summary>
     private static string FreeName(string folder, string stem)
     {
         var path = Path.Combine(folder, stem + ".iso");
+        if (!MediaChoices.IsLocalOutput(path)) return path;
         for (var n = 2; File.Exists(path) && n < 100; n++) path = Path.Combine(folder, $"{stem} ({n}).iso");
         return path;
     }
@@ -1271,20 +1306,23 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     // ---- own ISO ----
 
     /// <summary>
-    /// Reads what the own ISO holds (attaches it read-only, reads the install image's list, detaches). Without
-    /// administrator rights nothing is attached: Build says so anyway. A newer pick replaces a read that still runs.
+    /// Looks at the own ISO file off the window's thread (whether it is there, and its length for the space), then reads
+    /// what it holds (attaches it read-only, reads the install image's list, detaches). Without administrator rights
+    /// nothing is attached: Build says so anyway. A newer pick replaces a read that still runs.
     /// </summary>
     private async Task ReadIsoAsync(string? path)
     {
         _isoRead?.Cancel();
         _isoInfo = null;
         _isoProblem = null;
+        _isoBytes = null;
+        _isoGeneration++;
         // Picked again (perhaps changed since): its images are read again, their apps too.
         foreach (var key in _imageApps.Keys.Where(k => k.Iso == path).ToList()) _imageApps.Remove(key);
         // A new ISO starts from this PC's edition: an image index means nothing in another ISO.
         Edition = null;
         ShowEditions();
-        if (path is null || (!_system.Elevated && !_demo)) return;
+        if (path is null) return;
         using var read = new CancellationTokenSource();
         _isoRead = read;
         IsReadingIso = true;
@@ -1293,7 +1331,16 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         string? problem = null;
         try
         {
-            info = await _system.ReadIso(path, read.Token);
+            // The demo's sample ISO is no file: nothing is looked at.
+            if (!_demo)
+            {
+                var bytes = await _system.IsoLength(path);
+                read.Token.ThrowIfCancellationRequested();
+                _isoBytes = bytes;
+                OnPropertyChanged(nameof(NeededText));
+            }
+            // A file that is not there is not attached: Build names the missing ISO.
+            if ((_demo || _isoBytes is not null) && (_system.Elevated || _demo)) info = await _system.ReadIso(path, read.Token);
         }
         catch (OperationCanceledException) when (read.IsCancellationRequested)
         {
@@ -1327,6 +1374,37 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     }
 
     partial void OnIsReadingIsoChanged(bool value) => Changed();
+
+    /// <summary>
+    /// Looks at the own ISO file again, off the window's thread: when the page is shown and before Build and Resume (it may
+    /// have been deleted, replaced or its share gone since the read). A file that was missing at the read and is there now
+    /// is read. Nothing while a read runs (it looks itself), while a build runs (its choices stay as they are) or in the
+    /// demo; a newer pick drops what this found.
+    /// </summary>
+    private async Task RefreshIsoFileAsync()
+    {
+        if (UseDownload || _demo || IsReadingIso || IsBuilding || IsoPath is not { } path) return;
+        var generation = _isoGeneration;
+        var before = _isoBytes;
+        long? bytes;
+        try
+        {
+            bytes = await _system.IsoLength(path);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            Log.Warn("media", $"the own ISO could not be looked at: {ex.GetType().Name}: {ex.Message}");
+            bytes = null;
+        }
+        if (generation != _isoGeneration || IsoPath != path || IsBuilding || bytes == before) return;
+        if (before is null)
+        {
+            IsoLoading = ReadIsoAsync(path);
+            return;
+        }
+        _isoBytes = bytes;
+        Changed();
+    }
 
     // ---- commands ----
 
@@ -1466,6 +1544,8 @@ public sealed partial class InstallMediaViewModel : PageViewModel
     [RelayCommand(CanExecute = nameof(CanBuild))]
     private async Task BuildAsync()
     {
+        // The own ISO may be gone since it was read: Build then says so (off the window's thread, as every look at it).
+        await RefreshIsoFileAsync();
         if (Request() is not { } request || ReviewRequest() is not { } review) return;
         // The review shows every choice once more; cancelling it builds nothing.
         if (_dialogs.ConfirmApply(review) is null) return;
@@ -1514,11 +1594,19 @@ public sealed partial class InstallMediaViewModel : PageViewModel
                 HasFailed = false;
                 ResumeNote = null;
                 StartStages(MediaBuild.PlannedStages(request), resumesAt);
-                // The banner: the stage, its percentage, and the time the build has taken so far (refreshed every second).
+                // The banner: "4 of 8" as the stage list counts (the stages a resume took from the saved build count as
+                // done), the stage with its percentage, and the time the build has taken so far (refreshed every second).
                 var clock = Stopwatch.StartNew();
                 (double? Percent, string Stage) last = (null, Loc.Instance["Media_Building"]);
+                var counted = -1;
                 void Show()
                 {
+                    if (_currentStage is { } row && Stages.IndexOf(row) is var index and >= 0 && index != counted)
+                    {
+                        counted = index;
+                        scope.Step(index, Stages.Count, null);
+                    }
+                    // The bar shows the stage's own percentage; the count keeps the place in the build.
                     scope.Report(last.Percent, Loc.Instance.Format("Media_Progress", last.Stage, Elapsed(clock.Elapsed)));
                     ShowStageClock(clock.Elapsed);
                 }
@@ -1879,12 +1967,16 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         MediaRequestFile? file = null;
         try
         {
-            if (_system.SavedChoices(saved.WorkFolder) is { } text) file = MediaRequestFile.ParseKeepingWhatFits(text, _keyboardProfiles);
+            // Off the window's thread: the parse looks for an own ISO, which may lie on a share that went away.
+            var keyboards = _keyboardProfiles;
+            if (_system.SavedChoices(saved.WorkFolder) is { } text) file = await Task.Run(() => MediaRequestFile.ParseKeepingWhatFits(text, keyboards));
         }
         catch (MediaRequestFileException ex)
         {
             Log.Warn("media", $"the saved build's choices were not used: {ex.Message}");
         }
+        // A build that started, or whose review is open, while the saved choices were checked keeps its choices.
+        if (IsBuilding || BuildCommand.IsRunning) return;
         if (file is null)
         {
             ResumeNote = Loc.Instance["Media_ResumeInvalid"];
@@ -1894,6 +1986,12 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         ShowDropped(ApplyChoices(file));
         await IsoLoading;
         await AppsLoading;
+        // The same ISO is not read again: it is looked at once more (off the window's thread), as before Build.
+        await RefreshIsoFileAsync();
+        await IsoLoading;
+        await AppsLoading;
+        // The same for a build clicked while the ISO was looked at: its review shows the choices it builds.
+        if (IsBuilding || BuildCommand.IsRunning) return;
         // A value that no longer fits (named in the choices note) makes another request: the engine would refuse it.
         if (_droppedNames.Count > 0)
         {
@@ -2001,16 +2099,17 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         }
     }
 
-    /// <summary>Keeps the choices of a build that succeeded for the next visit. A failure to write is logged and costs nothing else.</summary>
+    /// <summary>
+    /// Keeps the choices of a build that succeeded for the next visit, flushed to the disk before the rename (a power loss
+    /// leaves the old file or the new one). A failure to write is logged and costs nothing else.
+    /// </summary>
     private void Remember(MediaChoices choices)
     {
         try
         {
             var path = _system.ChoicesFile();
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            var temp = path + ".tmp";
-            File.WriteAllText(temp, MediaRequestFile.FromChoices(choices, choices.Tunero?.Profile, choices.Tunero?.Theme).ToJson());
-            File.Move(temp, path, overwrite: true);
+            DurableFile.WriteAllText(path, MediaRequestFile.FromChoices(choices, choices.Tunero?.Profile, choices.Tunero?.Theme).ToJson());
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
         {
@@ -2198,20 +2297,24 @@ public sealed partial class InstallMediaViewModel : PageViewModel
         }
     }
 
-    /// <summary>Loads a request file as the page checks it: a file with a value the page would refuse changes nothing.</summary>
+    /// <summary>
+    /// Loads a request file as the page checks it: a file with a value the page would refuse changes nothing. The check
+    /// runs off the window's thread: it looks for an own ISO the file names, which may lie on a share that went away.
+    /// </summary>
     [RelayCommand(CanExecute = nameof(CanEdit))]
-    private void LoadChoices()
+    private async Task LoadChoicesAsync()
     {
         if (_dialogs.PickOpenFile(Loc.Instance["Media_ChoicesFiles"], ".json") is not { } path) return;
-        MediaRequestFile file;
+        MediaRequestFile? file;
         try
         {
-            if (ReadChoicesFile(path) is not { } text)
+            var keyboards = _keyboardProfiles;
+            file = await Task.Run(() => ReadChoicesFile(path) is { } text ? MediaRequestFile.Parse(text, keyboards) : null);
+            if (file is null)
             {
                 ShowChoicesNote(Loc.Instance.Format("Media_ChoicesUnreadable", path), InfoBarSeverity.Warning);
                 return;
             }
-            file = MediaRequestFile.Parse(text, _keyboardProfiles);
         }
         catch (MediaRequestFileException ex)
         {
@@ -2227,6 +2330,8 @@ public sealed partial class InstallMediaViewModel : PageViewModel
             ShowChoicesNote(Loc.Instance.Format("Media_ChoicesUnreadable", path), InfoBarSeverity.Warning);
             return;
         }
+        // A build that started, or whose review is open, while the file was checked keeps its choices; so does a resume.
+        if (!CanEdit || BuildCommand.IsRunning || ResumeCommand.IsRunning) return;
         _droppedNames = [];
         var dropped = ApplyChoices(file);
         if (dropped.Count > 0) ShowDropped(dropped);

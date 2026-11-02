@@ -97,6 +97,8 @@ public sealed class InstallMediaViewModelTests : IDisposable
         Keyboards = () => Keyboards,
         ChoicesFile = () => RememberedFile,
         ReadIso = (_, _) => Task.FromResult(_iso),
+        // The real look at the file, without the thread hop: each test goes on only once the read ended.
+        IsoLength = path => Task.FromResult(InstallMediaSystem.LengthOf(path)),
         CopyText = text => _clipboard = text,
         ShowInExplorer = path => _shown.Add(path),
     };
@@ -221,6 +223,102 @@ public sealed class InstallMediaViewModelTests : IDisposable
         Assert.Equal(Loc.Instance["Media_NeedsIso"], media.BuildNote);
         media = await WithOwnIso(media);
         Assert.True(media.CanBuild);
+    }
+
+    /// <summary>
+    /// The own ISO file is looked at once per read and never by a refresh: on a share that went away each look waits for
+    /// the SMB timeout, and the page refreshes many times per click. While the look runs, the page goes on and says it reads.
+    /// </summary>
+    [Fact]
+    public async Task TheOwnIsoFileIsLookedAtOncePerReadNotOnEveryRefresh()
+    {
+        var looks = 0;
+        var answer = new TaskCompletionSource<long?>();
+        var media = await Loaded(Media(system: System() with
+        {
+            IsoLength = _ =>
+            {
+                looks++;
+                return answer.Task;
+            },
+        }));
+        media.UseDownload = false;
+        media.IsoPath = Path.Combine(_root, "Win11.iso");   // no such file: only the look says what is there
+        Assert.True(media.IsReadingIso);
+        Assert.Equal(Loc.Instance["Media_ReadingIso"], media.BuildNote);
+        answer.SetResult(3L << 30);
+        await media.IsoLoading;
+        Assert.True(media.CanBuild);
+        Assert.Contains(ByteSize.Format(MediaBuild.NeededBytes(new MediaSource(null, media.IsoPath, null), 3L << 30)), media.NeededText);
+
+        media.SmallerIso = true;
+        media.SkipSetup = false;
+        media.AccountNameText = "Berta";
+        media.RemoveApps = false;
+        media.AllowUnsupported = true;
+        _ = media.SummaryText + media.BarNote + media.NeededText + media.CanBuild;
+        Assert.Equal(1, looks);
+    }
+
+    /// <summary>An ISO that is gone at the read is not attached: Build names the missing file.</summary>
+    [Fact]
+    public async Task AMissingIsoIsNotAttached()
+    {
+        var reads = 0;
+        var media = await Loaded(Media(system: System() with
+        {
+            ReadIso = (_, _) =>
+            {
+                reads++;
+                return Task.FromResult(_iso);
+            },
+        }));
+        media.UseDownload = false;
+        media.IsoPath = Path.Combine(_root, "Gone.iso");
+        await media.IsoLoading;
+        Assert.Equal(0, reads);
+        Assert.False(media.CanBuild);
+        Assert.Equal(Loc.Instance["Media_NeedsIso"], media.BuildNote);
+        Assert.Null(media.NeededText);
+    }
+
+    /// <summary>
+    /// An ISO deleted after its read: the page notices when it is shown again or when Build is clicked (looked at off the
+    /// window's thread), and Build then asks nothing. One that is back is read again.
+    /// </summary>
+    [Fact]
+    public async Task AnIsoDeletedAfterItsReadIsNoticedWhenThePageIsShownOrBuildIsClicked()
+    {
+        var media = await WithOwnIso();
+        var iso = media.IsoPath!;
+        Assert.True(media.CanBuild);
+        File.Delete(iso);
+        Assert.True(media.CanBuild);   // a refresh does not ask the file
+        media.PageShown();
+        Assert.False(media.CanBuild);
+        Assert.Equal(Loc.Instance["Media_NeedsIso"], media.BuildNote);
+
+        File.WriteAllText(iso, "iso");
+        media.PageShown();
+        await media.IsoLoading;
+        Assert.True(media.CanBuild);
+
+        File.Delete(iso);
+        await media.BuildCommand.ExecuteAsync(null);
+        Assert.Equal(0, _dialogs.ConfirmApplyCalls);
+        Assert.Empty(_requests);
+        Assert.Equal(Loc.Instance["Media_NeedsIso"], media.BuildNote);
+    }
+
+    /// <summary>A Downloads folder redirected to a share is not asked for a free name (each refresh would wait for the share); Build refuses it by its spelling.</summary>
+    [Fact]
+    public async Task ADownloadsFolderOnAShareIsNotAskedForAFreeName()
+    {
+        const string share = @"\\tunero-test.invalid\home\Downloads";
+        var media = await WithCatalog(Media(system: System() with { ReadPc = () => new ThisPcFacts("Professional", false, "Anna", "de-AT", share) }));
+        Assert.Equal(share, Path.GetDirectoryName(media.OutputPath));
+        Assert.DoesNotContain("(2)", media.OutputPath);
+        Assert.Equal(Loc.Instance["Media_OutputNotLocal"], media.BuildNote);
     }
 
     /// <summary>The own ISO is read before the build: its editions are offered, with its build, language and architecture.</summary>
@@ -645,7 +743,10 @@ public sealed class InstallMediaViewModelTests : IDisposable
 
     private static MediaStageRow Row(InstallMediaViewModel media, MediaStage stage) => media.Stages.Single(s => s.Stage == stage);
 
-    /// <summary>Progress arrives on the window's context after the build reported it: wait for the row to show it.</summary>
+    /// <summary>
+    /// In the window, progress reaches the rows through the dispatcher; without one (these tests) WindowProgress applies it
+    /// before Report returns, so this only guards against a later change to that.
+    /// </summary>
     private static async Task WaitFor(Func<bool> condition)
     {
         for (var i = 0; i < 2000 && !condition(); i++) await Task.Delay(10);
@@ -711,6 +812,39 @@ public sealed class InstallMediaViewModelTests : IDisposable
         Assert.Equal(MediaStageState.Stopped, Row(media, MediaStage.Apps).State);
         Assert.Equal(MediaStageState.Done, Row(media, MediaStage.Unpack).State);
         Assert.All(media.Stages.SkipWhile(s => s.Stage != MediaStage.Apps).Skip(1), s => Assert.Equal(MediaStageState.NotRun, s.State));
+    }
+
+    /// <summary>
+    /// The window's banner (all other pages show) counts the stages as the stage list does ("4 of 8"), while its bar and
+    /// line show the running stage's percentage and item.
+    /// </summary>
+    [Fact]
+    public async Task TheBannerCountsTheStages()
+    {
+        var started = new TaskCompletionSource();
+        _reports = p =>
+        {
+            Begin(p, MediaStage.Download, MediaStage.Check, MediaStage.Unpack, MediaStage.Apps);
+            p.Report(new MediaProgress(MediaStage.Apps, 50, "Microsoft.BingNews"));
+        };
+        _build = async (_, ct) =>
+        {
+            started.SetResult();
+            await Task.Delay(Timeout.Infinite, ct);
+            return "";
+        };
+        var media = await WithCatalog();
+        var build = media.BuildCommand.ExecuteAsync(null);
+        await started.Task;
+        await WaitFor(() => media.Stages.Count > 0 && Row(media, MediaStage.Apps).State == MediaStageState.Running);
+        var work = _host.Runner.Work;
+        var apps = media.Stages.IndexOf(Row(media, MediaStage.Apps));
+        Assert.Equal(3, apps);
+        Assert.Equal(Loc.Instance.Format("Work_Count", apps + 1, media.Stages.Count), work.Count);
+        Assert.Equal(50, work.Value);
+        Assert.StartsWith($"{Loc.Instance["Media_Stage_Apps"]}: Microsoft.BingNews", work.Detail);
+        await media.StopAndWaitAsync();
+        await build;
     }
 
     /// <summary>The engine reports Cleanup before it rethrows a Stop or a failure: the running row still ends Stopped or Failed.</summary>
@@ -1429,7 +1563,7 @@ public sealed class InstallMediaViewModelTests : IDisposable
         json.Remove("language");
         json["edition"] = "Core";
         _dialogs.OpenFile = Write(json, "mine.json");
-        media.LoadChoicesCommand.Execute(null);
+        await media.LoadChoicesCommand.ExecuteAsync(null);
 
         reading.SetResult(_iso);
         await media.IsoLoading;
@@ -1468,7 +1602,7 @@ public sealed class InstallMediaViewModelTests : IDisposable
         var json = Saved();
         json["edition"] = 5;
         _dialogs.OpenFile = Write(json, "bad.json");
-        media.LoadChoicesCommand.Execute(null);
+        await media.LoadChoicesCommand.ExecuteAsync(null);
         Assert.Equal(InfoBarSeverity.Warning, media.ChoicesNoteSeverity);
         Assert.Contains(Loc.Instance["Media_Field_edition"], media.ChoicesNote);
         Assert.DoesNotContain("must be", media.ChoicesNote);
@@ -1477,28 +1611,28 @@ public sealed class InstallMediaViewModelTests : IDisposable
         Assert.False(media.AllowUnsupported);
 
         _dialogs.OpenFile = Path.Combine(_root, "missing.json");
-        media.LoadChoicesCommand.Execute(null);
+        await media.LoadChoicesCommand.ExecuteAsync(null);
         Assert.Contains("missing.json", media.ChoicesNote);
 
         // Not a request file at all: its own sentence. German names the field in German.
         File.WriteAllText(Path.Combine(_root, "junk.json"), "[1]");
         _dialogs.OpenFile = Path.Combine(_root, "junk.json");
-        media.LoadChoicesCommand.Execute(null);
+        await media.LoadChoicesCommand.ExecuteAsync(null);
         Assert.Equal(Loc.Instance["Media_ChoicesNotRequest"], media.ChoicesNote);
         Loc.Instance.SetLanguage("de");
         _dialogs.OpenFile = Path.Combine(_root, "bad.json");
-        media.LoadChoicesCommand.Execute(null);
+        await media.LoadChoicesCommand.ExecuteAsync(null);
         Assert.Contains("Problem bei", media.ChoicesNote);
         json["theme"] = 5;
         json["edition"] = "Core";
         _dialogs.OpenFile = Write(json, "bad3.json");
-        media.LoadChoicesCommand.Execute(null);
+        await media.LoadChoicesCommand.ExecuteAsync(null);
         Assert.Contains("Problem bei: Design.", media.ChoicesNote);
         json.Remove("theme");
         json["skipSetup"]!["region"] = 5;
         json["edition"] = "Core";
         _dialogs.OpenFile = Write(json, "bad2.json");
-        media.LoadChoicesCommand.Execute(null);
+        await media.LoadChoicesCommand.ExecuteAsync(null);
         Assert.Contains("Konto und Einrichtungsfragen", media.ChoicesNote);
         Assert.DoesNotContain("must be", media.ChoicesNote);
     }
@@ -1519,7 +1653,7 @@ public sealed class InstallMediaViewModelTests : IDisposable
     {
         var media = await WithCatalog();
         _dialogs.OpenFile = Write(Saved(), "mine.json");
-        media.LoadChoicesCommand.Execute(null);
+        await media.LoadChoicesCommand.ExecuteAsync(null);
         Assert.Equal(InfoBarSeverity.Success, media.ChoicesNoteSeverity);
         Assert.Contains("mine.json", media.ChoicesNote);
         Assert.Equal("Berta", media.AccountNameText);
@@ -1574,7 +1708,7 @@ public sealed class InstallMediaViewModelTests : IDisposable
         var json = Saved();
         json["compression"] = "recovery";
         _dialogs.OpenFile = Write(json, "smaller.json");
-        media.LoadChoicesCommand.Execute(null);
+        await media.LoadChoicesCommand.ExecuteAsync(null);
         Assert.True(media.SmallerIso);
 
         media.ResetChoicesCommand.Execute(null);
@@ -1653,7 +1787,7 @@ public sealed class InstallMediaViewModelTests : IDisposable
         Assert.DoesNotContain(media.PartRows, r => r.IsChecked);
 
         _dialogs.OpenFile = _dialogs.SaveFile;
-        media.LoadChoicesCommand.Execute(null);
+        await media.LoadChoicesCommand.ExecuteAsync(null);
         Assert.True(media.RemoveParts);
         Assert.Equal(["recall", "speech"], media.PartRows.Where(r => r.IsChecked).Select(r => r.Key).Order(StringComparer.Ordinal));
     }
@@ -1693,7 +1827,7 @@ public sealed class InstallMediaViewModelTests : IDisposable
         json["preventDeviceEncryption"] = true;
         json["noReservedStorage"] = true;
         _dialogs.OpenFile = Write(json, "settings.json");
-        media.LoadChoicesCommand.Execute(null);
+        await media.LoadChoicesCommand.ExecuteAsync(null);
         Assert.True(media.PreventDeviceEncryption);
         Assert.True(media.NoReservedStorage);
 
@@ -1728,7 +1862,7 @@ public sealed class InstallMediaViewModelTests : IDisposable
         json["allowUnsupported"] = true;
         json["allowUnsupportedUpgrades"] = true;
         _dialogs.OpenFile = Write(json, "upgrades-in.json");
-        media.LoadChoicesCommand.Execute(null);
+        await media.LoadChoicesCommand.ExecuteAsync(null);
         Assert.True(media.AllowUnsupportedUpgrades);
     }
 
@@ -1887,7 +2021,7 @@ public sealed class InstallMediaViewModelTests : IDisposable
             var defaults = SavedNow(media, $"defaults{step}.json");
 
             _dialogs.OpenFile = Write(changed, $"changed{step}.json");
-            media.LoadChoicesCommand.Execute(null);
+            await media.LoadChoicesCommand.ExecuteAsync(null);
             await media.IsoLoading;
             await media.AppsLoading;
             if (media.ChoicesNoteSeverity != InfoBarSeverity.Success) problems.Add($"The changed file {step} was not loaded whole: {media.ChoicesNote}");
@@ -2050,6 +2184,162 @@ public sealed class InstallMediaViewModelTests : IDisposable
         await media.ResumeCommand.ExecuteAsync(null);
         Assert.Empty(resumed);
         Assert.Equal(Loc.Instance["Media_ResumeInvalid"], media.ResumeNote);
+    }
+
+    /// <summary>
+    /// Resume checks the saved choices off the window's thread (on a share that went away this takes long), and Build stays
+    /// on meanwhile. A build started in that time keeps the choices it started with: the saved ones are not applied over it.
+    /// </summary>
+    [Fact]
+    public async Task ABuildStartedWhileResumeChecksTheSavedChoicesKeepsItsChoices()
+    {
+        Loc.Instance.SetLanguage("en");
+        var saved = SavedBuild(await SavedChoices());
+        var choicesFile = Path.Combine(saved.WorkFolder, MediaCheckpoint.ChoicesFileName);
+        var json = global::System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(choicesFile))!.AsObject();
+        // The keyboard makes the parse ask the keyboard list, which holds it until the build runs.
+        json["skipSetup"] = new global::System.Text.Json.Nodes.JsonObject { ["accountName"] = "Berta", ["region"] = "de-DE", ["keyboard"] = "0407:00000407" };
+        File.WriteAllText(choicesFile, json.ToJsonString());
+        var keyboards = new HeldList<InputProfile>(Keyboards);
+        var (system, discarded, resumed) = WithSaved(() => saved);
+        system = system with
+        {
+            Keyboards = () => keyboards,
+            SavedChoices = folder =>
+            {
+                keyboards.HoldNextLook();
+                return MediaCheckpoint.ReadChoices(folder);
+            },
+        };
+        var started = new TaskCompletionSource();
+        _build = async (_, ct) =>
+        {
+            started.SetResult();
+            await Task.Delay(Timeout.Infinite, ct);
+            return "";
+        };
+        var media = await WithCatalog(Media(system: system));
+        Assert.Equal("Anna", media.AccountNameText);
+
+        var resume = media.ResumeCommand.ExecuteAsync(null);
+        await keyboards.Held.Task;
+        _dialogs.Answer = true;
+        var build = media.BuildCommand.ExecuteAsync(null);
+        await started.Task;
+        Assert.True(media.IsBuilding);
+        keyboards.Release.SetResult();
+        await resume;
+
+        Assert.Empty(resumed);
+        Assert.Equal([saved.WorkFolder], discarded);
+        Assert.Equal("Anna", media.AccountNameText);
+        Assert.Null(media.ResumeNote);
+        Assert.True(media.IsBuilding);
+        await media.StopAndWaitAsync();
+        await build;
+    }
+
+    /// <summary>
+    /// Build looks at the own ISO off the window's thread before its review, and the review is modal: a resume clicked in
+    /// that time applies no saved choices under the review and starts no second build.
+    /// </summary>
+    [Fact]
+    public async Task AResumeClickedWhileBuildLooksAtTheIsoChangesNothing()
+    {
+        Loc.Instance.SetLanguage("en");
+        var saved = SavedBuild(await SavedChoices());
+        var choicesFile = Path.Combine(saved.WorkFolder, MediaCheckpoint.ChoicesFileName);
+        var json = global::System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(choicesFile))!.AsObject();
+        json["skipSetup"] = new global::System.Text.Json.Nodes.JsonObject { ["accountName"] = "Berta", ["region"] = "de-DE", ["keyboard"] = "0407:00000407" };
+        File.WriteAllText(choicesFile, json.ToJsonString());
+        var (system, discarded, resumed) = WithSaved(() => saved);
+        TaskCompletionSource<long?>? look = null;
+        system = system with { IsoLength = path => look?.Task ?? Task.FromResult(InstallMediaSystem.LengthOf(path)) };
+        var media = await WithOwnIso(Media(system: system));
+        Assert.Equal("Anna", media.AccountNameText);
+
+        look = new TaskCompletionSource<long?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var build = media.BuildCommand.ExecuteAsync(null);
+        Assert.True(media.BuildCommand.IsRunning);
+        Assert.Equal(0, _dialogs.ConfirmApplyCalls);
+        await media.ResumeCommand.ExecuteAsync(null);
+
+        Assert.Empty(resumed);
+        Assert.Equal("Anna", media.AccountNameText);
+        Assert.Null(media.ResumeNote);
+        Assert.False(media.IsBuilding);
+
+        look.SetResult(InstallMediaSystem.LengthOf(media.IsoPath!));
+        await build;
+        Assert.Equal(1, _dialogs.ConfirmApplyCalls);
+        Assert.Equal([saved.WorkFolder], discarded);
+        Assert.Single(_requests);
+        Assert.Empty(resumed);
+        Assert.Equal("Anna", media.AccountNameText);
+    }
+
+    /// <summary>A choices file loaded while Build looks at the own ISO (its review comes next) does not replace the choices it builds.</summary>
+    [Fact]
+    public async Task ChoicesLoadedWhileBuildLooksAtTheIsoAreNotApplied()
+    {
+        TaskCompletionSource<long?>? look = null;
+        var media = await WithOwnIso(Media(system: System() with { IsoLength = path => look?.Task ?? Task.FromResult(InstallMediaSystem.LengthOf(path)) }));
+        Assert.Equal("Anna", media.AccountNameText);
+        _dialogs.OpenFile = Write(Saved(), "mine.json");
+
+        look = new TaskCompletionSource<long?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var build = media.BuildCommand.ExecuteAsync(null);
+        Assert.True(media.BuildCommand.IsRunning);
+        await media.LoadChoicesCommand.ExecuteAsync(null);
+        Assert.Equal("Anna", media.AccountNameText);
+        Assert.False(media.UseDownload);
+
+        look.SetResult(InstallMediaSystem.LengthOf(media.IsoPath!));
+        await build;
+        Assert.Single(_requests);
+        Assert.Equal("Anna", media.AccountNameText);
+    }
+
+    /// <summary>A list whose next look, once asked for, waits on <see cref="Release"/> (and says so through <see cref="Held"/>).</summary>
+    private sealed class HeldList<T>(IReadOnlyList<T> items) : IReadOnlyList<T>
+    {
+        private int _hold;
+        public TaskCompletionSource Held { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public void HoldNextLook() => Volatile.Write(ref _hold, 1);
+
+        private void Look()
+        {
+            if (Interlocked.Exchange(ref _hold, 0) == 0) return;
+            Held.SetResult();
+            Release.Task.Wait(TimeSpan.FromSeconds(30));
+        }
+
+        public T this[int index]
+        {
+            get
+            {
+                Look();
+                return items[index];
+            }
+        }
+
+        public int Count
+        {
+            get
+            {
+                Look();
+                return items.Count;
+            }
+        }
+
+        public IEnumerator<T> GetEnumerator()
+        {
+            Look();
+            return items.GetEnumerator();
+        }
+
+        global::System.Collections.IEnumerator global::System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
     }
 
     [Fact]

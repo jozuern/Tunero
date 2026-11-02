@@ -6,14 +6,14 @@
 
 - **.NET runtime 10.0.14:** the exe carries the .NET and Windows Desktop runtime of Microsoft's out-of-band security release of October 25, 2026, which fixes a Brotli decoder flaw ([release notes](https://github.com/dotnet/core/blob/main/release-notes/10.0/10.0.14/10.0.14.md)), instead of 10.0.13.
 - **Tabs** stay in one row at every window width (the German Startup tabs wrapped); **System info** shows each display's resolution and refresh rate next to its name; **Health** sensor cards keep the expand arrow beside the title; the install media summary reads as one sentence.
-- **Consistent pages:** empty lists say so the same way on every page, switches for settings show On or Off everywhere (also on Remove apps and in the install media's Expert options), and cards share one padding.
+- **Consistent pages:** empty lists say so the same way on every page, switches for settings show On or Off left of the switch everywhere (also on Remove apps and on every install media card), and cards share one padding.
 - **Restore point question:** shorter buttons ("Turn on", "Continue without it") on one line at one height; dialog buttons always share their height.
 - **Details pane:** text keeps clear of the scroll bar, the impact shows its number once, registry paths keep the line spacing, and the "already set" note reads clearly.
 - **Changes:** the Move to another PC card has its buttons at the top right and the export options in a row below. **Startup** names the total once and says what the turned-off count refers to ("Showing 4 of 51. Of all 51, 16 are turned off."), and German reload buttons say "Neu laden" on every page.
 - **Navigation** group headings show whenever they fit, also after the start-up scan; a running scan takes the "Last scan" line instead of adding one.
 - **Windows install media:** the summary bar breaks only between items, the failure bar holds its Show why button, and the review names the keyboard layout.
 - **Remove apps:** note and info bars first, then the Remove selected card above a divider; **Graphics & DNS** has a Graphics section header; **Storage** treemap labels sit on the tiles in black or white.
-- **Windows install media:** a failed build scrolls to its reason, and the bottom bar says the last build failed. The bar shows the image and the changes on two lines, names Allow unsupported PCs, unreviewed apps and apps to install, and gives the real reason Build is off. Card headers are shorter, with the details in the expanded cards.
+- **Windows install media:** a failed build scrolls to its reason, and the bottom bar says the last build failed. The bar shows the image and the changes on two lines, names Allow unsupported PCs, unreviewed apps and apps to install, and gives the real reason Build is off. Card headers are shorter, with the details in the expanded cards; the Expert options fold like the other cards, and the Preview tag reads "Not yet tested", with a tooltip. During a build Stop is only in the window banner, which counts the stages (4 of 8).
 - **Drivers:** each driver's age lines up on the right of its card; the DDU card moved below the list.
 - **Tools:** Restart to Advanced startup says it restarts the PC now; start priority rules show their tags, the warning in an info bar, a labeled form and an empty state; the German tab is Reparaturen.
 - **Install & update:** the reload button is Neu laden in German, so it no longer reads like an update.
@@ -44,6 +44,7 @@
 - **Page headers:** Refresh and the other page commands sit next to the title, so the intro uses the full width. Settings card titles are semibold as on the other pages, and row check boxes sit 8 px from their titles, as on Cleanup.
 - **Light mode:** state and location lines ("Unknown", "Not supported", startup locations) use the easier to read secondary text color.
 - **Wording:** the app calls itself Tunero everywhere, and links use the names of the pages they open.
+- **Windows install media:** the setup card labels the region format ("Account Anna, format German (Austria)"), and German switches say "Ein" in the review too.
 
 ### Fixed
 
@@ -107,6 +108,7 @@
 - **Graphics & DNS:** the details pane of a row shows the new state after a change and stays open.
 - **Screen readers:** the title bar buttons of the confirmation, question and Licenses windows have names.
 - **Keyboard:** on pages with tabs, the tabs come right after the page's command in Tab order; navigation badges are no Tab stops; in the confirmation, Tab follows the buttons on screen and a long list of exact changes scrolls with the keyboard.
+- **Windows install media:** your own ISO is no longer checked on the window's thread, so an ISO on a share that went away no longer freezes the window; Resume checks the free space it still needs and stops before Unpack or the ISO stage if the drive is too full, keeping the saved build. Resume, Build and Load choices no longer run into each other while one of them looks at the ISO.
 
 ## 1.5.0
 

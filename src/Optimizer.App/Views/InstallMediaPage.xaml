@@ -91,8 +91,9 @@
                           MinWidth="240" AutomationProperties.Name="{l:Tr Media_Edition}" />
             </ui:CardControl>
 
-            <!-- 3. Changes: each a switch with On or Off left of it as everywhere else (SettingSwitch), its options folded below.
-                 The summary left of the switch says what is on ("Apps to remove: 18"), or why the switch cannot be used. -->
+            <!-- 3. Changes and Expert options: each a switch with On or Off left of it as everywhere else (SettingSwitch), its
+                 options or details folded below. The summary left of the switch says what is on ("Apps to remove: 18"), or why
+                 the switch cannot be used. -->
             <ui:TextBlock Style="{StaticResource SectionHeader}" Text="{l:Tr Media_ChangesTitle}" />
             <ui:CardExpander Margin="{StaticResource CardRowMargin}" HorizontalContentAlignment="Stretch" IsExpanded="{Binding InstallMedia.ExpandOptions, Mode=OneWay}" IsEnabled="{Binding InstallMedia.CanEdit}"
                              AutomationProperties.Name="{l:Tr Media_RemoveAppsTitle, Format=Common_OptionsFor}">
@@ -350,6 +351,7 @@
                     </DockPanel>
                 </ui:CardExpander.Header>
                 <StackPanel>
+                    <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Media_UnreviewedDetail}" Margin="0,0,0,8" />
                     <ui:TextBlock Style="{StaticResource Caption}" Text="{Binding InstallMedia.UnreviewedSourceText}" TextWrapping="Wrap" Margin="0,0,0,8" />
                     <v:ItemList ItemsSource="{Binding InstallMedia.UnreviewedRows}" IsEnabled="{Binding InstallMedia.RemoveUnreviewed}">
                         <v:ItemList.ItemTemplate>
@@ -366,81 +368,89 @@
                 </StackPanel>
             </ui:CardExpander>
 
-            <ui:CardControl Padding="{StaticResource CardPadding}" Margin="{StaticResource CardRowMargin}" IsEnabled="{Binding InstallMedia.CanEdit}">
-                <ui:CardControl.Header>
-                    <DockPanel>
-                    <ui:SymbolIcon Style="{StaticResource MediaCardIcon}" Symbol="ShieldError24" />
-                    <StackPanel>
-                        <WrapPanel>
-                            <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Media_UnsupportedTitle}" VerticalAlignment="Center" Margin="0,0,8,0" />
-                            <Border Style="{StaticResource TagBorder}" Background="{DynamicResource SystemFillColorCautionBackgroundBrush}">
-                                <TextBlock Text="{l:Tr Media_PreviewTag}" FontSize="12" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
-                            </Border>
-                        </WrapPanel>
-                        <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Media_UnsupportedText}" Margin="0,4,0,0" />
-                        <WrapPanel Margin="0,4,0,0">
-                            <ui:HyperlinkButton Content="{l:Tr Media_UnsupportedSourceSupport}" Padding="0" Margin="0,0,16,0" Command="{Binding OpenLinkCommand}"
-                                                CommandParameter="https://support.microsoft.com/windows/installing-windows-11-on-devices-that-don-t-meet-minimum-system-requirements-0b2dc4a2-5933-4ad4-9c09-ef0a331518f1" />
-                            <ui:HyperlinkButton Content="{l:Tr Media_UnsupportedSourceSpecs}" Padding="0" Command="{Binding OpenLinkCommand}"
-                                                CommandParameter="https://www.microsoft.com/windows/windows-11-specifications" />
-                        </WrapPanel>
-                    </StackPanel>
+            <ui:CardExpander Margin="{StaticResource CardRowMargin}" HorizontalContentAlignment="Stretch" IsExpanded="{Binding InstallMedia.ExpandOptions, Mode=OneWay}" IsEnabled="{Binding InstallMedia.CanEdit}"
+                             AutomationProperties.Name="{l:Tr Media_UnsupportedTitle, Format=Common_OptionsFor}">
+                <ui:CardExpander.Header>
+                    <DockPanel Margin="0,4">
+                        <ui:ToggleSwitch DockPanel.Dock="Right" Style="{StaticResource SettingSwitch}" IsChecked="{Binding InstallMedia.AllowUnsupported}" AutomationProperties.Name="{l:Tr Media_UnsupportedTitle}" Margin="16,0,12,0" />
+                        <ui:SymbolIcon Style="{StaticResource MediaCardIcon}" Symbol="ShieldError24" />
+                        <StackPanel>
+                            <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Media_UnsupportedTitle}" />
+                            <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Media_UnsupportedText}" Margin="0,4,0,0" />
+                        </StackPanel>
                     </DockPanel>
-                </ui:CardControl.Header>
-                <ui:ToggleSwitch Style="{StaticResource SettingSwitch}" IsChecked="{Binding InstallMedia.AllowUnsupported}" AutomationProperties.Name="{l:Tr Media_UnsupportedTitle}" />
-            </ui:CardControl>
+                </ui:CardExpander.Header>
+                <StackPanel>
+                    <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Media_UnsupportedDetail}" />
+                    <WrapPanel Margin="0,4,0,0">
+                        <ui:HyperlinkButton Content="{l:Tr Media_UnsupportedSourceSupport}" FontSize="12" Padding="0" Margin="0,0,16,0" Command="{Binding OpenLinkCommand}"
+                                            CommandParameter="https://support.microsoft.com/windows/installing-windows-11-on-devices-that-don-t-meet-minimum-system-requirements-0b2dc4a2-5933-4ad4-9c09-ef0a331518f1" />
+                        <ui:HyperlinkButton Content="{l:Tr Media_UnsupportedSourceSpecs}" FontSize="12" Padding="0" Command="{Binding OpenLinkCommand}"
+                                            CommandParameter="https://www.microsoft.com/windows/windows-11-specifications" />
+                    </WrapPanel>
+                </StackPanel>
+            </ui:CardExpander>
 
-            <ui:CardControl Padding="{StaticResource CardPadding}" Margin="{StaticResource CardRowMargin}" IsEnabled="{Binding InstallMedia.CanEdit}">
-                <ui:CardControl.Header>
-                    <DockPanel>
-                    <ui:SymbolIcon Style="{StaticResource MediaCardIcon}" Symbol="LockOpen24" />
-                    <StackPanel>
-                        <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Media_EncryptionTitle}" />
-                        <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Media_EncryptionText}" Margin="0,4,0,0" />
-                        <ui:HyperlinkButton Content="{l:Tr Media_EncryptionSource}" Padding="0" Margin="0,4,0,0" HorizontalAlignment="Left" Command="{Binding OpenLinkCommand}"
-                                            CommandParameter="https://learn.microsoft.com/en-us/windows/security/operating-system-security/data-protection/bitlocker/" />
-                    </StackPanel>
+            <ui:CardExpander Margin="{StaticResource CardRowMargin}" HorizontalContentAlignment="Stretch" IsExpanded="{Binding InstallMedia.ExpandOptions, Mode=OneWay}" IsEnabled="{Binding InstallMedia.CanEdit}"
+                             AutomationProperties.Name="{l:Tr Media_EncryptionTitle, Format=Common_OptionsFor}">
+                <ui:CardExpander.Header>
+                    <DockPanel Margin="0,4">
+                        <ui:ToggleSwitch DockPanel.Dock="Right" Style="{StaticResource SettingSwitch}" IsChecked="{Binding InstallMedia.PreventDeviceEncryption}" AutomationProperties.Name="{l:Tr Media_EncryptionTitle}" Margin="16,0,12,0" />
+                        <ui:SymbolIcon Style="{StaticResource MediaCardIcon}" Symbol="LockOpen24" />
+                        <StackPanel>
+                            <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Media_EncryptionTitle}" />
+                            <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Media_EncryptionText}" Margin="0,4,0,0" />
+                        </StackPanel>
                     </DockPanel>
-                </ui:CardControl.Header>
-                <ui:ToggleSwitch Style="{StaticResource SettingSwitch}" IsChecked="{Binding InstallMedia.PreventDeviceEncryption}" AutomationProperties.Name="{l:Tr Media_EncryptionTitle}" />
-            </ui:CardControl>
+                </ui:CardExpander.Header>
+                <StackPanel>
+                    <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Media_EncryptionDetail}" />
+                    <ui:HyperlinkButton Content="{l:Tr Media_EncryptionSource}" FontSize="12" Padding="0" Margin="0,4,0,0" HorizontalAlignment="Left" Command="{Binding OpenLinkCommand}"
+                                        CommandParameter="https://learn.microsoft.com/en-us/windows/security/operating-system-security/data-protection/bitlocker/" />
+                </StackPanel>
+            </ui:CardExpander>
 
-            <ui:CardControl Padding="{StaticResource CardPadding}" Margin="{StaticResource CardRowMargin}" IsEnabled="{Binding InstallMedia.CanEdit}">
-                <ui:CardControl.Header>
-                    <DockPanel>
-                    <ui:SymbolIcon Style="{StaticResource MediaCardIcon}" Symbol="Storage24" />
-                    <StackPanel>
-                        <WrapPanel>
-                            <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Media_ReservedTitle}" VerticalAlignment="Center" Margin="0,0,8,0" />
-                            <Border Style="{StaticResource TagBorder}" Background="{DynamicResource SystemFillColorCautionBackgroundBrush}">
-                                <TextBlock Text="{l:Tr Media_PreviewTag}" FontSize="12" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
-                            </Border>
-                        </WrapPanel>
-                        <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Media_ReservedText}" Margin="0,4,0,0" />
-                    </StackPanel>
+            <!-- Not yet tested in a test installation (docs/vm-test-plan.md): a neutral tag with its reason, as on tweak rows -->
+            <ui:CardExpander Margin="{StaticResource CardRowMargin}" HorizontalContentAlignment="Stretch" IsExpanded="{Binding InstallMedia.ExpandOptions, Mode=OneWay}" IsEnabled="{Binding InstallMedia.CanEdit}"
+                             AutomationProperties.Name="{l:Tr Media_ReservedTitle, Format=Common_OptionsFor}">
+                <ui:CardExpander.Header>
+                    <DockPanel Margin="0,4">
+                        <ui:ToggleSwitch DockPanel.Dock="Right" Style="{StaticResource SettingSwitch}" IsChecked="{Binding InstallMedia.NoReservedStorage}" AutomationProperties.Name="{l:Tr Media_ReservedTitle}" Margin="16,0,12,0" />
+                        <ui:SymbolIcon Style="{StaticResource MediaCardIcon}" Symbol="Storage24" />
+                        <StackPanel>
+                            <WrapPanel>
+                                <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Media_ReservedTitle}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                <Border Style="{StaticResource TagBorder}" ToolTip="{l:Tr Media_PreviewTip}">
+                                    <TextBlock Text="{l:Tr Media_PreviewTag}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                </Border>
+                            </WrapPanel>
+                            <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Media_ReservedText}" Margin="0,4,0,0" />
+                        </StackPanel>
                     </DockPanel>
-                </ui:CardControl.Header>
-                <ui:ToggleSwitch Style="{StaticResource SettingSwitch}" IsChecked="{Binding InstallMedia.NoReservedStorage}" AutomationProperties.Name="{l:Tr Media_ReservedTitle}" />
-            </ui:CardControl>
+                </ui:CardExpander.Header>
+                <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Media_ReservedDetail}" />
+            </ui:CardExpander>
 
-            <ui:CardControl Padding="{StaticResource CardPadding}" Margin="{StaticResource CardRowMargin}" IsEnabled="{Binding InstallMedia.CanEdit}"
-                            Visibility="{Binding InstallMedia.AllowUnsupported, Converter={StaticResource BoolToVisibility}}">
-                <ui:CardControl.Header>
-                    <DockPanel>
-                    <ui:SymbolIcon Style="{StaticResource MediaCardIcon}" Symbol="ArrowUpload24" />
-                    <StackPanel>
-                        <WrapPanel>
-                            <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Media_UpgradesTitle}" VerticalAlignment="Center" Margin="0,0,8,0" />
-                            <Border Style="{StaticResource TagBorder}" Background="{DynamicResource SystemFillColorCautionBackgroundBrush}">
-                                <TextBlock Text="{l:Tr Media_PreviewTag}" FontSize="12" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
-                            </Border>
-                        </WrapPanel>
-                        <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Media_UpgradesText}" Margin="0,4,0,0" />
-                    </StackPanel>
+            <ui:CardExpander Margin="{StaticResource CardRowMargin}" HorizontalContentAlignment="Stretch" IsExpanded="{Binding InstallMedia.ExpandOptions, Mode=OneWay}" IsEnabled="{Binding InstallMedia.CanEdit}"
+                             AutomationProperties.Name="{l:Tr Media_UpgradesTitle, Format=Common_OptionsFor}"
+                             Visibility="{Binding InstallMedia.AllowUnsupported, Converter={StaticResource BoolToVisibility}}">
+                <ui:CardExpander.Header>
+                    <DockPanel Margin="0,4">
+                        <ui:ToggleSwitch DockPanel.Dock="Right" Style="{StaticResource SettingSwitch}" IsChecked="{Binding InstallMedia.AllowUnsupportedUpgrades}" AutomationProperties.Name="{l:Tr Media_UpgradesTitle}" Margin="16,0,12,0" />
+                        <ui:SymbolIcon Style="{StaticResource MediaCardIcon}" Symbol="ArrowUpload24" />
+                        <StackPanel>
+                            <WrapPanel>
+                                <ui:TextBlock FontTypography="BodyStrong" Text="{l:Tr Media_UpgradesTitle}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                <Border Style="{StaticResource TagBorder}" ToolTip="{l:Tr Media_PreviewTip}">
+                                    <TextBlock Text="{l:Tr Media_PreviewTag}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                </Border>
+                            </WrapPanel>
+                            <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Media_UpgradesText}" Margin="0,4,0,0" />
+                        </StackPanel>
                     </DockPanel>
-                </ui:CardControl.Header>
-                <ui:ToggleSwitch Style="{StaticResource SettingSwitch}" IsChecked="{Binding InstallMedia.AllowUnsupportedUpgrades}" AutomationProperties.Name="{l:Tr Media_UpgradesTitle}" />
-            </ui:CardControl>
+                </ui:CardExpander.Header>
+                <ui:TextBlock Style="{StaticResource Caption}" Text="{l:Tr Media_UpgradesDetail}" />
+            </ui:CardExpander>
 
             <!-- 4. Build -->
             <ui:TextBlock Style="{StaticResource SectionHeader}" Text="{l:Tr Media_BuildTitle}" />
@@ -661,8 +671,6 @@
                 </ui:DropDownButton>
                 <ui:Button Grid.Column="3" Appearance="Primary" Content="{l:Tr Media_BuildButton}" Icon="{ui:SymbolIcon Play20}" Command="{Binding InstallMedia.BuildCommand}"
                            VerticalAlignment="Center" Margin="16,0,0,0" Visibility="{Binding InstallMedia.IsBuilding, Converter={StaticResource InverseBoolToVisibility}}" />
-                <ui:Button Grid.Column="3" Content="{l:Tr Common_Stop}" Icon="{ui:SymbolIcon Stop20}" Command="{Binding Runner.Work.StopCommand}"
-                           VerticalAlignment="Center" Margin="16,0,0,0" Visibility="{Binding InstallMedia.IsBuilding, Converter={StaticResource BoolToVisibility}}" />
             </Grid>
         </ui:Card>
     </StackPanel>

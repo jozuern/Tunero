@@ -124,17 +124,11 @@ public partial class ArchitectureTests
     private static bool IsBuildOutput(string file) =>
         file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
         || file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal);
-
-    /// <summary>App files allowed to write a file with File.WriteAll*, and why the path cannot be one someone else chose.</summary>
-    private static readonly Dictionary<string, string> OwnFileWrites = new(StringComparer.Ordinal)
-    {
-        ["InstallMediaViewModel.cs"] = "the remembered choices, a temp file in the app's admin-only data folder",
-    };
-
     /// <summary>
     /// The window's code writes a file someone chose (an export, a developer switch's output) through
     /// <see cref="Platform.SafeDelete.WriteReplacing"/> or the new-file-only output of a switch, never with File.WriteAll*,
-    /// which follows a link a program put in place of the file or a folder above it after the dialog closed.
+    /// which follows a link a program put in place of the file or a folder above it after the dialog closed. The app's own
+    /// data files go through <see cref="Platform.DurableFile"/>.
     /// </summary>
     [Fact]
     public void TheWindowWritesChosenFilesWithoutFollowingLinks()
@@ -144,8 +138,8 @@ public partial class ArchitectureTests
         {
             if (IsBuildOutput(file)) continue;
             var name = Path.GetFileName(file);
-            if (FileWriteAll().IsMatch(File.ReadAllText(file)) && !OwnFileWrites.ContainsKey(name))
-                problems.Add($"{name}: writes with File.WriteAll* (use SafeDelete.WriteReplacing)");
+            if (FileWriteAll().IsMatch(File.ReadAllText(file)))
+                problems.Add($"{name}: writes with File.WriteAll* (use SafeDelete.WriteReplacing, or DurableFile for the app's own data files)");
         }
         Assert.Empty(problems);
     }

@@ -1533,10 +1533,20 @@ public sealed class MediaBuildTests : IDisposable
     {
         _steps.IsoWriter.Fails = true;
         await FailsAt(Download(), MediaStage.Iso, null);
-        var other = Path.GetPathRoot(_root)!.StartsWith("C", StringComparison.OrdinalIgnoreCase) ? @"D:\Win11.iso" : @"C:\Win11.iso";
-        var ex = await Assert.ThrowsAsync<MediaBuildException>(() => Resume(Download() with { OutputIso = other }));
-        Assert.True(ex.Key is "Media_ResumeInvalid" or "Media_OutputInvalid", ex.Key);
+        var root = Path.GetPathRoot(Path.GetFullPath(_root));
+        // Another local fixed drive of this PC, so the output folder exists and the drive check itself is reached.
+        var other = DriveInfo.GetDrives()
+            .Where(d => d.IsReady && d.DriveType == DriveType.Fixed && !string.Equals(d.RootDirectory.FullName, root, StringComparison.OrdinalIgnoreCase))
+            .Select(d => Path.Combine(d.RootDirectory.FullName, "Win11.iso")).FirstOrDefault();
+        _steps.Calls.Clear();
+        var ex = await Assert.ThrowsAsync<MediaBuildException>(() => Resume(Download() with { OutputIso = other ?? OtherDriveLetter(root) }));
+        if (other is not null) Assert.Equal("Media_ResumeInvalid", ex.Key);
+        // A PC with one drive: the output's folder does not exist, so only CheckOutput's refusal is covered here.
+        else Assert.True(ex.Key is "Media_ResumeInvalid" or "Media_OutputInvalid", ex.Key);
+        Assert.Empty(_steps.Calls);
         Assert.True(Directory.Exists(_steps.WorkFolder));
+
+        static string OtherDriveLetter(string? root) => root?.StartsWith("C", StringComparison.OrdinalIgnoreCase) == true ? @"D:\Win11.iso" : @"C:\Win11.iso";
     }
 
     [Fact]
@@ -1558,6 +1568,68 @@ public sealed class MediaBuildTests : IDisposable
         Assert.Equal("WimInfo image.esd", _steps.Calls[0]);
         Assert.DoesNotContain("Download", _steps.Calls);
         Assert.Equal(MediaStage.Check, _steps.Progress[0].Stage);
+        Assert.False(Directory.Exists(folder));
+        Assert.True(File.Exists(OutputIso));
+    }
+
+    /// <summary>
+    /// A drive that filled while the earlier run unpacked: the resume counts what it still writes (the ESD is on the drive
+    /// already) and refuses up front, keeping the saved build; with exactly that much free it runs.
+    /// </summary>
+    [Fact]
+    public async Task ADownloadedResumeChecksTheSpaceItStillNeeds()
+    {
+        var request = CheckedDownload();
+        _steps.Dism.ApplyFails = true;
+        await FailsAt(request, MediaStage.Unpack, null);
+        _steps.Dism.ApplyFails = false;
+        var folder = _steps.WorkFolder!;
+        var download = request.Source.Download!;
+        var needed = MediaBuild.NeededBytes(request.Source, download.Size) - download.Size;
+        _steps.Free = needed - 1;
+        _steps.Calls.Clear();
+
+        var ex = await Assert.ThrowsAsync<MediaBuildException>(() => Resume(request));
+        Assert.Equal("Media_NotEnoughSpace", ex.Key);
+        Assert.Equal(MediaStage.Check, ex.Stage);
+        Assert.DoesNotContain("WimInfo image.esd", _steps.Calls);
+        Assert.Contains(_steps.LogLines, l => l == $"Space: {needed} bytes needed, {needed - 1} free");
+        AssertKeptForResume(CheckpointKind.Downloaded);
+
+        _steps.Free = needed;
+        await Resume(request);
+        Assert.False(Directory.Exists(folder));
+        Assert.True(File.Exists(OutputIso));
+    }
+
+    /// <summary>
+    /// The drive filled while the earlier run wrote the ISO: the resume needs the media once more for the ISO and 1 GB to
+    /// spare, counted with the untouched boot.wim put back, and refuses up front without it.
+    /// </summary>
+    [Fact]
+    public async Task AnImageReadyResumeChecksTheSpaceForTheIso()
+    {
+        _steps.IsoWriter.Fails = true;
+        await FailsAt(Download(), MediaStage.Iso, null);
+        _steps.IsoWriter.Fails = false;
+        var folder = _steps.WorkFolder!;
+        var media = Path.Combine(folder, "media");
+        var boot = Path.Combine(media, "sources", "boot.wim");
+        var needed = Directory.EnumerateFiles(media, "*", SearchOption.AllDirectories)
+                         .Where(f => !string.Equals(f, boot, StringComparison.OrdinalIgnoreCase)).Sum(f => new FileInfo(f).Length)
+                     + new FileInfo(Path.Combine(folder, MediaCheckpoint.BootWimCopy)).Length + (1L << 30);
+        _steps.Free = needed - 1;
+        _steps.Calls.Clear();
+
+        var ex = await Assert.ThrowsAsync<MediaBuildException>(() => Resume(Download()));
+        Assert.Equal("Media_NotEnoughSpace", ex.Key);
+        Assert.Equal(MediaStage.Files, ex.Stage);
+        Assert.DoesNotContain("Mount boot.wim 2", _steps.Calls);
+        Assert.DoesNotContain("WriteIso", _steps.Calls);
+        AssertKeptForResume(CheckpointKind.ImageReady);
+
+        _steps.Free = needed;
+        await Resume(Download());
         Assert.False(Directory.Exists(folder));
         Assert.True(File.Exists(OutputIso));
     }

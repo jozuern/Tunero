@@ -62,9 +62,6 @@ public static class IsoBoot
         return name.ToString();
     }
 
-    /// <summary>The platform id of every bootable catalog entry in order (0x00 BIOS, 0xEF UEFI); empty without a valid El Torito catalog.</summary>
-    public static IReadOnlyList<int> ReadPlatforms(Stream iso) => ReadCatalog(iso).Select(e => e.Platform).ToList();
-
     /// <summary>One bootable entry of the boot catalog: the image starts at sector <paramref name="Rba"/> and is <paramref name="Sectors"/> * 512 bytes long.</summary>
     public sealed record BootEntry(int Platform, uint Rba, int Sectors);
 

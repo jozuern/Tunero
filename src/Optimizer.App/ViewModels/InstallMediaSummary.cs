@@ -91,27 +91,27 @@ internal static class InstallMediaSummary
         if (c.RemoveUnreviewed.Count > 0)
         {
             changes.Add(Line(T["Media_UnreviewedTitle"], T.Format("Media_AppsSummary", c.RemoveUnreviewed.Count)));
-            warnings.Add(T.Format("Media_Review_Warning", T["Media_UnreviewedTitle"], T["Media_UnreviewedText"]));
+            warnings.Add(Warning("Unreviewed"));
         }
         if (c.Settings.PreventDeviceEncryption)
         {
             changes.Add(Line(T["Media_EncryptionTitle"], T["Media_Review_On"]));
-            warnings.Add(T.Format("Media_Review_Warning", T["Media_EncryptionTitle"], T["Media_EncryptionText"]));
+            warnings.Add(Warning("Encryption"));
         }
         if (c.Settings.NoReservedStorage)
         {
             changes.Add(Line(T["Media_ReservedTitle"], T["Media_Review_On"]));
-            warnings.Add(T.Format("Media_Review_Warning", T["Media_ReservedTitle"], T["Media_ReservedText"]));
+            warnings.Add(Warning("Reserved"));
         }
         if (c.AllowUnsupported)
         {
             changes.Add(Line(T["Media_UnsupportedTitle"], T["Media_Review_On"]));
-            warnings.Add(T.Format("Media_Review_Warning", T["Media_UnsupportedTitle"], T["Media_UnsupportedText"]));
+            warnings.Add(Warning("Unsupported"));
         }
         if (c.Settings.AllowUnsupportedUpgrades)
         {
             changes.Add(Line(T["Media_UpgradesTitle"], T["Media_Review_On"]));
-            warnings.Add(T.Format("Media_Review_Warning", T["Media_UpgradesTitle"], T["Media_UpgradesText"]));
+            warnings.Add(Warning("Upgrades"));
         }
         // Duration stays empty until the build times are measured in the test VM (docs/vm-test-plan.md).
         return new ConfirmRequest(T["Media_Review_Title"], T.Format("Media_Review_Summary", source, c.OutputIso), changes, [], warnings, null, false)
@@ -122,6 +122,10 @@ internal static class InstallMediaSummary
     }
 
     private static ChangeLine Line(string what, string text) => new(what, "", text);
+
+    /// <summary>An Expert option's warning: its title, the risk its card header names and the rest its folded part says.</summary>
+    private static string Warning(string option) =>
+        T.Format("Media_Review_Warning", T[$"Media_{option}Title"], T[$"Media_{option}Text"] + " " + T[$"Media_{option}Detail"]);
 
     private static string EditionText(string editionTitle, string? build) =>
         build is { Length: > 0 } ? T.Format("Media_Summary_Edition", editionTitle, build) : editionTitle;

@@ -1853,7 +1853,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Media_AppStore" xml:space="preserve"><value>The Microsoft Store still offers this app.</value></data>
   <data name="Media_AppNoStore" xml:space="preserve"><value>This app cannot be installed again.</value></data>
   <data name="Media_SkipSetupTitle" xml:space="preserve"><value>Skip account and setup questions</value></data>
-  <data name="Media_SkipSetupText" xml:space="preserve"><value>Setup creates a local administrator account with this name and answers the privacy questions with the most private choice.</value></data>
+  <data name="Media_SkipSetupText" xml:space="preserve"><value>Setup creates a local administrator account with the name you choose and answers the privacy questions with the most private choice.</value></data>
   <data name="Media_SkipSetupDetail" xml:space="preserve"><value>No password is stored on the ISO: Windows asks for a new one at the next sign-in. Setup still shows its pages for the product key, the license terms and the drive.</value></data>
   <data name="Media_AccountName" xml:space="preserve"><value>Account name</value></data>
   <data name="Media_Region" xml:space="preserve"><value>Region format</value></data>
@@ -1865,12 +1865,14 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Media_NameReserved" xml:space="preserve"><value>Windows already uses this name for an account or group.</value></data>
   <data name="Media_NameNotAscii" xml:space="preserve"><value>Windows Setup cannot create an account whose name has umlauts or accents. Write Juergen instead of Jürgen, for example.</value></data>
   <data name="Media_ProfileTitle" xml:space="preserve"><value>Apply a Tunero profile</value></data>
-  <data name="Media_ProfileText" xml:space="preserve"><value>Tunero is copied onto the ISO and opens at the first sign-in. It scans that PC and applies the profile's recommendations; every change appears under Changes and can be undone.</value></data>
+  <data name="Media_ProfileText" xml:space="preserve"><value>Tunero is copied onto the ISO and opens at the first sign-in. It scans that PC and applies the profile's recommendations; there, every change is listed on Tunero's Changes page and can be undone.</value></data>
   <data name="Media_Profile" xml:space="preserve"><value>Profile</value></data>
   <data name="Media_ProfileNeedsRelease" xml:space="preserve"><value>Only the released Tunero.exe can be copied onto the ISO. This copy is a development build.</value></data>
   <data name="Media_UnsupportedTitle" xml:space="preserve"><value>Allow unsupported PCs</value></data>
-  <data name="Media_PreviewTag" xml:space="preserve"><value>Preview</value></data>
-  <data name="Media_UnsupportedText" xml:space="preserve"><value>Windows Setup skips its checks for TPM 2.0, Secure Boot, the processor and memory: Tunero adds the values Setup reads for that to the answer file. Microsoft says a PC that does not meet the requirements will not receive support from Microsoft and is not guaranteed to get updates, security updates included. Microsoft does not document these values.</value></data>
+  <data name="Media_PreviewTag" xml:space="preserve"><value>Not yet tested</value></data>
+  <data name="Media_PreviewTip" xml:space="preserve"><value>Not yet checked in a test installation.</value></data>
+  <data name="Media_UnsupportedText" xml:space="preserve"><value>Setup skips the TPM 2.0, Secure Boot, processor and memory checks. Microsoft does not guarantee updates for such PCs, security updates included.</value></data>
+  <data name="Media_UnsupportedDetail" xml:space="preserve"><value>Tunero adds the values Setup reads for that to the answer file. Microsoft says a PC that does not meet the requirements will not receive support from Microsoft and is not guaranteed to get updates. Microsoft does not document these values.</value></data>
   <data name="Media_CompressionTitle" xml:space="preserve"><value>Install image</value></data>
   <data name="Media_CompressionFaster" xml:space="preserve"><value>Faster build</value></data>
   <data name="Media_CompressionFasterText" xml:space="preserve"><value>Windows stays in install.wim. The build is faster and the ISO is larger.</value></data>
@@ -1879,12 +1881,15 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Media_UnsupportedSourceSupport" xml:space="preserve"><value>Microsoft: Windows 11 on devices that don't meet minimum system requirements</value></data>
   <data name="Media_UnsupportedSourceSpecs" xml:space="preserve"><value>Microsoft: Windows 11 specifications and system requirements</value></data>
   <data name="Media_EncryptionTitle" xml:space="preserve"><value>Keep device encryption off</value></data>
-  <data name="Media_EncryptionText" xml:space="preserve"><value>Automatic device encryption stays off: the drive is not encrypted unless you turn on BitLocker. This applies to every PC installed from this ISO, and anyone who takes the drive out can read it. Microsoft recommends keeping device encryption on for PCs that support it.</value></data>
+  <data name="Media_EncryptionText" xml:space="preserve"><value>Automatic device encryption stays off on every PC installed from this ISO: anyone who takes the drive out can read it.</value></data>
+  <data name="Media_EncryptionDetail" xml:space="preserve"><value>The drive is not encrypted unless you turn on BitLocker. Microsoft recommends keeping device encryption on for PCs that support it.</value></data>
   <data name="Media_EncryptionSource" xml:space="preserve"><value>Microsoft: BitLocker overview, disable device encryption</value></data>
   <data name="Media_ReservedTitle" xml:space="preserve"><value>No reserved storage</value></data>
-  <data name="Media_ReservedText" xml:space="preserve"><value>No space is kept for updates: an update can fail on a full drive. This applies to every PC installed from this ISO. Microsoft does not document this value, and it has not been checked in a test installation yet.</value></data>
+  <data name="Media_ReservedText" xml:space="preserve"><value>No space is kept for updates on PCs installed from this ISO, so an update can fail on a full drive.</value></data>
+  <data name="Media_ReservedDetail" xml:space="preserve"><value>Microsoft does not document this value, and it has not been checked in a test installation yet.</value></data>
   <data name="Media_UpgradesTitle" xml:space="preserve"><value>Allow later upgrades on unsupported PCs</value></data>
-  <data name="Media_UpgradesText" xml:space="preserve"><value>PCs installed from this ISO accept later upgrades with the setup.exe of a newer ISO without the hardware checks. This does not help a PC on which this ISO's setup.exe is started now. Microsoft no longer documents this value; Tunero has not tested it yet.</value></data>
+  <data name="Media_UpgradesText" xml:space="preserve"><value>PCs installed from this ISO accept later upgrades with the setup.exe of a newer ISO without the hardware checks.</value></data>
+  <data name="Media_UpgradesDetail" xml:space="preserve"><value>This does not help a PC on which this ISO's setup.exe is started now. Microsoft no longer documents this value; Tunero has not tested it yet.</value></data>
   <data name="Media_Field_preventDeviceEncryption" xml:space="preserve"><value>Keep device encryption off</value></data>
   <data name="Media_Field_noReservedStorage" xml:space="preserve"><value>No reserved storage</value></data>
   <data name="Media_Field_allowUnsupportedUpgrades" xml:space="preserve"><value>Allow later upgrades on unsupported PCs</value></data>
@@ -1987,7 +1992,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Media_StageFailed" xml:space="preserve"><value>Failed</value></data>
   <data name="Media_StageWaiting" xml:space="preserve"><value>Waiting</value></data>
   <data name="Media_AppsSummary" xml:space="preserve"><value>Apps to remove: {0}</value></data>
-  <data name="Media_SetupSummary" xml:space="preserve"><value>Account {0}, {1}</value></data>
+  <data name="Media_SetupSummary" xml:space="preserve"><value>Account {0}, format {1}</value></data>
   <data name="Media_ChoicesButton" xml:space="preserve"><value>Choices</value></data>
   <data name="Media_SaveChoices" xml:space="preserve"><value>Save choices</value></data>
   <data name="Media_LoadChoices" xml:space="preserve"><value>Load choices</value></data>
@@ -2017,7 +2022,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Media_Field_removeUnreviewed" xml:space="preserve"><value>Other apps to remove</value></data>
   <data name="Media_Field_compression" xml:space="preserve"><value>Install image</value></data>
   <data name="Media_IsoFacts" xml:space="preserve"><value>Windows, build {0}, {1}, {2}</value></data>
-  <data name="Media_SetupSummaryNoName" xml:space="preserve"><value>No account name yet, {0}</value></data>
+  <data name="Media_SetupSummaryNoName" xml:space="preserve"><value>No account name yet, format {0}</value></data>
   <data name="Media_FirstSignInTitle" xml:space="preserve"><value>Setting up this PC with the {0} profile</value></data>
   <data name="Media_FirstSignInDone" xml:space="preserve"><value>Tunero set up this PC with the {0} profile. Applied: {1}. Failed: {2}. Not applied: {3} (changes that need their own confirmation are on the Overview). Each change can be undone here. No restore point was made, since this Windows installation is new.</value></data>
   <data name="Media_FirstSignInNoProfile" xml:space="preserve"><value>The profile chosen for the install media, {0}, is not available on this PC, so Tunero changed nothing. Choose a profile on the Overview and apply its recommendations there.</value></data>
@@ -2097,8 +2102,9 @@ The files are deleted permanently. Files in use are skipped.</value>
     <value>Remove apps that were not reviewed</value>
   </data>
   <data name="Media_UnreviewedText" xml:space="preserve">
-    <value>Other apps your ISO's edition holds, beyond the reviewed list. Nobody checked what they do: remove only apps you know, because a program or a device may need one. Parts of Windows and what games and the Store need are never listed.</value>
+    <value>Other apps your ISO's edition holds, beyond the reviewed list. Nobody checked what they do: remove only apps you know.</value>
   </data>
+  <data name="Media_UnreviewedDetail" xml:space="preserve"><value>A program or a device may need one of them. Parts of Windows and what games and the Store need are never listed.</value></data>
   <data name="Media_UnreviewedRow" xml:space="preserve">
     <value>Not reviewed: nobody checked what this app does.</value>
   </data>

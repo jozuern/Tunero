@@ -8,6 +8,9 @@ public class IsoWriterTests
 {
     private const int Sector = 2048;
 
+    /// <summary>The platform id of every bootable catalog entry in order (0x00 BIOS, 0xEF UEFI); empty without a valid El Torito catalog.</summary>
+    private static List<int> Platforms(Stream iso) => IsoBoot.ReadCatalog(iso).Select(e => e.Platform).ToList();
+
     private static void Put(string folder, string relative, byte[] data)
     {
         var path = Path.Combine(folder, relative);
@@ -95,7 +98,7 @@ public class IsoWriterTests
             Assert.False(File.Exists(iso + ".part"));
             // Without boot files there is no El Torito catalog.
             await using var stream = File.OpenRead(iso);
-            Assert.Empty(IsoBoot.ReadPlatforms(stream));
+            Assert.Empty(Platforms(stream));
             // An ISO that cannot boot a UEFI PC never passes the check, even when the media asks for no boot entry.
             Assert.False(IsoBoot.CatalogMatches(stream, media));
         }
@@ -124,7 +127,7 @@ public class IsoWriterTests
             Assert.Equal("CCCOMA_X64", Ascii(bytes, 16, 40, 32).TrimEnd());
             await using (var stream = File.OpenRead(iso))
             {
-                Assert.Equal([0x00, 0xEF], IsoBoot.ReadPlatforms(stream));
+                Assert.Equal([0x00, 0xEF], Platforms(stream));
                 Assert.True(IsoBoot.CatalogMatches(stream, media));
             }
             Assert.NotEmpty(reports);
@@ -161,7 +164,7 @@ public class IsoWriterTests
             await new IsoWriter().WriteAsync(media, iso, "TEST", null, CancellationToken.None);
 
             await using var stream = File.OpenRead(iso);
-            Assert.Equal([0x00], IsoBoot.ReadPlatforms(stream));
+            Assert.Equal([0x00], Platforms(stream));
             Assert.False(IsoBoot.CatalogMatches(stream, media));
         }
         finally
@@ -192,17 +195,17 @@ public class IsoWriterTests
     }
 
     [Fact]
-    public void ReadPlatformsIgnoresWhatIsNoBootCatalog()
+    public void ReadCatalogIgnoresWhatIsNoBootCatalog()
     {
-        Assert.Empty(IsoBoot.ReadPlatforms(new MemoryStream(new byte[100])));
-        Assert.Empty(IsoBoot.ReadPlatforms(new MemoryStream(new byte[40 * Sector])));
+        Assert.Empty(Platforms(new MemoryStream(new byte[100])));
+        Assert.Empty(Platforms(new MemoryStream(new byte[40 * Sector])));
         // A boot record whose catalog pointer leads past the end of the image.
         var image = new byte[20 * Sector];
         image[17 * Sector] = 0;
         Encoding.ASCII.GetBytes("CD001").CopyTo(image, 17 * Sector + 1);
         Encoding.ASCII.GetBytes("EL TORITO SPECIFICATION").CopyTo(image, 17 * Sector + 7);
         BitConverter.GetBytes(5000u).CopyTo(image, 17 * Sector + 0x47);
-        Assert.Empty(IsoBoot.ReadPlatforms(new MemoryStream(image)));
+        Assert.Empty(Platforms(new MemoryStream(image)));
     }
 
     [Fact]

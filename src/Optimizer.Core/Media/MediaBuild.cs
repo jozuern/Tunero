@@ -934,6 +934,7 @@ public sealed class MediaBuild(IMediaSteps steps)
                         // The files an earlier Unpack left are unpacked again from the checked ESD.
                         if (Path.Exists(_media)) SecureFolder.DeleteTree(_media!);
                     }
+                    CheckResumeSpace(saved);
                 }
 
                 if (build is null)
@@ -1065,14 +1066,16 @@ public sealed class MediaBuild(IMediaSteps steps)
         // ---- checkpoints ----
 
         /// <summary>
-        /// Writes choices.json (the request as a request file, for the page) and then checkpoint.json. A checkpoint that
-        /// cannot be written is logged and the build goes on without it: a later failure then deletes the folder as before.
+        /// Writes choices.json (the request as a request file, for the page) and then checkpoint.json, each flushed to the
+        /// disk before it is renamed into place (<see cref="DurableFile"/>): a crash never leaves a checkpoint beside cut-off
+        /// choices. A checkpoint that cannot be written is logged and the build goes on without it: a later failure then
+        /// deletes the folder as before.
         /// </summary>
         private void SaveCheckpoint(MediaCheckpoint checkpoint)
         {
             try
             {
-                File.WriteAllText(Path.Combine(_work!, MediaCheckpoint.ChoicesFileName), MediaRequestFile.FromRequest(r).ToJson());
+                DurableFile.WriteAllText(Path.Combine(_work!, MediaCheckpoint.ChoicesFileName), MediaRequestFile.FromRequest(r).ToJson());
                 checkpoint.Save(_work!);
                 _checkpoint = checkpoint;
                 steps.Log($"Checkpoint {checkpoint.Kind} saved: a failure or Stop from here on keeps the work folder for Resume");
@@ -1212,7 +1215,7 @@ public sealed class MediaBuild(IMediaSteps steps)
             }
         }
 
-        /// <summary>The output path, as every run checks it; a resume skips the space check (the saved build already holds most of what it needs).</summary>
+        /// <summary>The output path, as every run checks it. The space check of a resume counts only what the saved build still has to write (<see cref="CheckResumeSpace"/>).</summary>
         private void CheckOutput()
         {
             var output = r.OutputIso;
@@ -1239,8 +1242,31 @@ public sealed class MediaBuild(IMediaSteps steps)
                 if (!info.Exists) throw Fail($"{iso} does not exist.", "Media_SourceMissing");
                 size = info.Length;
             }
-            var needed = NeededBytes(r.Source, size, r.Compression);
-            var free = steps.FreeBytes(output);
+            CheckSpace(NeededBytes(r.Source, size, r.Compression));
+        }
+
+        /// <summary>
+        /// The space a resume still needs on the output drive (the work folder's, <see cref="OpenSavedAsync"/>), checked once
+        /// the saved build is back as the checkpoint saw it. Downloaded: what <see cref="NeededBytes"/> counts without the ESD,
+        /// which is on the drive already. ImageReady: the media folder once more for the ISO, and 1 GB to spare. A drive that
+        /// filled during the earlier run is refused here, before minutes of Unpack or Iso would fail the same way again.
+        /// </summary>
+        private void CheckResumeSpace(MediaCheckpoint saved)
+        {
+            if (saved.Kind == CheckpointKind.Downloaded)
+            {
+                var download = r.Source.Download!;
+                CheckSpace(NeededBytes(r.Source, download.Size, r.Compression) - download.Size);
+            }
+            else
+            {
+                CheckSpace(SizeOf(_media!) + Gigabyte);
+            }
+        }
+
+        private void CheckSpace(long needed)
+        {
+            var free = steps.FreeBytes(r.OutputIso);
             steps.Log($"Space: {needed} bytes needed, {free} free");
             if (free < needed) throw Fail($"The output drive has {free} bytes free; the build needs {needed}.", "Media_NotEnoughSpace");
         }

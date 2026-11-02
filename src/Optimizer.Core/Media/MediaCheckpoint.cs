@@ -101,18 +101,8 @@ public sealed record MediaCheckpoint(CheckpointKind Kind, string RequestHash, st
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(root.ToJsonString())));
     }
 
-    /// <summary>Writes checkpoint.json.tmp, flushes it to the disk and renames it over checkpoint.json, so the file is whole or absent.</summary>
-    public void Save(string workFolder)
-    {
-        var path = Path.Combine(workFolder, FileName);
-        var temp = path + ".tmp";
-        using (var stream = new FileStream(temp, FileMode.Create, FileAccess.Write, FileShare.None))
-        {
-            stream.Write(Encoding.UTF8.GetBytes(ToJson()));
-            stream.Flush(flushToDisk: true);
-        }
-        File.Move(temp, path, overwrite: true);
-    }
+    /// <summary>Writes checkpoint.json through <see cref="DurableFile"/> (flushed to the disk, then renamed), so the file is whole or absent.</summary>
+    public void Save(string workFolder) => DurableFile.WriteAllText(Path.Combine(workFolder, FileName), ToJson());
 
     internal string ToJson()
     {
