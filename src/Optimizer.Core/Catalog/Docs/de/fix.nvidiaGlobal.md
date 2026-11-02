@@ -21,7 +21,7 @@ Hast du das Limit bewusst gesetzt, etwa gegen Wärme oder Lautstärke, verlierst
 Wenn du bewusst ein globales FPS-Limit nutzt.
 
 ## Quellen
-1. https://docs.nvidia.com/gameworks/content/gameworkslibrary/coresdk/nvapi/group__drsapi.html
+1. https://archive.docs.nvidia.com/gameworks/content/gameworkslibrary/coresdk/nvapi/group__drsapi.html
 2. https://www.nvidia.com/content/Control-Panel-Help/vLatest/en-us/mergedProjects/nv3d/Manage_3D_Settings_(reference).htm
 3. https://github.com/NVIDIA/nvapi/blob/main/NvApiDriverSettings.h
 4. https://blurbusters.com/gsync/gsync101-input-lag-tests-and-settings/5/

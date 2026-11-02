@@ -24,6 +24,21 @@ public class DebloatUnreviewedTests
         Assert.Equal(["Alpha.Tool", "Contoso.SomeGame"], offered.Select(a => a.Name));
     }
 
+    /// <summary>The Windows App Runtime main, singleton and DDLM packages are not frameworks and are removable, but Windows App SDK
+    /// apps need them: they are protected, so neither the unreviewed list nor the install media offers them.</summary>
+    [Theory]
+    [InlineData("MicrosoftCorporationII.WinAppRuntime.Main.1.8")]
+    [InlineData("MicrosoftCorporationII.WinAppRuntime.Main.2")]
+    [InlineData("MicrosoftCorporationII.WinAppRuntime.Singleton")]
+    [InlineData("Microsoft.WinAppRuntime.DDLM.5001.311.2039.0-x6")]
+    public void WindowsAppRuntimePackagesAreNeverOffered(string name)
+    {
+        var appx = CatalogData.Current.Appx;
+        Assert.True(appx.IsProtected(name), name);
+        var installed = new[] { new InstalledAppx(name, name + "_8wekyb3d8bbwe", "1.0", false) };
+        Assert.Empty(DebloatService.Unreviewed(appx, installed));
+    }
+
     /// <summary>The exclusions only narrow the unreviewed list: reviewed apps under the same prefixes are still offered.</summary>
     [Fact]
     public void ReviewedAppsUnderExcludedPrefixesStayReviewed()

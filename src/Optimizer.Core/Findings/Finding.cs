@@ -85,8 +85,9 @@ public interface IFindingCheck
 }
 
 /// <summary>
-/// A check whose advice concerns physical hardware or its firmware (memory modules and channels, BIOS, PCIe links,
-/// disks, microcode). In a virtual machine that hardware is the host's or emulated: the check does not run there.
+/// A check whose advice concerns physical hardware, its firmware or its drivers (memory modules and channels, BIOS,
+/// chipset drivers and core parking on X3D processors, PCIe links, disks, microcode). In a virtual machine that
+/// hardware is the host's or emulated: the check does not run there.
 /// </summary>
 public interface IPhysicalHardwareCheck : IFindingCheck
 {

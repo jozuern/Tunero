@@ -1,16 +1,16 @@
 # NVIDIA-Energiemodus: maximale Leistung bevorzugen (global)
 
 ## Zusammenfassung
-Hält die Grafikkarte bei den meisten 3D-Anwendungen auf maximaler Leistung. Kann Frametimes in leichten Spielen glätten, erhöht den Stromverbrauch. Pro Spiel ist meist besser.
+Hält die Grafikkarte bei den meisten 3D-Anwendungen auf maximaler Leistung. Soll Frametimes in leichten Spielen glätten, noch nicht gemessen; erhöht den Stromverbrauch. Pro Spiel ist meist besser.
 
 ## So funktioniert es
 Standardmäßig senkt der Treiber den Grafiktakt bei geringer Last. „Maximale Leistung bevorzugen“ im globalen Profil weist ihn an, die GPU bei den meisten 3D-Anwendungen mit maximaler Leistung zu betreiben [1]. Die App schreibt den Wert aus NVIDIAs Header-Datei der Treibereinstellungen über die Schnittstelle für Treibereinstellungen [2].
 
 ## Warum es helfen kann
-In leichten oder älteren Spielen kann die Karte zwischen den Frames heruntertakten und braucht Zeit zum Hochtakten. Das kann ungleichmäßige Frametimes verursachen.
+Im adaptiven Modus senkt der Treiber die Leistungsstufe der GPU, wenn eine 3D-Anwendung weniger braucht [1]. In leichten oder älteren Spielen kann die Karte so zwischen den Frames heruntertakten. Maximale Leistung soll ungleichmäßige Frametimes vermeiden, während sie wieder hochtaktet.
 
 ## Belege
-Die Wirkung hängt von der Situation ab; in anspruchsvollen Spielen läuft die Karte ohnehin mit vollem Takt, und es ändert sich nichts.
+Die Wirkung hängt von der Situation ab; in anspruchsvollen Spielen läuft die Karte ohnehin mit vollem Takt, und es ändert sich nichts. Eine Messung, die eine Wirkung auf die Frametimes zeigt, gibt es noch nicht.
 
 ## Nachteile & Risiken
 Mehr Stromverbrauch, Wärme und Lüftergeräusch, auch bei Browsern oder Launchern mit 3D-Beschleunigung.

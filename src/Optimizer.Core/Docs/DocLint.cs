@@ -150,9 +150,17 @@ public static partial class DocLint
     public static readonly string[] UndocumentedMentionAllowed = ["memory.sysmainOff", "gpu.mpoOff", "retired"];
 
     /// <summary>
+    /// Undocumented tweaks that are marked permanent although their undocumented values are fully reversible: what cannot
+    /// be undone comes from a documented value of the same tweak. privacy.inkingTypingOff: the documented policy "Turn off
+    /// automatic learning" deletes the personal dictionary; its undocumented per-user values only set the Settings switch.
+    /// </summary>
+    public static readonly string[] UndocumentedPermanentAllowed = ["privacy.inkingTypingOff"];
+
+    /// <summary>
     /// A tweak that uses an undocumented value says so on both pages, and a page that says so belongs to a tweak marked
     /// <see cref="Tweaks.TweakDefinition.Undocumented"/> (which the app shows as a badge). Undocumented values are only
-    /// allowed for harmless, fully reversible changes.
+    /// allowed for harmless, fully reversible changes below Expert risk; a tweak in
+    /// <see cref="UndocumentedPermanentAllowed"/> may be permanent because of a documented value.
     /// </summary>
     public static IEnumerable<LintIssue> CheckUndocumented(Tweaks.TweakDefinition t)
     {
@@ -162,7 +170,8 @@ public static partial class DocLint
         {
             if (!UndocumentedEnPattern().IsMatch(en)) yield return new LintIssue(t.DocId, "en", "marked undocumented, but the page does not say that Microsoft does not document the value");
             if (!UndocumentedDePattern().IsMatch(de)) yield return new LintIssue(t.DocId, "de", "marked undocumented, but the page does not say that the value is not documented");
-            if (t.EffectiveRisk == Tweaks.Risk.Expert || t.Reversibility != Tweaks.Reversibility.Reversible)
+            if (t.EffectiveRisk == Tweaks.Risk.Expert
+                || (t.Reversibility != Tweaks.Reversibility.Reversible && !UndocumentedPermanentAllowed.Contains(t.Id)))
                 yield return new LintIssue(t.Id, "catalog", "undocumented values are allowed only for reversible changes below Expert risk");
             // Owner rule: an undocumented value is fine once it is proven to work; until then it is a preview.
             if (t.Proof.Count == 0 && !t.Preview)

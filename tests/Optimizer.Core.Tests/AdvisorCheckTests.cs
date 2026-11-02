@@ -217,10 +217,10 @@ public class AdvisorCheckTests
         var extras = new HardwareExtras { PowerOverlay = FirmwareExtras.OverlayBetterBattery };
         var desktop = One(new PowerModeCheck(), P(p => p with { Power = Power(), Extras = extras, System = new SystemInfo("ASUS", "System Product Name", [3], false, false, false) }));
         var laptop = One(new PowerModeCheck(), P(p => p with { Power = Power(), Extras = extras, System = new SystemInfo("Lenovo", "Legion", [10], true, true, false) }));
-        Assert.Equal((1, 3), (desktop.Impact, laptop.Impact));
+        Assert.Equal((1, 2), (desktop.Impact, laptop.Impact));
         var fix = RuntimeFixes.PowerModeBestPerformance();
         Assert.Equal(1, TweakEngine.ImpactFor(fix, new Facts().Set("system.laptop", false)).Impact);
-        Assert.Equal(3, TweakEngine.ImpactFor(fix, new Facts().Set("system.laptop", true)).Impact);
+        Assert.Equal(2, TweakEngine.ImpactFor(fix, new Facts().Set("system.laptop", true)).Impact);
     }
 
     [Fact]

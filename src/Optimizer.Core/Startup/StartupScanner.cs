@@ -650,7 +650,12 @@ public static class StartupTweaks
             Risk = Risk.Safe,
             Hidden = true,
             Actions = [action],
-            Sources = ["https://learn.microsoft.com/en-us/sysinternals/downloads/autoruns"],
+            Sources =
+            [
+                "https://learn.microsoft.com/en-us/sysinternals/downloads/autoruns",
+                "https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/cmd",
+                "https://learn.microsoft.com/en-us/windows/client-management/mdm/policy-csp-admx-logon",
+            ],
         };
     }
 

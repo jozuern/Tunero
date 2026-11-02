@@ -7,7 +7,7 @@ Experte, Startkonfiguration: entfernt useplatformclock, eine Debug-Option aus ä
 Die Startoption useplatformclock zwingt Windows, die Plattformuhr als Leistungszähler zu nutzen. Laut Microsoft ist sie nur zur Fehlersuche gedacht [1]. Die Plattformuhr ist der HPET oder der ACPI-PM-Timer. Normalerweise nutzt Windows den Zeitstempelzähler der CPU (TSC), wenn er geeignet ist [2]. Die App löscht die Option, nachdem sie die Startkonfiguration exportiert hat.
 
 ## Warum es helfen kann
-Den TSC auszulesen dauert einige Dutzend bis einige Hundert CPU-Takte. Ein Plattform-Timer braucht etwa 0,8 bis 1,0 Mikrosekunden und einen Systemaufruf [2]. Spiele fragen die Zeit pro Frame oft ab, das summiert sich.
+Den TSC auszulesen dauert einige Dutzend bis einige Hundert CPU-Takte. Ein Plattform-Timer braucht etwa 0,8 bis 1,0 Mikrosekunden und einen Systemaufruf [2]. Wie oft ein Spiel die Zeit abfragt, ist von Spiel zu Spiel verschieden; je öfter, desto mehr zählt der Unterschied.
 
 ## Belege
 Den Kostenunterschied dokumentiert Microsoft [2]. Wie stark sich das auf die FPS auswirkt, hängt davon ab, wie oft ein Spiel die Zeit abfragt.

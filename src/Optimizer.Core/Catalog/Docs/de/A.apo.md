@@ -9,7 +9,7 @@ Prüft, ob der Prozessor Intel Application Optimization unterstützt.
 :::
 
 ## Warum das wichtig ist
-Intel APO steuert, wie die Threads eines unterstützten Spiels auf Performance- und Effizienzkerne verteilt werden. Intel veröffentlicht eine Liste unterstützter Spiele und schreibt, dass APO deren Leistung verbessern kann; es wirkt nur bei den Titeln auf dieser Liste [1]. Intel nennt geprüfte Prozessoren, zum Beispiel Core i5-14600K, i7-14700K, i9-14900K, die K-Modelle der Core Ultra 200S und einige mobile HX- und H-Modelle. Andere Prozessoren ab der 12. Generation werden nur eingeschränkt unterstützt [1]. APO läuft als Teil des Treibers für Intel Dynamic Tuning Technology (DTT), den der PC- oder Mainboard-Hersteller bereitstellt [1].
+Intel APO steuert in Echtzeit die Ressourcen und die Thread-Verteilung unterstützter Spiele und kann einem Spiel dabei weniger Kerne geben, als der Prozessor hat [1]. Intel veröffentlicht eine Liste unterstützter Spiele und schreibt, dass APO deren Leistung verbessern kann; es wirkt nur bei den Titeln auf dieser Liste [1]. Intel nennt geprüfte Prozessoren, zum Beispiel Core i5-14600K, i7-14700K, i9-14900K, die K-Modelle der Core Ultra 200S und einige mobile HX- und H-Modelle. Andere Prozessoren ab der 12. Generation werden nur eingeschränkt unterstützt [1]. APO läuft als Teil des Treibers für Intel Dynamic Tuning Technology (DTT), den der PC- oder Mainboard-Hersteller bereitstellt [1].
 ::: variant dttFound
 Wir haben Dienste gefunden, die nach dem Treiber von Intel Dynamic Tuning Technology aussehen. Die Dienstnamen stammen aus unserer eigenen Liste, die auf echter Hardware noch nicht bestätigt ist: Der Treiber ist also wahrscheinlich installiert, aber nicht sicher.
 :::

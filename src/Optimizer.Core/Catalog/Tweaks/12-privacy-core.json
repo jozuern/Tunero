@@ -127,6 +127,7 @@
         ]
       },
       "risk": "moderate",
+      "reversibility": "permanent",
       "actions": [
         {
           "type": "registry",

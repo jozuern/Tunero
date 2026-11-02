@@ -1,5 +1,5 @@
 {
-  "_comment": "Part-number decoders > rated speed in MT/s. Unknown part numbers produce Unknown (no advice). fourDimmIntel: DDR5 with two modules per channel, single-rank, per Intel's datasheets: 13th and 14th gen desktop (743844, SKU support matrix and SAGV points: 2DPC 1R 4000, 2R 3600), Core Ultra 200S (Arrow Lake S, SKU support matrix: 2DIMM 1R 4800, 2R 4400). Checked 2026-10-11.",
+  "_comment": "Part-number decoders > rated speed in MT/s. Unknown part numbers produce Unknown (no rated speed to compare). fourDimmIntel: DDR5 with two modules per channel, single-rank, per Intel's datasheets: 13th and 14th gen desktop (743844, SKU support matrix and SAGV points: 2DPC 1R 4000, 2R 3600), Core Ultra 200S (Arrow Lake S, SKU support matrix: 2DIMM 1R 4800, 2R 4400). Checked 2026-10-11.",
   "decoders": [
     { "brand": "Corsair", "regex": "^CM[A-Z]+\\d+GX[45]M\\d[A-Z]?(\\d{4})[CZ]\\d+", "multiplier": 1 },
     { "brand": "G.Skill", "regex": "^F[45]-(\\d{4})[CJ]\\d+", "multiplier": 1 },
@@ -16,9 +16,17 @@
   ],
   "ratedAliases": { "2130": 2133, "2600": 2666, "2660": 2666, "2900": 2933, "2930": 2933 },
   "intelLocked": {
-    "_comment": "A.xmp variant intelLocked. Intel ARK: B360, H370 (300 series), B460, H470 (400 series) 'Supports Memory Overclocking: No', Z490 'Yes'; Z590 (500 series, also takes 10th gen processors in LGA1200) 'Yes', checked 2026-10-31. Micro-ATX names like Z390M count as Z boards. Memory speed of the processor: i5-9400F DDR4-2666, i7-10700 DDR4-2933 (ARK). Checked 2026-10-11.",
-    "cpuPatterns": [ "\\bi[3579]-(?:[89]\\d{3}|10\\d{3})", "\\bPentium\\b.*\\bG(?:5[4-6]|6[4-6])\\d{2}\\b", "\\bCeleron\\b.*\\bG(?:49|59)\\d{2}\\b" ],
-    "unlockedBoardPattern": "\\bZ(?:37|39|49|59)0(?![0-9])",
-    "specSpeeds": [ 2400, 2666, 2933 ]
+    "_comment": "A.xmp variant intelLocked. Intel ARK: B360, H370 (300 series), B460, H470 (400 series) 'Supports Memory Overclocking: No', Z370, Z390, Z490 'Yes'; Z590 (500 series, also takes 10th gen processors in LGA1200) 'Yes', checked 2026-10-31 and 2026-11-02. Micro-ATX names like Z390M count as Z boards; ASUS ROG Maximus X to XIII are Z370 to Z590 boards whose names carry no chipset. processors: the desktop models of these generations and the memory speed Intel specifies for them, the first match wins; mobile (H, U, Y, G) and X299 (X) models are left out. Intel ARK 'Memory Types', checked 2026-11-02: i3-8100, i3-9100, Pentium Gold G5400, Celeron G4900 DDR4-2400; i5-8400, i7-8700K, i5-9400F, i9-9900K, i3-10100, i5-10400, Pentium Gold G6400, Celeron G5900 DDR4-2666; i7-10700, i9-10900K DDR4-2933.",
+    "processors": [
+      { "cpuPattern": "\\bi3-[89]\\d{3}(?![0-9]*[HUYGX])", "mts": 2400 },
+      { "cpuPattern": "\\bi[579]-[89]\\d{3}(?![0-9]*[HUYGX])", "mts": 2666 },
+      { "cpuPattern": "\\bi[35]-10\\d{3}(?![0-9]*[HUYGX])", "mts": 2666 },
+      { "cpuPattern": "\\bi[79]-10\\d{3}(?![0-9]*[HUYGX])", "mts": 2933 },
+      { "cpuPattern": "\\bPentium\\b.*\\bG5[4-6]\\d{2}\\b", "mts": 2400 },
+      { "cpuPattern": "\\bPentium\\b.*\\bG6[4-6]\\d{2}\\b", "mts": 2666 },
+      { "cpuPattern": "\\bCeleron\\b.*\\bG49\\d{2}\\b", "mts": 2400 },
+      { "cpuPattern": "\\bCeleron\\b.*\\bG59\\d{2}\\b", "mts": 2666 }
+    ],
+    "unlockedBoardPattern": "\\bZ(?:37|39|49|59)0(?![0-9])|\\bMAXIMUS\\s+(?:XIII|XII|XI|X)\\b"
   }
 }

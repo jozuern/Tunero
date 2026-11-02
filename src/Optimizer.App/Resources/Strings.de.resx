@@ -25,7 +25,7 @@
   <data name="Hw_Memory" xml:space="preserve"><value>RAM</value></data>
   <data name="Hw_Displays" xml:space="preserve"><value>Bildschirme</value></data>
   <data name="Hw_Display" xml:space="preserve"><value>Bildschirm</value></data>
-  <data name="Hw_BuiltInDisplay" xml:space="preserve"><value>Interner Bildschirm</value></data>
+  <data name="Hw_BuiltInDisplay" xml:space="preserve"><value>Eingebauter Bildschirm</value></data>
   <data name="Hw_DisplayNumber" xml:space="preserve"><value>Bildschirm {0}</value></data>
   <data name="Hw_DisplayCount" xml:space="preserve"><value>{0} Bildschirme</value></data>
   <data name="Hw_Firmware" xml:space="preserve"><value>Firmware &amp; Sicherheit</value></data>

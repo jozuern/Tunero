@@ -4,10 +4,10 @@
 Wechselt auf den Windows-Standard „Ausbalanciert“: statt Energiesparmodus wieder voller CPU-Takt, in den Profilen „Leise und kühl“ und „Akku“ statt Höchstleistung weniger Wärme und Lärm.
 
 ## So funktioniert es
-Windows-Energiesparpläne legen fest, wie der Prozessor seinen Takt hebt und senkt, wann er Kerne parkt und wie Geräte Strom sparen. Der Energiesparmodus senkt die Leistung, um Strom zu sparen; „Ausbalanciert“ passt Leistung und Verbrauch dem Bedarf an; „Höchstleistung“ und darauf aufbauende Pläne wie „Ultimative Leistung“ liefern maximale Leistung auf Kosten eines höheren Stromverbrauchs [1]. In den Windows-Standardwerten parkt der Energiesparmodus im Netzbetrieb außerdem CPU-Kerne, „Ausbalanciert“ nicht.
+Windows-Energiesparpläne legen fest, wie der Prozessor seinen Takt hebt und senkt, wann er Kerne parkt und wie Geräte Strom sparen. Der Energiesparmodus senkt die Leistung, um Strom zu sparen; „Ausbalanciert“ passt Leistung und Verbrauch dem Bedarf an; „Höchstleistung“ und darauf aufbauende Pläne wie „Ultimative Leistung“ liefern maximale Leistung auf Kosten eines höheren Stromverbrauchs [1].
 
 ## Warum es helfen kann
-Ein Spiel auf einer CPU, die der Energiesparmodus bremst, bekommt weniger Bilder und unruhigere Frametimes. „Ausbalanciert“ hebt die Grenze auf, ohne den Leerlaufverbrauch nennenswert zu erhöhen.
+Ein Spiel auf einer CPU, die der Energiesparmodus bremst, bekommt weniger Bilder: Laut Microsofts Tuning-Anleitung für Windows Server begrenzt der Energiesparmodus den CPU-Takt und schaltet auf Prozessoren ohne hardwaregesteuerte P-States den Boost ab [2]. „Ausbalanciert“ hebt die Grenze auf, ohne den Leerlaufverbrauch nennenswert zu erhöhen.
 
 In den Profilen „Leise und kühl“ und „Akku“ ist es umgekehrt: Ein Höchstleistungsplan verbraucht bei wenig Last mehr Strom als nötig, also mehr Wärme, mehr Lüfterlärm und weniger Akkulaufzeit. „Ausbalanciert“ senkt den Verbrauch, wenn wenig zu tun ist, und erreicht unter Last trotzdem den vollen Takt [1].
 

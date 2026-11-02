@@ -206,7 +206,7 @@ public sealed class PowerModeCheck : IFindingCheck
             Status = problem ? FindingStatus.Problem : FindingStatus.Ok,
             // Windows has its own values for the modes only on PCs with a battery; on a desktop they come from the PC
             // maker, if at all, so the mode may change little there (customize-power-slider, "AC only devices").
-            Impact = p.IsLaptop ? 3 : 1,
+            Impact = p.IsLaptop ? 2 : 1,
             Effects = [Effect.Fps, Effect.Lows],
             Facts =
             [
@@ -248,9 +248,10 @@ public sealed class OverlaysCheck : IFindingCheck
 
 /// <summary>
 /// F15 (chipset part): AMD desktop without the AMD Chipset Software package. Needed for the 3D V-Cache driver on
-/// dual-CCD X3D processors (Problem there), otherwise information (Windows Update ships most of the drivers).
+/// dual-CCD X3D processors (Problem there), otherwise information (Windows Update ships most of the drivers). Not in a
+/// virtual machine: a guest reports the host's processor but has no AMD chipset devices the package could serve.
 /// </summary>
-public sealed class AmdChipsetCheck : IFindingCheck
+public sealed class AmdChipsetCheck : IPhysicalHardwareCheck
 {
     public const string Id = "F15.amdChipset";
     public IReadOnlyList<string> DocIds => [Id];

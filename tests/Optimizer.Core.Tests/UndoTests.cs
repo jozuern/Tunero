@@ -543,6 +543,25 @@ public class CatalogRuleTests
         }
     }
 
+    /// <summary>
+    /// Inking and typing personalization off deletes the personal dictionary, which undo does not bring back: it is
+    /// permanent, so it never goes into a batch without its own confirmation. The docs lint lets it stay undocumented
+    /// only because it is on the explicit list, and every tweak on that list is undocumented and permanent.
+    /// </summary>
+    [Fact]
+    public void InkingTypingOffIsPermanentAndNeverBatched()
+    {
+        var t = TweakCatalog.Current.Get("privacy.inkingTypingOff")!;
+        Assert.Equal(Reversibility.Permanent, t.Reversibility);
+        Assert.False(t.IsBatchSafe);
+        Assert.Empty(Docs.DocLint.CheckUndocumented(t));
+        foreach (var id in Docs.DocLint.UndocumentedPermanentAllowed)
+        {
+            var listed = TweakCatalog.Current.Get(id);
+            Assert.True(listed is { Undocumented: true, Reversibility: not Reversibility.Reversible }, $"{id} does not need to be on the list");
+        }
+    }
+
     [Fact]
     public void NoTweakMixesPlanSwitchesAndPlanSettings()
     {

@@ -1,10 +1,10 @@
 # No automatic installs of suggested apps
 
 ## Summary
-Stops Windows from installing suggested and promoted apps for your account on Home and Pro, where the consumer features policy does not apply. Values Microsoft does not document; Preview.
+Stops Windows from installing suggested and promoted apps for your account on Home and Pro, where the consumer features policy does not apply. A value Microsoft does not document; Preview.
 
 ## How it works
-Windows installs some suggested apps by itself after setup; Microsoft calls these consumer experiences [1]. The policy that turns them off applies only to Enterprise and Education [1]. On Home and Pro, the values SilentInstalledAppsEnabled, PreinstalledAppsEnabled, PreinstalledAppsEverEnabled and OemPreinstalledAppsEnabled under ContentDeliveryManager decide this for your account, and tools such as Win11Debloat set them to 0 [2]. Microsoft does not document these values, and no test has shown the effect yet, so the tweak stays a Preview.
+Windows installs some suggested apps by itself after setup; Microsoft calls these consumer experiences [1]. The policy that turns them off applies only to Enterprise and Education [1]. On Home and Pro, the value SilentInstalledAppsEnabled under ContentDeliveryManager decides this for your account, and tools such as Win11Debloat set it to 0 [2]. Microsoft does not document this value, and no test has shown the effect yet, so the tweak stays a Preview. PreinstalledAppsEnabled, PreinstalledAppsEverEnabled and OemPreinstalledAppsEnabled, which some tools also set, are left out: no source we could check shows what they do on Windows 11.
 
 ## Why it can help
 Fewer apps you did not ask for, and no downloads for them in the background.

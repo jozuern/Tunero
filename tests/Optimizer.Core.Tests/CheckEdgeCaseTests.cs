@@ -453,6 +453,31 @@ public class CheckEdgeCaseTests
         Assert.Contains(LeftoverCheck.Id, onVm); // other checks still run
     }
 
+    /// <summary>
+    /// A guest on an X3D host reports the host's processor name, but has no AMD chipset devices and no say over core
+    /// parking on the host: the chipset package and X3D power plan advice do not run in a virtual machine.
+    /// </summary>
+    [Fact]
+    public void AmdChipsetAndX3dAdviceIsSkippedInAVirtualMachine()
+    {
+        var cpu = Amd("AMD Ryzen 9 7950X3D 16-Core Processor", 25, 97, "AM5", 96, 32);
+        HardwareProfile On(SystemInfo system) => P(p => p with
+        {
+            System = system,
+            Cpu = cpu,
+            Power = Power(true, personality: PowerPersonality.HighPerformance),
+            Extras = new HardwareExtras { Programs = [new InstalledProgram("Steam", null, null, false)] },
+        });
+        var real = On(new SystemInfo("ASUS", "System Product Name", [3], false, false, HypervisorPresent: true));
+        var vm = On(new SystemInfo("Microsoft Corporation", "Virtual Machine", [3], false, false, HypervisorPresent: true));
+        var onReal = new FindingEngine(CatalogData.Current).Evaluate(real);
+        var onVm = new FindingEngine(CatalogData.Current).Evaluate(vm).Select(f => f.Id).ToHashSet();
+        Assert.Equal(FindingStatus.Problem, Assert.Single(onReal, f => f.Id == AmdChipsetCheck.Id).Status);
+        Assert.Equal(FindingStatus.Problem, Assert.Single(onReal, f => f.Id == X3dCheck.Id).Status);
+        Assert.DoesNotContain(AmdChipsetCheck.Id, onVm);
+        Assert.DoesNotContain(X3dCheck.Id, onVm);
+    }
+
     /// <summary>The engine hands its BCD reader to F21 (the app builds the engine, never the check itself).</summary>
     [Fact]
     public void FindingEngineGivesTheBcdReaderToTheLeftoverCheck()
@@ -788,6 +813,28 @@ public class CheckEdgeCaseTests
         Assert.Equal(FindingStatus.Problem, One(new XmpCheck(), Tenth("ROG STRIX Z590-E GAMING WIFI")).Status);
         Assert.Equal(FindingStatus.Problem, One(new XmpCheck(), Tenth("PRIME Z490M-PLUS")).Status);
         Assert.Equal("intelLocked", One(new XmpCheck(), Tenth("B460M DS3H")).Variant);
+        Assert.Equal("intelLocked", One(new XmpCheck(), Tenth("PRIME B460M-A")).Variant);
+        // ASUS names its Maximus X to XIII Z boards without the chipset.
+        Assert.Equal(FindingStatus.Problem, One(new XmpCheck(), On("ROG MAXIMUS XI HERO (WI-FI)", 2666)).Status);
+        Assert.Equal(FindingStatus.Problem, One(new XmpCheck(), On("ROG MAXIMUS X HERO", 2666)).Status);
+        Assert.Equal(FindingStatus.Problem, One(new XmpCheck(), Tenth("ROG MAXIMUS XII APEX")).Status);
+        Assert.Equal(FindingStatus.Problem, One(new XmpCheck(), Tenth("ROG MAXIMUS XIII HERO")).Status);
+        // Only the processor's own speed counts: the i5-9400F is specified for DDR4-2666, so 2400 on a B360 board can
+        // still rise with XMP, and the i7-10700 is specified for DDR4-2933, so 2666 can too.
+        Assert.Equal(FindingStatus.Problem, One(new XmpCheck(), On("B360M PRO-VDH", 2400)).Status);
+        HardwareProfile I7(int configured) => Mem(cpu with { Name = "Intel(R) Core(TM) i7-10700 CPU @ 2.90GHz" },
+                Module(configured, "CMW32GX4M2E3600C18", 26), Module(configured, "CMW32GX4M2E3600C18", 26, locator: "DIMM_B1"))
+            with { Firmware = TestData.Firmware() with { BoardProduct = "B460M DS3H" } };
+        Assert.Equal(FindingStatus.Problem, One(new XmpCheck(), I7(2666)).Status);
+        Assert.Equal("intelLocked", One(new XmpCheck(), I7(2933)).Variant);
+        // An i3 of the 9th generation is specified for DDR4-2400.
+        var i3 = Mem(cpu with { Name = "Intel(R) Core(TM) i3-9100 CPU @ 3.60GHz" }, Module(2400, "CMW32GX4M2E3200C16", 26), Module(2400, "CMW32GX4M2E3200C16", 26, locator: "DIMM_B1"))
+            with { Firmware = TestData.Firmware() with { BoardProduct = "H310M S2H" } };
+        Assert.Equal("intelLocked", One(new XmpCheck(), i3).Variant);
+        // X299 processors are left out: that chipset supports memory overclocking.
+        var hedt = Mem(cpu with { Name = "Intel(R) Core(TM) i9-10980XE CPU @ 3.00GHz" }, Module(2933, "CMW32GX4M2E3600C18", 26), Module(2933, "CMW32GX4M2E3600C18", 26, locator: "DIMM_B1"))
+            with { Firmware = TestData.Firmware() with { BoardProduct = "PRIME X299-A II" } };
+        Assert.Equal(FindingStatus.Problem, One(new XmpCheck(), hedt).Status);
         // A current Intel processor is not covered by the rule.
         var current = Mem(TestData.Cpu13700K(), Module(4800, "CMK32GX5M2B6000C36", 34), Module(4800, "CMK32GX5M2B6000C36", 34, locator: "DIMM_B1"))
             with { Firmware = TestData.Firmware() with { BoardProduct = "PRO B760M-A" } };

@@ -611,7 +611,9 @@
         }
       ],
       "sources": [
-        "https://support.microsoft.com/en-us/windows/hardware/display-graphics/use-auto-hdr-for-better-gaming-in-windows"
+        "https://support.microsoft.com/en-us/windows/hardware/display-graphics/use-auto-hdr-for-better-gaming-in-windows",
+        "https://support.microsoft.com/en-us/topic/3f006843-2c7e-4ed0-9a5e-f9389e535952",
+        "https://devblogs.microsoft.com/directx/auto-hdr-preview-for-pc-available-today/"
       ]
     },
     {

@@ -7,7 +7,7 @@ Expert, boot configuration: removes useplatformclock, a debugging option that ol
 The boot option useplatformclock forces Windows to use the platform clock as its performance counter; Microsoft says it should only be used for debugging [1]. The platform clock is the HPET or the ACPI PM timer. Normally Windows uses the CPU's time stamp counter (TSC) when it is suitable [2]. The app deletes the option after exporting the boot configuration.
 
 ## Why it can help
-Reading the TSC takes tens to a few hundred CPU cycles. Reading a platform timer takes about 0.8 to 1.0 microseconds and needs a system call [2]. Games query the time many times per frame, so the difference adds up.
+Reading the TSC takes tens to a few hundred CPU cycles. Reading a platform timer takes about 0.8 to 1.0 microseconds and needs a system call [2]. How often a game queries the time differs from game to game; the more often it does, the more the difference counts.
 
 ## Evidence
 The cost difference is documented by Microsoft [2]. How much it changes the frame rate depends on how often a game queries the time.

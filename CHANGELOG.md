@@ -29,8 +29,9 @@
 - **Wording:** profile and drift banners, the works-against hint, the Expert link, the Modern Standby block, the ignore button, the Manual checks summary; search results no longer repeat the title.
 - **Startup:** "Show Windows entries" (off by default) replaces "Hide Windows entries", as on Services & tasks, and also hides Windows tasks, Known DLLs and Active Setup stubs whose file is gone. Service switches say Automatic or Manual, the start types they set. The second tab is Other scheduled tasks, and the summary starts with the count the tab shows.
 - **Services & tasks:** task commands show once, on one line and only with Technical details; Windows tasks show "Listed only" instead of a grey switch; notes no longer repeat the service's name.
-- **Ratings follow the evidence:** the power mode check is rated 1 on desktops (3 on laptops), the Balanced plan rates for gaming only when coming from Power saver, and HAGS on RTX 40 and 50 no longer says it is needed to start games.
-- **Inking and typing personalization off** is rated Moderate and says up front that it deletes the personal dictionary, which Undo does not bring back.
+- **Ratings follow the evidence:** the power mode check is rated 1 on desktops (2 on laptops), NVIDIA Prefer maximum performance (global and per game) 0, as no measurement shows an effect on frame times, the Balanced plan rates for gaming only when coming from Power saver, and HAGS on RTX 40 and 50 no longer says it is needed to start games.
+- **Inking and typing personalization off** is rated Moderate, is marked Permanent and says up front that it deletes the personal dictionary, which Undo does not bring back.
+- **Silent app installs off** no longer sets three undocumented Preinstalled values that no source carries; the Windows Search tweak is called Windows Search: web search and location policies.
 - **Markdig 1.5.0** for the explanation pages.
 
 ### Fixed
@@ -58,9 +59,10 @@
 - **Startup and Services:** services and drivers from driver packages show their real names instead of `@oem19.inf,%...%;` strings.
 - **Startup:** Startup folder files, shortcut targets, Explorer extensions and service DLLs are checked as the file itself, so a planted program in a folder with a space cannot pass as signed; rundll32 lines with a quoted DLL are flagged when they start something else. The CSV export names every signature and the current switch state.
 - **SysMain** is changed only by its tweak, so the Services page and the tweak never keep two different originals.
-- **Memory speed advice** recognizes Z590 and micro-ATX Z boards (Z390M and similar), so their 8th to 10th gen Intel PCs get the XMP advice again; memory module mix advice no longer shows in virtual machines.
+- **Memory speed advice** recognizes Z590 and micro-ATX Z boards (Z390M and similar), so their 8th to 10th gen Intel PCs get the XMP advice again, and so do ASUS ROG Maximus X to XIII boards; on locked boards it compares memory with the speed Intel specifies for that processor. Memory module mix, AMD chipset and X3D core parking advice no longer show in virtual machines.
 - **NVIDIA global settings:** the G-SYNC frame cap follows the G-SYNC display's refresh rate, not a faster second monitor.
-- **Explanation pages:** the recovery command for the platform clock, the editions of the web search policy, current page names and German wording.
+- **Explanation pages:** the recovery command for the platform clock, the editions of the web search policy, current page names and German wording; Auto HDR, XMP, APO, the power plan, the NVIDIA frame cap and game profile undo corrected.
+- **Remove apps:** Windows App Runtime packages (main, singleton, DDLM) are no longer offered in the unreviewed list. **German:** Power saver labels, Steps Recorder, Math Recognizer, Datenträger and several service notes use the terms Windows uses.
 - **`--apply-recommended`** picks the profile as the window does: a saved profile this PC does not offer (a laptop profile on a desktop) falls back to Gaming, as on the Overview.
 - **Conflicts:** two changes that write the same setting (a registry value, an NVIDIA driver setting, one side of a power setting) now conflict even without a declared conflict, so batch applies, Undo all and the "changes reset" notice stay right.
 - **NVIDIA global settings:** with G-SYNC and V-Sync forced on, the quick fix sets the frame rate limit 3 FPS below the refresh rate instead of removing it.

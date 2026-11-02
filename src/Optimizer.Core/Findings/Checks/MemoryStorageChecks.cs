@@ -73,8 +73,9 @@ public static class RamSpeed
 /// Advisor: RAM running below its rated speed (XMP / EXPO / D.O.C.P off). Four DDR5 modules on a Ryzen are expected to
 /// run slower: AMD specifies DDR5-3600 for four modules (e.g. "4x1R DDR5-3600 4x2R DDR5-3600"), so that is information
 /// (variant "fourDimms"), not a missing setting. Intel 8th to 10th generation processors on a board without a Z chipset
-/// cannot run memory above the processor's specified speed (<see cref="IntelLockedMemory"/>): memory at exactly that
-/// speed is information too (variant "intelLocked"), since XMP cannot change it there.
+/// cannot run memory above the speed Intel specifies for that processor (<see cref="IntelLockedMemory"/>): memory at
+/// exactly that speed is information too (variant "intelLocked"), since XMP cannot change it there. Memory below the
+/// processor's own speed stays a problem, since XMP can raise it up to that speed there too.
 /// </summary>
 public sealed class XmpCheck : IPhysicalHardwareCheck
 {
@@ -157,15 +158,16 @@ public sealed class XmpCheck : IPhysicalHardwareCheck
     }
 
     /// <summary>
-    /// An Intel 8th to 10th generation processor, a board not named as a Z370, Z390, Z490 or Z590 model (OEM boards often carry
-    /// only a part code), and memory at one of the speeds Intel specifies for these processors.
+    /// An Intel 8th to 10th generation desktop processor, a board not named as a Z370, Z390, Z490 or Z590 model (OEM boards
+    /// often carry only a part code; ASUS ROG Maximus X to XIII are Z boards by name), and memory at the speed Intel
+    /// specifies for that processor (the first matching entry of <see cref="IntelLockedMemory.Processors"/>).
     /// </summary>
     private static bool IntelLocked(HardwareProfile p, int? configured, CatalogData c)
     {
         if (c.Ram.IntelLocked is not { } rule || p.Cpu is not { Vendor: Vendor.Intel } cpu || configured is not { } speed) return false;
-        if (!rule.CpuPatterns.Any(pattern => RegexCache.Get(pattern).IsMatch(cpu.Name))) return false;
+        if (rule.Processors.FirstOrDefault(r => RegexCache.Get(r.CpuPattern).IsMatch(cpu.Name)) is not { } spec) return false;
         if (rule.UnlockedBoardPattern.Length > 0 && RegexCache.Get(rule.UnlockedBoardPattern).IsMatch(p.Firmware?.BoardProduct ?? "")) return false;
-        return rule.SpecSpeeds.Any(s => Math.Abs(speed - s) <= s * c.Ram.SpeedToleranceFraction);
+        return Math.Abs(speed - spec.Mts) <= spec.Mts * c.Ram.SpeedToleranceFraction;
     }
 }
 

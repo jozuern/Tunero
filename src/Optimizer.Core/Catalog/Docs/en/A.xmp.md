@@ -40,11 +40,11 @@ With four DDR5 modules, AMD specifies DDR5-3600 for Ryzen 7000 and 9000 processo
 With two DDR5 modules per channel (four modules), Intel's datasheets specify 4000 MT/s for single-rank and 3600 MT/s for dual-rank modules on 13th and 14th generation Core processors [16], and 4800 and 4400 MT/s on Core Ultra 200S processors [17]. A speed below the kit's rating is therefore expected; XMP would run the modules above Intel's specification.
 :::
 ::: variant intelLocked
-For 8th to 10th generation Intel Core processors, Intel lists chipsets such as B360, H370, B460 and H470 as not supporting memory overclocking, while Z490 does, and so does Z590, which also takes 10th generation processors [9][10][11][12][13][19][20]. On such a board the memory runs at the speed the processor is specified for, for example DDR4-2666 for a Core i5-9400F and DDR4-2933 for a Core i7-10700 [14][15], whatever the kit's XMP profile says. Your board ({{board}}) was not recognized as a Z370, Z390, Z490 or Z590 model.
+For 8th to 10th generation Intel Core processors, Intel lists chipsets such as B360, H370, B460 and H470 as not supporting memory overclocking, while Z370, Z390 and Z490 do, and so does Z590, which also takes 10th generation processors [9][10][11][12][13][19][20][21][22]. On such a board the memory runs at the speed the processor is specified for, for example DDR4-2666 for a Core i5-9400F and DDR4-2933 for a Core i7-10700 [14][15], whatever the kit's XMP profile says. Your board ({{board}}) was not recognized as a Z370, Z390, Z490 or Z590 model.
 :::
 
 ## How we detected it
-We read every memory module from Windows (WMI): part number and the speed the memory currently runs at (`ConfiguredClockSpeed`). The rated speed comes from the part number, decoded with the catalog's tables for Corsair, G.Skill, Kingston, Crucial, TeamGroup and Patriot. `Win32_PhysicalMemory.Speed` is not used for this because it usually reports the standard speed. Unknown part numbers give "Unknown" and no advice. Four DDR5 modules on a Ryzen processor that run below the kit's rating give information instead of a problem, because of AMD's specification; the same on a 13th or 14th generation Intel Core or a Core Ultra 200S processor, for which Intel specifies a lower speed with four modules. So does memory at 2400, 2666 or 2933 MT/s with an 8th to 10th generation Intel processor on a board whose name does not show a Z370, Z390, Z490 or Z590 chipset (prebuilt PCs often report only a part code).
+We read every memory module from Windows (WMI): part number and the speed the memory currently runs at (`ConfiguredClockSpeed`). The rated speed comes from the part number, decoded with the catalog's tables for Corsair, G.Skill, Kingston, Crucial, TeamGroup and Patriot. `Win32_PhysicalMemory.Speed` is not used for this because it usually reports the standard speed. Unknown part numbers give "Unknown": compare the speed on the kit's label with the current speed yourself. Four DDR5 modules on a Ryzen processor that run below the kit's rating give information instead of a problem, because of AMD's specification; the same on a 13th or 14th generation Intel Core or a Core Ultra 200S processor, for which Intel specifies a lower speed with four modules. So does memory at the speed Intel specifies for the processor, with an 8th to 10th generation Intel desktop processor on a board whose name does not show a Z370, Z390, Z490 or Z590 chipset (prebuilt PCs often report only a part code; the ASUS ROG Maximus X to XIII count as Z boards).
 
 ## How to fix
 ::: variant fourDimms,fourDimmsIntel
@@ -53,6 +53,10 @@ No action needed. If you want the kit's full speed, two modules are needed inste
 ::: variant intelLocked
 No action needed on a board with a B or H chipset. If your board does have a Z370, Z390, Z490 or Z590 chipset, look for **XMP** on the overclocking or "Tweaker" page of the BIOS, select the first profile and save. A faster kit only pays off together with a Z board.
 :::
+::: status Ok
+No action needed.
+:::
+::: status Problem,Info,Unknown
 ::: variant default,laptop
 1. **BitLocker:** before you change BIOS settings, check whether BitLocker or device encryption is on. If so, suspend protection first (Start > **Manage BitLocker** > **Suspend protection**) or have the recovery key ready; it is often saved in your Microsoft account. A BIOS update or a change to the TPM or the boot configuration can make Windows ask for it at the next start [7][8].
 2. Restart into the BIOS: **Settings > System > Recovery > Advanced startup > Restart now**, then **Troubleshoot > Advanced options > UEFI Firmware Settings** (on some versions "UEFI Settings") [6]. Many PCs also open it when you press **Del** or **F2** during start.
@@ -67,6 +71,7 @@ No action needed on a board with a B or H chipset. If your board does have a Z37
 :::
 4. Select the first profile, save and exit (usually **F10**).
 5. The first start can take longer while the board trains the memory. If the PC does not start or crashes, update the BIOS first, or try the second profile. If it stays unstable, turn the profile off again: a stable PC at standard speed is better than an unstable fast one.
+:::
 :::
 
 ## How to check the fix
@@ -93,3 +98,5 @@ Run the scan again. Current speed should equal the rated speed. Task Manager > P
 18. https://www.techspot.com/review/2866-ddr5-ram-stock-vs-xmp-expo/
 19. https://www.intel.com/content/www/us/en/products/sku/196612/intel-z590-chipset/specifications.html
 20. https://www.intel.com/content/www/us/en/products/sku/196612/intel-z590-chipset/compatible.html
+21. https://www.intel.com/content/www/us/en/products/sku/125903/intel-z370-chipset/specifications.html
+22. https://www.intel.com/content/www/us/en/products/sku/133293/intel-z390-chipset/specifications.html

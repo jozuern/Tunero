@@ -97,10 +97,10 @@
       "id": "nvidia.preferMaxPerformance",
       "category": "Graphics",
       "impact": {
-        "gaming": 1,
+        "gaming": 0,
         "basis": "situational",
         "effect": [
-          "lows"
+          "none"
         ]
       },
       "risk": "moderate",

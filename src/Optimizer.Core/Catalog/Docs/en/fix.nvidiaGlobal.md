@@ -21,7 +21,7 @@ If you set the limit on purpose, for example to reduce heat or noise, you lose t
 When you deliberately use a global frame limit.
 
 ## Sources
-1. https://docs.nvidia.com/gameworks/content/gameworkslibrary/coresdk/nvapi/group__drsapi.html
+1. https://archive.docs.nvidia.com/gameworks/content/gameworkslibrary/coresdk/nvapi/group__drsapi.html
 2. https://www.nvidia.com/content/Control-Panel-Help/vLatest/en-us/mergedProjects/nv3d/Manage_3D_Settings_(reference).htm
 3. https://github.com/NVIDIA/nvapi/blob/main/NvApiDriverSettings.h
 4. https://blurbusters.com/gsync/gsync101-input-lag-tests-and-settings/5/

@@ -78,30 +78,6 @@
           "name": "SilentInstalledAppsEnabled",
           "kind": "dword",
           "value": 0
-        },
-        {
-          "type": "registry",
-          "hive": "user",
-          "path": "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
-          "name": "PreinstalledAppsEnabled",
-          "kind": "dword",
-          "value": 0
-        },
-        {
-          "type": "registry",
-          "hive": "user",
-          "path": "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
-          "name": "PreinstalledAppsEverEnabled",
-          "kind": "dword",
-          "value": 0
-        },
-        {
-          "type": "registry",
-          "hive": "user",
-          "path": "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
-          "name": "OemPreinstalledAppsEnabled",
-          "kind": "dword",
-          "value": 0
         }
       ],
       "sources": [

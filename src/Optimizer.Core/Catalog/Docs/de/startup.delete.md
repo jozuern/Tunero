@@ -4,7 +4,7 @@
 Löscht diesen Autostart-Eintrag (Registry-Wert, Datei im Autostart-Ordner oder Aufgabe eines Programms) wie Autoruns. Tunero sichert ihn vorher, die Seite Änderungen stellt ihn wieder her.
 
 ## So funktioniert es
-Windows führt die Befehlszeilen in den Run-Schlüsseln bei jeder Anmeldung aus, die in den RunOnce-Schlüsseln einmal [1]. Ein Run-Schlüssel aus einer Gruppenrichtlinie und der Wert AutoRun des Command Processor (läuft bei jedem Start von cmd.exe) funktionieren genauso, ebenso die Dateien in den Autostart-Ordnern und die geplanten Aufgaben, die andere Programme anlegen [2]. Ausschalten behält den Eintrag und markiert ihn als deaktiviert; Löschen entfernt ihn, so wie Autoruns [2]. Vorher speichert Tunero, was es löscht: einen Registry-Wert mit seinem Typ, eine Datei im Autostart-Ordner mit ihrem Inhalt, eine Aufgabe als das XML, das die Aufgabenplanung exportiert. Rückgängig schreibt den Wert oder die Datei zurück oder legt die Aufgabe aus ihrem XML unter demselben Namen und Konto wieder an [3]. Eine Aufgabe mit gespeichertem Kennwort wird nicht angeboten, weil sie sich nur mit diesem Kennwort wieder anlegen ließe [3].
+Windows führt die Befehlszeilen in den Run-Schlüsseln bei jeder Anmeldung aus, die in den RunOnce-Schlüsseln einmal [1]. Ein Run-Schlüssel aus einer Gruppenrichtlinie [5] und der Wert AutoRun des Command Processor, den cmd.exe bei jedem Start ausführt [4], funktionieren genauso, ebenso die Dateien in den Autostart-Ordnern und die geplanten Aufgaben, die andere Programme anlegen [2]. Ausschalten behält den Eintrag und markiert ihn als deaktiviert; Löschen entfernt ihn, so wie Autoruns [2]. Vorher speichert Tunero, was es löscht: einen Registry-Wert mit seinem Typ, eine Datei im Autostart-Ordner mit ihrem Inhalt, eine Aufgabe als das XML, das die Aufgabenplanung exportiert. Rückgängig schreibt den Wert oder die Datei zurück oder legt die Aufgabe aus ihrem XML unter demselben Namen und Konto wieder an [3]. Eine Aufgabe mit gespeichertem Kennwort wird nicht angeboten, weil sie sich nur mit diesem Kennwort wieder anlegen ließe [3].
 
 ## Warum es helfen kann
 Ein Eintrag, dessen Programm deinstalliert wurde, bleibt in der Liste und zeigt auf eine Datei, die es nicht mehr gibt; Löschen räumt die Liste auf. RunOnce-, Richtlinien-Run- und AutoRun-Einträge lassen sich auf dieser Seite nicht ausschalten, Löschen ist hier also der einzige Weg, sie zu stoppen.
@@ -22,3 +22,5 @@ Bei Einträgen, die du nur pausieren willst: Schalte sie stattdessen aus, dann b
 1. https://learn.microsoft.com/en-us/windows/win32/setupapi/run-and-runonce-registry-keys
 2. https://learn.microsoft.com/en-us/sysinternals/downloads/autoruns
 3. https://learn.microsoft.com/en-us/windows/win32/taskschd/taskfolder-registertask
+4. https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/cmd
+5. https://learn.microsoft.com/en-us/windows/client-management/mdm/policy-csp-admx-logon

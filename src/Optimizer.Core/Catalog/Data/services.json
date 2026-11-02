@@ -484,8 +484,8 @@
     {
       "name": "RetailDemo",
       "mode": "manualOk",
-      "en": "Retail Demo service for store display PCs.",
-      "de": "Einzelhandelsdemo-Dienst für Ausstellungs-PCs."
+      "en": "Retail Demo Service: only for display PCs in stores.",
+      "de": "Dienst für Einzelhandelsdemos: nur für Ausstellungs-PCs im Handel."
     },
     {
       "name": "lfsvc",
@@ -563,19 +563,19 @@
       "name": "XblGameSave",
       "mode": "warn",
       "en": "Xbox Live Game Save: cloud saves of Xbox and Game Pass games.",
-      "de": "Xbox Live-Spielspeicherung: Cloud-Spielstände von Xbox- und Game-Pass-Spielen."
+      "de": "Xbox Live-Spiele speichern: Cloud-Spielstände von Xbox- und Game-Pass-Spielen."
     },
     {
       "name": "XboxNetApiSvc",
       "mode": "warn",
       "en": "Xbox Live Networking Service: multiplayer connectivity for Xbox games.",
-      "de": "Xbox Live-Netzwerkdienst: Mehrspielerverbindungen für Xbox-Spiele."
+      "de": "Xbox Live-Netzwerkservice: Mehrspielerverbindungen für Xbox-Spiele."
     },
     {
       "name": "XboxGipSvc",
       "mode": "warn",
-      "en": "Xbox Accessory Management: firmware and settings for Xbox controllers.",
-      "de": "Xbox-Zubehörverwaltung: Firmware und Einstellungen für Xbox-Controller."
+      "en": "Xbox Accessory Management Service: firmware and settings for Xbox controllers.",
+      "de": "Xbox Accessory Management Service: Firmware und Einstellungen für Xbox-Controller."
     },
     {
       "name": "DiagTrack",
@@ -586,8 +586,8 @@
     {
       "name": "SysMain",
       "mode": "protected",
-      "en": "SysMain (Superfetch): preloads frequently used programs. Turned off by the tweak SysMain (Superfetch) off (Tweaks, Memory), which also undoes it; not changed here, so the two never record different originals.",
-      "de": "SysMain (Superfetch): lädt häufig genutzte Programme vor. Wird vom Tweak SysMain (Superfetch) aus (Tweaks, RAM) ausgeschaltet, der es auch rückgängig macht; hier nicht änderbar, damit beide nie unterschiedliche Ausgangswerte speichern."
+      "en": "SysMain (Superfetch): preloads frequently used programs. Only the tweak SysMain (Superfetch) off (Tweaks, Memory) turns it off and undoes it, so the two never record different originals. The tweak is offered only on PCs without a hard disk: preloading was designed for hard disks.",
+      "de": "SysMain (Superfetch): lädt häufig genutzte Programme vor. Nur der Tweak SysMain (Superfetch) aus (Tweaks, RAM) schaltet es aus und macht es rückgängig, damit beide nie unterschiedliche Ausgangswerte speichern. Den Tweak gibt es nur auf PCs ohne Festplatte (HDD): Das Vorladen wurde für Festplatten entwickelt."
     },
     {
       "name": "edgeupdate",

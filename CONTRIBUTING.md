@@ -134,7 +134,7 @@ Undo has to work on every backup file an earlier release wrote, also after an up
 
 A value Microsoft or the vendor does not document is allowed only when all of this holds; the docs lint (`CheckUndocumented`) enforces the first three:
 
-- The change is harmless and fully reversible, below Expert risk.
+- The change is harmless and fully reversible, below Expert risk. A tweak may still be marked permanent when only a documented value in it cannot be undone (privacy.inkingTypingOff: the documented policy deletes the personal dictionary, its undocumented values only set the Settings switch); such a tweak is listed in `DocLint.UndocumentedPermanentAllowed`.
 - The tweak has `"undocumented": true` (the app shows an "Undocumented value" badge), and both explanation pages say that Microsoft does not document the value.
 - It is proven to work: `"proof"` names the test or source that showed the effect (a VM test result that checked the visible effect, not only the registry value). A results file that is no longer in `docs/` is cited with the commit that has it ("docs/vm-test-results-2026-10-11.md in git 60c3a93^"); `ProofFilesExist` checks every path. Without proof the tweak is `"preview": true`; the VM test plan lists what to check.
 - Several unofficial sources that document and prove a value count like an official source, for tweaks and for every other feature: they must be independent of each other (copies of one post count once) and show it working (a test, a screenshot, reverse engineering), not only repeat it. That counts as proof; the value still gets `"undocumented": true` and the sentence on both pages when Microsoft or the vendor does not document it, and the pages cite those sources.

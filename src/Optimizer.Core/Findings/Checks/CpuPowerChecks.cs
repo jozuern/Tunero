@@ -74,9 +74,10 @@ public static class X3d
 /// <summary>
 /// F10: multi-CCD X3D: the AMD driver parks the cores of the chiplet without V-Cache while a game runs, which needs core
 /// parking. Problem when the plan is not Balanced, or Balanced with core parking switched off (CPMINCORES 100 %: "The
-/// Core Parking algorithm is disabled if the value of this setting is 100%", variant "parkingOff").
+/// Core Parking algorithm is disabled if the value of this setting is 100%", variant "parkingOff"). Not in a virtual
+/// machine: the guest's plan does not park the host's cores.
 /// </summary>
-public sealed class X3dCheck : IFindingCheck
+public sealed class X3dCheck : IPhysicalHardwareCheck
 {
     public const string Id = "F10.x3d";
     public IReadOnlyList<string> DocIds => [Id];

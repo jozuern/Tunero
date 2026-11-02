@@ -144,18 +144,28 @@ public sealed class FourDimmRule
 /// <summary>
 /// Intel 8th to 10th generation desktop processors: the H, B and Q chipsets of the 300 and 400 series do not support
 /// memory overclocking (Intel's specification pages: "Supports Memory Overclocking: No"), so memory runs at the
-/// processor's specified speed whatever XMP says. Only Z370, Z390 and Z490 boards can use XMP.
+/// processor's specified speed whatever XMP says. Only Z370, Z390, Z490 and Z590 boards can use XMP.
 /// </summary>
 public sealed class IntelLockedMemory
 {
-    /// <summary>Processor names of these generations (Core i3 to i9, Pentium Gold, Celeron).</summary>
-    public List<string> CpuPatterns { get; init; } = [];
+    /// <summary>
+    /// Desktop processors of these generations (Core i3 to i9, Pentium Gold, Celeron) with the memory speed Intel
+    /// specifies for each (DDR4-2400, 2666 or 2933); the first matching entry counts.
+    /// </summary>
+    public List<CpuMemorySpeed> Processors { get; init; } = [];
 
-    /// <summary>Board names with a chipset that supports memory overclocking (Z370, Z390, Z490).</summary>
+    /// <summary>
+    /// Board names with a chipset that supports memory overclocking (Z370, Z390, Z490, Z590), including the ASUS ROG
+    /// Maximus X to XIII, whose names carry no chipset.
+    /// </summary>
     public string UnlockedBoardPattern { get; init; } = "";
+}
 
-    /// <summary>The memory speeds Intel specifies for these processors (DDR4-2400, 2666, 2933).</summary>
-    public List<int> SpecSpeeds { get; init; } = [];
+/// <summary>A processor name pattern and the memory speed in MT/s Intel specifies for it.</summary>
+public sealed class CpuMemorySpeed
+{
+    public string CpuPattern { get; init; } = "";
+    public int Mts { get; init; }
 }
 
 public sealed class RamDecoder

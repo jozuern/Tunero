@@ -18,8 +18,7 @@
           },
           "gaming": 2,
           "effect": [
-            "fps",
-            "lows"
+            "fps"
           ],
           "reasonKey": "impact.fromPowerSaver"
         }

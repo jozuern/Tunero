@@ -1,10 +1,10 @@
 # Keine automatische Installation vorgeschlagener Apps
 
 ## Zusammenfassung
-Verhindert, dass Windows vorgeschlagene und beworbene Apps für dein Konto installiert, auf Home und Pro, wo die Richtlinie für Verbraucherfunktionen nicht gilt. Nicht dokumentierte Werte; Vorschau.
+Verhindert, dass Windows vorgeschlagene und beworbene Apps für dein Konto installiert, auf Home und Pro, wo die Richtlinie für Verbraucherfunktionen nicht gilt. Nicht dokumentierter Wert; Vorschau.
 
 ## So funktioniert es
-Windows installiert nach der Einrichtung von sich aus einige vorgeschlagene Apps; Microsoft nennt das Verbraucherfunktionen [1]. Die Richtlinie, die sie abschaltet, gilt nur für Enterprise und Education [1]. Auf Home und Pro entscheiden die Werte SilentInstalledAppsEnabled, PreinstalledAppsEnabled, PreinstalledAppsEverEnabled und OemPreinstalledAppsEnabled unter ContentDeliveryManager für dein Konto, und Tools wie Win11Debloat setzen sie auf 0 [2]. Microsoft dokumentiert diese Werte nicht, und noch kein Test hat die Wirkung gezeigt, daher bleibt die Option eine Vorschau.
+Windows installiert nach der Einrichtung von sich aus einige vorgeschlagene Apps; Microsoft nennt das Verbraucherfunktionen [1]. Die Richtlinie, die sie abschaltet, gilt nur für Enterprise und Education [1]. Auf Home und Pro entscheidet der Wert SilentInstalledAppsEnabled unter ContentDeliveryManager darüber für dein Konto, und Tools wie Win11Debloat setzen ihn auf 0 [2]. Microsoft dokumentiert diesen Wert nicht, und noch kein Test hat die Wirkung gezeigt, daher bleibt die Option eine Vorschau. PreinstalledAppsEnabled, PreinstalledAppsEverEnabled und OemPreinstalledAppsEnabled, die manche Tools zusätzlich setzen, lässt die App weg: Keine Quelle, die wir prüfen konnten, zeigt, was sie unter Windows 11 bewirken.
 
 ## Warum es helfen kann
 Weniger Apps, um die du nicht gebeten hast, und keine Downloads dafür im Hintergrund.

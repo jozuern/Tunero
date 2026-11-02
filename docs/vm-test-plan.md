@@ -254,7 +254,7 @@ Preconditions, or there is nothing to change on a clean install: turn on memory 
 | `perm.devicesOff` | Windows apps: no unpaired or trusted devices | safe |  | registry |
 | `perm.screenshotsOff` | Windows apps: no screenshots of other windows | safe, preview |  | registry |
 | `perm.presenceOff` | Windows apps: no presence sensing | safe |  | registry |
-| `privacy.searchConnectedOff` | Windows Search: no web results and no location | safe |  | registry |
+| `privacy.searchConnectedOff` | Windows Search: web search and location policies | safe |  | registry |
 | `privacy.malwareReportOff` | Malicious Software Removal Tool: no infection reports | safe |  | registry |
 | `privacy.thirdPartySpotlightOff` | Windows Spotlight: no third-party suggestions | safe |  | registry |
 | `privacy.spotlightOff` | Windows Spotlight off | safe |  | registry |

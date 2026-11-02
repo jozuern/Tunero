@@ -109,21 +109,24 @@ public static class DeviceTweaks
         };
     }
 
-    /// <summary>NVIDIA "Prefer maximum performance" in the game's own driver profile (created if the driver has none).</summary>
+    /// <summary>
+    /// NVIDIA "Prefer maximum performance" in the game's own driver profile (created if the driver has none). Impact 0: no
+    /// measurement shows an effect on frame times yet, like the global nvidia.preferMaxPerformance.
+    /// </summary>
     public static TweakDefinition NvidiaGameMaxPerformance(InstalledGame g) => new()
     {
         Id = $"nvidia.game.{TweakIds.Slug(g.Executable!)}",
         Subject = g.Name,
         Docs = NvidiaGameDoc,
         Category = "Graphics",
-        Impact = new ImpactInfo { Gaming = 1, Basis = "situational", Effect = ["lows"] },
+        Impact = new ImpactInfo { Gaming = 0, Basis = "situational", Effect = ["none"] },
         Risk = Risk.Safe,
         Preview = true,
         AppliesTo = new AppliesTo { GpuVendor = ["nvidia"] },
         Actions = [new NvidiaDrsAction { Profile = g.Executable!, SettingId = Nvapi.SettingPreferredPState, Value = Nvapi.PStatePreferMax }],
         Sources =
         [
-            "https://docs.nvidia.com/gameworks/content/gameworkslibrary/coresdk/nvapi/group__drsapi.html",
+            "https://archive.docs.nvidia.com/gameworks/content/gameworkslibrary/coresdk/nvapi/group__drsapi.html",
             "https://www.nvidia.com/content/Control-Panel-Help/vLatest/en-us/mergedProjects/nv3d/Manage_3D_Settings_(reference).htm",
         ],
     };

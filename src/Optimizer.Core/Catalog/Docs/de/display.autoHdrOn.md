@@ -10,7 +10,7 @@ Auto HDR erweitert Farbraum und Helligkeit von SDR-Spielen mit DirectX 11 oder 1
 Ältere Spiele sehen auf einem HDR-Monitor eher wie HDR-Spiele aus.
 
 ## Belege
-Eine persönliche Vorliebe ohne Einfluss auf Framerate oder Latenz.
+Eine Frage der Optik. Laut Microsoft schaltet Auto HDR auch die Optimierungen für Spiele im Fenstermodus ein [2]; DirectX-10- und -11-Spiele im Fenster geben ihre Bilder dann anders aus. Auto HDR selbst braucht etwas Rechenleistung der GPU, was Spiele laut Microsoft nicht wesentlich beeinträchtigen soll [3]; eine Messung der Framerate veröffentlicht Microsoft nicht.
 
 ## Nachteile & Risiken
 Das Ergebnis hängt vom Spiel ab; manche wirken blass oder zu hell. Ohne HDR-Bildschirm oder mit HDR aus ändert sich nichts.
@@ -20,3 +20,5 @@ Wenn du keinen HDR-Bildschirm hast oder Spiele im Originallook magst.
 
 ## Quellen
 1. https://support.microsoft.com/en-us/windows/hardware/display-graphics/use-auto-hdr-for-better-gaming-in-windows
+2. https://support.microsoft.com/en-us/topic/3f006843-2c7e-4ed0-9a5e-f9389e535952
+3. https://devblogs.microsoft.com/directx/auto-hdr-preview-for-pc-available-today/

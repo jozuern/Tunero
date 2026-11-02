@@ -63,7 +63,7 @@ public static class RuntimeFixes
         Fixes = [NvidiaGlobalCheck.Id],
         Sources =
         [
-            "https://docs.nvidia.com/gameworks/content/gameworkslibrary/coresdk/nvapi/group__drsapi.html",
+            "https://archive.docs.nvidia.com/gameworks/content/gameworkslibrary/coresdk/nvapi/group__drsapi.html",
             "https://github.com/NVIDIA/nvapi/blob/main/NvApiDriverSettings.h",
             "https://blurbusters.com/gsync/gsync101-input-lag-tests-and-settings/5/",
         ],
@@ -99,7 +99,7 @@ public static class RuntimeFixes
         Category = "Fixes",
         // Lower on desktops: Windows ships values for the power modes only on PCs with a battery (see PowerModeCheck).
         Impact = new ImpactInfo { Gaming = 1, Basis = "situational", Effect = ["fps"] },
-        ImpactOverrides = [new ImpactOverride { When = new Condition { Fact = "system.laptop", Eq = JsonSerializer.SerializeToElement(true) }, Gaming = 3, ReasonKey = "impact.laptopPowerMode" }],
+        ImpactOverrides = [new ImpactOverride { When = new Condition { Fact = "system.laptop", Eq = JsonSerializer.SerializeToElement(true) }, Gaming = 2, ReasonKey = "impact.laptopPowerMode" }],
         Risk = Risk.Safe,
         Hidden = true,
         Actions = [new PowerModeAction { Overlay = FirmwareExtras.OverlayBestPerformance }],
