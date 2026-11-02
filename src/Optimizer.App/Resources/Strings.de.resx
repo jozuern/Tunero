@@ -283,7 +283,7 @@
     <value>Apps entfernen</value>
   </data>
   <data name="Debloat_Hint" xml:space="preserve">
-    <value>Vorinstallierte Apps, die du entfernen kannst. Nur Apps aus einer geprüften Liste werden angeboten; Teile von Windows und Apps, die Spiele brauchen, nie.</value>
+    <value>Vorinstallierte Apps, die du entfernen kannst. Angeboten werden nur Apps aus einer geprüften Liste, nie Teile von Windows; Apps, die installierte Spiele brauchen, bleiben gesperrt.</value>
   </data>
   <data name="Debloat_Empty" xml:space="preserve">
     <value>Keine der Apps aus der Liste ist installiert.</value>
@@ -533,7 +533,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
     <value>Wird installiert</value>
   </data>
   <data name="Apps_StartedForUser" xml:space="preserve">
-    <value>Für dein Konto gestartet. Starte den Scan erneut, wenn die Installation fertig ist.</value>
+    <value>Für dein Konto gestartet. Wähle Neu laden, wenn die Installation fertig ist.</value>
   </data>
   <data name="Apps_Failed" xml:space="preserve">
     <value>Installation fehlgeschlagen (winget-Code {0}).</value>
@@ -1301,16 +1301,17 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Startup_DeleteHint" xml:space="preserve"><value>Entfernt diesen Eintrag (den Registry-Wert, die Datei im Autostart-Ordner oder die Aufgabe), wie Autoruns. Er wird vorher gesichert: Rückgängig auf der Seite Änderungen stellt ihn wieder her.</value></data>
   <data name="Startup_FileMissing" xml:space="preserve"><value>Die Datei dieses Eintrags existiert nicht.</value></data>
   <data name="Programs_Title" xml:space="preserve"><value>Installierte Programme</value></data>
-  <data name="Programs_Hint" xml:space="preserve"><value>Desktopprogramme aus der Deinstallationsliste von Windows. Deinstallieren startet das eigene Deinstallationsprogramm. Hake mehrere an, um sie nacheinander zu deinstallieren und zu sehen, was sie zurückgelassen haben.</value></data>
+  <data name="Programs_Hint" xml:space="preserve"><value>Desktopprogramme aus der Deinstallationsliste von Windows. Deinstallieren startet das eigene Deinstallationsprogramm; danach zeigt Tunero, was es zurückgelassen hat.</value></data>
   <data name="Programs_Search" xml:space="preserve"><value>Programme suchen</value></data>
-  <data name="Programs_Count" xml:space="preserve"><value>Programme: {0}</value></data>
+  <data name="Programs_Count" xml:space="preserve"><value>{0} Programme.</value></data>
+  <data name="Programs_CountOne" xml:space="preserve"><value>1 Programm.</value></data>
   <data name="Programs_Sort" xml:space="preserve"><value>Programme sortieren</value></data>
   <data name="Programs_SortName" xml:space="preserve"><value>Nach Name</value></data>
   <data name="Programs_SortSize" xml:space="preserve"><value>Größte zuerst</value></data>
   <data name="Programs_SortDate" xml:space="preserve"><value>Neueste zuerst</value></data>
   <data name="List_NoMatch" xml:space="preserve"><value>Nichts passt zur Suche oder zu den Filtern.</value></data>
   <data name="Task_Search" xml:space="preserve"><value>Aufgaben suchen</value></data>
-  <data name="Programs_CountFiltered" xml:space="preserve"><value>Programme: {0} von {1}</value></data>
+  <data name="Programs_CountFiltered" xml:space="preserve"><value>{0} von {1} werden gezeigt.</value></data>
   <data name="Programs_Uninstall" xml:space="preserve"><value>Deinstallieren</value></data>
   <data name="Programs_ConfirmTitle" xml:space="preserve"><value>Programm deinstallieren?</value></data>
   <data name="Programs_ConfirmText" xml:space="preserve"><value>Startet das Deinstallationsprogramm von {0}. Folge seinem Fenster; es entscheidet, was entfernt wird, auch deine Einstellungen für dieses Programm.</value></data>
@@ -1331,8 +1332,9 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Changes_OpenRestore" xml:space="preserve"><value>Systemwiederherstellung öffnen</value></data>
   <data name="Debloat_CameBack" xml:space="preserve"><value>Diese entfernten Apps sind wieder installiert, etwa durch ein Windows-Update oder Software des PC-Herstellers: {0}. Sie stehen unten, falls du sie wieder entfernen willst.</value></data>
   <data name="Drv_CleanTitle" xml:space="preserve"><value>Grafiktreiber vollständig entfernen</value></data>
-  <data name="Drv_CleanHint" xml:space="preserve"><value>Wenn du die Grafikkartenmarke wechselst oder ein Treiber immer wieder Probleme macht, entfernt Display Driver Uninstaller (DDU) den alten Treiber vollständig, bevor du den neuen installierst. Der Autor empfiehlt den abgesicherten Modus und vorher eine Sicherung oder einen Wiederherstellungspunkt. Tunero entfernt selbst keine Treiber. Für den abgesicherten Modus findest du unter Tools „In die erweiterten Startoptionen neu starten“.</value></data>
+  <data name="Drv_CleanHint" xml:space="preserve"><value>Wenn du die Grafikkartenmarke wechselst oder ein Treiber immer wieder Probleme macht, entfernt Display Driver Uninstaller (DDU) den alten Treiber vollständig, bevor du den neuen installierst. Der Autor empfiehlt den abgesicherten Modus und vorher eine Sicherung oder einen Wiederherstellungspunkt. Tunero entfernt selbst keine Treiber.</value></data>
   <data name="Drv_CleanOpen" xml:space="preserve"><value>DDU-Seite öffnen</value></data>
+  <data name="Drv_CleanSafeModeLink" xml:space="preserve"><value>„In die erweiterten Startoptionen neu starten“ unter Tools</value></data>
   <data name="Prio_Title" xml:space="preserve"><value>Startprioritäten für Programme</value></data>
   <data name="Prio_Hint" xml:space="preserve"><value>Windows startet das Programm jedes Mal mit dieser CPU-Priorität, ohne Hintergrundprogramm. Sinnvoll für ein Spiel, das mit beschäftigten Hintergrundprogrammen konkurriert, oder damit ein Backup- oder Download-Tool sich zurückhält.</value></data>
   <data name="Prio_Warning" xml:space="preserve"><value>Microsoft dokumentiert diese Werte nicht, deshalb tragen die Regeln das Etikett „Undokumentierter Wert“; ein Test in einer virtuellen Maschine mit Windows 11 hat gezeigt, dass Windows sie anwendet. Manche Anti-Cheat-Systeme prüfen diesen Teil der Registry.</value></data>
@@ -1453,9 +1455,10 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Drv_AgeNew" xml:space="preserve"><value>weniger als zwei Monate alt</value></data>
   <data name="Drv_AgeMonths" xml:space="preserve"><value>etwa {0} Monate alt</value></data>
   <data name="Drv_AgeYears" xml:space="preserve"><value>etwa {0} Jahre alt</value></data>
-  <data name="Drv_GroupFrom" xml:space="preserve"><value>Updates von {0}</value></data>
+  <data name="Drv_AgeOld" xml:space="preserve"><value>etwa {0} Jahre alt, such nach einem Update</value></data>
+  <data name="Drv_GroupFrom" xml:space="preserve"><value>Update-Quelle: {0}</value></data>
   <data name="Drv_GroupOther" xml:space="preserve"><value>Keine bekannte Update-Quelle</value></data>
-  <data name="Drv_GroupBoard" xml:space="preserve"><value>Updates vom Mainboard-Hersteller</value></data>
+  <data name="Drv_GroupBoard" xml:space="preserve"><value>Update-Quelle: der Hersteller deines Mainboards</value></data>
   <data name="Tweak_AlreadyOnShort" xml:space="preserve"><value>Schon an</value></data>
   <data name="Tweak_AlreadyOnTip" xml:space="preserve"><value>Windows, eine Richtlinie oder ein anderes Tool hat das gesetzt, bevor Tunero etwas geändert hat. Ohne Originalwert zum Wiederherstellen schaltet Tunero es nicht aus.</value></data>
   <data name="Confirm_Blocked" xml:space="preserve"><value>Noch nicht möglich: siehe den roten Hinweis oben. Es wurde nichts geändert.</value></data>
@@ -1582,12 +1585,13 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Tweak_SwitchOff" xml:space="preserve"><value>Nicht angewendet</value></data>
   <data name="Tweaks_ProfileLink" xml:space="preserve"><value>Profil: {0} (auf der Übersicht ändern)</value></data>
   <data name="Rec_EmptyButExcluded" xml:space="preserve"><value>Gerade lässt sich nichts mit einem Klick anwenden. Die Änderungen, die helfen würden, stehen unten, mit dem, was sie vorher brauchen.</value></data>
-  <data name="Debloat_TabNote" xml:space="preserve"><value>Angeboten werden nur Apps aus einer geprüften Liste, nie Teile von Windows. Apps, die installierte Spiele brauchen, bleiben gesperrt. Das Entfernen lässt sich hier nicht rückgängig machen; für Apps, die es noch im Microsoft Store gibt, steht unter „Entfernte Apps“ ein Link zum Neuinstallieren.</value></data>
+  <data name="Debloat_TabNote" xml:space="preserve"><value>Angeboten werden nur Apps aus einer geprüften Liste, nie Teile von Windows. Apps, die installierte Spiele brauchen, bleiben gesperrt. Das Entfernen lässt sich hier nicht rückgängig machen; für Apps, die es noch im Microsoft Store gibt, steht am Ende der Liste unter „Entfernte Apps“ ein Link zum Neuinstallieren.</value></data>
   <data name="Debloat_AdminToRemove" xml:space="preserve"><value>Apps zu entfernen braucht Administratorrechte. Starte Tunero als Administrator.</value></data>
   <data name="Debloat_RemoveName" xml:space="preserve"><value>{0} entfernen</value></data>
   <data name="Programs_UninstallName" xml:space="preserve"><value>{0} deinstallieren</value></data>
   <data name="Programs_SelectName" xml:space="preserve"><value>{0} auswählen</value></data>
-  <data name="Programs_UninstallSelected" xml:space="preserve"><value>Auswahl deinstallieren ({0})</value></data>
+  <data name="Programs_UninstallSelected" xml:space="preserve"><value>Auswahl deinstallieren</value></data>
+  <data name="Programs_SelectHint" xml:space="preserve"><value>Hake Programme an, um mehrere nacheinander zu deinstallieren</value></data>
   <data name="Programs_Quiet" xml:space="preserve"><value>Ohne Rückfragen, wo möglich</value></data>
   <data name="Programs_QuietHint" xml:space="preserve"><value>Nutzt die stille Deinstallation, die das Programm anbietet (Windows Installer oder den eigenen stillen Befehl des Herstellers). Sie beantwortet die Fragen des Deinstallationsprogramms mit dessen Vorgaben. Programme ohne sie zeigen ihr Fenster.</value></data>
   <data name="Programs_BulkConfirmTitle" xml:space="preserve"><value>Programme deinstallieren?</value></data>
@@ -1627,7 +1631,7 @@ Die Dateien werden endgültig gelöscht. Dateien in Benutzung werden übersprung
   <data name="Startup_KindFilter" xml:space="preserve"><value>Art des Orts</value></data>
   <data name="Svc_StartTypeName" xml:space="preserve"><value>Starttyp von {0}</value></data>
   <data name="Net_DnsRouter" xml:space="preserve"><value>Dein Router ({0})</value></data>
-  <data name="Net_FixesLink" xml:space="preserve"><value>Netzwerk reparieren unter Tools</value></data>
+  <data name="Net_FixesLink" xml:space="preserve"><value>„Netzwerk reparieren“ unter Tools</value></data>
   <data name="Bench_Step1" xml:space="preserve"><value>Starte das Spiel und wähle es unten in der Liste aus.</value></data>
   <data name="Bench_Step2" xml:space="preserve"><value>Nimm A (vorher) dreimal in derselben Szene auf. Fertig: {0} von 3.</value></data>
   <data name="Bench_Step3" xml:space="preserve"><value>Nimm die Änderung vor, die du testen willst, und geh zurück in dieselbe Szene.</value></data>

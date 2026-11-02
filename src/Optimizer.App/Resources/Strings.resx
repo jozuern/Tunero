@@ -283,7 +283,7 @@
     <value>Remove apps</value>
   </data>
   <data name="Debloat_Hint" xml:space="preserve">
-    <value>Preinstalled apps you can remove. Only apps from a reviewed list are offered; parts of Windows and apps that games need are never offered.</value>
+    <value>Preinstalled apps you can remove. Only apps from a reviewed list are offered, never parts of Windows; apps that installed games need stay locked.</value>
   </data>
   <data name="Debloat_Empty" xml:space="preserve">
     <value>None of the apps on the list are installed.</value>
@@ -518,7 +518,7 @@ The files are deleted permanently. Files in use are skipped.</value>
   </data>
   <data name="Apps_Reload" xml:space="preserve"><value>Refresh</value></data>
   <data name="Apps_Hint" xml:space="preserve">
-    <value>Common gaming apps and tools, and the age of your drivers with where to get updates.</value>
+    <value>Common gaming apps and tools, plus how old your drivers are and where to get their updates.</value>
   </data>
   <data name="Apps_NoWinget" xml:space="preserve">
     <value>winget (App Installer) was not found. Install "App Installer" from the Microsoft Store.</value>
@@ -533,7 +533,7 @@ The files are deleted permanently. Files in use are skipped.</value>
     <value>Installing</value>
   </data>
   <data name="Apps_StartedForUser" xml:space="preserve">
-    <value>Started for your account. Run the scan again when it is done.</value>
+    <value>Started for your account. When it is done, select Refresh.</value>
   </data>
   <data name="Apps_Failed" xml:space="preserve">
     <value>Install failed (winget code {0}).</value>
@@ -1301,16 +1301,17 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Startup_DeleteHint" xml:space="preserve"><value>Removes this entry (the registry value, the file in the Startup folder or the task), as Autoruns does. It is backed up first: Undo on the Changes page puts it back.</value></data>
   <data name="Startup_FileMissing" xml:space="preserve"><value>The file of this entry does not exist.</value></data>
   <data name="Programs_Title" xml:space="preserve"><value>Installed programs</value></data>
-  <data name="Programs_Hint" xml:space="preserve"><value>Desktop programs from the Windows uninstall list. Uninstall runs the program's own uninstaller. Tick several to uninstall them one after the other and see what they left behind.</value></data>
+  <data name="Programs_Hint" xml:space="preserve"><value>Desktop programs from the Windows uninstall list. Uninstall runs the program's own uninstaller; afterwards Tunero shows what it left behind.</value></data>
   <data name="Programs_Search" xml:space="preserve"><value>Search programs</value></data>
-  <data name="Programs_Count" xml:space="preserve"><value>Programs: {0}</value></data>
+  <data name="Programs_Count" xml:space="preserve"><value>{0} programs.</value></data>
+  <data name="Programs_CountOne" xml:space="preserve"><value>1 program.</value></data>
   <data name="Programs_Sort" xml:space="preserve"><value>Sort programs</value></data>
   <data name="Programs_SortName" xml:space="preserve"><value>By name</value></data>
   <data name="Programs_SortSize" xml:space="preserve"><value>Largest first</value></data>
   <data name="Programs_SortDate" xml:space="preserve"><value>Newest first</value></data>
   <data name="List_NoMatch" xml:space="preserve"><value>Nothing matches the search or the filters.</value></data>
   <data name="Task_Search" xml:space="preserve"><value>Search tasks</value></data>
-  <data name="Programs_CountFiltered" xml:space="preserve"><value>Programs: {0} of {1}</value></data>
+  <data name="Programs_CountFiltered" xml:space="preserve"><value>Showing {0} of {1}.</value></data>
   <data name="Programs_Uninstall" xml:space="preserve"><value>Uninstall</value></data>
   <data name="Programs_ConfirmTitle" xml:space="preserve"><value>Uninstall program?</value></data>
   <data name="Programs_ConfirmText" xml:space="preserve"><value>Starts the uninstaller of {0}. Follow its window; it decides what is removed, including your settings for this program.</value></data>
@@ -1331,8 +1332,9 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Changes_OpenRestore" xml:space="preserve"><value>Open System Restore</value></data>
   <data name="Debloat_CameBack" xml:space="preserve"><value>These apps you removed are installed again, for example by a Windows update or the PC maker's software: {0}. They are listed below if you want to remove them again.</value></data>
   <data name="Drv_CleanTitle" xml:space="preserve"><value>Clean graphics driver removal</value></data>
-  <data name="Drv_CleanHint" xml:space="preserve"><value>When you switch graphics card brand or a driver keeps failing, Display Driver Uninstaller (DDU) removes the old driver completely before you install the new one. Its author recommends Safe Mode and a backup or restore point first. Tunero does not remove drivers itself. For Safe Mode, Tools has Restart to Advanced startup.</value></data>
+  <data name="Drv_CleanHint" xml:space="preserve"><value>When you switch graphics card brand or a driver keeps failing, Display Driver Uninstaller (DDU) removes the old driver completely before you install the new one. Its author recommends Safe Mode and a backup or restore point first. Tunero does not remove drivers itself.</value></data>
   <data name="Drv_CleanOpen" xml:space="preserve"><value>Open DDU page</value></data>
+  <data name="Drv_CleanSafeModeLink" xml:space="preserve"><value>Restart to Advanced startup in Tools</value></data>
   <data name="Prio_Title" xml:space="preserve"><value>Program start priorities</value></data>
   <data name="Prio_Hint" xml:space="preserve"><value>Windows starts the program with this CPU priority every time, without a background program. Useful for a game that competes with busy background programs, or to keep a backup or download tool out of the way.</value></data>
   <data name="Prio_Warning" xml:space="preserve"><value>Microsoft does not document these values, so the rules carry the Undocumented value tag; a test in a Windows 11 virtual machine showed that Windows applies them. Some anti-cheat systems check this part of the registry.</value></data>
@@ -1453,9 +1455,10 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Drv_AgeNew" xml:space="preserve"><value>less than two months old</value></data>
   <data name="Drv_AgeMonths" xml:space="preserve"><value>about {0} months old</value></data>
   <data name="Drv_AgeYears" xml:space="preserve"><value>about {0} years old</value></data>
-  <data name="Drv_GroupFrom" xml:space="preserve"><value>Updates from {0}</value></data>
+  <data name="Drv_AgeOld" xml:space="preserve"><value>about {0} years old, check for an update</value></data>
+  <data name="Drv_GroupFrom" xml:space="preserve"><value>Update source: {0}</value></data>
   <data name="Drv_GroupOther" xml:space="preserve"><value>No known update source</value></data>
-  <data name="Drv_GroupBoard" xml:space="preserve"><value>Updates from the mainboard maker</value></data>
+  <data name="Drv_GroupBoard" xml:space="preserve"><value>Update source: your mainboard maker</value></data>
   <data name="Tweak_AlreadyOnShort" xml:space="preserve"><value>Already on</value></data>
   <data name="Tweak_AlreadyOnTip" xml:space="preserve"><value>Windows, a policy or another tool set this before Tunero changed anything. With no original value to restore, Tunero does not turn it off.</value></data>
   <data name="Confirm_Blocked" xml:space="preserve"><value>Not possible yet: see the red note above. Nothing was changed.</value></data>
@@ -1582,12 +1585,13 @@ The files are deleted permanently. Files in use are skipped.</value>
   <data name="Tweak_SwitchOff" xml:space="preserve"><value>Not applied</value></data>
   <data name="Tweaks_ProfileLink" xml:space="preserve"><value>Profile: {0} (change it on the Overview)</value></data>
   <data name="Rec_EmptyButExcluded" xml:space="preserve"><value>Nothing can be applied in one click right now. The changes that would help are listed below, with what they need first.</value></data>
-  <data name="Debloat_TabNote" xml:space="preserve"><value>Only apps from a reviewed list are offered, never parts of Windows. Apps that installed games need stay locked. Removing cannot be undone here; for apps still in the Microsoft Store, Removed apps below keeps a link to install them again.</value></data>
+  <data name="Debloat_TabNote" xml:space="preserve"><value>Only apps from a reviewed list are offered, never parts of Windows. Apps that installed games need stay locked. Removing cannot be undone here; for apps still in the Microsoft Store, the Removed apps section at the end of the list keeps a link to install them again.</value></data>
   <data name="Debloat_AdminToRemove" xml:space="preserve"><value>Removing apps needs administrator rights. Start Tunero as administrator.</value></data>
   <data name="Debloat_RemoveName" xml:space="preserve"><value>Remove {0}</value></data>
   <data name="Programs_UninstallName" xml:space="preserve"><value>Uninstall {0}</value></data>
   <data name="Programs_SelectName" xml:space="preserve"><value>Select {0}</value></data>
-  <data name="Programs_UninstallSelected" xml:space="preserve"><value>Uninstall selected ({0})</value></data>
+  <data name="Programs_UninstallSelected" xml:space="preserve"><value>Uninstall selected</value></data>
+  <data name="Programs_SelectHint" xml:space="preserve"><value>Tick programs to uninstall several one after the other</value></data>
   <data name="Programs_Quiet" xml:space="preserve"><value>Quietly where possible</value></data>
   <data name="Programs_QuietHint" xml:space="preserve"><value>Uses the quiet uninstall the program offers (Windows Installer, or the vendor's own quiet command), which answers the uninstaller's questions with its defaults. Programs without one show their window.</value></data>
   <data name="Programs_BulkConfirmTitle" xml:space="preserve"><value>Uninstall programs?</value></data>

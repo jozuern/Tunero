@@ -227,7 +227,7 @@ public sealed partial class MainViewModel
         }
     }
 
-    /// <summary>Graphics & DNS: the network repairs are on Tools, first tab.</summary>
+    /// <summary>Graphics & DNS (the network repairs) and the DDU card (Restart to Advanced startup): both are on Tools, first tab.</summary>
     [RelayCommand]
     private void OpenToolsFixes()
     {

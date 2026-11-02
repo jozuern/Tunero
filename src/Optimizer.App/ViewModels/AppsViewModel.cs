@@ -29,19 +29,6 @@ public sealed partial class AppRow(AppEntry app, string lang, bool installed) : 
     /// <summary>Category heading above the first app of each category (the catalog lists them grouped).</summary>
     public string? GroupHeader { get; init; }
 
-    public Wpf.Ui.Controls.SymbolRegular Symbol => App.Category switch
-    {
-        "launchers" => Wpf.Ui.Controls.SymbolRegular.Games24,
-        "streaming" => Wpf.Ui.Controls.SymbolRegular.Video24,
-        "peripherals" => Wpf.Ui.Controls.SymbolRegular.Keyboard24,
-        "communication" => Wpf.Ui.Controls.SymbolRegular.Chat24,
-        "monitoring" => Wpf.Ui.Controls.SymbolRegular.Gauge24,
-        "media" => Wpf.Ui.Controls.SymbolRegular.Play24,
-        "browsers" => Wpf.Ui.Controls.SymbolRegular.Globe24,
-        "runtimes" => Wpf.Ui.Controls.SymbolRegular.Box24,
-        _ => Wpf.Ui.Controls.SymbolRegular.Toolbox24,
-    };
-
     [ObservableProperty] private bool _installed = installed;
 
     /// <summary>"Install Discord": what a screen reader says for the button (each row has one).</summary>
@@ -190,16 +177,23 @@ public sealed record DriverItem(string Device, string ClassText, string Provider
     /// <summary>Class, provider and version, then the date; a driver without one of them shows no empty part.</summary>
     public string MetaText => string.Join(", ", new[] { ClassText, $"{Provider} {Version}".Trim(), DateText }.Where(x => x.Length > 0));
 
-    /// <summary>Heading above the first driver of an update source ("Updates from Intel"), with one link for the group.</summary>
+    /// <summary>Heading above the first driver of an update source ("Update source: Intel"), with one link for the group.</summary>
     public string? GroupHeader { get; init; }
 
     public string? GroupUrl { get; init; }
 
     /// <summary>
-    /// The date in the app language ("10.08.2018", for the caption) and a rounded age ("about 8 years old", on the right of
-    /// the card). A placeholder date is not shown; the age place says that the package gives no real one.
+    /// A graphics, network or audio driver more than two years old: worth a look for an update, which the age says in
+    /// words (the caution color only repeats it). Whether a newer one exists is not known here.
     /// </summary>
-    public static (string Date, string Age) Describe(DateTime? date, int? ageDays)
+    public static bool IsOld(int? ageDays, string driverClass) => ageDays > 2 * 365 && driverClass is "DISPLAY" or "NET" or "MEDIA";
+
+    /// <summary>
+    /// The date in the app language ("10.08.2018", for the caption) and a rounded age ("about 8 years old", on the right of
+    /// the card; for an <paramref name="old"/> driver "about 8 years old, check for an update"). A placeholder date is not
+    /// shown; the age place says that the package gives no real one.
+    /// </summary>
+    public static (string Date, string Age) Describe(DateTime? date, int? ageDays, bool old = false)
     {
         if (date is not { } d) return ("", "");
         if (ageDays is not { } a) return ("", Loc.Instance["Drv_NoRealDate"]);
@@ -208,7 +202,7 @@ public sealed record DriverItem(string Device, string ClassText, string Provider
         if (a < 0) return (shown, "");
         var age = a < 60 ? Loc.Instance["Drv_AgeNew"]
             : a < 730 ? Loc.Instance.Format("Drv_AgeMonths", (int)Math.Round(a / 30.44))
-            : Loc.Instance.Format("Drv_AgeYears", (int)Math.Round(a / 365.25));
+            : Loc.Instance.Format(old ? "Drv_AgeOld" : "Drv_AgeYears", (int)Math.Round(a / 365.25));
         return (shown, age);
     }
 }
@@ -264,7 +258,10 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
     // Remove apps lists the installed programs from here too.
     protected override IReadOnlyList<Page> ShownOn => [Page.Apps, Page.Debloat];
 
-    /// <summary>The installed state of the catalog apps comes from the scan result (installed programs).</summary>
+    /// <summary>
+    /// The scan result gives the board maker for the driver update links, and the installed state of the catalog apps until
+    /// this page has read the programs itself (<see cref="LoadProgramsAsync"/>).
+    /// </summary>
     protected override bool UsesProfile => true;
     private List<ProgramRow> _allPrograms = [];
     private bool _restorePointReady;
@@ -289,15 +286,23 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
 
     public bool HasSelection => SelectedCount > 0;
 
+    /// <summary>Uninstall selected is there all the time (the list does not move at the first tick), on only with a tick and no queue running.</summary>
+    public bool CanUninstallSelected => HasSelection && !IsQueueRunning;
+
     /// <summary>Programs were read but the search leaves none: the page says so.</summary>
     public bool ProgramsNoMatch => _allPrograms.Count > 0 && ProgramRows.Count == 0;
-    public string UninstallSelectedText => Loc.Instance.Format("Programs_UninstallSelected", SelectedCount);
+
+    /// <summary>Beside Uninstall selected: how to select several while nothing is ticked, then how many are.</summary>
+    public string ProgramSelectionText => SelectedCount == 0 ? Loc.Instance["Programs_SelectHint"] : Loc.Instance.Format("Debloat_SelectedCount", SelectedCount);
 
     partial void OnSelectedCountChanged(int value)
     {
         OnPropertyChanged(nameof(HasSelection));
-        OnPropertyChanged(nameof(UninstallSelectedText));
+        OnPropertyChanged(nameof(CanUninstallSelected));
+        OnPropertyChanged(nameof(ProgramSelectionText));
     }
+
+    partial void OnIsQueueRunningChanged(bool value) => OnPropertyChanged(nameof(CanUninstallSelected));
 
     private void UpdateSelection() => SelectedCount = _allPrograms.Count(r => r.IsSelected);
 
@@ -329,8 +334,10 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
             _ => shown,
         };
         foreach (var r in shown) ProgramRows.Add(r);
-        ProgramsText = ProgramRows.Count == _allPrograms.Count ? Loc.Instance.Format("Programs_Count", _allPrograms.Count)
-            : Loc.Instance.Format("Programs_CountFiltered", ProgramRows.Count, _allPrograms.Count);
+        // "73 programs." or, with a search, "Showing 5 of 73." as on Startup.
+        ProgramsText = ProgramRows.Count != _allPrograms.Count ? Loc.Instance.Format("Programs_CountFiltered", ProgramRows.Count, _allPrograms.Count)
+            : _allPrograms.Count == 1 ? Loc.Instance["Programs_CountOne"]
+            : Loc.Instance.Format("Programs_Count", _allPrograms.Count);
         OnPropertyChanged(nameof(ProgramsNoMatch));
     }
 
@@ -787,17 +794,9 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
         IsUpdatingAll = true;
         // The output and each manager's result line go to the Package managers card: unfolded, so a failure is seen.
         ManagersExpanded = true;
-        var lines = new List<string>();
         WorkProgress.Scope? banner = null;
-        var progress = new Progress<string>(l =>
+        var output = new LiveOutput(text => ManagerOutput = text, OutputMax, l =>
         {
-            // Locked: in the app this runs on the window's thread, without a context (tests) on the thread pool.
-            lock (lines)
-            {
-                lines.Add(l);
-                if (lines.Count > 40) lines.RemoveAt(0);
-                ManagerOutput = string.Join("\n", lines);
-            }
             // "(2/5) Found ..." as winget starts each package; without it the bar keeps moving.
             if (ToolProgress.WingetPackage(l) is var (done, total)) banner?.Step(done, total, l[(l.IndexOf(')') + 1)..].Trim());
         });
@@ -808,12 +807,7 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
             ran = await RunWorkAsync("update all apps", Loc.Instance["Work_UpdateApps"], async work =>
             {
                 banner = work;
-                var results = await PackageRuns.RunAllAsync(plan, progress);
-                lock (lines)
-                {
-                    lines.AddRange(results);
-                    ManagerOutput = string.Join("\n", lines);
-                }
+                output.AddRange(await PackageRuns.RunAllAsync(plan, output.Progress));
             }, slow: true);
         }
         finally
@@ -829,6 +823,9 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
             }
         }
     }
+
+    /// <summary>The lines an output box of this page keeps (install, update, Update all, Chocolatey); older ones go.</summary>
+    private const int OutputMax = 40;
 
     // ---------------- package managers ----------------
 
@@ -970,17 +967,7 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
         if (row is null || row.IsUpdating || row.Updated || IsCheckingChocolatey || TrustedChocolatey is not { } choco || _managerDemo) return;
         row.IsUpdating = true;
         row.ShowState(() => Loc.Instance["Apps_Updating"]);
-        var lines = new List<string>();
-        var progress = new Progress<string>(l =>
-        {
-            // Locked: in the app this runs on the window's thread, without a context (tests) on the thread pool.
-            lock (lines)
-            {
-                lines.Add(l);
-                if (lines.Count > 40) lines.RemoveAt(0);
-                ManagerOutput = string.Join("\n", lines);
-            }
-        });
+        var progress = new LiveOutput(text => ManagerOutput = text, OutputMax).Progress;
         try
         {
             if (!await RunWorkAsync($"choco upgrade {row.Name}", async () =>
@@ -1060,7 +1047,7 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
         ShowDrivers(_drivers);
         for (var i = 0; i < Leftovers.Count; i++)
             Leftovers[i] = new LeftoverRow(Leftovers[i].Leftover, Leftovers[i].ProgramName) { Selected = Leftovers[i].Selected };
-        OnPropertyChanged(nameof(UninstallSelectedText));
+        OnPropertyChanged(nameof(ProgramSelectionText));
         // A result being installed, or showing how its install went, keeps its row: the install writes to it.
         for (var i = 0; i < SearchResults.Count; i++)
             if (SearchResults[i] is { IsInstalling: false, StateText.Length: 0 } idle) SearchResults[i] = new WingetResultRow(idle.Package);
@@ -1102,10 +1089,11 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
             foreach (var d in g)
             {
                 var url = g.Key.Length == 0 ? null : g.Key;
-                var (date, age) = DriverItem.Describe(d.Date, d.AgeDays(today));
+                var days = d.AgeDays(today);
+                var old = DriverItem.IsOld(days, d.Class);
+                var (date, age) = DriverItem.Describe(d.Date, days, old);
                 Drivers.Add(new DriverItem(d.Device, Loc.Instance[$"DrvClass_{d.Class}"] is var c && c != $"DrvClass_{d.Class}" ? c : d.Class,
-                    d.Provider ?? "", d.Version ?? "", date, age, url,
-                    d.AgeDays(today) > 2 * 365 && d.Class is "DISPLAY" or "NET" or "MEDIA")
+                    d.Provider ?? "", d.Version ?? "", date, age, url, old)
                 {
                     GroupHeader = first ? GroupTitle(url) : null,
                     GroupUrl = first ? url : null,
@@ -1141,17 +1129,7 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
         }
         row.IsInstalling = true;
         row.StateText = Loc.Instance["Apps_Installing"];
-        var lines = new List<string>();
-        var progress = new Progress<string>(l =>
-        {
-            // Locked: in the app this runs on the window's thread, without a context (tests) on the thread pool.
-            lock (lines)
-            {
-                lines.Add(l);
-                if (lines.Count > 40) lines.RemoveAt(0);
-                Output = string.Join("\n", lines);
-            }
-        });
+        var progress = new LiveOutput(text => Output = text, OutputMax).Progress;
         try
         {
             var winget = _winget;
@@ -1182,17 +1160,7 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
         row.IsInstalling = true;
         var before = row.StateText;
         row.StateText = Loc.Instance["Apps_Updating"];
-        var lines = new List<string>();
-        var progress = new Progress<string>(l =>
-        {
-            // Locked: in the app this runs on the window's thread, without a context (tests) on the thread pool.
-            lock (lines)
-            {
-                lines.Add(l);
-                if (lines.Count > 40) lines.RemoveAt(0);
-                Output = string.Join("\n", lines);
-            }
-        });
+        var progress = new LiveOutput(text => Output = text, OutputMax).Progress;
         try
         {
             var winget = _winget;
@@ -1283,17 +1251,7 @@ public sealed partial class AppsViewModel(IPageHost owner, AppServices services,
         var app = new AppEntry { Id = row.Package.Id, Name = row.Name, WingetScope = "machine" };
         row.IsInstalling = true;
         row.StateText = Loc.Instance["Apps_Installing"];
-        var lines = new List<string>();
-        var progress = new Progress<string>(l =>
-        {
-            // Locked: in the app this runs on the window's thread, without a context (tests) on the thread pool.
-            lock (lines)
-            {
-                lines.Add(l);
-                if (lines.Count > 40) lines.RemoveAt(0);
-                SearchOutput = string.Join("\n", lines);
-            }
-        });
+        var progress = new LiveOutput(text => SearchOutput = text, OutputMax).Progress;
         try
         {
             var winget = _winget;

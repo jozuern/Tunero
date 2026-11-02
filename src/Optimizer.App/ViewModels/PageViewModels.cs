@@ -296,7 +296,7 @@ public sealed partial class NetworkViewModel(IPageHost owner, AppServices servic
 
     [ObservableProperty] private string _currentDns = "";
     [ObservableProperty] private bool _hasNvidia;
-    /// <summary>The scan found graphics cards and none is NVIDIA (not while the first scan still runs).</summary>
+    /// <summary>The scan read the graphics cards and none is NVIDIA (not while the first scan still runs or when the read failed).</summary>
     [ObservableProperty] private bool _noNvidia;
     [ObservableProperty] private string _benchmarkStatus = "";
 
@@ -458,8 +458,7 @@ public sealed partial class NetworkViewModel(IPageHost owner, AppServices servic
             DnsChoices.Add(new DnsChoice(t, t.Tweak.Subject ?? Loc.Instance["Net_DnsAutomatic"]));
         ShowDnsSelection();
         foreach (var t in Owner.CatalogItems(t => t.Id.StartsWith("nvidia.", StringComparison.Ordinal))) GpuTweaks.Add(t);
-        HasNvidia = Owner.Profile?.Gpus?.Any(g => g.Vendor == Optimizer.Core.Hardware.Vendor.Nvidia) == true;
-        NoNvidia = Owner.Profile is not null && !HasNvidia;
+        (HasNvidia, NoNvidia) = NvidiaCards(Owner.Profile?.Gpus);
         ShowCurrentDnsAsync().Forget("current DNS servers");
         GameProfilesFacts = SharedFacts(GameProfiles);
         DeviceFacts = SharedFacts(DeviceTweaks);
@@ -467,6 +466,16 @@ public sealed partial class NetworkViewModel(IPageHost owner, AppServices servic
         OnPropertyChanged(nameof(ShowDeviceTweaks));
         OnPropertyChanged(nameof(GameProfilesEmpty));
     }
+
+    /// <summary>
+    /// Which graphics part the page shows: the NVIDIA settings when the scan found an NVIDIA card, the "No NVIDIA graphics
+    /// card found" card only when it read a list of cards and none is NVIDIA. No list (the first scan still runs, or the
+    /// graphics card read failed, which System info then shows) or an empty one shows neither.
+    /// </summary>
+    internal static (bool HasNvidia, bool NoNvidia) NvidiaCards(IReadOnlyList<Optimizer.Core.Hardware.GpuInfo>? gpus) =>
+        gpus is { Count: > 0 } read
+            ? (read.Any(g => g.Vendor == Optimizer.Core.Hardware.Vendor.Nvidia), read.All(g => g.Vendor != Optimizer.Core.Hardware.Vendor.Nvidia))
+            : (false, false);
 
     /// <summary>The DNS servers in use, read off the UI thread (it asks every network adapter).</summary>
     private async Task ShowCurrentDnsAsync()

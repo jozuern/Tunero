@@ -45,6 +45,8 @@
 - **Light mode:** state and location lines ("Unknown", "Not supported", startup locations) use the easier to read secondary text color.
 - **Wording:** the app calls itself Tunero everywhere, and links use the names of the pages they open.
 - **Windows install media:** the setup card labels the region format ("Account Anna, format German (Austria)"), and German switches say "Ein" in the review too.
+- **Remove apps, Installed programs:** Uninstall selected and Quietly where possible sit on a card that is always shown, so the first tick no longer pushes the list down; the count reads "76 programs." or "Showing 5 of 76.", as on Startup.
+- **Install & update:** a graphics, network or audio driver older than two years says "check for an update" in words, not only in color; driver groups are headed "Update source: Intel"; the DDU card links to the Advanced startup restart in Tools; app rows lose the repeated category icon; clearer subtitle and hints.
 
 ### Fixed
 
@@ -109,6 +111,8 @@
 - **Screen readers:** the title bar buttons of the confirmation, question and Licenses windows have names.
 - **Keyboard:** on pages with tabs, the tabs come right after the page's command in Tab order; navigation badges are no Tab stops; in the confirmation, Tab follows the buttons on screen and a long list of exact changes scrolls with the keyboard.
 - **Windows install media:** your own ISO is no longer checked on the window's thread, so an ISO on a share that went away no longer freezes the window; Resume checks the free space it still needs and stops before Unpack or the ISO stage if the drive is too full, keeping the saved build. Resume, Build and Load choices no longer run into each other while one of them looks at the ISO.
+- **Graphics & DNS:** a PC whose graphics card read failed no longer says "No NVIDIA graphics card found"; the compact row details and the package names on Remove apps are easier to read.
+- **Install & update:** the output boxes of installs, updates and Update all share one buffer, so a progress line can no longer get lost between threads.
 
 ## 1.5.0
 
