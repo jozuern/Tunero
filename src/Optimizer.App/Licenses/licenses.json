@@ -127,8 +127,9 @@
   },
   {
     "name": "PawnIO Modules (embedded in LibreHardwareMonitorLib)",
+    "version": "0.1.6",
     "license": "LGPL-2.1-or-later",
-    "source": "https://github.com/namazso/PawnIO.Modules",
+    "source": "https://github.com/namazso/PawnIO.Modules/releases/tag/0.1.6",
     "files": [
       "pawnio-modules.txt"
     ]
@@ -194,7 +195,7 @@
   {
     "name": "Intel PresentMon (console)",
     "version": "2.6.0",
-    "license": "MIT",
+    "license": "MIT (includes cereal, BSD-3-Clause)",
     "source": "https://github.com/GameTechDev/PresentMon",
     "files": [
       "presentmon.txt"

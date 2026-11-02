@@ -17,10 +17,11 @@ on:
 permissions:
   contents: read
 
-# A newer push to a pull request cancels the older run. On main every push runs to the end: the version check covers
-# only the commits of its own push, so a cancelled run would leave those commits unchecked.
+# A newer push to a pull request cancels the older run. Every other run gets its own group: in a shared group GitHub
+# cancels a pending run when a third one queues (even without cancel-in-progress), and the version check covers only
+# the commits of its own push, so every push to main must run to the end.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:

@@ -541,4 +541,20 @@ public class ReleaseTests
         }
         Assert.Equal(reviewed.Order(StringComparer.Ordinal), found.Order(StringComparer.Ordinal));
     }
+
+    /// <summary>
+    /// The embedded PresentMon is linked with cereal (BSD-3-Clause, which requires its notice with every binary copy):
+    /// its symbols are in the exe, so presentmon.txt must carry cereal's license next to Intel's.
+    /// </summary>
+    [Fact]
+    public void EmbeddedPresentMonCarriesCerealNotice()
+    {
+        var exe = Directory.GetFiles(Path.Combine(RepoPaths.Root, "src", "Optimizer.Core", "Tools", "Vendor"), "PresentMon-*.exe").Single();
+        var bytes = File.ReadAllBytes(exe);
+        Assert.True(bytes.AsSpan().IndexOf("@cereal@@"u8) >= 0, $"{Path.GetFileName(exe)} no longer contains cereal: drop its notice from presentmon.txt");
+        var notice = File.ReadAllText(Path.Combine(RepoPaths.App, "Licenses", "presentmon.txt"));
+        Assert.Contains("Copyright (c) 2013-2022, Randolph Voorhies, Shane Grant", notice);
+        Assert.Contains("Redistributions in binary form must reproduce the above copyright", notice);
+        Assert.Contains("BSD-3-Clause", Manifest().Single(c => c.Files.Contains("presentmon.txt")).License);
+    }
 }

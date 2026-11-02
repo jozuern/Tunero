@@ -126,6 +126,7 @@
 - **Explanation pages:** Ryzen memory speed (where AMD's official speed applies), Leftovers, Memory integrity, Power saver plan, Widgets, the NVIDIA frame limit (what Undo restores), the NVIDIA global reset and the restore point limit say what holds.
 - **German explanation pages** match the English ones more closely (automatic DNS, the network adapter power setting, the anti-cheat checks, location off, "at most" for the latency gain) and use the names Windows shows (Energieverwaltung, Aggressiv, Details zur Kernisolierung; Laufwerk where SSDs count too).
 - **Secure Boot certificates:** the page says that the 2011 certificates have expired (June and October 2026), not that they will; the virtualization check says that memory integrity and VBS need virtualization and that installed anti-cheats can require either one.
+- **Third-party notices:** the PawnIO driver is listed as GPL-2.0-or-later with its exception, the PawnIO modules notice names release 0.1.6 so the LGPL source can be found, and the PresentMon notice carries cereal's BSD-3-Clause license, which the embedded PresentMon contains.
 
 ## 1.5.0
 

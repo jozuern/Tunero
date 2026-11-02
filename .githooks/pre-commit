@@ -4,9 +4,10 @@
 # A version changed by hand in the same commit (for example 0.4.0) is kept.
 # Skip for one commit (for example with --amend, where the amended commit already raised it):
 #   SKIP_VERSION_BUMP=1 git commit --amend ...
-# Merges and rebases: git runs the hook only for commits it creates through "git commit" (a merge commit, a conflict
-# resolved by hand); a rebase replays commits that already raised the version. A merge commit is raised above both
-# sides. CI checks every commit pushed to main.
+# git runs this hook only for commits made through "git commit" (also a merge commit and a merge conflict resolved by
+# hand); a merge commit is raised above both sides. git revert, git cherry-pick and git rebase (also --continue after a
+# conflict) skip it and can keep or lower the version: pre-push stops such a push, and CI checks every commit pushed
+# to main.
 [ -n "$SKIP_VERSION_BUMP" ] && exit 0
 
 csproj=src/Optimizer.App/Optimizer.App.csproj

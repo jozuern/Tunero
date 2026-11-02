@@ -1,7 +1,8 @@
 PawnIO Modules (compiled modules embedded in LibreHardwareMonitorLib 0.9.6: AMDFamily0F, AMDFamily10,
 AMDFamily17, IntelMSR, IsaBridgeEC, LpcACPIEC, LpcCrOSEC, LpcIO, RyzenSMU, SmbusI801, SmbusNCT6793, SmbusPIIX4)
 Copyright (C) 2025 namazso <admin@namazso.eu>
-Source code: https://github.com/namazso/PawnIO.Modules
+Source code: https://github.com/namazso/PawnIO.Modules/releases/tag/0.1.6 (release 0.1.6, the one
+LibreHardwareMonitorLib 0.9.6 embeds)
 
 This library is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser General
 Public License as published by the Free Software Foundation; either version 2.1 of the License, or (at your option)

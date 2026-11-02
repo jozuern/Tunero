@@ -1,0 +1,58 @@
+#!/bin/sh
+# Stops a push that carries a commit whose <Version> is not above each of its parents, the rule CI's "Version raised"
+# checks on main. pre-commit raises the version only for commits made through "git commit": git revert, git cherry-pick
+# and git rebase (also --continue after a conflict) skip it, so a revert of a commit lowers the version and a replayed
+# commit can keep its parent's. Only commits that no remote-tracking branch has yet are checked, oldest first. As in
+# CI, Dependabot's commits and merge commits made on GitHub (the merge button) may keep the version but never lower it.
+# Skip for one push with  SKIP_VERSION_BUMP=1 git push ...
+[ -n "$SKIP_VERSION_BUMP" ] && exit 0
+
+csproj=src/Optimizer.App/Optimizer.App.csproj
+dependabot='49699333+dependabot[bot]@users.noreply.github.com'
+zero=0000000000000000000000000000000000000000
+
+version_of() { sed -n 's|.*<Version>\([0-9]*\.[0-9]*\.[0-9]*\)</Version>.*|\1|p' | head -n 1; }
+highest() { printf '%s\n' "$@" | sed '/^$/d' | sort -V | tail -n 1; }
+above() { [ "$1" != "$2" ] && [ "$(highest "$1" "$2")" = "$1" ]; }
+version_at() { git show "$1:$csproj" 2>/dev/null | version_of; }
+
+status=0
+while read -r local_ref local_sha remote_ref remote_sha; do
+    # A deleted ref pushes no commits.
+    [ "$local_sha" = "$zero" ] && continue
+    known=""
+    if [ "$remote_sha" != "$zero" ] && git cat-file -e "$remote_sha^{commit}" 2>/dev/null; then known="$remote_sha"; fi
+    for commit in $(git rev-list --reverse "$local_sha" --not --remotes $known); do
+        now=$(version_at "$commit")
+        [ -z "$now" ] && continue
+        parents=$(git rev-list --parents -n 1 "$commit" | cut -d' ' -f2-)
+        [ "$parents" = "$commit" ] && continue
+        author=$(git log -1 --format=%ae "$commit")
+        committer=$(git log -1 --format=%ce "$commit")
+        may_keep=""
+        case "$parents" in *" "*) merge=1 ;; *) merge="" ;; esac
+        if [ "$author" = "$dependabot" ] || { [ -n "$merge" ] && [ "$committer" = "noreply@github.com" ]; }; then
+            may_keep=1
+        fi
+        for parent in $parents; do
+            before=$(version_at "$parent")
+            [ -z "$before" ] && continue
+            if [ -n "$may_keep" ]; then
+                [ "$now" = "$before" ] || above "$now" "$before" && continue
+                echo "pre-push: <Version> $now of $commit is below $before (parent $parent)." >&2
+            else
+                above "$now" "$before" && continue
+                echo "pre-push: <Version> $now of $commit is not above $before (parent $parent): git revert, cherry-pick and rebase skip pre-commit." >&2
+            fi
+            status=1
+        done
+    done
+done
+
+if [ "$status" -ne 0 ]; then
+    echo "For the last commit: set <Version> above the parent's in $csproj, git add it, then" >&2
+    echo "  SKIP_VERSION_BUMP=1 git commit --amend --no-edit" >&2
+    echo "For several commits: git reset --soft <first (oldest) commit named above>^, set <Version> above that" >&2
+    echo "parent's, git add it and commit again." >&2
+fi
+exit $status

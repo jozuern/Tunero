@@ -4,7 +4,7 @@ What is still open for the project. What needs real hardware or another Windows 
 
 ## Release channels and the VM plan
 
-- **winget:** the first version (pull request #450585, `jozuern.Tunero` 0.8.0) is still in review. Chocolatey offers the current version and Scoop's bucket follows every release.
+- **winget:** the first version (pull request #450585, `jozuern.Tunero` 0.8.0) is still in review. Once it is merged, run the winget workflow by hand from the newest tag (CONTRIBUTING, Releases step 4), or winget stays on 0.8.0 until the next release. Chocolatey offers the current version and Scoop's bucket follows every release.
 - **New VM plan rows** (section 1 and 6 of [vm-test-plan.md](vm-test-plan.md)): a failed start after a self-update (needs a signed release newer than the installed one), and the code signing rows with a signed release.
 
 ## From the audit of 2026-10-30
